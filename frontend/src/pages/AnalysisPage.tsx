@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Analysis, Conversation } from '../types';
+import { formatDate } from '../utils/formatting';
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
@@ -141,7 +142,7 @@ export default function AnalysisPage() {
             </div>
             <div className="detail-item">
               <label>Analysis Date:</label>
-              <span>{new Date(analysis.created_at).toLocaleString()}</span>
+              <span>{formatDate(analysis.created_at)}</span>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
 import { ConversationState } from '../types';
+import { formatDateShort } from '../utils/formatting';
 
 export default function DashboardPage() {
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
@@ -95,9 +96,9 @@ export default function DashboardPage() {
                     <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
                   </div>
                   <div className="conversation-meta">
-                    <span>Created: {new Date(conversation.created_at).toLocaleDateString()}</span>
+                    <span>Created: {formatDateShort(conversation.created_at)}</span>
                     {conversation.activated_at && (
-                      <span>Activated: {new Date(conversation.activated_at).toLocaleDateString()}</span>
+                      <span>Activated: {formatDateShort(conversation.activated_at)}</span>
                     )}
                   </div>
                 </div>

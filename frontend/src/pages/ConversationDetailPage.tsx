@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, ResponseStats, Analysis } from '../types';
 import { ConversationState } from '../types';
+import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
 
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -122,6 +123,51 @@ export default function ConversationDetailPage() {
           <span className={`status-badge status-${conversation.state}`}>
             {conversation.state}
           </span>
+          <div className="conversation-actions-top">
+            {conversation.state === ConversationState.DRAFT && (
+              <button
+                onClick={handleActivate}
+                className="btn btn-primary btn-small"
+                disabled={actionLoading}
+              >
+                Activate
+              </button>
+            )}
+
+            {conversation.state === ConversationState.ACTIVE && (
+              <button
+                onClick={handleClose}
+                className="btn btn-warning btn-small"
+                disabled={actionLoading}
+              >
+                Close
+              </button>
+            )}
+
+            {conversation.state === ConversationState.CLOSED && (
+              <button
+                onClick={handleAnalyze}
+                className="btn btn-primary btn-small"
+                disabled={actionLoading}
+              >
+                Run Analysis
+              </button>
+            )}
+
+            {conversation.state === ConversationState.ANALYZED && analysis && (
+              <Link to={`/conversations/${id}/analysis`} className="btn btn-primary btn-small">
+                View Analysis
+              </Link>
+            )}
+
+            <button
+              onClick={handleDelete}
+              className="btn btn-danger btn-small"
+              disabled={actionLoading}
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
@@ -143,12 +189,12 @@ export default function ConversationDetailPage() {
 
           <div className="info-item">
             <label>Anonymity Level:</label>
-            <span>{conversation.anonymity_level}</span>
+            <span>{formatAnonymityLevel(conversation.anonymity_level)}</span>
           </div>
 
           <div className="info-item">
             <label>Results Access:</label>
-            <span>{conversation.results_access}</span>
+            <span>{formatResultsAccess(conversation.results_access)}</span>
           </div>
 
           {stats && (
@@ -166,20 +212,20 @@ export default function ConversationDetailPage() {
 
           <div className="info-item">
             <label>Created:</label>
-            <span>{new Date(conversation.created_at).toLocaleString()}</span>
+            <span>{formatDate(conversation.created_at)}</span>
           </div>
 
           {conversation.activated_at && (
             <div className="info-item">
               <label>Activated:</label>
-              <span>{new Date(conversation.activated_at).toLocaleString()}</span>
+              <span>{formatDate(conversation.activated_at)}</span>
             </div>
           )}
 
           {conversation.closed_at && (
             <div className="info-item">
               <label>Closed:</label>
-              <span>{new Date(conversation.closed_at).toLocaleString()}</span>
+              <span>{formatDate(conversation.closed_at)}</span>
             </div>
           )}
         </div>
@@ -195,54 +241,6 @@ export default function ConversationDetailPage() {
           </ol>
         </div>
 
-        <div className="actions-panel">
-          <h2>Actions</h2>
-          <div className="action-buttons">
-            {conversation.state === ConversationState.DRAFT && (
-              <button
-                onClick={handleActivate}
-                className="btn btn-primary"
-                disabled={actionLoading}
-              >
-                Activate Conversation
-              </button>
-            )}
-
-            {conversation.state === ConversationState.ACTIVE && (
-              <button
-                onClick={handleClose}
-                className="btn btn-warning"
-                disabled={actionLoading}
-              >
-                Close Conversation
-              </button>
-            )}
-
-            {conversation.state === ConversationState.CLOSED && (
-              <button
-                onClick={handleAnalyze}
-                className="btn btn-primary"
-                disabled={actionLoading}
-              >
-                Run AI Analysis
-              </button>
-            )}
-
-            {conversation.state === ConversationState.ANALYZED && analysis && (
-              <Link to={`/conversations/${id}/analysis`} className="btn btn-primary">
-                View Analysis Results
-              </Link>
-            )}
-
-            <button
-              onClick={handleDelete}
-              className="btn btn-danger"
-              disabled={actionLoading}
-            >
-              Delete Conversation
-            </button>
-          </div>
-        </div>
 
         {analysis && (
           <div className="analysis-preview">

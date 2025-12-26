@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type { InviteCodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
+import { formatAnonymityLevel } from '../utils/formatting';
 
 export default function JoinPage() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
@@ -112,7 +113,7 @@ export default function JoinPage() {
           {conversation.description && <p className="description">{conversation.description}</p>}
           <p className="privacy-note">
             <LockIcon size={16} className="privacy-icon" />
-            Your responses are {conversation.anonymity_level.replace('_', ' ')}
+            Your responses are {formatAnonymityLevel(conversation.anonymity_level)}
           </p>
         </header>
 
