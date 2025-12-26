@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into list."""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        # Add same-origin for production (when frontend is served from backend)
+        if not any("localhost" in origin for origin in origins):
+            origins.append("*")  # Or be more specific with your fly.io domain
+        return origins
 
     # OpenAI (for embeddings)
     OPENAI_API_KEY: str
