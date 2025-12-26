@@ -72,6 +72,11 @@ class ApiService {
     return response.data;
   }
 
+  getGoogleLoginUrl(): string {
+    const baseUrl = API_BASE_URL.replace('/api', '');
+    return `${baseUrl}/api/auth/google/login`;
+  }
+
   // Conversation endpoints
   async createConversation(data: ConversationCreate): Promise<Conversation> {
     const response = await this.client.post<Conversation>('/conversations', data);

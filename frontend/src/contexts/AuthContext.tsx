@@ -18,12 +18,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      loadUser();
-    } else {
+    // Handle OAuth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+    const refreshToken = urlParams.get('refresh_token');
+    const error = urlParams.get('error');
+
+    if (accessToken && refreshToken) {
+      // OAuth callback - store tokens and load user
+      localStorage.setItem('access_token', accessToken);
+      localStorage.setItem('refresh_token', refreshToken);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      loadUser().then(() => {
+        // Redirect to dashboard after successful OAuth login
+        if (window.location.pathname === '/auth/callback') {
+          window.location.href = '/dashboard';
+        }
+      });
+    } else if (error) {
+      // OAuth error - just set loading to false
       setLoading(false);
+    } else {
+      // Check if user is already logged in
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        loadUser();
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 

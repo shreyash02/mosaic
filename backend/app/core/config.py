@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = "1066293925506-r0e8mcicmr10puu758d8i1d5hbtnu845.apps.googleusercontent.com"
+    GOOGLE_CLIENT_SECRET: str = "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"
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
