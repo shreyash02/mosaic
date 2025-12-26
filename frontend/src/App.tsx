@@ -12,6 +12,8 @@ import CreateConversationPage from './pages/CreateConversationPage';
 import ConversationDetailPage from './pages/ConversationDetailPage';
 import JoinPage from './pages/JoinPage';
 import AnalysisPage from './pages/AnalysisPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 import './App.css';
 
@@ -63,6 +65,9 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
           </Routes>
         </div>
       </Router>

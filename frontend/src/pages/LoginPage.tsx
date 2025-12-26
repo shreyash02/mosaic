@@ -113,6 +113,12 @@ export default function LoginPage() {
         <p className="auth-link">
           Don't have an account? <Link to="/register">Register here</Link>
         </p>
+
+        <div className="auth-footer-links">
+          <Link to="/terms">Terms of Service</Link>
+          <span>•</span>
+          <Link to="/privacy">Privacy Policy</Link>
+        </div>
       </div>
     </div>
   );

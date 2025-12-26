@@ -129,6 +129,12 @@ export default function RegisterPage() {
         <p className="auth-link">
           Already have an account? <Link to="/login">Login here</Link>
         </p>
+
+        <div className="auth-footer-links">
+          <Link to="/terms">Terms of Service</Link>
+          <span>•</span>
+          <Link to="/privacy">Privacy Policy</Link>
+        </div>
       </div>
     </div>
   );
