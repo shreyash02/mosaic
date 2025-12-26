@@ -16,8 +16,8 @@ python-dotenv==1.0.0
 pydantic-settings>=2.6.0
 
 # LLM & Embeddings
-openai==1.12.0
-anthropic==0.18.1
+openai>=1.12.0
+anthropic>=0.18.1
 
 # Machine Learning / Clustering
 scikit-learn==1.4.0
