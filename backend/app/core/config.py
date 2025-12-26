@@ -23,7 +23,17 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = "1066293925506-r0e8mcicmr10puu758d8i1d5hbtnu845.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = "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"
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+    # Base URL for constructing redirect URI (e.g., https://mosaic.fly.dev or http://localhost:8000)
+    BASE_URL: str = "http://localhost:8000"
+    # Explicit redirect URI (optional, will be constructed from BASE_URL if not set)
+    GOOGLE_REDIRECT_URI: str | None = None
+    
+    @property
+    def google_redirect_uri(self) -> str:
+        """Get Google OAuth redirect URI, constructing from BASE_URL if not explicitly set."""
+        if self.GOOGLE_REDIRECT_URI:
+            return self.GOOGLE_REDIRECT_URI
+        return f"{self.BASE_URL.rstrip('/')}/api/auth/google/callback"
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"

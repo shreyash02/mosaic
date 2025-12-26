@@ -227,7 +227,7 @@ async def google_login():
     oauth = AsyncOAuth2Client(
         client_id=settings.GOOGLE_CLIENT_ID,
         client_secret=settings.GOOGLE_CLIENT_SECRET,
-        redirect_uri=settings.GOOGLE_REDIRECT_URI,
+        redirect_uri=settings.google_redirect_uri,
     )
     
     authorization_url, state = oauth.create_authorization_url(
@@ -283,7 +283,7 @@ async def google_callback(
     oauth = AsyncOAuth2Client(
         client_id=settings.GOOGLE_CLIENT_ID,
         client_secret=settings.GOOGLE_CLIENT_SECRET,
-        redirect_uri=settings.GOOGLE_REDIRECT_URI,
+        redirect_uri=settings.google_redirect_uri,
     )
     
     try:
