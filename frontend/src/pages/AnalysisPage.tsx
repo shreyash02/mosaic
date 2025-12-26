@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Analysis, Conversation } from '../types';
-import Header from '../components/Header';
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,7 +53,6 @@ export default function AnalysisPage() {
 
   return (
     <div className="analysis-page">
-      <Header />
       <div className="page-header">
         <div>
           <button onClick={() => navigate(`/conversations/${id}`)} className="btn-back">

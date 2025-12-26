@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
 import { ConversationState } from '../types';
-import Header from '../components/Header';
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,10 +25,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   const getStateLabel = (state: ConversationState) => {
     const labels: Record<ConversationState, string> = {
@@ -58,7 +50,6 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-page">
-      <Header />
       <header className="dashboard-header">
         <div>
           <h1>Dashboard</h1>
@@ -67,9 +58,6 @@ export default function DashboardPage() {
           <Link to="/conversations/new" className="btn btn-primary">
             + New Conversation
           </Link>
-          <button onClick={handleLogout} className="btn btn-secondary">
-            Logout
-          </button>
         </div>
       </header>
 

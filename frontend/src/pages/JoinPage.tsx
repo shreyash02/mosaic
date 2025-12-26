@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type { InviteCodeValidation, Conversation, ResponseItem } from '../types';
-import Header from '../components/Header';
+import { LockIcon } from '../components/icons';
 
 export default function JoinPage() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
@@ -106,13 +106,13 @@ export default function JoinPage() {
 
   return (
     <div className="join-page">
-      <Header />
       <div className="join-container">
         <header className="join-header">
           <h1>{conversation.title}</h1>
           {conversation.description && <p className="description">{conversation.description}</p>}
           <p className="privacy-note">
-            🔒 Your responses are {conversation.anonymity_level.replace('_', ' ')}
+            <LockIcon size={16} className="privacy-icon" />
+            Your responses are {conversation.anonymity_level.replace('_', ' ')}
           </p>
         </header>
 

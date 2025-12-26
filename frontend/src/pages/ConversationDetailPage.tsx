@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, ResponseStats, Analysis } from '../types';
 import { ConversationState } from '../types';
-import Header from '../components/Header';
 
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -111,7 +110,6 @@ export default function ConversationDetailPage() {
 
   return (
     <div className="conversation-detail-page">
-      <Header />
       <div className="page-header">
         <div>
           <button onClick={() => navigate('/dashboard')} className="btn-back">

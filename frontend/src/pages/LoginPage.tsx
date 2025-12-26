@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Header from '../components/Header';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -28,7 +27,6 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <Header />
       <div className="auth-container">
         <h2>Login to Mosaic</h2>
         <form onSubmit={handleSubmit} className="auth-form">

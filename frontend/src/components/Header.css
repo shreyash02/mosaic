@@ -1,10 +1,21 @@
 .app-header {
-  padding: 1rem 2rem;
+  background-color: white;
+  border-bottom: 1px solid #e2e8f0;
   position: sticky;
   top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin: 0;
+}
+
+.header-content {
+  width: 100%;
+  padding: 1rem 2rem;
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -31,5 +42,54 @@
 
 .logo-link:hover .logo-text {
   opacity: 0.7;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.user-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.user-email {
+  font-size: 0.8rem;
+  color: #718096;
+}
+
+.btn-logout {
+  padding: 0.5rem 1rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background-color: white;
+  color: #2d3748;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background-color: #f7fafc;
+  border-color: #a0aec0;
+}
+
+/* Header on gradient backgrounds (home, auth pages) */
+.home-page .app-header,
+.auth-page .app-header {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 

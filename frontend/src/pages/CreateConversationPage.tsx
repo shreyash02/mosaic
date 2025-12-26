@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess, type QuestionCreate } from '../types';
-import Header from '../components/Header';
 
 export default function CreateConversationPage() {
   const navigate = useNavigate();
@@ -74,7 +73,6 @@ export default function CreateConversationPage() {
 
   return (
     <div className="create-conversation-page">
-      <Header />
       <div className="page-header">
         <h1>Create New Conversation</h1>
         <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">

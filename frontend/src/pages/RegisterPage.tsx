@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Header from '../components/Header';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -29,7 +28,6 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <Header />
       <div className="auth-container">
         <h2>Create Account</h2>
         <form onSubmit={handleSubmit} className="auth-form">

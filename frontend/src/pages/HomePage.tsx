@@ -1,14 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Header from '../components/Header';
+import { LockIcon, RobotIcon, LightningIcon, ChartIcon } from '../components/icons';
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth();
 
   return (
     <div className="home-page">
-      <Header />
       <section className="hero">
         <h1>Mosaic</h1>
         <p className="tagline">Anonymous feedback with AI-powered insights</p>
@@ -38,28 +37,40 @@ export default function HomePage() {
         <h2>Key Features</h2>
         <div className="feature-grid">
           <div className="feature-card">
-            <h3>🔒 Three Anonymity Levels</h3>
+            <h3>
+              <LockIcon size={20} className="feature-icon" />
+              Three Anonymity Levels
+            </h3>
             <p>
               Choose from fully anonymous, platform-tracked, or revealable responses
               based on your needs.
             </p>
           </div>
           <div className="feature-card">
-            <h3>🤖 AI-Powered Analysis</h3>
+            <h3>
+              <RobotIcon size={20} className="feature-icon" />
+              AI-Powered Analysis
+            </h3>
             <p>
               Automatically cluster similar responses and extract themes using advanced
               machine learning and LLMs.
             </p>
           </div>
           <div className="feature-card">
-            <h3>⚡ Real-Time Collection</h3>
+            <h3>
+              <LightningIcon size={20} className="feature-icon" />
+              Real-Time Collection
+            </h3>
             <p>
               Share invite codes and collect responses instantly with flexible time
               windows.
             </p>
           </div>
           <div className="feature-card">
-            <h3>📊 Rich Insights</h3>
+            <h3>
+              <ChartIcon size={20} className="feature-icon" />
+              Rich Insights
+            </h3>
             <p>
               Get comprehensive summaries, sentiment analysis, and actionable themes
               from your feedback.
