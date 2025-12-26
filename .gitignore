@@ -52,10 +52,6 @@ yarn-error.log*
 *.sqlite
 *.sqlite3
 
-# Alembic
-alembic/versions/*
-!alembic/versions/.gitkeep
-
 # Logs
 *.log
 logs/
