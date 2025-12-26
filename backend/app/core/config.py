@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = "1066293925506-r0e8mcicmr10puu758d8i1d5hbtnu845.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = "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"
-    # Base URL for constructing redirect URI (e.g., https://mosaic.fly.dev or http://localhost:8000)
+    # Base URL for constructing redirect URI (e.g., https://mosaic-autumn-snow-9557.fly.dev or http://localhost:8000)
     BASE_URL: str = "http://localhost:8000"
     # Explicit redirect URI (optional, will be constructed from BASE_URL if not set)
     GOOGLE_REDIRECT_URI: str | None = None

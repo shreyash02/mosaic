@@ -1,12 +1,12 @@
 # Mosaic
 
-> Anonymous feedback collection with AI-powered insights
+> Collection of anonymous opinions or responses to questions/polls with AI-powered insights
 
-Mosaic is a platform for collecting anonymous feedback with configurable privacy levels, using LLMs to synthesize responses into thematic insights. Users can create time-bounded conversations with invite codes, collect responses with varying anonymity levels, and generate AI-powered analysis using embedding-based semantic clustering.
+Mosaic is a platform for collecting anonymous opinions or responses to questions/polls with configurable privacy levels, using LLMs to synthesize responses into thematic insights. Users can create time-bounded conversations with invite codes, collect responses with varying anonymity levels, and generate AI-powered analysis using embedding-based semantic clustering.
 
 ## Features
 
-- **Anonymous Feedback Collection** - Configurable anonymity levels (fully anonymous, platform-tracked, revealable)
+- **Anonymous Opinions or Responses to Questions/Polls Collection** - Configurable anonymity levels (fully anonymous, platform-tracked, revealable)
 - **Smart Analysis** - Embedding-based clustering with Claude AI for theme extraction
 - **Time-Bounded Sessions** - Auto-close with timers or manual control
 - **Flexible Access** - Invite code-based participation

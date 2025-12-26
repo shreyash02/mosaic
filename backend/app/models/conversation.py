@@ -10,7 +10,7 @@ from app.core.database import Base
 
 
 class Conversation(Base):
-    """Conversation model for collecting anonymous feedback."""
+    """Conversation model for collecting anonymous opinions or responses to questions/polls."""
 
     __tablename__ = "conversations"
 

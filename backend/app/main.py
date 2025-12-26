@@ -15,7 +15,7 @@ from app.routes import auth, conversations, responses, analysis, organizations
 
 app = FastAPI(
     title="Mosaic API",
-    description="Anonymous feedback collection with LLM-powered insights",
+    description="Collection of anonymous opinions or responses to questions/polls with LLM-powered insights",
     version="0.1.0"
 )
 

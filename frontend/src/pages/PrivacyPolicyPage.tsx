@@ -17,7 +17,7 @@ export default function PrivacyPolicyPage() {
             <p>
               Mosaic ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy
               explains how we collect, use, disclose, and safeguard your information when you use our
-              anonymous feedback platform.
+              platform for anonymous opinions or responses to questions/polls.
             </p>
           </section>
 

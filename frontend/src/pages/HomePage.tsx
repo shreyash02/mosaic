@@ -9,9 +9,9 @@ export default function HomePage() {
     <div className="home-page">
       <section className="hero">
         <h1>Mosaic</h1>
-        <p className="tagline">Anonymous feedback with AI-powered insights</p>
+        <p className="tagline">Anonymous opinions or responses to questions/polls with AI-powered insights</p>
         <p className="description">
-          Collect honest, anonymous feedback from your team or community,
+          Collect honest, anonymous opinions or responses to questions/polls from your team or community,
           then unlock powerful insights with AI-driven analysis.
         </p>
         <div className="cta-buttons">

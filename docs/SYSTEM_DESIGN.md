@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mosaic is a platform for collecting anonymous feedback with configurable privacy levels, using LLMs to synthesize responses into thematic insights. Users can create time-bounded conversations with invite codes, collect responses with varying anonymity levels, and generate AI-powered analysis.
+Mosaic is a platform for collecting anonymous opinions or responses to questions/polls with configurable privacy levels, using LLMs to synthesize responses into thematic insights. Users can create time-bounded conversations with invite codes, collect responses with varying anonymity levels, and generate AI-powered analysis.
 
 ---
 

@@ -37,7 +37,7 @@ This directory contains all design and implementation documentation for the Mosa
 ### Key Decisions
 
 - **Name**: Mosaic
-- **Use Case**: General purpose anonymous feedback
+- **Use Case**: General purpose anonymous opinions or responses to questions/polls
 - **Anonymity**: Three levels (fully_anonymous, platform_tracked, revealable)
 - **Analysis**: Embedding-based semantic clustering
 - **Tech Stack**: FastAPI + React + PostgreSQL + OpenAI + Claude
