@@ -1,33 +1,70 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import CreateConversationPage from './pages/CreateConversationPage';
+import ConversationDetailPage from './pages/ConversationDetailPage';
+import JoinPage from './pages/JoinPage';
+import AnalysisPage from './pages/AnalysisPage';
+
+import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <header>
-          <h1>Mosaic</h1>
-          <p>Anonymous feedback with AI-powered insights</p>
-        </header>
-        <main>
+    <AuthProvider>
+      <Router>
+        <div className="App">
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/join/:inviteCode" element={<JoinPage />} />
+
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations/new"
+              element={
+                <ProtectedRoute>
+                  <CreateConversationPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations/:id"
+              element={
+                <ProtectedRoute>
+                  <ConversationDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations/:id/analysis"
+              element={
+                <ProtectedRoute>
+                  <AnalysisPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </main>
-      </div>
-    </Router>
-  )
+        </div>
+      </Router>
+    </AuthProvider>
+  );
 }
 
-// Placeholder components (to be implemented)
-const HomePage = () => <div>Home Page - Coming Soon</div>
-const LoginPage = () => <div>Login Page - Coming Soon</div>
-const RegisterPage = () => <div>Register Page - Coming Soon</div>
-const DashboardPage = () => <div>Dashboard - Coming Soon</div>
-const JoinPage = () => <div>Join Conversation - Coming Soon</div>
-
-export default App
+export default App;

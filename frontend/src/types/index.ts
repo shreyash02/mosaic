@@ -1,0 +1,188 @@
+// User types
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
+
+// Conversation types
+export enum AnonymityLevel {
+  FULLY_ANONYMOUS = 'fully_anonymous',
+  PLATFORM_TRACKED = 'platform_tracked',
+  REVEALABLE = 'revealable',
+}
+
+export enum ResultsAccess {
+  INVITE_CODE_HOLDERS = 'invite_code_holders',
+  PUBLIC_LINK = 'public_link',
+}
+
+export enum ConversationState {
+  DRAFT = 'draft',
+  ACTIVE = 'active',
+  CLOSED = 'closed',
+  ANALYZED = 'analyzed',
+  DELETED = 'deleted',
+}
+
+export interface Question {
+  id: string;
+  conversation_id: string;
+  question_text: string;
+  question_type: string;
+  question_order: number;
+  options?: any[];
+  created_at: string;
+}
+
+export interface QuestionCreate {
+  question_text: string;
+  question_type?: string;
+  question_order: number;
+  options?: any[];
+}
+
+export interface Conversation {
+  id: string;
+  creator_id: string;
+  organization_id?: string;
+  title: string;
+  description?: string;
+  anonymity_level: AnonymityLevel;
+  results_access: ResultsAccess;
+  invite_code: string;
+  state: ConversationState;
+  auto_analyze: boolean;
+  max_response_length: number;
+  auto_close_at?: string;
+  manual_close_enabled: boolean;
+  time_extension_enabled: boolean;
+  activated_at?: string;
+  closed_at?: string;
+  analyzed_at?: string;
+  created_at: string;
+  updated_at: string;
+  questions?: Question[];
+}
+
+export interface ConversationCreate {
+  title: string;
+  description?: string;
+  anonymity_level: AnonymityLevel;
+  results_access: ResultsAccess;
+  questions: QuestionCreate[];
+  auto_analyze?: boolean;
+  max_response_length?: number;
+  auto_close_at?: string;
+  manual_close_enabled?: boolean;
+  time_extension_enabled?: boolean;
+}
+
+export interface ConversationListItem {
+  id: string;
+  title: string;
+  state: ConversationState;
+  anonymity_level: AnonymityLevel;
+  invite_code: string;
+  created_at: string;
+  activated_at?: string;
+  closed_at?: string;
+  response_count?: number;
+}
+
+// Response types
+export interface ResponseItem {
+  question_id: string;
+  response_text?: string;
+  response_data?: any;
+}
+
+export interface ResponseSubmit {
+  responses: ResponseItem[];
+  reveal_consent?: boolean;
+  invite_code?: string;
+}
+
+export interface Response {
+  id: string;
+  conversation_id: string;
+  question_id: string;
+  response_text?: string;
+  response_data?: any;
+  anonymity_level: string;
+  reveal_consent: boolean;
+  submitted_at: string;
+  participant_id?: string;
+}
+
+export interface ResponseWithQuestion extends Response {
+  question_text: string;
+}
+
+export interface ResponseStats {
+  total_responses: number;
+  unique_participants: number;
+  responses_by_question: Record<string, number>;
+  response_rate?: number;
+}
+
+// Analysis types
+export interface SentimentCluster {
+  sentiment: string;
+  summary: string;
+  count: number;
+}
+
+export interface Theme {
+  theme: string;
+  frequency: number;
+  clusters: SentimentCluster[];
+}
+
+export interface Analysis {
+  id: string;
+  conversation_id: string;
+  overall_summary: string;
+  themes: Theme[];
+  embedding_provider: string;
+  embedding_model: string;
+  clustering_algorithm: string;
+  llm_provider: string;
+  llm_model: string;
+  total_responses_analyzed: number;
+  num_clusters_found: number;
+  analysis_duration_ms: number;
+  created_at: string;
+}
+
+// API Response types
+export interface SuccessResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export interface InviteCodeValidation {
+  valid: boolean;
+  conversation_id?: string;
+  message: string;
+}
