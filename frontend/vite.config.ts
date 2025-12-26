@@ -12,5 +12,10 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+  },
+  base: '/', // Important: use root path since we're serving from same origin
 })

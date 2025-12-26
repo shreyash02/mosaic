@@ -4,13 +4,12 @@ import { AnonymityLevel, ResultsAccess } from '../types';
  * Format anonymity level to user-friendly text
  */
 export function formatAnonymityLevel(level: AnonymityLevel | string): string {
+  // Since enum values are the same as string literals, we only need the enum values
+  // They will work for both enum and string inputs
   const mapping: Record<string, string> = {
     [AnonymityLevel.FULLY_ANONYMOUS]: 'Fully Anonymous',
     [AnonymityLevel.PLATFORM_TRACKED]: 'Platform Tracked',
     [AnonymityLevel.REVEALABLE]: 'Revealable',
-    'fully_anonymous': 'Fully Anonymous',
-    'platform_tracked': 'Platform Tracked',
-    'revealable': 'Revealable',
   };
   return mapping[level] || level.toString().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
@@ -19,11 +18,11 @@ export function formatAnonymityLevel(level: AnonymityLevel | string): string {
  * Format results access to user-friendly text
  */
 export function formatResultsAccess(access: ResultsAccess | string): string {
+  // Since enum values are the same as string literals, we only need the enum values
+  // They will work for both enum and string inputs
   const mapping: Record<string, string> = {
     [ResultsAccess.PUBLIC_LINK]: 'Public Link',
     [ResultsAccess.INVITE_CODE_HOLDERS]: 'Invite Code Holders',
-    'public_link': 'Public Link',
-    'invite_code_holders': 'Invite Code Holders',
   };
   return mapping[access] || access.toString().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }

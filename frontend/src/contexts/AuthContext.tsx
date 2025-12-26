@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../services/api';
 import type { User, LoginRequest, RegisterRequest } from '../types';
 
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (data: RegisterRequest) => {
-    const newUser = await api.register(data);
+    await api.register(data);
     // Auto-login after registration
     await login({ email: data.email, password: data.password });
   };

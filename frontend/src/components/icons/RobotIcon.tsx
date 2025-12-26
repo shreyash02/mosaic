@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface RobotIconProps {
   size?: number;
   className?: string;

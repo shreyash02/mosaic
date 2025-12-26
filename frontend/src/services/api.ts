@@ -8,7 +8,6 @@ import type {
   ConversationCreate,
   ConversationListItem,
   ResponseSubmit,
-  Response,
   ResponseWithQuestion,
   ResponseStats,
   Analysis,
@@ -16,7 +15,9 @@ import type {
   InviteCodeValidation,
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Use relative URL when served from same origin, or env var for different origin
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
 class ApiService {
   private client: AxiosInstance;

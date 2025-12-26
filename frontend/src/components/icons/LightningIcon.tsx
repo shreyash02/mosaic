@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface LightningIconProps {
   size?: number;
   className?: string;
