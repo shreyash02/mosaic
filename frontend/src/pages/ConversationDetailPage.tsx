@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, ResponseStats, Analysis } from '../types';
-import { ConversationState } from '../types';
+import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
@@ -17,6 +17,10 @@ export default function ConversationDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
+  const [codeCount, setCodeCount] = useState(10);
+  const [generatingCodes, setGeneratingCodes] = useState(false);
+  const [showCodes, setShowCodes] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -124,6 +128,59 @@ export default function ConversationDetailPage() {
         console.error('Failed to copy link', fallbackErr);
       }
       document.body.removeChild(textArea);
+    }
+  };
+
+  const handleGenerateCodes = async () => {
+    if (!id || !conversation) return;
+    
+    setGeneratingCodes(true);
+    setError('');
+    try {
+      const result = await api.generateParticipantCodes(id, codeCount);
+      setGeneratedCodes(result.codes);
+      setShowCodes(true);
+      // Reload conversation to update stats
+      loadConversation();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to generate participant codes');
+    } finally {
+      setGeneratingCodes(false);
+    }
+  };
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch (err) {
+      // Fallback
+      const textArea = document.createElement('textarea');
+      textArea.value = code;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+  };
+
+  const copyAllCodes = async () => {
+    const codesText = generatedCodes.join('\n');
+    try {
+      await navigator.clipboard.writeText(codesText);
+      alert('All codes copied to clipboard!');
+    } catch (err) {
+      // Fallback
+      const textArea = document.createElement('textarea');
+      textArea.value = codesText;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('All codes copied to clipboard!');
     }
   };
 
@@ -270,6 +327,70 @@ export default function ConversationDetailPage() {
             <div className="info-item">
               <label>Closed:</label>
               <span>{formatDate(conversation.closed_at)}</span>
+            </div>
+          )}
+
+          {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && (
+            <div className="info-item participant-codes-section">
+              <label>Participant Codes:</label>
+              <div className="participant-codes-controls">
+                <div className="code-generation-form">
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={codeCount}
+                    onChange={(e) => setCodeCount(parseInt(e.target.value) || 10)}
+                    className="code-count-input"
+                    disabled={generatingCodes}
+                  />
+                  <button
+                    onClick={handleGenerateCodes}
+                    className="btn btn-primary btn-small"
+                    disabled={generatingCodes}
+                  >
+                    {generatingCodes ? 'Generating...' : 'Generate Codes'}
+                  </button>
+                </div>
+                {generatedCodes.length > 0 && (
+                  <button
+                    onClick={() => setShowCodes(!showCodes)}
+                    className="btn btn-secondary btn-small"
+                  >
+                    {showCodes ? 'Hide Codes' : 'Show Generated Codes'}
+                  </button>
+                )}
+              </div>
+              {showCodes && generatedCodes.length > 0 && (
+                <div className="generated-codes-display">
+                  <div className="codes-header">
+                    <h3>Generated Participant Codes ({generatedCodes.length})</h3>
+                    <button
+                      onClick={copyAllCodes}
+                      className="btn btn-secondary btn-small"
+                    >
+                      Copy All
+                    </button>
+                  </div>
+                  <div className="codes-list">
+                    {generatedCodes.map((code, index) => (
+                      <div key={index} className="code-item">
+                        <code>{code}</code>
+                        <button
+                          onClick={() => copyCode(code)}
+                          className="btn btn-small btn-secondary"
+                          title="Copy code"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="codes-note">
+                    Distribute these codes to participants. Each code can only be used once.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

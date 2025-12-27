@@ -123,10 +123,17 @@ class ApiService {
     return response.data;
   }
 
-  async generateParticipantCodes(id: string, count: number): Promise<SuccessResponse> {
-    const response = await this.client.post<SuccessResponse>(
+  async generateParticipantCodes(id: string, count: number): Promise<{ conversation_id: string; codes_generated: number; codes: string[] }> {
+    const response = await this.client.post<{ conversation_id: string; codes_generated: number; codes: string[] }>(
       `/conversations/${id}/participant-codes`,
       { count }
+    );
+    return response.data;
+  }
+
+  async listParticipantCodes(id: string): Promise<{ conversation_id: string; total_codes: number; used_codes: number; unused_codes: number; codes: Array<{ id: string; participant_code: string; is_used: boolean; used_at?: string; created_at: string }> }> {
+    const response = await this.client.get<{ conversation_id: string; total_codes: number; used_codes: number; unused_codes: number; codes: Array<{ id: string; participant_code: string; is_used: boolean; used_at?: string; created_at: string }> }>(
+      `/conversations/${id}/participant-codes`
     );
     return response.data;
   }

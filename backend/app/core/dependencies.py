@@ -136,7 +136,8 @@ def get_participant_session(
         
         # Verify participant code is still valid and unused
         from app.models.participant_code import ParticipantCode
-        from app.models.conversation import Conversation, ConversationState
+        from app.models.conversation import Conversation
+        from app.schemas.conversation import ConversationState
         
         participant_code_obj = db.query(ParticipantCode).filter(
             ParticipantCode.participant_code == participant_code,
