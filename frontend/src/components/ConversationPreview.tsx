@@ -1,4 +1,3 @@
-import React from 'react';
 import { LockIcon } from './icons';
 import { formatAnonymityLevel } from '../utils/formatting';
 import { AnonymityLevel, type QuestionCreate, type Conversation, type Question } from '../types';
@@ -59,15 +58,15 @@ export default function ConversationPreview({
               ) : (
                 questions.map((question, index) => {
                   // Handle both Question (has id) and QuestionCreate (no id) types
-                  const questionId = 'id' in question ? question.id : `preview-${index}`;
+                  const questionId = 'id' in question ? String(question.id) : `preview-${index}`;
                   
                   return (
-                  <div key={questionId || index} className="form-group">
-                    <label htmlFor={`preview-question-${questionId || index}`}>
+                  <div key={questionId} className="form-group">
+                    <label htmlFor={`preview-question-${questionId}`}>
                       {index + 1}. {question.question_text || 'Untitled Question'}
                     </label>
                     <textarea
-                      id={`preview-question-${questionId || index}`}
+                      id={`preview-question-${questionId}`}
                       placeholder="Type your response here..."
                       rows={4}
                       maxLength={maxResponseLength}
