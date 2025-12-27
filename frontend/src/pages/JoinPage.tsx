@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { CodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
-import { formatAnonymityLevel } from '../utils/formatting';
+import { formatAnonymityLevel, formatDate } from '../utils/formatting';
 import { AnonymityLevel } from '../types';
 
 export default function JoinPage() {
@@ -315,6 +315,12 @@ export default function JoinPage() {
             Your responses are {formatAnonymityLevel(conversation.anonymity_level)}
           </p>
         </header>
+
+        {conversation.auto_close_at && (
+          <div className="close-notice">
+            <p>Closes at {formatDate(conversation.auto_close_at)}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="response-form">
           {error && <div className="error-message">{error}</div>}

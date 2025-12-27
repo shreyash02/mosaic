@@ -1099,6 +1099,21 @@ h3 {
   color: #718096;
 }
 
+.close-notice {
+  background-color: #edf2f7;
+  border-left: 3px solid #4299e1;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 6px;
+}
+
+.close-notice p {
+  margin: 0;
+  color: #2d3748;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
 .response-form .form-group textarea {
   resize: vertical;
   min-height: 100px;
