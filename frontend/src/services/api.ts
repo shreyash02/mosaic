@@ -111,9 +111,13 @@ class ApiService {
     return response.data;
   }
 
-  getGoogleLoginUrl(): string {
+  getGoogleLoginUrl(redirect?: string): string {
     const baseUrl = API_BASE_URL.replace('/api', '');
-    return `${baseUrl}/api/auth/google/login`;
+    const url = `${baseUrl}/api/auth/google/login`;
+    if (redirect) {
+      return `${url}?redirect=${encodeURIComponent(redirect)}`;
+    }
+    return url;
   }
 
   // Conversation endpoints

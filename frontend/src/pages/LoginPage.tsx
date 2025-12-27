@@ -29,7 +29,9 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate('/dashboard');
+      // Check for redirect parameter and navigate there, otherwise go to dashboard
+      const redirectTo = searchParams.get('redirect');
+      navigate(redirectTo ? decodeURIComponent(redirectTo) : '/dashboard', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
     } finally {
@@ -38,7 +40,9 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = api.getGoogleLoginUrl();
+    // Preserve redirect parameter in Google OAuth flow
+    const redirectTo = searchParams.get('redirect');
+    window.location.href = api.getGoogleLoginUrl(redirectTo ? decodeURIComponent(redirectTo) : undefined);
   };
 
   return (

@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = urlParams.get('access_token');
     const refreshToken = urlParams.get('refresh_token');
     const error = urlParams.get('error');
+    const redirect = urlParams.get('redirect');
 
     if (accessToken && refreshToken) {
       // OAuth callback - store tokens and load user
@@ -31,9 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
       loadUser().then(() => {
-        // Redirect to dashboard after successful OAuth login
+        // Redirect to specified URL or dashboard after successful OAuth login
         if (window.location.pathname === '/auth/callback') {
-          window.location.href = '/dashboard';
+          const redirectTo = redirect ? decodeURIComponent(redirect) : '/dashboard';
+          window.location.href = redirectTo;
         }
       });
     } else if (error) {
