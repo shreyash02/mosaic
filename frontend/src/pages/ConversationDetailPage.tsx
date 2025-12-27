@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Conversation, ResponseStats, Analysis } from '../types';
+import type { Conversation, ResponseStats, Analysis, ConversationInvitation, InvitationListResponse } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
@@ -31,10 +31,16 @@ export default function ConversationDetailPage() {
   const [showAnalysisSuccess, setShowAnalysisSuccess] = useState(false);
   const [showLargeModeModal, setShowLargeModeModal] = useState(false);
   const [largeModeCodes, setLargeModeCodes] = useState<string[]>([]);
+  const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadConversation();
+      loadInvitations();
     }
   }, [id]);
 
@@ -196,6 +202,58 @@ export default function ConversationDetailPage() {
     if (allCodes.length > 0) {
       const shuffled = shuffleArray(allCodes);
       setAllCodes(shuffled);
+    }
+  };
+
+  const loadInvitations = async () => {
+    if (!id) return;
+    setLoadingInvitations(true);
+    try {
+      const data = await api.listInvitations(id);
+      setInvitations(data);
+    } catch (err) {
+      // Silently fail - invitations are optional
+      console.error('Failed to load invitations', err);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  };
+
+  const handleInviteUsers = async () => {
+    if (!id || !inviteEmails.trim()) return;
+    
+    setInviting(true);
+    setError('');
+    try {
+      const emails = inviteEmails
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0 && e.includes('@'));
+      
+      if (emails.length === 0) {
+        setError('Please enter at least one valid email address');
+        setInviting(false);
+        return;
+      }
+
+      await api.inviteUsers(id, emails);
+      setInviteEmails('');
+      setShowInviteForm(false);
+      loadInvitations();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to invite users');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleDeleteInvitation = async (invitationId: string) => {
+    if (!id) return;
+    try {
+      await api.deleteInvitation(id, invitationId);
+      loadInvitations();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete invitation');
     }
   };
 
@@ -377,17 +435,95 @@ export default function ConversationDetailPage() {
           <h2>Details</h2>
 
           <div className="info-item">
-            <label>Access Code:</label>
+            <label>Share Link:</label>
             <div className="invite-code-display">
-              <strong>{conversation.access_code}</strong>
-              <button
-                onClick={copyInviteLink}
-                className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}
-              >
-                {linkCopied ? '✓ Copied!' : 'Copy Link'}
-              </button>
+              <div className="share-link-info">
+                <p className="share-link-description">
+                  {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
+                    ? 'Share this link with participants. They will need a participant code to access.'
+                    : 'Share this link with logged-in users. They can access the conversation directly.'}
+                </p>
+                <button
+                  onClick={copyInviteLink}
+                  className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}
+                >
+                  {linkCopied ? '✓ Copied!' : 'Copy Link'}
+                </button>
+              </div>
             </div>
           </div>
+
+          {conversation.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS && (
+            <div className="info-item invitations-section">
+              <label>Invite Users:</label>
+              <div className="invitations-controls">
+                <button
+                  onClick={() => setShowInviteForm(!showInviteForm)}
+                  className="btn btn-secondary btn-small"
+                >
+                  {showInviteForm ? 'Cancel' : '+ Invite by Email'}
+                </button>
+              </div>
+
+              {showInviteForm && (
+                <div className="invite-form">
+                  <p className="invite-form-description">
+                    Invite specific users by email. They can access the conversation using the share link above when logged in.
+                  </p>
+                  <div className="form-group">
+                    <label htmlFor="invite-emails">Email Addresses (comma-separated):</label>
+                    <textarea
+                      id="invite-emails"
+                      value={inviteEmails}
+                      onChange={(e) => setInviteEmails(e.target.value)}
+                      placeholder="user1@example.com, user2@example.com"
+                      rows={3}
+                      disabled={inviting}
+                    />
+                  </div>
+                  <button
+                    onClick={handleInviteUsers}
+                    className="btn btn-primary btn-small"
+                    disabled={inviting || !inviteEmails.trim()}
+                  >
+                    {inviting ? 'Inviting...' : 'Send Invitations'}
+                  </button>
+                </div>
+              )}
+
+              {invitations && invitations.total_invitations > 0 && (
+                <div className="invitations-list">
+                  <div className="invitations-header">
+                    <h3>
+                      Invitations ({invitations.accepted_invitations} accepted, {invitations.pending_invitations} pending)
+                    </h3>
+                  </div>
+                  <div className="invitations-items">
+                    {invitations.invitations.map((inv) => (
+                      <div key={inv.id} className="invitation-item">
+                        <div className="invitation-info">
+                          <span className="invitation-email">{inv.email}</span>
+                          {inv.invited_user && (
+                            <span className="invitation-user-badge">Registered User</span>
+                          )}
+                          <span className={`invitation-status ${inv.is_accepted ? 'accepted' : 'pending'}`}>
+                            {inv.is_accepted ? '✓ Accepted' : 'Pending'}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteInvitation(inv.id)}
+                          className="btn btn-small btn-danger"
+                          title="Delete invitation"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="info-item">
             <label>Anonymity Level:</label>

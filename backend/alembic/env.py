@@ -19,6 +19,7 @@ from app.models import (
     Response,
     Analysis,
     ParticipantCode,
+    ConversationInvitation,
 )
 
 # this is the Alembic Config object

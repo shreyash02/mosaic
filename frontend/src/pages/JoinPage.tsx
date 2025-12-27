@@ -54,10 +54,17 @@ export default function JoinPage() {
       if (validationResult.valid) {
         setAccessCodeValidated(true);
         // If not fully_anonymous, we need authentication - redirect to login
+        // But first check if user is already logged in (they might have come from a share link)
         if (!validationResult.requires_participant_code) {
           // For platform_tracked/revealable, require login
-          navigate(`/login?redirect=/join/${accessCode}`);
-          return;
+          // Check if we have a token in localStorage
+          const token = localStorage.getItem('access_token');
+          if (!token) {
+            navigate(`/login?redirect=/join/${accessCode}`);
+            return;
+          }
+          // If token exists, try to load conversation (will fail if invalid)
+          // The loadConversation will handle auth errors
         }
         // For fully_anonymous, we'll prompt for participant code
       } else {

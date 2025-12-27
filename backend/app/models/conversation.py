@@ -63,6 +63,7 @@ class Conversation(Base):
     responses = relationship("Response", back_populates="conversation", cascade="all, delete-orphan")
     analyses = relationship("Analysis", back_populates="conversation", cascade="all, delete-orphan")
     participant_codes = relationship("ParticipantCode", back_populates="conversation", cascade="all, delete-orphan")
+    invitations = relationship("ConversationInvitation", back_populates="conversation", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Conversation(id={self.id}, title={self.title}, state={self.state})>"

@@ -13,6 +13,10 @@ import type {
   Analysis,
   SuccessResponse,
   CodeValidation,
+  InviteUsersRequest,
+  InviteUsersResponse,
+  InvitationListResponse,
+  ConversationInvitation,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -198,6 +202,29 @@ class ApiService {
 
   async getAnalysis(conversationId: string): Promise<Analysis> {
     const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analysis`);
+    return response.data;
+  }
+
+  // Invitation endpoints
+  async inviteUsers(conversationId: string, emails: string[]): Promise<InviteUsersResponse> {
+    const response = await this.client.post<InviteUsersResponse>(
+      `/conversations/${conversationId}/invitations`,
+      { emails }
+    );
+    return response.data;
+  }
+
+  async listInvitations(conversationId: string): Promise<InvitationListResponse> {
+    const response = await this.client.get<InvitationListResponse>(
+      `/conversations/${conversationId}/invitations`
+    );
+    return response.data;
+  }
+
+  async deleteInvitation(conversationId: string, invitationId: string): Promise<SuccessResponse> {
+    const response = await this.client.delete<SuccessResponse>(
+      `/conversations/${conversationId}/invitations/${invitationId}`
+    );
     return response.data;
   }
 }

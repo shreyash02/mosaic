@@ -188,3 +188,36 @@ export interface CodeValidation {
   requires_participant_code?: boolean;
   session_token?: string;
 }
+
+// Invitation types
+export interface ConversationInvitation {
+  id: string;
+  conversation_id: string;
+  email: string;
+  invited_by_id?: string;
+  invited_user_id?: string;
+  invitation_token?: string;
+  is_accepted: boolean;
+  accepted_at?: string;
+  created_at: string;
+  expires_at?: string;
+  invited_user?: User;
+}
+
+export interface InviteUsersRequest {
+  emails: string[];
+}
+
+export interface InviteUsersResponse {
+  conversation_id: string;
+  invitations_created: number;
+  invitations: ConversationInvitation[];
+}
+
+export interface InvitationListResponse {
+  conversation_id: string;
+  total_invitations: number;
+  accepted_invitations: number;
+  pending_invitations: number;
+  invitations: ConversationInvitation[];
+}

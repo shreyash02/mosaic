@@ -17,6 +17,7 @@ from app.models.conversation import Conversation
 from app.models.question import Question
 from app.models.participant_code import ParticipantCode
 from app.models.response import Response
+from app.models.conversation_invitation import ConversationInvitation
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationUpdate,
@@ -33,6 +34,13 @@ from app.schemas.participant_code import (
     ParticipantCodeList,
     GeneratedParticipantCodes,
     ParticipantCode as ParticipantCodeSchema,
+)
+from app.schemas.conversation_invitation import (
+    InviteUsersRequest,
+    InviteUsersResponse,
+    InvitationListResponse,
+    ConversationInvitation as ConversationInvitationSchema,
+    ConversationInvitationWithUser,
 )
 from app.schemas.common import DeleteResponse
 
@@ -244,6 +252,28 @@ async def get_conversation_by_code(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required for this conversation type"
             )
+        
+        # Check if user was invited (optional - invitations are optional, not required)
+        # If there are any invitations for this conversation, check if user is invited
+        has_invitations = db.query(ConversationInvitation).filter(
+            ConversationInvitation.conversation_id == conversation.id
+        ).first()
+        
+        if has_invitations:
+            # Check if this user was invited
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                ConversationInvitation.invited_user_id == current_user.id
+            ).first()
+            
+            if invitation:
+                # Mark invitation as accepted if not already
+                if not invitation.is_accepted:
+                    invitation.is_accepted = True
+                    invitation.accepted_at = datetime.utcnow()
+                    db.commit()
+            # Note: We don't block access if not invited - invitations are optional
+            # The link can still work for any logged-in user
     
     return conversation
 
@@ -618,4 +648,164 @@ async def list_participant_codes(
         used_codes=used_codes,
         unused_codes=unused_codes,
         codes=[ParticipantCodeSchema.model_validate(code) for code in participant_codes]
+    )
+
+
+@router.post("/{conversation_id}/invitations", response_model=InviteUsersResponse, status_code=status.HTTP_201_CREATED)
+async def invite_users(
+    conversation_id: UUID,
+    invite_data: InviteUsersRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Invite users to a conversation by email.
+
+    Args:
+        conversation_id: Conversation ID
+        invite_data: List of email addresses to invite
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Created invitations
+
+    Raises:
+        HTTPException: If conversation not found or user is not the owner
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    # Check if conversation is active (can invite to active conversations)
+    if conversation.state not in [ConversationState.DRAFT.value, ConversationState.ACTIVE.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only invite users to draft or active conversations"
+        )
+
+    # Create invitations
+    created_invitations = []
+    for email in invite_data.emails:
+        # Check if invitation already exists
+        existing = db.query(ConversationInvitation).filter(
+            ConversationInvitation.conversation_id == conversation.id,
+            ConversationInvitation.email == email.lower()
+        ).first()
+
+        if existing:
+            # Skip if already invited
+            continue
+
+        # Check if user exists with this email
+        invited_user = db.query(User).filter(User.email == email.lower()).first()
+
+        # Generate invitation token
+        invitation_token = generate_access_code(length=24)
+
+        invitation = ConversationInvitation(
+            conversation_id=conversation.id,
+            email=email.lower(),
+            invited_by_id=current_user.id,
+            invited_user_id=invited_user.id if invited_user else None,
+            invitation_token=invitation_token,
+        )
+        db.add(invitation)
+        created_invitations.append(invitation)
+
+    db.commit()
+
+    # Refresh invitations
+    for inv in created_invitations:
+        db.refresh(inv)
+
+    return InviteUsersResponse(
+        conversation_id=conversation.id,
+        invitations_created=len(created_invitations),
+        invitations=[ConversationInvitationSchema.model_validate(inv) for inv in created_invitations]
+    )
+
+
+@router.get("/{conversation_id}/invitations", response_model=InvitationListResponse)
+async def list_invitations(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    List all invitations for a conversation.
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        List of invitations with user details
+
+    Raises:
+        HTTPException: If conversation not found or user is not the owner
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    # Get all invitations with user details
+    invitations = db.query(ConversationInvitation).options(
+        joinedload(ConversationInvitation.invited_user)
+    ).filter(
+        ConversationInvitation.conversation_id == conversation.id
+    ).order_by(ConversationInvitation.created_at.desc()).all()
+
+    total_invitations = len(invitations)
+    accepted_invitations = sum(1 for inv in invitations if inv.is_accepted)
+    pending_invitations = total_invitations - accepted_invitations
+
+    return InvitationListResponse(
+        conversation_id=conversation.id,
+        total_invitations=total_invitations,
+        accepted_invitations=accepted_invitations,
+        pending_invitations=pending_invitations,
+        invitations=[ConversationInvitationWithUser.model_validate(inv) for inv in invitations]
+    )
+
+
+@router.delete("/{conversation_id}/invitations/{invitation_id}", response_model=DeleteResponse)
+async def delete_invitation(
+    conversation_id: UUID,
+    invitation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an invitation.
+
+    Args:
+        conversation_id: Conversation ID
+        invitation_id: Invitation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Delete confirmation
+
+    Raises:
+        HTTPException: If conversation or invitation not found
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    invitation = db.query(ConversationInvitation).filter(
+        ConversationInvitation.id == invitation_id,
+        ConversationInvitation.conversation_id == conversation.id
+    ).first()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+
+    db.delete(invitation)
+    db.commit()
+
+    return DeleteResponse(
+        success=True,
+        message="Invitation deleted successfully",
+        deleted_id=str(invitation_id)
     )
