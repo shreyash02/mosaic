@@ -110,6 +110,15 @@ h3 {
   background-color: #cbd5e0;
 }
 
+.btn-success {
+  background-color: #48bb78;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #38a169;
+}
+
 .btn-danger {
   background-color: #fc8181;
   color: white;

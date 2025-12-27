@@ -16,6 +16,7 @@ export default function ConversationDetailPage() {
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -97,10 +98,33 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const copyInviteLink = () => {
+  const copyInviteLink = async () => {
     const link = `${window.location.origin}/join/${conversation?.invite_code}`;
-    navigator.clipboard.writeText(link);
-    alert('Invite link copied to clipboard!');
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => {
+        setLinkCopied(false);
+      }, 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setLinkCopied(true);
+        setTimeout(() => {
+          setLinkCopied(false);
+        }, 2000);
+      } catch (fallbackErr) {
+        console.error('Failed to copy link', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   if (loading) {
@@ -198,8 +222,11 @@ export default function ConversationDetailPage() {
             <label>Invite Code:</label>
             <div className="invite-code-display">
               <strong>{conversation.invite_code}</strong>
-              <button onClick={copyInviteLink} className="btn btn-small btn-secondary">
-                Copy Link
+              <button
+                onClick={copyInviteLink}
+                className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}
+              >
+                {linkCopied ? '✓ Copied!' : 'Copy Link'}
               </button>
             </div>
           </div>
