@@ -78,6 +78,7 @@ class ConversationBase(BaseModel):
     results_access: ResultsAccess
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
+    duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: bool = True
     time_extension_enabled: bool = True
@@ -99,6 +100,7 @@ class ConversationUpdate(BaseModel):
     results_access: Optional[ResultsAccess] = None
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
+    duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: Optional[bool] = None
     time_extension_enabled: Optional[bool] = None

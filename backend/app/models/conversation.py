@@ -40,6 +40,8 @@ class Conversation(Base):
     # if true, trigger analysis automatically when conversation closes
 
     # Timing
+    duration_minutes = Column(Integer, nullable=True)
+    # Duration in minutes for which the conversation should remain open after activation
     auto_close_at = Column(DateTime, nullable=True)
     manual_close_enabled = Column(Boolean, default=True, nullable=False)
     time_extension_enabled = Column(Boolean, default=True, nullable=False)

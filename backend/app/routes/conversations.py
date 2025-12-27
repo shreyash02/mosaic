@@ -109,6 +109,7 @@ async def create_conversation(
         results_access=conversation_data.results_access.value,
         auto_analyze=conversation_data.auto_analyze,
         max_response_length=conversation_data.max_response_length,
+        duration_minutes=conversation_data.duration_minutes,
         auto_close_at=conversation_data.auto_close_at,
         manual_close_enabled=conversation_data.manual_close_enabled,
         time_extension_enabled=conversation_data.time_extension_enabled,
@@ -452,7 +453,11 @@ async def activate_conversation(
     conversation.state = ConversationState.ACTIVE.value
     conversation.activated_at = datetime.utcnow()
 
-    if activate_data.auto_close_at:
+    # Calculate auto_close_at from duration_minutes if set
+    if conversation.duration_minutes:
+        conversation.auto_close_at = conversation.activated_at + timedelta(minutes=conversation.duration_minutes)
+    elif activate_data.auto_close_at:
+        # Allow override via activation endpoint if duration_minutes is not set
         conversation.auto_close_at = activate_data.auto_close_at
 
     db.commit()

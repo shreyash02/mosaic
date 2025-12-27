@@ -73,6 +73,7 @@ export interface Conversation {
   state: ConversationState;
   auto_analyze: boolean;
   max_response_length: number;
+  duration_minutes?: number;
   auto_close_at?: string;
   manual_close_enabled: boolean;
   time_extension_enabled: boolean;
@@ -92,6 +93,7 @@ export interface ConversationCreate {
   questions: QuestionCreate[];
   auto_analyze?: boolean;
   max_response_length?: number;
+  duration_minutes?: number;
   auto_close_at?: string;
   manual_close_enabled?: boolean;
   time_extension_enabled?: boolean;

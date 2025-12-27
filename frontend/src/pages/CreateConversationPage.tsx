@@ -17,6 +17,8 @@ export default function CreateConversationPage() {
   const [questions, setQuestions] = useState<QuestionCreate[]>([
     { question_text: '', question_order: 0 },
   ]);
+  const [durationHours, setDurationHours] = useState<number>(48);
+  const [durationMinutes, setDurationMinutes] = useState<number>(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -58,12 +60,16 @@ export default function CreateConversationPage() {
     setLoading(true);
 
     try {
+      // Calculate total minutes from hours and minutes
+      const totalMinutes = durationHours * 60 + durationMinutes;
+      
       const conversation = await api.createConversation({
         title,
         description,
         anonymity_level: anonymityLevel,
         results_access: resultsAccess,
         questions,
+        ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
       });
       navigate(`/conversations/${conversation.id}`);
     } catch (err: any) {
@@ -150,6 +156,52 @@ export default function CreateConversationPage() {
                 Invite Code Holders - Only participants can view results
               </option>
             </select>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2>Duration Settings</h2>
+          <p className="form-help-text">
+            How long should this conversation remain open for responses after activation?
+          </p>
+
+          <div className="form-group">
+            <label htmlFor="durationHours">Duration</label>
+            <div className="duration-inputs">
+              <div className="duration-input-group">
+                <input
+                  id="durationHours"
+                  type="number"
+                  min="0"
+                  max="48"
+                  value={durationHours}
+                  onChange={(e) => {
+                    const value = Math.max(0, Math.min(48, parseInt(e.target.value) || 0));
+                    setDurationHours(value);
+                  }}
+                  placeholder="0"
+                />
+                <label htmlFor="durationHours" className="duration-label">Hours</label>
+              </div>
+              <div className="duration-input-group">
+                <input
+                  id="durationMinutes"
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={durationMinutes}
+                  onChange={(e) => {
+                    const value = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                    setDurationMinutes(value);
+                  }}
+                  placeholder="0"
+                />
+                <label htmlFor="durationMinutes" className="duration-label">Minutes</label>
+              </div>
+            </div>
+            <p className="form-help-text">
+              Maximum duration is 48 hours.
+            </p>
           </div>
         </div>
 
