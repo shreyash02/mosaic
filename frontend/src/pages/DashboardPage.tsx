@@ -92,7 +92,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="card-body">
                   <div className="conversation-meta">
-                    <span>Invite Code: <strong>{conversation.invite_code}</strong></span>
+                    <span>Access Code: <strong>{conversation.access_code}</strong></span>
                     <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
                   </div>
                   <div className="conversation-meta">

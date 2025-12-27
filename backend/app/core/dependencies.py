@@ -100,3 +100,68 @@ def get_optional_current_user(
     # Get user from database
     user = db.query(User).filter(User.id == UUID(user_id)).first()
     return user
+
+
+def get_participant_session(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    db: Session = Depends(get_db)
+) -> Optional[dict]:
+    """
+    Get participant session from JWT token for fully_anonymous conversations.
+    
+    Args:
+        credentials: HTTP Bearer token credentials (optional)
+        db: Database session
+    
+    Returns:
+        Session data dict with access_code, participant_code, conversation_id, or None
+    """
+    if credentials is None:
+        return None
+    
+    try:
+        token = credentials.credentials
+        payload = decode_token(token)
+        
+        # Check if it's a participant session token
+        if payload.get("type") != "participant_session":
+            return None
+        
+        access_code = payload.get("access_code")
+        participant_code = payload.get("participant_code")
+        conversation_id = payload.get("conversation_id")
+        
+        if not all([access_code, participant_code, conversation_id]):
+            return None
+        
+        # Verify participant code is still valid and unused
+        from app.models.participant_code import ParticipantCode
+        from app.models.conversation import Conversation, ConversationState
+        
+        participant_code_obj = db.query(ParticipantCode).filter(
+            ParticipantCode.participant_code == participant_code,
+            ParticipantCode.conversation_id == UUID(conversation_id),
+            ParticipantCode.is_used == False
+        ).first()
+        
+        if not participant_code_obj:
+            return None
+        
+        # Verify conversation is still active
+        conversation = db.query(Conversation).filter(
+            Conversation.id == UUID(conversation_id),
+            Conversation.access_code == access_code,
+            Conversation.state == ConversationState.ACTIVE.value
+        ).first()
+        
+        if not conversation:
+            return None
+        
+        return {
+            "access_code": access_code,
+            "participant_code": participant_code,
+            "conversation_id": UUID(conversation_id)
+        }
+        
+    except (JWTError, ValueError):
+        return None

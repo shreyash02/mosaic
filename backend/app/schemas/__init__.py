@@ -34,7 +34,7 @@ from app.schemas.conversation import (
     QuestionUpdate,
     ActivateConversation,
     ExtendConversation,
-    GenerateInviteCodes,
+    GenerateParticipantCodes,
     AnonymityLevel,
     ResultsAccess,
     ConversationState,
@@ -61,12 +61,12 @@ from app.schemas.analysis import (
     AnalysisStatus,
 )
 
-# InviteCode schemas
-from app.schemas.invite_code import (
-    InviteCode,
-    InviteCodeList,
-    InviteCodeValidation,
-    GeneratedInviteCodes,
+# ParticipantCode schemas
+from app.schemas.participant_code import (
+    ParticipantCode,
+    ParticipantCodeList,
+    CodeValidation,
+    GeneratedParticipantCodes,
 )
 
 # Common schemas
@@ -110,7 +110,7 @@ __all__ = [
     "QuestionUpdate",
     "ActivateConversation",
     "ExtendConversation",
-    "GenerateInviteCodes",
+    "GenerateParticipantCodes",
     "AnonymityLevel",
     "ResultsAccess",
     "ConversationState",
@@ -129,11 +129,11 @@ __all__ = [
     "QuestionAnalysis",
     "DetailedAnalysis",
     "AnalysisStatus",
-    # InviteCode
-    "InviteCode",
-    "InviteCodeList",
-    "InviteCodeValidation",
-    "GeneratedInviteCodes",
+    # ParticipantCode
+    "ParticipantCode",
+    "ParticipantCodeList",
+    "CodeValidation",
+    "GeneratedParticipantCodes",
     # Common
     "PaginatedResponse",
     "PaginationParams",

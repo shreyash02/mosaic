@@ -29,7 +29,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/auth/callback" element={<LoginPage />} />
-            <Route path="/join/:inviteCode" element={<JoinPage />} />
+            <Route path="/join/:accessCode" element={<JoinPage />} />
+            <Route path="/join" element={<JoinPage />} />
 
             <Route
               path="/dashboard"

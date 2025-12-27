@@ -21,7 +21,7 @@ class ResponseSubmit(BaseModel):
 
     responses: List[ResponseItemCreate] = Field(..., min_items=1)
     reveal_consent: bool = False  # Only for 'revealable' anonymity level
-    invite_code: Optional[str] = None  # For fully_anonymous mode
+    participant_code: Optional[str] = None  # For fully_anonymous mode
 
 
 # Response in database

@@ -6,7 +6,7 @@ from app.models.conversation import Conversation
 from app.models.question import Question
 from app.models.response import Response
 from app.models.analysis import Analysis
-from app.models.invite_code import InviteCode
+from app.models.participant_code import ParticipantCode
 
 __all__ = [
     "User",
@@ -16,5 +16,5 @@ __all__ = [
     "Question",
     "Response",
     "Analysis",
-    "InviteCode",
+    "ParticipantCode",
 ]

@@ -111,7 +111,7 @@ class Conversation(ConversationBase):
     id: UUID
     creator_id: UUID
     organization_id: Optional[UUID] = None
-    invite_code: str
+    access_code: str
     state: ConversationState
     activated_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
@@ -143,8 +143,8 @@ class ExtendConversation(BaseModel):
     additional_hours: int = Field(..., ge=1, le=168)  # Max 1 week
 
 
-class GenerateInviteCodes(BaseModel):
-    """Schema for generating invite codes (fully_anonymous mode)."""
+class GenerateParticipantCodes(BaseModel):
+    """Schema for generating participant codes (fully_anonymous mode)."""
 
     count: int = Field(..., ge=1, le=1000)
 
@@ -157,7 +157,7 @@ class ConversationListItem(BaseModel):
     title: str
     state: ConversationState
     anonymity_level: AnonymityLevel
-    invite_code: str
+    access_code: str
     created_at: datetime
     activated_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None

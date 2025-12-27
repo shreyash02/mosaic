@@ -99,7 +99,7 @@ export default function ConversationDetailPage() {
   };
 
   const copyInviteLink = async () => {
-    const link = `${window.location.origin}/join/${conversation?.invite_code}`;
+    const link = `${window.location.origin}/join/${conversation?.access_code}`;
     try {
       await navigator.clipboard.writeText(link);
       setLinkCopied(true);
@@ -219,9 +219,9 @@ export default function ConversationDetailPage() {
           <h2>Details</h2>
 
           <div className="info-item">
-            <label>Invite Code:</label>
+            <label>Access Code:</label>
             <div className="invite-code-display">
-              <strong>{conversation.invite_code}</strong>
+              <strong>{conversation.access_code}</strong>
               <button
                 onClick={copyInviteLink}
                 className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}

@@ -11,11 +11,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_optional_current_user, get_participant_session
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.question import Question
-from app.models.invite_code import InviteCode
+from app.models.participant_code import ParticipantCode
 from app.models.response import Response
 from app.schemas.conversation import (
     ConversationCreate,
@@ -25,22 +25,22 @@ from app.schemas.conversation import (
     ConversationListItem,
     ActivateConversation,
     ExtendConversation,
-    GenerateInviteCodes,
+    GenerateParticipantCodes,
     ConversationState,
     AnonymityLevel,
 )
-from app.schemas.invite_code import (
-    InviteCodeList,
-    GeneratedInviteCodes,
-    InviteCode as InviteCodeSchema,
+from app.schemas.participant_code import (
+    ParticipantCodeList,
+    GeneratedParticipantCodes,
+    ParticipantCode as ParticipantCodeSchema,
 )
 from app.schemas.common import DeleteResponse
 
 router = APIRouter()
 
 
-def generate_invite_code(length: int = 12) -> str:
-    """Generate a secure random invite code."""
+def generate_access_code(length: int = 12) -> str:
+    """Generate a secure random access code."""
     alphabet = string.ascii_uppercase + string.digits
     # Exclude similar looking characters
     alphabet = alphabet.replace('O', '').replace('0', '').replace('I', '').replace('1', '')
@@ -85,10 +85,10 @@ async def create_conversation(
     Returns:
         Created conversation with questions
     """
-    # Generate unique invite code
-    invite_code = generate_invite_code()
-    while db.query(Conversation).filter(Conversation.invite_code == invite_code).first():
-        invite_code = generate_invite_code()
+    # Generate unique access code
+    access_code = generate_access_code()
+    while db.query(Conversation).filter(Conversation.access_code == access_code).first():
+        access_code = generate_access_code()
 
     # Create conversation
     conversation = Conversation(
@@ -96,7 +96,7 @@ async def create_conversation(
         organization_id=conversation_data.organization_id,
         title=conversation_data.title,
         description=conversation_data.description,
-        invite_code=invite_code,
+        access_code=access_code,
         anonymity_level=conversation_data.anonymity_level.value,
         results_access=conversation_data.results_access.value,
         auto_analyze=conversation_data.auto_analyze,
@@ -172,7 +172,7 @@ async def list_conversations(
             "title": conv.title,
             "state": conv.state,
             "anonymity_level": conv.anonymity_level,
-            "invite_code": conv.invite_code,
+            "access_code": conv.access_code,
             "created_at": conv.created_at,
             "activated_at": conv.activated_at,
             "closed_at": conv.closed_at,
@@ -183,6 +183,71 @@ async def list_conversations(
     return conversations
 
 
+@router.get("/by-code/{access_code}", response_model=ConversationWithQuestions)
+async def get_conversation_by_code(
+    access_code: str,
+    participant_session: Optional[dict] = Depends(get_participant_session),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get conversation details by access code (public endpoint).
+    
+    For fully_anonymous conversations: Requires valid participant session token.
+    For other conversations: Requires authentication.
+    
+    Args:
+        access_code: Conversation access code
+        participant_session: Optional participant session (for fully_anonymous)
+        current_user: Optional authenticated user (for platform_tracked/revealable)
+        db: Database session
+    
+    Returns:
+        Conversation with questions
+    
+    Raises:
+        HTTPException: If conversation not found, not active, or access denied
+    """
+    # Find conversation by access code
+    conversation = db.query(Conversation).options(
+        joinedload(Conversation.questions)
+    ).filter(
+        Conversation.access_code == access_code,
+        Conversation.state == ConversationState.ACTIVE.value
+    ).first()
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found or not active"
+        )
+    
+    # Check access based on anonymity level
+    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        # For fully_anonymous, require participant session
+        if not participant_session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Valid participant session required for fully anonymous conversations"
+            )
+        
+        # Verify session matches this conversation
+        if participant_session["access_code"] != access_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Session token does not match conversation"
+            )
+    else:
+        # For platform_tracked/revealable, require authentication
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required for this conversation type"
+            )
+    
+    return conversation
+
+
 @router.get("/{conversation_id}", response_model=ConversationWithQuestions)
 async def get_conversation(
     conversation_id: UUID,
@@ -190,7 +255,7 @@ async def get_conversation(
     db: Session = Depends(get_db)
 ):
     """
-    Get conversation details with questions.
+    Get conversation details with questions (owner only).
 
     Args:
         conversation_id: Conversation ID
@@ -460,15 +525,15 @@ async def extend_conversation(
     return conversation
 
 
-@router.post("/{conversation_id}/invite-codes", response_model=GeneratedInviteCodes, status_code=status.HTTP_201_CREATED)
-async def generate_invite_codes(
+@router.post("/{conversation_id}/participant-codes", response_model=GeneratedParticipantCodes, status_code=status.HTTP_201_CREATED)
+async def generate_participant_codes(
     conversation_id: UUID,
-    generate_data: GenerateInviteCodes,
+    generate_data: GenerateParticipantCodes,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Generate unique invite codes for fully_anonymous mode.
+    Generate unique participant codes for fully_anonymous mode.
 
     Args:
         conversation_id: Conversation ID
@@ -477,7 +542,7 @@ async def generate_invite_codes(
         db: Database session
 
     Returns:
-        Generated invite codes
+        Generated participant codes
 
     Raises:
         HTTPException: If conversation is not fully_anonymous
@@ -487,40 +552,40 @@ async def generate_invite_codes(
     if conversation.anonymity_level != AnonymityLevel.FULLY_ANONYMOUS.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invite codes can only be generated for fully_anonymous conversations"
+            detail="Participant codes can only be generated for fully_anonymous conversations"
         )
 
     # Generate unique codes
     codes = []
     for _ in range(generate_data.count):
-        code = generate_invite_code(length=16)
-        while db.query(InviteCode).filter(InviteCode.code == code).first():
-            code = generate_invite_code(length=16)
+        code = generate_access_code(length=16)
+        while db.query(ParticipantCode).filter(ParticipantCode.participant_code == code).first():
+            code = generate_access_code(length=16)
 
-        invite_code = InviteCode(
+        participant_code = ParticipantCode(
             conversation_id=conversation.id,
-            code=code,
+            participant_code=code,
         )
-        db.add(invite_code)
+        db.add(participant_code)
         codes.append(code)
 
     db.commit()
 
-    return GeneratedInviteCodes(
+    return GeneratedParticipantCodes(
         conversation_id=conversation.id,
         codes_generated=len(codes),
         codes=codes
     )
 
 
-@router.get("/{conversation_id}/invite-codes", response_model=InviteCodeList)
-async def list_invite_codes(
+@router.get("/{conversation_id}/participant-codes", response_model=ParticipantCodeList)
+async def list_participant_codes(
     conversation_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    List generated invite codes and their usage.
+    List generated participant codes and their usage.
 
     Args:
         conversation_id: Conversation ID
@@ -528,29 +593,29 @@ async def list_invite_codes(
         db: Database session
 
     Returns:
-        List of invite codes with usage stats
+        List of participant codes with usage stats
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
 
     if conversation.anonymity_level != AnonymityLevel.FULLY_ANONYMOUS.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invite codes are only available for fully_anonymous conversations"
+            detail="Participant codes are only available for fully_anonymous conversations"
         )
 
-    # Get all invite codes for this conversation
-    invite_codes = db.query(InviteCode).filter(
-        InviteCode.conversation_id == conversation.id
-    ).order_by(InviteCode.created_at.desc()).all()
+    # Get all participant codes for this conversation
+    participant_codes = db.query(ParticipantCode).filter(
+        ParticipantCode.conversation_id == conversation.id
+    ).order_by(ParticipantCode.created_at.desc()).all()
 
-    total_codes = len(invite_codes)
-    used_codes = sum(1 for code in invite_codes if code.is_used)
+    total_codes = len(participant_codes)
+    used_codes = sum(1 for code in participant_codes if code.is_used)
     unused_codes = total_codes - used_codes
 
-    return InviteCodeList(
+    return ParticipantCodeList(
         conversation_id=conversation.id,
         total_codes=total_codes,
         used_codes=used_codes,
         unused_codes=unused_codes,
-        codes=[InviteCodeSchema.model_validate(code) for code in invite_codes]
+        codes=[ParticipantCodeSchema.model_validate(code) for code in participant_codes]
     )

@@ -12,7 +12,7 @@ import type {
   ResponseStats,
   Analysis,
   SuccessResponse,
-  InviteCodeValidation,
+  CodeValidation,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -123,25 +123,44 @@ class ApiService {
     return response.data;
   }
 
-  async generateInviteCodes(id: string, count: number): Promise<SuccessResponse> {
+  async generateParticipantCodes(id: string, count: number): Promise<SuccessResponse> {
     const response = await this.client.post<SuccessResponse>(
-      `/conversations/${id}/invite-codes`,
+      `/conversations/${id}/participant-codes`,
       { count }
     );
     return response.data;
   }
 
   // Response endpoints
-  async validateInviteCode(inviteCode: string): Promise<InviteCodeValidation> {
-    const response = await this.client.post<InviteCodeValidation>(
-      `/conversations/${inviteCode}/validate`
+  async validateCode(accessCode: string): Promise<CodeValidation> {
+    const response = await this.client.post<CodeValidation>(
+      `/conversations/${accessCode}/validate`
     );
     return response.data;
   }
 
-  async submitResponse(inviteCode: string, data: ResponseSubmit): Promise<SuccessResponse> {
+  async validateParticipantCode(accessCode: string, participantCode: string): Promise<CodeValidation> {
+    const response = await this.client.post<CodeValidation>(
+      `/conversations/${accessCode}/validate-participant?participant_code=${encodeURIComponent(participantCode)}`
+    );
+    return response.data;
+  }
+
+  async getConversationByCode(accessCode: string, sessionToken?: string): Promise<Conversation> {
+    const config: any = {};
+    if (sessionToken) {
+      config.headers = { Authorization: `Bearer ${sessionToken}` };
+    }
+    const response = await this.client.get<Conversation>(
+      `/conversations/by-code/${accessCode}`,
+      config
+    );
+    return response.data;
+  }
+
+  async submitResponse(accessCode: string, data: ResponseSubmit): Promise<SuccessResponse> {
     const response = await this.client.post<SuccessResponse>(
-      `/conversations/${inviteCode}/responses`,
+      `/conversations/${accessCode}/responses`,
       data
     );
     return response.data;

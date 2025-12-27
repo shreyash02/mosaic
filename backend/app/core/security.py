@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -78,3 +79,38 @@ def decode_token(token: str) -> dict:
         JWTError: If token is invalid
     """
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+
+def create_participant_session_token(access_code: str, participant_code: str, conversation_id: UUID, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Create a temporary session token for fully_anonymous conversations.
+    
+    This token allows unauthenticated users to access conversation details
+    after validating their participant code.
+    
+    Args:
+        access_code: Conversation access code
+        participant_code: Validated participant code
+        conversation_id: Conversation ID
+        expires_delta: Optional expiration time delta (defaults to 1 hour)
+    
+    Returns:
+        Encoded JWT token
+    """
+    to_encode = {
+        "type": "participant_session",
+        "access_code": access_code,
+        "participant_code": participant_code,
+        "conversation_id": str(conversation_id)
+    }
+    
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        # Default to 1 hour for participant sessions
+        expire = datetime.utcnow() + timedelta(hours=1)
+    
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    
+    return encoded_jwt

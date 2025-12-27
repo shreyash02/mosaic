@@ -69,7 +69,7 @@ export interface Conversation {
   description?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
-  invite_code: string;
+  access_code: string;
   state: ConversationState;
   auto_analyze: boolean;
   max_response_length: number;
@@ -102,7 +102,7 @@ export interface ConversationListItem {
   title: string;
   state: ConversationState;
   anonymity_level: AnonymityLevel;
-  invite_code: string;
+  access_code: string;
   created_at: string;
   activated_at?: string;
   closed_at?: string;
@@ -119,7 +119,7 @@ export interface ResponseItem {
 export interface ResponseSubmit {
   responses: ResponseItem[];
   reveal_consent?: boolean;
-  invite_code?: string;
+  participant_code?: string;
 }
 
 export interface Response {
@@ -181,8 +181,10 @@ export interface SuccessResponse {
   data?: any;
 }
 
-export interface InviteCodeValidation {
+export interface CodeValidation {
   valid: boolean;
   conversation_id?: string;
   message: string;
+  requires_participant_code?: boolean;
+  session_token?: string;
 }

@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.question import Question
 from app.models.response import Response
-from app.models.invite_code import InviteCode
+from app.models.participant_code import ParticipantCode
 from app.schemas.response import (
     ResponseSubmit,
     Response as ResponseSchema,
@@ -22,70 +22,125 @@ from app.schemas.response import (
     ResponseList,
     ResponseStats,
 )
-from app.schemas.invite_code import InviteCodeValidation
+from app.schemas.participant_code import CodeValidation
 from app.schemas.common import SuccessResponse
 from app.schemas.conversation import ConversationState, AnonymityLevel
 
 router = APIRouter()
 
 
-@router.post("/conversations/{invite_code}/validate")
-async def validate_invite_code(
-    invite_code: str,
+@router.post("/conversations/{access_code}/validate")
+async def validate_code(
+    access_code: str,
     db: Session = Depends(get_db)
-) -> InviteCodeValidation:
+) -> CodeValidation:
     """
-    Validate an invite code for a conversation.
+    Validate an access code for a conversation (first step).
+    
+    For fully_anonymous conversations, this will indicate that a participant_code
+    is required. For other conversation types, this validates access.
 
     Args:
-        invite_code: Invite code to validate
+        access_code: Access code to validate
         db: Database session
 
     Returns:
         Validation result with conversation info
     """
-    # Try to find conversation by main invite code
+    # Find conversation by access code
     conversation = db.query(Conversation).filter(
-        Conversation.invite_code == invite_code,
+        Conversation.access_code == access_code,
         Conversation.state == ConversationState.ACTIVE.value
     ).first()
 
     if conversation:
-        return InviteCodeValidation(
+        requires_participant_code = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+        return CodeValidation(
             valid=True,
             conversation_id=conversation.id,
-            message="Valid conversation invite code"
+            message="Valid conversation access code",
+            requires_participant_code=requires_participant_code
         )
 
-    # Try to find by unique invite code (fully_anonymous mode)
-    unique_code = db.query(InviteCode).filter(
-        InviteCode.code == invite_code,
-        InviteCode.is_used == False
-    ).first()
-
-    if unique_code:
-        # Check if conversation is active
-        conversation = db.query(Conversation).filter(
-            Conversation.id == unique_code.conversation_id,
-            Conversation.state == ConversationState.ACTIVE.value
-        ).first()
-
-        if conversation:
-            return InviteCodeValidation(
-                valid=True,
-                conversation_id=conversation.id,
-                message="Valid unique invite code"
-            )
-
-    return InviteCodeValidation(
+    return CodeValidation(
         valid=False,
-        message="Invalid or expired invite code"
+        message="Invalid or expired access code"
     )
 
 
-@router.post("/conversations/{invite_code}/responses", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/conversations/{access_code}/validate-participant")
+async def validate_participant_code(
+    access_code: str,
+    participant_code: str = Query(..., description="Participant code to validate"),
+    db: Session = Depends(get_db)
+) -> CodeValidation:
+    """
+    Validate a participant code for a fully_anonymous conversation (second step).
+    
+    This validates the participant code and returns a session token that can be used
+    to access conversation details without authentication.
+
+    Args:
+        access_code: Conversation access code (already validated)
+        participant_code: Participant code to validate
+        db: Database session
+
+    Returns:
+        Validation result with session token
+    """
+    from app.core.security import create_participant_session_token
+    
+    # First verify the access_code is valid and conversation is active
+    conversation = db.query(Conversation).filter(
+        Conversation.access_code == access_code,
+        Conversation.state == ConversationState.ACTIVE.value
+    ).first()
+    
+    if not conversation:
+        return CodeValidation(
+            valid=False,
+            message="Invalid access code"
+        )
+    
+    # Check if conversation is fully_anonymous
+    if conversation.anonymity_level != AnonymityLevel.FULLY_ANONYMOUS.value:
+        return CodeValidation(
+            valid=False,
+            message="Participant codes are only required for fully anonymous conversations"
+        )
+    
+    # Validate participant code belongs to this conversation and is unused
+    participant_code_obj = db.query(ParticipantCode).filter(
+        ParticipantCode.participant_code == participant_code,
+        ParticipantCode.conversation_id == conversation.id,
+        ParticipantCode.is_used == False
+    ).first()
+    
+    if not participant_code_obj:
+        return CodeValidation(
+            valid=False,
+            message="Invalid or already used participant code"
+        )
+    
+    # Create session token
+    session_token = create_participant_session_token(
+        access_code=access_code,
+        participant_code=participant_code,
+        conversation_id=conversation.id
+    )
+    
+    return CodeValidation(
+        valid=True,
+        conversation_id=conversation.id,
+        message="Valid participant code",
+        requires_participant_code=False,
+        session_token=session_token
+    )
+
+
+@router.post("/conversations/{access_code}/responses", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED)
 async def submit_response(
-    invite_code: str,
+    access_code: str,
     response_data: ResponseSubmit,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user)
@@ -94,13 +149,13 @@ async def submit_response(
     Submit a response to a conversation.
 
     Supports three anonymity modes:
-    - fully_anonymous: Requires unique invite code, no user tracking
+    - fully_anonymous: Requires unique participant code, no user tracking
     - platform_tracked: Platform knows user but doesn't reveal to facilitator
     - revealable: User can consent to reveal identity
 
     Args:
-        invite_code: Conversation invite code or unique participant code
-        response_data: Response submission data
+        access_code: Conversation access code (for platform_tracked/revealable) or participant code (for fully_anonymous)
+        response_data: Response submission data (may include participant_code for fully_anonymous)
         db: Database session
         current_user: Optional authenticated user
 
@@ -110,27 +165,27 @@ async def submit_response(
     Raises:
         HTTPException: If conversation not found, not active, or validation fails
     """
-    # Find conversation by invite code
+    # Find conversation by access code
     conversation = db.query(Conversation).options(
         joinedload(Conversation.questions)
     ).filter(
-        Conversation.invite_code == invite_code
+        Conversation.access_code == access_code
     ).first()
 
-    # If not found by main invite code, try unique invite code
-    used_unique_code = None
+    # If not found by access code, try participant code (for fully_anonymous)
+    used_participant_code = None
     if not conversation:
-        unique_code = db.query(InviteCode).filter(
-            InviteCode.code == invite_code
+        participant_code = db.query(ParticipantCode).filter(
+            ParticipantCode.participant_code == access_code
         ).first()
 
-        if unique_code:
+        if participant_code:
             conversation = db.query(Conversation).options(
                 joinedload(Conversation.questions)
             ).filter(
-                Conversation.id == unique_code.conversation_id
+                Conversation.id == participant_code.conversation_id
             ).first()
-            used_unique_code = unique_code
+            used_participant_code = participant_code
 
     if not conversation:
         raise HTTPException(
@@ -147,18 +202,34 @@ async def submit_response(
 
     # Validate anonymity level handling
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # Must use unique invite code
-        if not used_unique_code:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Fully anonymous conversations require unique invite codes"
-            )
+        # Must use participant code (either from URL or request body)
+        if not used_participant_code:
+            # Check if participant_code is provided in request body
+            if not response_data.participant_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Fully anonymous conversations require a participant code"
+                )
+            
+            # Look up participant code from request body
+            participant_code = db.query(ParticipantCode).filter(
+                ParticipantCode.participant_code == response_data.participant_code,
+                ParticipantCode.conversation_id == conversation.id
+            ).first()
+            
+            if not participant_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid participant code"
+                )
+            
+            used_participant_code = participant_code
 
         # Check if code is already used
-        if used_unique_code.is_used:
+        if used_participant_code.is_used:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This invite code has already been used"
+                detail="This participant code has already been used"
             )
 
     elif conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
@@ -208,16 +279,16 @@ async def submit_response(
             response_data=response_item.response_data,
             anonymity_level=conversation.anonymity_level,
             participant_id=current_user.id if current_user else None,
-            invite_code_used=invite_code if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value else None,
+            participant_code_used=used_participant_code.participant_code if used_participant_code else None,
             reveal_consent=response_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
             submitted_at=datetime.utcnow()
         )
         db.add(response)
 
-    # Mark unique invite code as used
-    if used_unique_code:
-        used_unique_code.is_used = True
-        used_unique_code.used_at = datetime.utcnow()
+    # Mark participant code as used
+    if used_participant_code:
+        used_participant_code.is_used = True
+        used_participant_code.used_at = datetime.utcnow()
 
     db.commit()
 
@@ -333,11 +404,11 @@ async def get_response_stats(
     ).scalar()
 
     # Get unique participants
-    # For fully_anonymous, count unique invite codes used
+    # For fully_anonymous, count unique participant codes used
     # For others, count unique participant_ids
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
         unique_participants = db.query(
-            func.count(func.distinct(Response.invite_code_used))
+            func.count(func.distinct(Response.participant_code_used))
         ).filter(
             Response.conversation_id == conversation_id
         ).scalar()

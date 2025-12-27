@@ -30,9 +30,9 @@ class Response(Base):
     # This field is NULL for fully_anonymous responses
     participant_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # For fully_anonymous: unique invite code per participant
+    # For fully_anonymous: unique participant code per participant
     # Each participant gets a unique code, used once
-    invite_code_used = Column(String(100), nullable=True)
+    participant_code_used = Column(String(100), nullable=True)
 
     # Consent for revealing (only for 'revealable' anonymity_level)
     reveal_consent = Column(Boolean, default=False, nullable=False)
@@ -51,4 +51,4 @@ class Response(Base):
 # Indexes for efficient querying
 Index("idx_responses_conversation", Response.conversation_id)
 Index("idx_responses_participant", Response.participant_id)
-Index("idx_responses_invite_code", Response.invite_code_used)
+Index("idx_responses_participant_code", Response.participant_code_used)
