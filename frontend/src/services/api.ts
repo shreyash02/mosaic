@@ -95,7 +95,7 @@ class ApiService {
   }
 
   async updateConversation(id: string, data: Partial<ConversationCreate>): Promise<Conversation> {
-    const response = await this.client.put<Conversation>(`/conversations/${id}`, data);
+    const response = await this.client.patch<Conversation>(`/conversations/${id}`, data);
     return response.data;
   }
 

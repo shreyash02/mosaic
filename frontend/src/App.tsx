@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import CreateConversationPage from './pages/CreateConversationPage';
+import EditConversationPage from './pages/EditConversationPage';
 import ConversationDetailPage from './pages/ConversationDetailPage';
 import JoinPage from './pages/JoinPage';
 import AnalysisPage from './pages/AnalysisPage';
@@ -44,6 +45,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CreateConversationPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <EditConversationPage />
                 </ProtectedRoute>
               }
             />

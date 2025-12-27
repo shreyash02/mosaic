@@ -248,13 +248,48 @@ async def update_conversation(
             detail="Can only update conversations in draft state"
         )
 
-    # Update fields
-    update_dict = update_data.model_dump(exclude_unset=True)
+    # Handle questions update separately (if provided)
+    questions_to_update = update_data.questions
+    update_dict = update_data.model_dump(exclude_unset=True, exclude={'questions'})
+    
+    # Update conversation fields
     for field, value in update_dict.items():
-        setattr(conversation, field, value)
+        if field == 'anonymity_level' and value:
+            setattr(conversation, field, value.value)
+        elif field == 'results_access' and value:
+            setattr(conversation, field, value.value)
+        else:
+            setattr(conversation, field, value)
+
+    # Update questions if provided
+    if questions_to_update is not None:
+        if len(questions_to_update) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one question is required"
+            )
+        
+        # Delete existing questions
+        db.query(Question).filter(Question.conversation_id == conversation.id).delete()
+        
+        # Create new questions
+        for question_data in questions_to_update:
+            question = Question(
+                conversation_id=conversation.id,
+                question_text=question_data.question_text,
+                question_type=question_data.question_type,
+                question_order=question_data.question_order,
+                options=question_data.options,
+            )
+            db.add(question)
 
     db.commit()
     db.refresh(conversation)
+    
+    # Reload with questions
+    conversation = db.query(Conversation).options(
+        joinedload(Conversation.questions)
+    ).filter(Conversation.id == conversation.id).first()
 
     return conversation
 

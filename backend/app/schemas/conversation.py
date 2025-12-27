@@ -91,12 +91,18 @@ class ConversationCreate(ConversationBase):
 
 
 class ConversationUpdate(BaseModel):
-    """Schema for updating a conversation."""
+    """Schema for updating a conversation (draft state only)."""
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
+    anonymity_level: Optional[AnonymityLevel] = None
+    results_access: Optional[ResultsAccess] = None
+    auto_analyze: Optional[bool] = None
+    max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     auto_close_at: Optional[datetime] = None
+    manual_close_enabled: Optional[bool] = None
     time_extension_enabled: Optional[bool] = None
+    questions: Optional[List[QuestionCreate]] = None
 
 
 class Conversation(ConversationBase):

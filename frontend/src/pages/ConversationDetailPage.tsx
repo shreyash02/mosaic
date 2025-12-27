@@ -134,13 +134,21 @@ export default function ConversationDetailPage() {
             </button>
 
             {conversation.state === ConversationState.DRAFT && (
-              <button
-                onClick={handleActivate}
-                className="btn btn-primary btn-small"
-                disabled={actionLoading}
-              >
-                Activate
-              </button>
+              <>
+                <Link
+                  to={`/conversations/${id}/edit`}
+                  className="btn btn-secondary btn-small"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={handleActivate}
+                  className="btn btn-primary btn-small"
+                  disabled={actionLoading}
+                >
+                  Activate
+                </button>
+              </>
             )}
 
             {conversation.state === ConversationState.ACTIVE && (
