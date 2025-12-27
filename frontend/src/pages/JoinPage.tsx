@@ -236,7 +236,8 @@ export default function JoinPage() {
   }
 
   // Show participant code input if access code is validated but participant code is not
-  if (accessCodeValidated && !participantCodeValidated) {
+  // Only show this if the conversation actually requires a participant code
+  if (accessCodeValidated && !participantCodeValidated && validation?.requires_participant_code) {
     return (
       <div className="join-page">
         <div className="join-container">

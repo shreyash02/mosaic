@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Conversation, ResponseStats, Analysis, ConversationInvitation, InvitationListResponse } from '../types';
+import type { Conversation, ResponseStats, Analysis, InvitationListResponse } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
@@ -35,7 +35,6 @@ export default function ConversationDetailPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [inviting, setInviting] = useState(false);
-  const [loadingInvitations, setLoadingInvitations] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -207,15 +206,12 @@ export default function ConversationDetailPage() {
 
   const loadInvitations = async () => {
     if (!id) return;
-    setLoadingInvitations(true);
     try {
       const data = await api.listInvitations(id);
       setInvitations(data);
     } catch (err) {
       // Silently fail - invitations are optional
       console.error('Failed to load invitations', err);
-    } finally {
-      setLoadingInvitations(false);
     }
   };
 
