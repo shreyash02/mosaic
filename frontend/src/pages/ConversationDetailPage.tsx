@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { Conversation, ResponseStats, Analysis } from '../types';
 import { ConversationState } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
+import ConversationPreview from '../components/ConversationPreview';
 
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export default function ConversationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -124,6 +126,13 @@ export default function ConversationDetailPage() {
             {conversation.state}
           </span>
           <div className="conversation-actions-top">
+            <button
+              onClick={() => setShowPreview(true)}
+              className="btn btn-secondary btn-small"
+            >
+              Preview
+            </button>
+
             {conversation.state === ConversationState.DRAFT && (
               <button
                 onClick={handleActivate}
@@ -252,6 +261,13 @@ export default function ConversationDetailPage() {
           </div>
         )}
       </div>
+
+      {showPreview && conversation && (
+        <ConversationPreview
+          conversation={conversation}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }

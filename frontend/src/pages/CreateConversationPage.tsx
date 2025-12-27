@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess, type QuestionCreate } from '../types';
+import ConversationPreview from '../components/ConversationPreview';
 
 export default function CreateConversationPage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function CreateConversationPage() {
   ]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const addQuestion = () => {
     setQuestions([
@@ -185,11 +187,30 @@ export default function CreateConversationPage() {
         </div>
 
         <div className="form-actions">
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="btn btn-secondary btn-large"
+            disabled={!title.trim() || questions.some((q) => !q.question_text.trim())}
+          >
+            Preview
+          </button>
           <button type="submit" className="btn btn-primary btn-large" disabled={loading}>
             {loading ? 'Creating...' : 'Create Conversation'}
           </button>
         </div>
       </form>
+
+      {showPreview && (
+        <ConversationPreview
+          title={title}
+          description={description}
+          anonymityLevel={anonymityLevel}
+          questions={questions}
+          maxResponseLength={10000}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }
