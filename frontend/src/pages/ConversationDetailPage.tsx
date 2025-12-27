@@ -24,6 +24,13 @@ export default function ConversationDetailPage() {
   const [showNewCodes, setShowNewCodes] = useState(false);
   const [showAllCodes, setShowAllCodes] = useState(false);
   const [loadingCodes, setLoadingCodes] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedAllNewCodes, setCopiedAllNewCodes] = useState(false);
+  const [copiedAllCodes, setCopiedAllCodes] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAnalysisSuccess, setShowAnalysisSuccess] = useState(false);
+  const [showLargeModeModal, setShowLargeModeModal] = useState(false);
+  const [largeModeCodes, setLargeModeCodes] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -86,7 +93,10 @@ export default function ConversationDetailPage() {
     setActionLoading(true);
     try {
       await api.triggerAnalysis(id!);
-      alert('Analysis started! Refresh the page in a minute to see results.');
+      setShowAnalysisSuccess(true);
+      setTimeout(() => {
+        setShowAnalysisSuccess(false);
+      }, 3000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to start analysis');
     } finally {
@@ -95,13 +105,12 @@ export default function ConversationDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this conversation?')) {
-      try {
-        await api.deleteConversation(id!);
-        navigate('/dashboard');
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to delete conversation');
-      }
+    try {
+      await api.deleteConversation(id!);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete conversation');
+      setShowDeleteModal(false);
     }
   };
 
@@ -190,9 +199,18 @@ export default function ConversationDetailPage() {
     }
   };
 
+  const openLargeMode = (codes: string[]) => {
+    setLargeModeCodes(codes);
+    setShowLargeModeModal(true);
+  };
+
   const copyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => {
+        setCopiedCode(null);
+      }, 2000);
     } catch (err) {
       // Fallback
       const textArea = document.createElement('textarea');
@@ -203,14 +221,21 @@ export default function ConversationDetailPage() {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
+      setCopiedCode(code);
+      setTimeout(() => {
+        setCopiedCode(null);
+      }, 2000);
     }
   };
 
-  const copyAllCodes = async (codes: string[]) => {
-    const codesText = codes.join('\n');
+  const copyAllNewCodes = async () => {
+    const codesText = newlyGeneratedCodes.join('\n');
     try {
       await navigator.clipboard.writeText(codesText);
-      alert('All codes copied to clipboard!');
+      setCopiedAllNewCodes(true);
+      setTimeout(() => {
+        setCopiedAllNewCodes(false);
+      }, 2000);
     } catch (err) {
       // Fallback
       const textArea = document.createElement('textarea');
@@ -221,7 +246,36 @@ export default function ConversationDetailPage() {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      alert('All codes copied to clipboard!');
+      setCopiedAllNewCodes(true);
+      setTimeout(() => {
+        setCopiedAllNewCodes(false);
+      }, 2000);
+    }
+  };
+
+  const copyAllCodes = async (codes?: string[]) => {
+    const codesToCopy = codes || allCodes.map(c => c.participant_code);
+    const codesText = codesToCopy.join('\n');
+    try {
+      await navigator.clipboard.writeText(codesText);
+      setCopiedAllCodes(true);
+      setTimeout(() => {
+        setCopiedAllCodes(false);
+      }, 2000);
+    } catch (err) {
+      // Fallback
+      const textArea = document.createElement('textarea');
+      textArea.value = codesText;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedAllCodes(true);
+      setTimeout(() => {
+        setCopiedAllCodes(false);
+      }, 2000);
     }
   };
 
@@ -300,7 +354,7 @@ export default function ConversationDetailPage() {
             )}
 
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteModal(true)}
               className="btn btn-danger btn-small"
               disabled={actionLoading}
             >
@@ -311,6 +365,12 @@ export default function ConversationDetailPage() {
       </div>
 
       {error && <div className="error-message">{error}</div>}
+      
+      {showAnalysisSuccess && (
+        <div className="success-message">
+          ✓ Analysis started! Refresh the page in a minute to see results.
+        </div>
+      )}
 
       <div className="conversation-content">
         <div className="info-panel">
@@ -409,10 +469,17 @@ export default function ConversationDetailPage() {
                     <h3>Newly Generated Codes ({newlyGeneratedCodes.length})</h3>
                     <div className="codes-header-actions">
                       <button
-                        onClick={() => copyAllCodes(newlyGeneratedCodes)}
+                        onClick={() => openLargeMode(newlyGeneratedCodes)}
                         className="btn btn-secondary btn-small"
+                        title="View codes in large mode"
                       >
-                        Copy All
+                        🔍 Large Mode
+                      </button>
+                      <button
+                        onClick={copyAllNewCodes}
+                        className={`btn btn-secondary btn-small ${copiedAllNewCodes ? 'btn-success' : ''}`}
+                      >
+                        {copiedAllNewCodes ? '✓ Copied!' : 'Copy All'}
                       </button>
                       <button
                         onClick={() => setShowNewCodes(false)}
@@ -428,10 +495,10 @@ export default function ConversationDetailPage() {
                         <code>{code}</code>
                         <button
                           onClick={() => copyCode(code)}
-                          className="btn btn-small btn-secondary"
+                          className={`btn btn-small ${copiedCode === code ? 'btn-success' : 'btn-secondary'}`}
                           title="Copy code"
                         >
-                          Copy
+                          {copiedCode === code ? '✓ Copied' : 'Copy'}
                         </button>
                       </div>
                     ))}
@@ -449,6 +516,13 @@ export default function ConversationDetailPage() {
                     <h3>All Participant Codes ({allCodes.length})</h3>
                     <div className="codes-header-actions">
                       <button
+                        onClick={() => openLargeMode(allCodes.map(c => c.participant_code))}
+                        className="btn btn-secondary btn-small"
+                        title="View codes in large mode"
+                      >
+                        🔍 Large Mode
+                      </button>
+                      <button
                         onClick={handleShuffleCodes}
                         className="btn btn-secondary btn-small"
                         title="Randomize order"
@@ -456,10 +530,10 @@ export default function ConversationDetailPage() {
                         🔀 Shuffle
                       </button>
                       <button
-                        onClick={() => copyAllCodes(allCodes.map(c => c.participant_code))}
-                        className="btn btn-secondary btn-small"
+                        onClick={() => copyAllCodes()}
+                        className={`btn btn-secondary btn-small ${copiedAllCodes ? 'btn-success' : ''}`}
                       >
-                        Copy All
+                        {copiedAllCodes ? '✓ Copied!' : 'Copy All'}
                       </button>
                       <button
                         onClick={() => setShowAllCodes(false)}
@@ -475,10 +549,10 @@ export default function ConversationDetailPage() {
                         <code>{codeObj.participant_code}</code>
                         <button
                           onClick={() => copyCode(codeObj.participant_code)}
-                          className="btn btn-small btn-secondary"
+                          className={`btn btn-small ${copiedCode === codeObj.participant_code ? 'btn-success' : 'btn-secondary'}`}
                           title="Copy code"
                         >
-                          Copy
+                          {copiedCode === codeObj.participant_code ? '✓ Copied' : 'Copy'}
                         </button>
                       </div>
                     ))}
@@ -520,6 +594,96 @@ export default function ConversationDetailPage() {
           conversation={conversation}
           onClose={() => setShowPreview(false)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Conversation</h2>
+            <p>Are you sure you want to delete this conversation? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="btn btn-danger"
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Large Mode Modal */}
+      {showLargeModeModal && (
+        <div className="modal-overlay" onClick={() => setShowLargeModeModal(false)}>
+          <div className="modal-content large-mode-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="large-mode-header">
+              <h2>Participant Codes - Large Mode</h2>
+              <button
+                onClick={() => setShowLargeModeModal(false)}
+                className="btn btn-secondary btn-small"
+              >
+                Close
+              </button>
+            </div>
+            <div className="large-mode-actions">
+              <button
+                onClick={async () => {
+                  const codesText = largeModeCodes.join('\n');
+                  try {
+                    await navigator.clipboard.writeText(codesText);
+                    setCopiedAllCodes(true);
+                    setTimeout(() => {
+                      setCopiedAllCodes(false);
+                    }, 2000);
+                  } catch (err) {
+                    // Fallback
+                    const textArea = document.createElement('textarea');
+                    textArea.value = codesText;
+                    textArea.style.position = 'fixed';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    setCopiedAllCodes(true);
+                    setTimeout(() => {
+                      setCopiedAllCodes(false);
+                    }, 2000);
+                  }
+                }}
+                className={`btn btn-secondary ${copiedAllCodes ? 'btn-success' : ''}`}
+              >
+                {copiedAllCodes ? '✓ All Copied!' : 'Copy All'}
+              </button>
+            </div>
+            <div className="large-mode-codes-list">
+              {largeModeCodes.map((code, index) => (
+                <div key={index} className="large-mode-code-item">
+                  <code className="large-mode-code-text">{code}</code>
+                  <button
+                    onClick={() => {
+                      copyCode(code);
+                      // Keep modal open but show feedback
+                    }}
+                    className={`btn ${copiedCode === code ? 'btn-success' : 'btn-secondary'}`}
+                    title="Copy code"
+                  >
+                    {copiedCode === code ? '✓ Copied' : 'Copy'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
