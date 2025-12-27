@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 2880  # 2 days (48 hours)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Google OAuth
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     BASE_URL: str = "http://localhost:8000"
     # Explicit redirect URI (optional, will be constructed from BASE_URL if not set)
     GOOGLE_REDIRECT_URI: str | None = None
-    
+
     @property
     def google_redirect_uri(self) -> str:
         """Get Google OAuth redirect URI, constructing from BASE_URL if not explicitly set."""

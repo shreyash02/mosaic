@@ -18,7 +18,7 @@ import type {
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
 class ApiService {
@@ -44,15 +44,44 @@ class ApiService {
       (error) => Promise.reject(error)
     );
 
-    // Add response interceptor for error handling
+    // Add response interceptor for error handling and automatic token refresh
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid, clear local storage
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+        const originalRequest = error.config as any;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          const refreshToken = localStorage.getItem('refresh_token');
+          if (refreshToken) {
+            try {
+              // Try to refresh the token
+              const response = await axios.post<AuthResponse>(
+                `${API_BASE_URL}/auth/refresh`,
+                { refresh_token: refreshToken }
+              );
+
+              // Update tokens
+              localStorage.setItem('access_token', response.data.access_token);
+              localStorage.setItem('refresh_token', response.data.refresh_token);
+
+              // Retry original request with new token
+              originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
+              return this.client(originalRequest);
+            } catch (refreshError) {
+              // Refresh failed, clear tokens and redirect to login
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              window.location.href = '/login';
+              return Promise.reject(refreshError);
+            }
+          } else {
+            // No refresh token, redirect to login
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }
@@ -72,6 +101,13 @@ class ApiService {
 
   async getCurrentUser(): Promise<User> {
     const response = await this.client.get<User>('/auth/me');
+    return response.data;
+  }
+
+  async refreshToken(refreshToken: string): Promise<AuthResponse> {
+    const response = await this.client.post<AuthResponse>('/auth/refresh', {
+      refresh_token: refreshToken,
+    });
     return response.data;
   }
 
