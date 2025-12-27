@@ -579,10 +579,16 @@ h3 {
 
 /* Create Conversation */
 .create-conversation-page,
-.conversation-detail-page,
 .join-page,
 .analysis-page {
   max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  padding-top: calc(2rem + 80px);
+}
+
+.conversation-detail-page {
+  max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
   padding-top: calc(2rem + 80px);
@@ -593,7 +599,16 @@ h3 {
   justify-content: space-between;
   align-items: start;
   margin-bottom: 2rem;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+.page-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-header > div:last-child {
+  flex-shrink: 0;
 }
 
 .header-actions {
@@ -601,12 +616,14 @@ h3 {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .conversation-actions-top {
   display: flex;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .page-header h1 {
@@ -1069,7 +1086,24 @@ h3 {
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .conversation-detail-page {
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .conversation-actions-top {
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 768px) {
+  .conversation-detail-page {
+    max-width: 100%;
+    padding: 1rem;
+    padding-top: calc(1rem + 80px);
+  }
+
   .dashboard-header,
   .page-header {
     flex-direction: column;
@@ -1078,11 +1112,23 @@ h3 {
 
   .header-actions {
     width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .conversation-actions-top {
+    flex-wrap: wrap;
+    width: 100%;
   }
 
   .header-actions button,
   .header-actions .btn {
     flex: 1;
+    min-width: 0;
+  }
+
+  .conversation-actions-top .btn {
+    flex: 1;
+    min-width: 0;
   }
 
   .hero h1 {
