@@ -17,10 +17,13 @@ export default function ConversationDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
+  const [newlyGeneratedCodes, setNewlyGeneratedCodes] = useState<string[]>([]);
+  const [allCodes, setAllCodes] = useState<Array<{ participant_code: string; is_used: boolean; used_at?: string; created_at: string }>>([]);
   const [codeCount, setCodeCount] = useState(10);
   const [generatingCodes, setGeneratingCodes] = useState(false);
-  const [showCodes, setShowCodes] = useState(false);
+  const [showNewCodes, setShowNewCodes] = useState(false);
+  const [showAllCodes, setShowAllCodes] = useState(false);
+  const [loadingCodes, setLoadingCodes] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -138,14 +141,52 @@ export default function ConversationDetailPage() {
     setError('');
     try {
       const result = await api.generateParticipantCodes(id, codeCount);
-      setGeneratedCodes(result.codes);
-      setShowCodes(true);
+      // Randomize the order of newly generated codes
+      const shuffled = shuffleArray(result.codes);
+      setNewlyGeneratedCodes(shuffled);
+      setShowNewCodes(true);
+      setShowAllCodes(false); // Hide all codes view when showing new ones
       // Reload conversation to update stats
       loadConversation();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to generate participant codes');
     } finally {
       setGeneratingCodes(false);
+    }
+  };
+
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const handleLoadAllCodes = async () => {
+    if (!id || !conversation) return;
+    
+    setLoadingCodes(true);
+    setError('');
+    try {
+      const result = await api.listParticipantCodes(id);
+      // Randomize the order when loading
+      const shuffled = shuffleArray(result.codes);
+      setAllCodes(shuffled);
+      setShowAllCodes(true);
+      setShowNewCodes(false); // Hide new codes view when showing all
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load participant codes');
+    } finally {
+      setLoadingCodes(false);
+    }
+  };
+
+  const handleShuffleCodes = () => {
+    if (allCodes.length > 0) {
+      const shuffled = shuffleArray(allCodes);
+      setAllCodes(shuffled);
     }
   };
 
@@ -165,8 +206,8 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const copyAllCodes = async () => {
-    const codesText = generatedCodes.join('\n');
+  const copyAllCodes = async (codes: string[]) => {
+    const codesText = codes.join('\n');
     try {
       await navigator.clipboard.writeText(codesText);
       alert('All codes copied to clipboard!');
@@ -352,28 +393,37 @@ export default function ConversationDetailPage() {
                     {generatingCodes ? 'Generating...' : 'Generate Codes'}
                   </button>
                 </div>
-                {generatedCodes.length > 0 && (
-                  <button
-                    onClick={() => setShowCodes(!showCodes)}
-                    className="btn btn-secondary btn-small"
-                  >
-                    {showCodes ? 'Hide Codes' : 'Show Generated Codes'}
-                  </button>
-                )}
+                <button
+                  onClick={handleLoadAllCodes}
+                  className="btn btn-secondary btn-small"
+                  disabled={loadingCodes}
+                >
+                  {loadingCodes ? 'Loading...' : 'View All Codes'}
+                </button>
               </div>
-              {showCodes && generatedCodes.length > 0 && (
+              
+              {/* Show newly generated codes */}
+              {showNewCodes && newlyGeneratedCodes.length > 0 && (
                 <div className="generated-codes-display">
                   <div className="codes-header">
-                    <h3>Generated Participant Codes ({generatedCodes.length})</h3>
-                    <button
-                      onClick={copyAllCodes}
-                      className="btn btn-secondary btn-small"
-                    >
-                      Copy All
-                    </button>
+                    <h3>Newly Generated Codes ({newlyGeneratedCodes.length})</h3>
+                    <div className="codes-header-actions">
+                      <button
+                        onClick={() => copyAllCodes(newlyGeneratedCodes)}
+                        className="btn btn-secondary btn-small"
+                      >
+                        Copy All
+                      </button>
+                      <button
+                        onClick={() => setShowNewCodes(false)}
+                        className="btn btn-small btn-secondary"
+                      >
+                        Hide
+                      </button>
+                    </div>
                   </div>
                   <div className="codes-list">
-                    {generatedCodes.map((code, index) => (
+                    {newlyGeneratedCodes.map((code, index) => (
                       <div key={index} className="code-item">
                         <code>{code}</code>
                         <button
@@ -387,7 +437,54 @@ export default function ConversationDetailPage() {
                     ))}
                   </div>
                   <p className="codes-note">
-                    Distribute these codes to participants. Each code can only be used once.
+                    These are the newly generated codes. Distribute them to participants. Each code can only be used once.
+                  </p>
+                </div>
+              )}
+
+              {/* Show all codes */}
+              {showAllCodes && allCodes.length > 0 && (
+                <div className="generated-codes-display">
+                  <div className="codes-header">
+                    <h3>All Participant Codes ({allCodes.length})</h3>
+                    <div className="codes-header-actions">
+                      <button
+                        onClick={handleShuffleCodes}
+                        className="btn btn-secondary btn-small"
+                        title="Randomize order"
+                      >
+                        🔀 Shuffle
+                      </button>
+                      <button
+                        onClick={() => copyAllCodes(allCodes.map(c => c.participant_code))}
+                        className="btn btn-secondary btn-small"
+                      >
+                        Copy All
+                      </button>
+                      <button
+                        onClick={() => setShowAllCodes(false)}
+                        className="btn btn-small btn-secondary"
+                      >
+                        Hide
+                      </button>
+                    </div>
+                  </div>
+                  <div className="codes-list">
+                    {allCodes.map((codeObj, index) => (
+                      <div key={index} className="code-item">
+                        <code>{codeObj.participant_code}</code>
+                        <button
+                          onClick={() => copyCode(codeObj.participant_code)}
+                          className="btn btn-small btn-secondary"
+                          title="Copy code"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="codes-note">
+                    All participant codes for this conversation. Codes are displayed in random order. Each code can only be used once.
                   </p>
                 </div>
               )}

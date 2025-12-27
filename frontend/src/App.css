@@ -811,6 +811,12 @@ h3 {
   color: #2d3748;
 }
 
+.codes-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+
 .codes-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -833,6 +839,7 @@ h3 {
   border: 1px solid #e2e8f0;
   gap: 0.5rem;
 }
+
 
 .code-item code {
   flex: 1;
