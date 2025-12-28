@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, InvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
 
 export default function ManageInvitationsPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,6 +13,7 @@ export default function ManageInvitationsPage() {
   const [inviteEmails, setInviteEmails] = useState('');
   const [inviting, setInviting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showInviteForm, setShowInviteForm] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -57,6 +57,7 @@ export default function ManageInvitationsPage() {
 
       await api.inviteUsers(id, emails);
       setInviteEmails('');
+      setShowInviteForm(false);
       loadData();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to invite users');
@@ -105,14 +106,25 @@ export default function ManageInvitationsPage() {
   return (
     <div className="conversation-detail-page">
       <div className="card">
-        <div style={{ marginBottom: '2rem' }}>
-          <Link to={`/conversations/${id}`} className="btn btn-secondary" style={{ marginBottom: '1rem' }}>
-            ← Back to Conversation
-          </Link>
-          <h1>Manage Invitations</h1>
-          <p style={{ color: '#666', marginTop: '0.5rem', fontSize: '1rem' }}>
-            {conversation.title}
-          </p>
+        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <Link to={`/conversations/${id}`} className="btn btn-secondary" style={{ marginBottom: '1rem' }}>
+              ← Back to Conversation
+            </Link>
+            <h1>Manage Invitations</h1>
+            <p style={{ color: '#666', marginTop: '0.5rem', fontSize: '1rem' }}>
+              {conversation.title}
+            </p>
+          </div>
+          {!showInviteForm && (
+            <button
+              onClick={() => setShowInviteForm(true)}
+              className="btn btn-primary"
+              style={{ alignSelf: 'flex-start', marginTop: '2.5rem' }}
+            >
+              Send Invitations
+            </button>
+          )}
         </div>
 
         {error && (
@@ -122,43 +134,58 @@ export default function ManageInvitationsPage() {
         )}
 
         {/* Invite Form */}
-        <div className="card" style={{ marginBottom: '2rem', backgroundColor: '#f9f9f9', padding: '1.5rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Send New Invitations</h2>
-          <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-            {conversation.invite_only
-              ? 'Invite users by email. Only invited users can access this conversation.'
-              : 'Invite specific users by email. They can access the conversation using the share link when logged in.'}
-          </p>
-          <div className="form-group" style={{ marginBottom: '1rem' }}>
-            <label htmlFor="invite-emails" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Email Addresses (comma-separated):
-            </label>
-            <textarea
-              id="invite-emails"
-              value={inviteEmails}
-              onChange={(e) => setInviteEmails(e.target.value)}
-              placeholder="user1@example.com, user2@example.com"
-              rows={4}
-              disabled={inviting}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                fontSize: '0.9rem',
-                fontFamily: 'inherit',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                resize: 'vertical'
-              }}
-            />
+        {showInviteForm && (
+          <div className="card" style={{ marginBottom: '2rem', backgroundColor: '#f9f9f9', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Send New Invitations</h2>
+              <button
+                onClick={() => {
+                  setShowInviteForm(false);
+                  setInviteEmails('');
+                  setError('');
+                }}
+                className="btn btn-secondary btn-small"
+                title="Close"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              {conversation.invite_only
+                ? 'Invite users by email. Only invited users can access this conversation.'
+                : 'Invite specific users by email. They can access the conversation using the share link when logged in.'}
+            </p>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label htmlFor="invite-emails" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                Email Addresses (comma-separated):
+              </label>
+              <textarea
+                id="invite-emails"
+                value={inviteEmails}
+                onChange={(e) => setInviteEmails(e.target.value)}
+                placeholder="user1@example.com, user2@example.com"
+                rows={4}
+                disabled={inviting}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  fontSize: '0.9rem',
+                  fontFamily: 'inherit',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <button
+              onClick={handleInviteUsers}
+              className="btn btn-primary"
+              disabled={inviting || !inviteEmails.trim()}
+            >
+              {inviting ? 'Sending Invitations...' : 'Send Invitations'}
+            </button>
           </div>
-          <button
-            onClick={handleInviteUsers}
-            className="btn btn-primary"
-            disabled={inviting || !inviteEmails.trim()}
-          >
-            {inviting ? 'Sending Invitations...' : 'Send Invitations'}
-          </button>
-        </div>
+        )}
 
         {/* Invitations Table */}
         {invitations && invitations.total_invitations > 0 ? (
