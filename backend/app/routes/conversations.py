@@ -107,6 +107,7 @@ async def create_conversation(
         access_code=access_code,
         anonymity_level=conversation_data.anonymity_level.value,
         results_access=conversation_data.results_access.value,
+        invite_only=conversation_data.invite_only,
         auto_analyze=conversation_data.auto_analyze,
         max_response_length=conversation_data.max_response_length,
         duration_minutes=conversation_data.duration_minutes,
@@ -716,6 +717,13 @@ async def invite_users(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Can only invite users to draft or active conversations"
+        )
+
+    # Validate that invite_only is enabled
+    if not conversation.invite_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitations can only be sent for conversations with invite-only mode enabled"
         )
 
     # Create invitations

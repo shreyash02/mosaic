@@ -15,6 +15,7 @@ export default function CreateConversationPage() {
     ResultsAccess.PUBLIC_LINK
   );
   const [inviteOnly, setInviteOnly] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState('');
   const [questions, setQuestions] = useState<QuestionCreate[]>([
     { question_text: '', question_order: 0 },
   ]);
@@ -58,6 +59,18 @@ export default function CreateConversationPage() {
       return;
     }
 
+    // Validate that emails are provided if invite-only is enabled
+    if (inviteOnly && !inviteEmails.trim()) {
+      setError('Please provide at least one email address when invite-only mode is enabled');
+      return;
+    }
+
+    // Validate that emails are not provided if invite-only is disabled
+    if (!inviteOnly && inviteEmails.trim()) {
+      setError('Email addresses can only be provided when invite-only mode is enabled');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -73,6 +86,24 @@ export default function CreateConversationPage() {
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
       });
+      
+      // If invite-only is enabled and emails are provided, invite those users
+      if (inviteOnly && inviteEmails.trim()) {
+        const emails = inviteEmails
+          .split(',')
+          .map(e => e.trim())
+          .filter(e => e.length > 0 && e.includes('@'));
+        
+        if (emails.length > 0) {
+          try {
+            await api.inviteUsers(conversation.id, emails);
+          } catch (inviteErr: any) {
+            // Log error but don't block navigation - invitations can be added later
+            console.error('Failed to invite users during creation:', inviteErr);
+          }
+        }
+      }
+      
       navigate(`/conversations/${conversation.id}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create conversation');
@@ -174,6 +205,24 @@ export default function CreateConversationPage() {
               For fully anonymous conversations, participant codes must be distributed only to invited users.
             </p>
           </div>
+
+          {inviteOnly && (
+            <div className="form-group">
+              <label htmlFor="invite-emails">Invite Users by Email *</label>
+              <textarea
+                id="invite-emails"
+                value={inviteEmails}
+                onChange={(e) => setInviteEmails(e.target.value)}
+                placeholder="user1@example.com, user2@example.com"
+                rows={3}
+                disabled={loading}
+              />
+              <p className="form-help-text">
+                Enter email addresses separated by commas. These users will be invited to the conversation.
+                You can also add more invitations after creating the conversation.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="form-section">

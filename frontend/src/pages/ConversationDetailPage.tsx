@@ -449,22 +449,26 @@ export default function ConversationDetailPage() {
             </div>
           </div>
 
-          {conversation.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS && (
+          {conversation.invite_only && (
             <div className="info-item invitations-section">
               <label>Invite Users:</label>
               <div className="invitations-controls">
-                <button
-                  onClick={() => setShowInviteForm(!showInviteForm)}
-                  className="btn btn-secondary btn-small"
-                >
-                  {showInviteForm ? 'Cancel' : '+ Invite by Email'}
-                </button>
+                {conversation.state !== 'closed' && conversation.state !== 'analyzed' && (
+                  <button
+                    onClick={() => setShowInviteForm(!showInviteForm)}
+                    className="btn btn-secondary btn-small"
+                  >
+                    {showInviteForm ? 'Cancel' : '+ Invite by Email'}
+                  </button>
+                )}
               </div>
 
               {showInviteForm && (
                 <div className="invite-form">
                   <p className="invite-form-description">
-                    Invite specific users by email. They can access the conversation using the share link above when logged in.
+                    {conversation.invite_only 
+                      ? 'Invite users by email. Only invited users can access this conversation.'
+                      : 'Invite specific users by email. They can access the conversation using the share link above when logged in.'}
                   </p>
                   <div className="form-group">
                     <label htmlFor="invite-emails">Email Addresses (comma-separated):</label>
