@@ -59,12 +59,6 @@ export default function CreateConversationPage() {
       return;
     }
 
-    // Validate that emails are provided if invite-only is enabled
-    if (inviteOnly && !inviteEmails.trim()) {
-      setError('Please provide at least one email address when invite-only mode is enabled');
-      return;
-    }
-
     // Validate that emails are not provided if invite-only is disabled
     if (!inviteOnly && inviteEmails.trim()) {
       setError('Email addresses can only be provided when invite-only mode is enabled');
@@ -217,7 +211,7 @@ export default function CreateConversationPage() {
 
           {inviteOnly && (
             <div className="form-group">
-              <label htmlFor="invite-emails">Invite Users by Email *</label>
+              <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
               <textarea
                 id="invite-emails"
                 value={inviteEmails}
@@ -228,7 +222,7 @@ export default function CreateConversationPage() {
               />
               <p className="form-help-text">
                 Enter email addresses separated by commas. These users will be invited to the conversation.
-                You can also add more invitations after creating the conversation.
+                You can also add more invitations after creating the conversation, even after it's activated.
               </p>
             </div>
           )}
