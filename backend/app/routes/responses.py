@@ -49,24 +49,42 @@ async def validate_code(
     Returns:
         Validation result with conversation info
     """
-    # Find conversation by access code
+    # Find conversation by access code (check if it exists first, regardless of state)
     conversation = db.query(Conversation).filter(
-        Conversation.access_code == access_code,
-        Conversation.state == ConversationState.ACTIVE.value
+        Conversation.access_code == access_code
     ).first()
 
-    if conversation:
-        requires_participant_code = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+    if not conversation:
         return CodeValidation(
-            valid=True,
-            conversation_id=conversation.id,
-            message="Valid conversation access code",
-            requires_participant_code=requires_participant_code
+            valid=False,
+            message="Invalid access code. Please check the code and try again."
         )
+    
+    # Check if conversation is active
+    if conversation.state != ConversationState.ACTIVE.value:
+        if conversation.state == ConversationState.CLOSED.value:
+            return CodeValidation(
+                valid=False,
+                message="This conversation has been closed and is no longer accepting responses."
+            )
+        elif conversation.state == ConversationState.DRAFT.value:
+            return CodeValidation(
+                valid=False,
+                message="This conversation has not been activated yet."
+            )
+        else:
+            return CodeValidation(
+                valid=False,
+                message="This conversation is not currently available."
+            )
 
+    # Conversation exists and is active
+    requires_participant_code = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
     return CodeValidation(
-        valid=False,
-        message="Invalid or expired access code"
+        valid=True,
+        conversation_id=conversation.id,
+        message="Valid conversation access code",
+        requires_participant_code=requires_participant_code
     )
 
 

@@ -138,14 +138,23 @@ export default function JoinPage() {
         );
       }
     } catch (err: any) {
-      if (err.response?.status === 401) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      
+      if (status === 401) {
         // For non-fully-anonymous, redirect to login
         navigate(`/login?redirect=/join/${accessCode}`);
-      } else if (err.response?.status === 403) {
-        // Access denied - likely invite-only mode
-        setError(err.response?.data?.detail || 'You must be invited to access this conversation');
+      } else if (status === 403) {
+        // Access denied - invite-only mode or conversation not active
+        setError(detail || 'You do not have access to this conversation');
+      } else if (status === 404) {
+        // Conversation not found
+        setError(detail || 'Conversation not found. Please check the access code and try again.');
+      } else if (status === 410) {
+        // Conversation closed
+        setError(detail || 'This conversation has been closed and is no longer accepting responses.');
       } else {
-        setError(err.response?.data?.detail || 'Failed to load conversation');
+        setError(detail || 'Failed to load conversation. Please try again later.');
       }
     } finally {
       setLoading(false);
@@ -239,22 +248,69 @@ export default function JoinPage() {
     );
   }
 
-  // Show error if access code validation failed
-  if (!accessCodeValidated && error) {
+  // Show error if access code validation failed or access denied
+  if (error && !loading && !conversation) {
+    const isAccessDenied = error && (
+      error.includes('invite-only') || 
+      error.includes('must be invited') || 
+      error.includes('not have access') ||
+      error.includes('not been activated') ||
+      error.includes('not currently available')
+    );
+    const isNotFound = error && (
+      error.includes('not found') || 
+      error.includes('check the access code')
+    );
+    const isClosed = error && error.includes('closed');
+    
     return (
       <div className="join-page">
-        <div className="error-state">
-          <h2>Invalid Access Code</h2>
-          <p>{error}</p>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => {
-              setAccessCode(null);
-              setError('');
-            }}
-          >
-            Try Another Code
-          </button>
+        <div className="join-container">
+          <div className="error-state">
+            {isAccessDenied && (
+              <>
+                <h2>Access Restricted</h2>
+                <p className="error-message">{error}</p>
+                <div className="error-help">
+                  <p>If you believe you should have access to this conversation, please contact the conversation organizer.</p>
+                </div>
+              </>
+            )}
+            {isNotFound && (
+              <>
+                <h2>Conversation Not Found</h2>
+                <p className="error-message">{error}</p>
+                <div className="error-help">
+                  <p>Please verify that you have the correct access code. The code is case-sensitive.</p>
+                </div>
+              </>
+            )}
+            {isClosed && (
+              <>
+                <h2>Conversation Closed</h2>
+                <p className="error-message">{error}</p>
+                <div className="error-help">
+                  <p>This conversation is no longer accepting responses. If you need to access it, please contact the organizer.</p>
+                </div>
+              </>
+            )}
+            {!isAccessDenied && !isNotFound && !isClosed && (
+              <>
+                <h2>Unable to Load Conversation</h2>
+                <p className="error-message">{error || 'An error occurred while loading the conversation.'}</p>
+              </>
+            )}
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => {
+                setAccessCode(null);
+                setError('');
+                setAccessCodeValidated(false);
+              }}
+            >
+              Try Another Code
+            </button>
+          </div>
         </div>
       </div>
     );

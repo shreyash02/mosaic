@@ -218,19 +218,36 @@ async def get_conversation_by_code(
     Raises:
         HTTPException: If conversation not found, not active, or access denied
     """
-    # Find conversation by access code
+    # Find conversation by access code (check if it exists first, regardless of state)
     conversation = db.query(Conversation).options(
         joinedload(Conversation.questions)
     ).filter(
-        Conversation.access_code == access_code,
-        Conversation.state == ConversationState.ACTIVE.value
+        Conversation.access_code == access_code
     ).first()
     
     if not conversation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found or not active"
+            detail="Conversation not found. Please check the access code and try again."
         )
+    
+    # Check if conversation is active
+    if conversation.state != ConversationState.ACTIVE.value:
+        if conversation.state == ConversationState.CLOSED.value:
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="This conversation has been closed and is no longer accepting responses."
+            )
+        elif conversation.state == ConversationState.DRAFT.value:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This conversation has not been activated yet."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This conversation is not currently available."
+            )
     
     # Check access based on anonymity level
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
@@ -288,7 +305,7 @@ async def get_conversation_by_code(
             if not invitation:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You must be invited to access this conversation"
+                    detail="This conversation is invite-only. You must be invited by the conversation creator to access it. Please contact the organizer if you believe you should have access."
                 )
             
             # Mark invitation as accepted if not already
