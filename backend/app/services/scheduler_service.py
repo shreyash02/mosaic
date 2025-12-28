@@ -21,9 +21,15 @@ scheduler = AsyncIOScheduler()
 
 
 async def check_scheduled_activations():
-    """Check for conversations that should be activated."""
+    """
+    Check for conversations that should be activated.
+    
+    Note: scheduled_activate_at is stored in UTC in the database.
+    The comparison is done in UTC, so this works correctly regardless of server timezone.
+    """
     db: Session = SessionLocal()
     try:
+        # Compare UTC to UTC (all stored times are in UTC)
         now = datetime.utcnow()
         conversations = db.query(Conversation).filter(
             Conversation.state == ConversationState.DRAFT.value,
@@ -55,9 +61,15 @@ async def check_scheduled_activations():
 
 
 async def check_scheduled_closures():
-    """Check for conversations that should be closed."""
+    """
+    Check for conversations that should be closed.
+    
+    Note: auto_close_at is stored in UTC in the database.
+    The comparison is done in UTC, so this works correctly regardless of server timezone.
+    """
     db: Session = SessionLocal()
     try:
+        # Compare UTC to UTC (all stored times are in UTC)
         now = datetime.utcnow()
         conversations = db.query(Conversation).filter(
             Conversation.state == ConversationState.ACTIVE.value,

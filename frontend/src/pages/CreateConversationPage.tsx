@@ -101,7 +101,9 @@ export default function CreateConversationPage() {
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
         ...(scheduleActivation && scheduledActivateAt && { 
-          scheduled_activate_at: new Date(scheduledActivateAt).toISOString() 
+          // Send datetime string as-is (naive, in format YYYY-MM-DDTHH:mm)
+          // Backend will interpret it in the conversation's timezone
+          scheduled_activate_at: scheduledActivateAt + ':00' // Add seconds to make it valid ISO format
         }),
       });
       

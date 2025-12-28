@@ -18,6 +18,7 @@ from app.models.question import Question
 from app.models.participant_code import ParticipantCode
 from app.models.response import Response
 from app.models.conversation_invitation import ConversationInvitation
+from app.utils.timezone_utils import parse_datetime_with_timezone, convert_local_to_utc
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationUpdate,
@@ -98,6 +99,25 @@ async def create_conversation(
     while db.query(Conversation).filter(Conversation.access_code == access_code).first():
         access_code = generate_access_code()
 
+    # Get conversation timezone
+    conversation_timezone = conversation_data.timezone or "UTC"
+    
+    # Convert scheduled_activate_at from conversation timezone to UTC if provided
+    scheduled_activate_at_utc = None
+    if conversation_data.scheduled_activate_at:
+        scheduled_activate_at_utc = parse_datetime_with_timezone(
+            conversation_data.scheduled_activate_at.isoformat() if isinstance(conversation_data.scheduled_activate_at, datetime) else str(conversation_data.scheduled_activate_at),
+            conversation_timezone
+        )
+    
+    # Convert auto_close_at from conversation timezone to UTC if provided
+    auto_close_at_utc = None
+    if conversation_data.auto_close_at:
+        auto_close_at_utc = parse_datetime_with_timezone(
+            conversation_data.auto_close_at.isoformat() if isinstance(conversation_data.auto_close_at, datetime) else str(conversation_data.auto_close_at),
+            conversation_timezone
+        )
+    
     # Create conversation
     conversation = Conversation(
         creator_id=current_user.id,
@@ -111,11 +131,11 @@ async def create_conversation(
         auto_analyze=conversation_data.auto_analyze,
         max_response_length=conversation_data.max_response_length,
         duration_minutes=conversation_data.duration_minutes,
-        scheduled_activate_at=conversation_data.scheduled_activate_at,
-        auto_close_at=conversation_data.auto_close_at,
+        scheduled_activate_at=scheduled_activate_at_utc,
+        auto_close_at=auto_close_at_utc,
         manual_close_enabled=conversation_data.manual_close_enabled,
         time_extension_enabled=conversation_data.time_extension_enabled,
-        timezone=conversation_data.timezone or "UTC",
+        timezone=conversation_timezone,
         state=ConversationState.DRAFT.value,
     )
 
@@ -506,21 +526,33 @@ async def activate_conversation(
 
     # Check if scheduling activation for future
     if activate_data.scheduled_activate_at:
+        # Convert scheduled time from conversation timezone to UTC for storage
+        conversation_timezone = conversation.timezone or "UTC"
+        scheduled_utc = parse_datetime_with_timezone(
+            activate_data.scheduled_activate_at.isoformat() if isinstance(activate_data.scheduled_activate_at, datetime) else str(activate_data.scheduled_activate_at),
+            conversation_timezone
+        )
+        
         # Validate scheduled time is in the future
-        if activate_data.scheduled_activate_at <= datetime.utcnow():
+        if scheduled_utc <= datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Scheduled activation time must be in the future"
             )
         
-        # Schedule activation
-        conversation.scheduled_activate_at = activate_data.scheduled_activate_at
+        # Schedule activation (store in UTC)
+        conversation.scheduled_activate_at = scheduled_utc
         
         # If duration_minutes is set, calculate auto_close_at based on scheduled time
         if conversation.duration_minutes:
-            conversation.auto_close_at = activate_data.scheduled_activate_at + timedelta(minutes=conversation.duration_minutes)
+            conversation.auto_close_at = scheduled_utc + timedelta(minutes=conversation.duration_minutes)
         elif activate_data.auto_close_at:
-            conversation.auto_close_at = activate_data.auto_close_at
+            # Convert auto_close_at from conversation timezone to UTC
+            auto_close_utc = parse_datetime_with_timezone(
+                activate_data.auto_close_at.isoformat() if isinstance(activate_data.auto_close_at, datetime) else str(activate_data.auto_close_at),
+                conversation_timezone
+            )
+            conversation.auto_close_at = auto_close_utc
     else:
         # Activate immediately
         conversation.state = ConversationState.ACTIVE.value

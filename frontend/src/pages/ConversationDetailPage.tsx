@@ -757,9 +757,9 @@ export default function ConversationDetailPage() {
               <button
                 onClick={() => {
                   if (scheduledActivateAt) {
-                    // Convert local datetime to ISO string
-                    const scheduledDate = new Date(scheduledActivateAt);
-                    handleActivate(scheduledDate.toISOString());
+                    // Send datetime string as-is (naive, in format YYYY-MM-DDTHH:mm)
+                    // Backend will interpret it in the conversation's timezone
+                    handleActivate(scheduledActivateAt + ':00'); // Add seconds to make it valid ISO format
                   } else {
                     handleActivate();
                   }
