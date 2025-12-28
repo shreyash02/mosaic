@@ -145,8 +145,6 @@ export default function CreateConversationPage() {
         {error && <div className="error-message">{error}</div>}
 
         <div className="form-section">
-          <h2>Basic Information</h2>
-
           <div className="form-group">
             <label htmlFor="title">Conversation Title *</label>
             <input
@@ -155,7 +153,7 @@ export default function CreateConversationPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              placeholder="e.g., Q1 Team Feedback Survey"
+              placeholder="e.g., Team retrospective: what’s working & what’s not"
             />
           </div>
 
