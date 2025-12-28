@@ -28,64 +28,175 @@ export function formatResultsAccess(access: ResultsAccess | string): string {
 }
 
 /**
- * Format date to human-friendly format
+ * Get user's locale and timezone from browser
+ */
+function getUserLocale(): string {
+  const locale = navigator.language || 'en-US';
+  console.log('[formatting] getUserLocale:', locale);
+  return locale;
+}
+
+function getUserTimezone(): string | undefined {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log('[formatting] getUserTimezone:', timezone);
+    console.log('[formatting] Intl.DateTimeFormat().resolvedOptions():', Intl.DateTimeFormat().resolvedOptions());
+    return timezone;
+  } catch (error) {
+    console.error('[formatting] Failed to get user timezone:', error);
+    // Fallback if timezone detection fails
+    return undefined;
+  }
+}
+
+/**
+ * Format date to human-friendly format using user's local timezone
  * Examples:
  * - "December 26, 2025 at 10:18 AM"
  * - "Today at 2:30 PM"
  * - "Yesterday at 9:15 AM"
  */
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+  console.log('[formatDate] Input dateString (UTC from backend):', dateString);
+  
+  // Parse the date string (assumes ISO format from backend, which is UTC)
+  // If the string doesn't end with 'Z' or have a timezone offset, treat it as UTC
+  let dateStringToParse = dateString;
+  if (!dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
+    // Backend sends UTC times without 'Z' suffix, so we need to append it
+    // This ensures JavaScript parses it as UTC, not local time
+    dateStringToParse = dateString + 'Z';
+    console.log('[formatDate] Appended Z to treat as UTC:', dateStringToParse);
+  } else {
+    console.log('[formatDate] Date string already has timezone indicator');
+  }
+  
+  const date = new Date(dateStringToParse);
+  console.log('[formatDate] Parsed Date object:', date);
+  console.log('[formatDate] Date.getTime() (UTC milliseconds):', date.getTime());
+  console.log('[formatDate] Date.toISOString() (UTC):', date.toISOString());
+  console.log('[formatDate] Date.toString() (local):', date.toString());
+  
+  // Get current date in user's local timezone
   const now = new Date();
+  const locale = getUserLocale();
+  const timezone = getUserTimezone();
+  
+  console.log('[formatDate] Current time (now):', now.toString());
+  console.log('[formatDate] Using locale:', locale);
+  console.log('[formatDate] Using timezone:', timezone);
+  
+  // Create date objects for comparison (in local timezone)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  console.log('[formatDate] dateOnly (local date only):', dateOnly.toString());
+  console.log('[formatDate] today (local date only):', today.toString());
+
+  // Format options with timezone
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    month: 'long',
+    day: 'numeric',
+    timeZone: timezone,
+  };
+  
+  const dateOptionsWithYear: Intl.DateTimeFormatOptions = {
+    ...dateOptions,
+    year: 'numeric',
+  };
 
   // Check if it's today
   if (dateOnly.getTime() === today.getTime()) {
-    return `Today at ${formatTime(date)}`;
+    return `Today at ${formatTime(date, locale, timezone)}`;
   }
 
   // Check if it's yesterday
   if (dateOnly.getTime() === yesterday.getTime()) {
-    return `Yesterday at ${formatTime(date)}`;
+    return `Yesterday at ${formatTime(date, locale, timezone)}`;
   }
 
   // Check if it's this year
   if (date.getFullYear() === now.getFullYear()) {
-    return `${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} at ${formatTime(date)}`;
+    const dateStr = date.toLocaleDateString(locale, dateOptions);
+    const timeStr = formatTime(date, locale, timezone);
+    console.log('[formatDate] Formatted (this year):', `${dateStr} at ${timeStr}`);
+    return `${dateStr} at ${timeStr}`;
   }
 
   // Full date with year
-  return `${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at ${formatTime(date)}`;
+  const dateStr = date.toLocaleDateString(locale, dateOptionsWithYear);
+  const timeStr = formatTime(date, locale, timezone);
+  console.log('[formatDate] Formatted (with year):', `${dateStr} at ${timeStr}`);
+  return `${dateStr} at ${timeStr}`;
 }
 
 /**
- * Format time to 12-hour format with AM/PM
+ * Format time to 12-hour format with AM/PM using user's local timezone
  */
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', {
+function formatTime(date: Date, locale?: string, timezone?: string): string {
+  const options: Intl.DateTimeFormatOptions = {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  });
+  };
+  
+  if (timezone) {
+    options.timeZone = timezone;
+  }
+  
+  const formatted = date.toLocaleTimeString(locale || getUserLocale(), options);
+  console.log('[formatTime] Input date:', date.toString());
+  console.log('[formatTime] Using locale:', locale || getUserLocale());
+  console.log('[formatTime] Using timezone:', timezone);
+  console.log('[formatTime] Options:', options);
+  console.log('[formatTime] Formatted result:', formatted);
+  
+  return formatted;
 }
 
 /**
- * Format date for display in lists (shorter format)
+ * Format date for display in lists (shorter format) using user's local timezone
  * Examples:
  * - "Dec 26, 2025"
  * - "Today"
  * - "Yesterday"
  */
 export function formatDateShort(dateString: string): string {
-  const date = new Date(dateString);
+  console.log('[formatDateShort] Input dateString (UTC from backend):', dateString);
+  
+  // Parse the date string (assumes ISO format from backend, which is UTC)
+  // If the string doesn't end with 'Z' or have a timezone offset, treat it as UTC
+  let dateStringToParse = dateString;
+  if (!dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
+    // Backend sends UTC times without 'Z' suffix, so we need to append it
+    // This ensures JavaScript parses it as UTC, not local time
+    dateStringToParse = dateString + 'Z';
+    console.log('[formatDateShort] Appended Z to treat as UTC:', dateStringToParse);
+  } else {
+    console.log('[formatDateShort] Date string already has timezone indicator');
+  }
+  
+  const date = new Date(dateStringToParse);
+  console.log('[formatDateShort] Parsed Date object:', date.toString());
+  console.log('[formatDateShort] Date.toISOString() (UTC):', date.toISOString());
+  
   const now = new Date();
+  const locale = getUserLocale();
+  const timezone = getUserTimezone();
+  
+  console.log('[formatDateShort] Using locale:', locale);
+  console.log('[formatDateShort] Using timezone:', timezone);
+  
+  // Create date objects for comparison (in local timezone)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  console.log('[formatDateShort] dateOnly:', dateOnly.toString());
+  console.log('[formatDateShort] today:', today.toString());
 
   if (dateOnly.getTime() === today.getTime()) {
     return 'Today';
@@ -95,11 +206,26 @@ export function formatDateShort(dateString: string): string {
     return 'Yesterday';
   }
 
-  // Check if it's this year
-  if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // Format options with timezone
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+  };
+  
+  if (timezone) {
+    dateOptions.timeZone = timezone;
   }
 
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  // Check if it's this year
+  if (date.getFullYear() === now.getFullYear()) {
+    const formatted = date.toLocaleDateString(locale, dateOptions);
+    console.log('[formatDateShort] Formatted (this year):', formatted);
+    return formatted;
+  }
+
+  // Include year for dates from previous years
+  const formatted = date.toLocaleDateString(locale, { ...dateOptions, year: 'numeric' });
+  console.log('[formatDateShort] Formatted (with year):', formatted);
+  return formatted;
 }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { CodeValidation, Conversation, ResponseItem, ResponseCheck } from '../types';
+import type { CodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
 import { formatAnonymityLevel, formatDate } from '../utils/formatting';
 import { AnonymityLevel } from '../types';
