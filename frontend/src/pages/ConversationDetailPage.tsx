@@ -409,26 +409,37 @@ export default function ConversationDetailPage() {
             </div>
           </div>
 
-          <div className="info-item invitations-section">
-            <label>Invite Users:</label>
-            <div className="invitations-summary">
-              {invitations && invitations.total_invitations > 0 ? (
-                <p style={{ margin: '0.5rem 0', color: '#666' }}>
-                  {invitations.total_invitations} {invitations.total_invitations === 1 ? 'person has' : 'people have'} been invited to respond
-                </p>
-              ) : (
-                <p style={{ margin: '0.5rem 0', color: '#666' }}>
-                  No invitations sent yet
-                </p>
-              )}
-              <Link
-                to={`/conversations/${id}/invitations`}
-                className="btn btn-primary btn-small"
-              >
-                Manage Invitations
-              </Link>
+          {conversation.invite_only ? (
+            <div className="info-item invitations-section">
+              <label>Invite Users:</label>
+              <div className="invitations-summary">
+                {invitations && invitations.total_invitations > 0 ? (
+                  <p style={{ margin: '0.5rem 0', color: '#666' }}>
+                    {invitations.total_invitations} {invitations.total_invitations === 1 ? 'person has' : 'people have'} been invited to respond
+                  </p>
+                ) : (
+                  <p style={{ margin: '0.5rem 0', color: '#666' }}>
+                    No invitations sent yet
+                  </p>
+                )}
+                <Link
+                  to={`/conversations/${id}/invitations`}
+                  className="btn btn-primary btn-small"
+                >
+                  Manage Invitations
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="info-item">
+              <label>Access:</label>
+              <p style={{ margin: '0.5rem 0', color: '#666', fontSize: '0.9rem' }}>
+                {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
+                  ? 'Anyone with a participant code can respond to this conversation.'
+                  : 'Any logged-in user with the link can respond to this conversation.'}
+              </p>
+            </div>
+          )}
 
           <div className="info-item">
             <label>Anonymity Level:</label>
