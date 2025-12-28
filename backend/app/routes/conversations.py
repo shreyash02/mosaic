@@ -820,12 +820,31 @@ async def list_invitations(
     accepted_invitations = sum(1 for inv in invitations if inv.is_accepted)
     pending_invitations = total_invitations - accepted_invitations
 
+    # Build invitation list with response submission status
+    invitation_list = []
+    for inv in invitations:
+        has_submitted = False
+        # Check if the invited user has submitted a response
+        if inv.invited_user_id:
+            # For authenticated users, check by participant_id
+            response = db.query(Response).filter(
+                Response.conversation_id == conversation.id,
+                Response.participant_id == inv.invited_user_id
+            ).first()
+            has_submitted = response is not None
+        
+        # Create invitation schema with response status
+        inv_schema = ConversationInvitationWithUser.model_validate(inv)
+        # Create a copy with the response submission status
+        inv_with_response = inv_schema.model_copy(update={'has_submitted_response': has_submitted})
+        invitation_list.append(inv_with_response)
+
     return InvitationListResponse(
         conversation_id=conversation.id,
         total_invitations=total_invitations,
         accepted_invitations=accepted_invitations,
         pending_invitations=pending_invitations,
-        invitations=[ConversationInvitationWithUser.model_validate(inv) for inv in invitations]
+        invitations=invitation_list
     )
 
 

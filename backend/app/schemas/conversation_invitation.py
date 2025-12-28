@@ -40,6 +40,7 @@ class ConversationInvitationWithUser(ConversationInvitation):
     """Invitation schema with user details."""
 
     invited_user: Optional[UserSchema] = None
+    has_submitted_response: bool = Field(default=False, description="Whether the invited user has submitted a response")
 
 
 class InviteUsersRequest(BaseModel):

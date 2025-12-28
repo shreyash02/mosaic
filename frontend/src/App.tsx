@@ -11,6 +11,7 @@ import DashboardPage from './pages/DashboardPage';
 import CreateConversationPage from './pages/CreateConversationPage';
 import EditConversationPage from './pages/EditConversationPage';
 import ConversationDetailPage from './pages/ConversationDetailPage';
+import ManageInvitationsPage from './pages/ManageInvitationsPage';
 import JoinPage from './pages/JoinPage';
 import AnalysisPage from './pages/AnalysisPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
@@ -64,6 +65,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ConversationDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations/:id/invitations"
+              element={
+                <ProtectedRoute>
+                  <ManageInvitationsPage />
                 </ProtectedRoute>
               }
             />

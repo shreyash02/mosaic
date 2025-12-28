@@ -214,6 +214,7 @@ export interface ConversationInvitation {
   created_at: string;
   expires_at?: string;
   invited_user?: User;
+  has_submitted_response?: boolean;
 }
 
 export interface InviteUsersRequest {
