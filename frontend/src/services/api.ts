@@ -10,6 +10,7 @@ import type {
   ResponseSubmit,
   ResponseWithQuestion,
   ResponseStats,
+  ResponseCheck,
   Analysis,
   SuccessResponse,
   CodeValidation,
@@ -203,6 +204,13 @@ class ApiService {
     const response = await this.client.get<Conversation>(
       `/conversations/by-code/${accessCode}`,
       config
+    );
+    return response.data;
+  }
+
+  async checkUserResponse(accessCode: string): Promise<ResponseCheck> {
+    const response = await this.client.get<ResponseCheck>(
+      `/conversations/${accessCode}/responses/check`
     );
     return response.data;
   }

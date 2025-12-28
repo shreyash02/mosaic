@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { CodeValidation, Conversation, ResponseItem } from '../types';
+import type { CodeValidation, Conversation, ResponseItem, ResponseCheck } from '../types';
 import { LockIcon } from '../components/icons';
 import { formatAnonymityLevel, formatDate } from '../utils/formatting';
 import { AnonymityLevel } from '../types';
@@ -29,6 +29,8 @@ export default function JoinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [hasAlreadySubmitted, setHasAlreadySubmitted] = useState(false);
+  const [alreadySubmittedMessage, setAlreadySubmittedMessage] = useState('');
 
   // Step 1: Validate access code when available
   useEffect(() => {
@@ -110,6 +112,22 @@ export default function JoinPage() {
     try {
       const convData = await api.getConversationByCode(accessCode!, sessionToken || undefined);
       setConversation(convData);
+
+      // For authenticated conversations (platform_tracked/revealable), check if user has already submitted
+      if (convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS) {
+        try {
+          const responseCheck = await api.checkUserResponse(accessCode!);
+          if (responseCheck.has_submitted) {
+            setHasAlreadySubmitted(true);
+            setAlreadySubmittedMessage(responseCheck.message || 'Your responses have been recorded. You can only submit once');
+            setLoading(false);
+            return;
+          }
+        } catch (checkErr: any) {
+          // If check fails (e.g., user not authenticated), continue normally
+          // The form submission will handle the error
+        }
+      }
 
       if (convData.questions) {
         setResponses(
@@ -295,6 +313,24 @@ export default function JoinPage() {
           <p className="success-note">
             Your feedback is anonymous and will help improve the conversation.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if user has already submitted (for authenticated users only)
+  if (hasAlreadySubmitted && conversation) {
+    return (
+      <div className="join-page">
+        <div className="join-container">
+          <header className="join-header">
+            <h1>{conversation.title}</h1>
+            {conversation.description && <p className="description">{conversation.description}</p>}
+          </header>
+          <div className="success-state">
+            <h2>Response Already Submitted</h2>
+            <p>{alreadySubmittedMessage}</p>
+          </div>
         </div>
       </div>
     );

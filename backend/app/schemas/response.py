@@ -69,3 +69,11 @@ class ResponseList(BaseModel):
     conversation_id: UUID
     total_count: int
     responses: List[ResponseWithQuestion]
+
+
+# Response check for authenticated users
+class ResponseCheck(BaseModel):
+    """Schema for checking if user has already submitted a response."""
+
+    has_submitted: bool
+    message: Optional[str] = None

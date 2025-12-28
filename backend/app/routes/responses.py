@@ -21,6 +21,7 @@ from app.schemas.response import (
     ResponseWithQuestion,
     ResponseList,
     ResponseStats,
+    ResponseCheck,
 )
 from app.schemas.participant_code import CodeValidation
 from app.schemas.common import SuccessResponse
@@ -135,6 +136,69 @@ async def validate_participant_code(
         message="Valid participant code",
         requires_participant_code=False,
         session_token=session_token
+    )
+
+
+@router.get("/conversations/{access_code}/responses/check", response_model=ResponseCheck)
+async def check_user_response(
+    access_code: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Check if the current authenticated user has already submitted a response.
+    
+    This endpoint is only for platform_tracked and revealable conversations.
+    For fully_anonymous conversations, this check is not applicable.
+    
+    Args:
+        access_code: Conversation access code
+        db: Database session
+        current_user: Optional authenticated user
+        
+    Returns:
+        ResponseCheck indicating if user has already submitted
+    """
+    # Find conversation by access code
+    conversation = db.query(Conversation).filter(
+        Conversation.access_code == access_code
+    ).first()
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Only check for platform_tracked and revealable conversations
+    if conversation.anonymity_level not in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
+        return ResponseCheck(
+            has_submitted=False,
+            message="Response check is only available for authenticated conversations"
+        )
+    
+    # Must be authenticated for this check
+    if not current_user:
+        return ResponseCheck(
+            has_submitted=False,
+            message="Authentication required"
+        )
+    
+    # Check if user already responded
+    existing_response = db.query(Response).filter(
+        Response.conversation_id == conversation.id,
+        Response.participant_id == current_user.id
+    ).first()
+    
+    if existing_response:
+        return ResponseCheck(
+            has_submitted=True,
+            message="Your responses have been recorded. You can only submit once"
+        )
+    
+    return ResponseCheck(
+        has_submitted=False,
+        message=None
     )
 
 

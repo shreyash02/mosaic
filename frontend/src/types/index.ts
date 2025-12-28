@@ -147,6 +147,11 @@ export interface ResponseStats {
   response_rate?: number;
 }
 
+export interface ResponseCheck {
+  has_submitted: boolean;
+  message?: string;
+}
+
 // Analysis types
 export interface SentimentCluster {
   sentiment: string;
