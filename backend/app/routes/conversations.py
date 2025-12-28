@@ -111,6 +111,7 @@ async def create_conversation(
         auto_analyze=conversation_data.auto_analyze,
         max_response_length=conversation_data.max_response_length,
         duration_minutes=conversation_data.duration_minutes,
+        scheduled_activate_at=conversation_data.scheduled_activate_at,
         auto_close_at=conversation_data.auto_close_at,
         manual_close_enabled=conversation_data.manual_close_enabled,
         time_extension_enabled=conversation_data.time_extension_enabled,
@@ -480,15 +481,17 @@ async def activate_conversation(
 ):
     """
     Activate a conversation (move from draft to active).
+    
+    Can activate immediately or schedule activation for a future time.
 
     Args:
         conversation_id: Conversation ID
-        activate_data: Activation data (optional auto_close_at)
+        activate_data: Activation data (optional auto_close_at, optional scheduled_activate_at)
         current_user: Current authenticated user
         db: Database session
 
     Returns:
-        Activated conversation
+        Activated conversation (or conversation with scheduled activation time set)
 
     Raises:
         HTTPException: If conversation is not in draft state
@@ -501,15 +504,35 @@ async def activate_conversation(
             detail="Can only activate conversations in draft state"
         )
 
-    conversation.state = ConversationState.ACTIVE.value
-    conversation.activated_at = datetime.utcnow()
+    # Check if scheduling activation for future
+    if activate_data.scheduled_activate_at:
+        # Validate scheduled time is in the future
+        if activate_data.scheduled_activate_at <= datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Scheduled activation time must be in the future"
+            )
+        
+        # Schedule activation
+        conversation.scheduled_activate_at = activate_data.scheduled_activate_at
+        
+        # If duration_minutes is set, calculate auto_close_at based on scheduled time
+        if conversation.duration_minutes:
+            conversation.auto_close_at = activate_data.scheduled_activate_at + timedelta(minutes=conversation.duration_minutes)
+        elif activate_data.auto_close_at:
+            conversation.auto_close_at = activate_data.auto_close_at
+    else:
+        # Activate immediately
+        conversation.state = ConversationState.ACTIVE.value
+        conversation.activated_at = datetime.utcnow()
+        conversation.scheduled_activate_at = None  # Clear any previously scheduled time
 
-    # Calculate auto_close_at from duration_minutes if set
-    if conversation.duration_minutes:
-        conversation.auto_close_at = conversation.activated_at + timedelta(minutes=conversation.duration_minutes)
-    elif activate_data.auto_close_at:
-        # Allow override via activation endpoint if duration_minutes is not set
-        conversation.auto_close_at = activate_data.auto_close_at
+        # Calculate auto_close_at from duration_minutes if set
+        if conversation.duration_minutes:
+            conversation.auto_close_at = conversation.activated_at + timedelta(minutes=conversation.duration_minutes)
+        elif activate_data.auto_close_at:
+            # Allow override via activation endpoint if duration_minutes is not set
+            conversation.auto_close_at = activate_data.auto_close_at
 
     db.commit()
     db.refresh(conversation)

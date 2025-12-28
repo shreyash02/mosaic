@@ -80,6 +80,7 @@ class ConversationBase(BaseModel):
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
+    scheduled_activate_at: Optional[datetime] = Field(None, description="Scheduled activation time - conversation will be activated automatically at this time")
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: bool = True
     time_extension_enabled: bool = True
@@ -104,6 +105,7 @@ class ConversationUpdate(BaseModel):
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
+    scheduled_activate_at: Optional[datetime] = Field(None, description="Scheduled activation time - conversation will be activated automatically at this time")
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: Optional[bool] = None
     time_extension_enabled: Optional[bool] = None
@@ -142,6 +144,7 @@ class ActivateConversation(BaseModel):
     """Schema for activating a conversation."""
 
     auto_close_at: Optional[datetime] = None
+    scheduled_activate_at: Optional[datetime] = Field(None, description="Schedule activation for a future time instead of activating immediately")
 
 
 class ExtendConversation(BaseModel):

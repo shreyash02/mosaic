@@ -32,6 +32,8 @@ export default function ConversationDetailPage() {
   const [showLargeModeModal, setShowLargeModeModal] = useState(false);
   const [largeModeCodes, setLargeModeCodes] = useState<string[]>([]);
   const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [scheduledActivateAt, setScheduledActivateAt] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -67,11 +69,13 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const handleActivate = async () => {
+  const handleActivate = async (scheduledTime?: string) => {
     setActionLoading(true);
     try {
-      const updated = await api.activateConversation(id!);
+      const updated = await api.activateConversation(id!, undefined, scheduledTime);
       setConversation(updated);
+      setShowActivateModal(false);
+      setScheduledActivateAt('');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to activate conversation');
     } finally {
@@ -332,7 +336,7 @@ export default function ConversationDetailPage() {
                   Edit
                 </Link>
                 <button
-                  onClick={handleActivate}
+                  onClick={() => setShowActivateModal(true)}
                   className="btn btn-primary btn-small"
                   disabled={actionLoading}
                 >
@@ -468,6 +472,13 @@ export default function ConversationDetailPage() {
             <label>Created:</label>
             <span>{formatDate(conversation.created_at, conversation.timezone)}</span>
           </div>
+
+          {conversation.scheduled_activate_at && conversation.state === ConversationState.DRAFT && (
+            <div className="info-item">
+              <label>Scheduled Activation:</label>
+              <span>{formatDate(conversation.scheduled_activate_at, conversation.timezone)}</span>
+            </div>
+          )}
 
           {conversation.activated_at && (
             <div className="info-item">
@@ -667,6 +678,96 @@ export default function ConversationDetailPage() {
                 disabled={actionLoading}
               >
                 {actionLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activate Conversation Modal */}
+      {showActivateModal && (
+        <div className="modal-overlay" onClick={() => setShowActivateModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Activate Conversation</h2>
+            <p>Choose when to activate this conversation:</p>
+            
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label htmlFor="activate-now">
+                <input
+                  type="radio"
+                  id="activate-now"
+                  name="activate-time"
+                  value="now"
+                  checked={!scheduledActivateAt}
+                  onChange={() => setScheduledActivateAt('')}
+                />
+                <span style={{ marginLeft: '8px' }}>Activate immediately</span>
+              </label>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '15px' }}>
+              <label htmlFor="activate-scheduled">
+                <input
+                  type="radio"
+                  id="activate-scheduled"
+                  name="activate-time"
+                  value="scheduled"
+                  checked={!!scheduledActivateAt}
+                  onChange={() => {
+                    // Set default to 1 hour from now
+                    const defaultTime = new Date();
+                    defaultTime.setHours(defaultTime.getHours() + 1);
+                    setScheduledActivateAt(defaultTime.toISOString().slice(0, 16));
+                  }}
+                />
+                <span style={{ marginLeft: '8px' }}>Schedule activation</span>
+              </label>
+              
+              {scheduledActivateAt && (
+                <input
+                  type="datetime-local"
+                  value={scheduledActivateAt}
+                  onChange={(e) => setScheduledActivateAt(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  style={{
+                    marginTop: '10px',
+                    width: '100%',
+                    padding: '8px',
+                    fontSize: '14px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                  }}
+                />
+              )}
+            </div>
+
+            {error && <div className="error-message" style={{ marginTop: '15px' }}>{error}</div>}
+
+            <div className="modal-actions" style={{ marginTop: '20px' }}>
+              <button
+                onClick={() => {
+                  setShowActivateModal(false);
+                  setScheduledActivateAt('');
+                  setError('');
+                }}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (scheduledActivateAt) {
+                    // Convert local datetime to ISO string
+                    const scheduledDate = new Date(scheduledActivateAt);
+                    handleActivate(scheduledDate.toISOString());
+                  } else {
+                    handleActivate();
+                  }
+                }}
+                className="btn btn-primary"
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Activating...' : scheduledActivateAt ? 'Schedule Activation' : 'Activate Now'}
               </button>
             </div>
           </div>

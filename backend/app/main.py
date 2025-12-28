@@ -1,5 +1,6 @@
 """Main FastAPI application."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,11 +13,23 @@ import os
 
 from app.core.config import settings
 from app.routes import auth, conversations, responses, analysis, organizations, admin
+from app.services.scheduler_service import start_scheduler, shutdown_scheduler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup
+    start_scheduler()
+    yield
+    # Shutdown
+    shutdown_scheduler()
 
 app = FastAPI(
     title="Mosaic API",
     description="Collection of anonymous opinions or responses to questions/polls with LLM-powered insights",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # CORS middleware - only needed if you have external API calls

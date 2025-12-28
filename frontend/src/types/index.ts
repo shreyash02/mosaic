@@ -75,6 +75,7 @@ export interface Conversation {
   auto_analyze: boolean;
   max_response_length: number;
   duration_minutes?: number;
+  scheduled_activate_at?: string;
   auto_close_at?: string;
   manual_close_enabled: boolean;
   time_extension_enabled: boolean;
@@ -97,6 +98,7 @@ export interface ConversationCreate {
   auto_analyze?: boolean;
   max_response_length?: number;
   duration_minutes?: number;
+  scheduled_activate_at?: string;
   auto_close_at?: string;
   manual_close_enabled?: boolean;
   time_extension_enabled?: boolean;

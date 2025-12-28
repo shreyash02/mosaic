@@ -152,9 +152,10 @@ class ApiService {
     return response.data;
   }
 
-  async activateConversation(id: string, autoCloseAt?: string): Promise<Conversation> {
+  async activateConversation(id: string, autoCloseAt?: string, scheduledActivateAt?: string): Promise<Conversation> {
     const response = await this.client.post<Conversation>(`/conversations/${id}/activate`, {
       auto_close_at: autoCloseAt,
+      scheduled_activate_at: scheduledActivateAt,
     });
     return response.data;
   }

@@ -45,6 +45,8 @@ class Conversation(Base):
     # Timing
     duration_minutes = Column(Integer, nullable=True)
     # Duration in minutes for which the conversation should remain open after activation
+    scheduled_activate_at = Column(DateTime, nullable=True)
+    # Scheduled activation time - conversation will be activated automatically at this time
     auto_close_at = Column(DateTime, nullable=True)
     manual_close_enabled = Column(Boolean, default=True, nullable=False)
     time_extension_enabled = Column(Boolean, default=True, nullable=False)

@@ -21,6 +21,8 @@ export default function CreateConversationPage() {
   ]);
   const [durationHours, setDurationHours] = useState<number>(48);
   const [durationMinutes, setDurationMinutes] = useState<number>(0);
+  const [scheduleActivation, setScheduleActivation] = useState(false);
+  const [scheduledActivateAt, setScheduledActivateAt] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -65,6 +67,16 @@ export default function CreateConversationPage() {
       return;
     }
 
+    // Validate scheduled activation time if provided
+    if (scheduleActivation && scheduledActivateAt) {
+      const scheduledDate = new Date(scheduledActivateAt);
+      const now = new Date();
+      if (scheduledDate <= now) {
+        setError('Scheduled activation time must be in the future');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -88,6 +100,9 @@ export default function CreateConversationPage() {
         timezone: userTimezone,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
+        ...(scheduleActivation && scheduledActivateAt && { 
+          scheduled_activate_at: new Date(scheduledActivateAt).toISOString() 
+        }),
       });
       
       // If invite-only is enabled and emails are provided, invite those users
@@ -229,13 +244,56 @@ export default function CreateConversationPage() {
         </div>
 
         <div className="form-section">
-          <h2>Duration Settings</h2>
-          <p className="form-help-text">
-            How long should this conversation remain open for responses after activation?
-          </p>
+          <h2>Timing Settings</h2>
+
+          <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
+            <label htmlFor="scheduleActivation">
+              <input
+                id="scheduleActivation"
+                type="checkbox"
+                checked={scheduleActivation}
+                onChange={(e) => {
+                  setScheduleActivation(e.target.checked);
+                  if (e.target.checked) {
+                    // Set default to 1 hour from now
+                    const defaultTime = new Date();
+                    defaultTime.setHours(defaultTime.getHours() + 1);
+                    setScheduledActivateAt(defaultTime.toISOString().slice(0, 16));
+                  } else {
+                    setScheduledActivateAt('');
+                  }
+                }}
+              />
+              <span>Schedule activation for a future date and time</span>
+            </label>
+            <p className="form-help-text">
+              If enabled, the conversation will be automatically activated at the specified time.
+              Otherwise, you can activate it manually after creation.
+            </p>
+          </div>
+
+          {scheduleActivation && (
+            <div className="form-group">
+              <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
+              <input
+                id="scheduledActivateAt"
+                type="datetime-local"
+                value={scheduledActivateAt}
+                onChange={(e) => setScheduledActivateAt(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+                required={scheduleActivation}
+              />
+              <p className="form-help-text">
+                The conversation will be automatically activated at this time. Make sure the time is in the future.
+              </p>
+            </div>
+          )}
 
           <div className="form-group">
-            <label htmlFor="durationHours">Duration</label>
+            <label htmlFor="durationHours">Duration After Activation</label>
+            <p className="form-help-text" style={{ marginBottom: '10px' }}>
+              How long should this conversation remain open for responses after activation?
+            </p>
             <div className="duration-inputs">
               <div className="duration-input-group">
                 <input
@@ -269,7 +327,7 @@ export default function CreateConversationPage() {
               </div>
             </div>
             <p className="form-help-text">
-              Maximum duration is 48 hours.
+              Maximum duration is 48 hours. The conversation will automatically close after this duration.
             </p>
           </div>
         </div>
@@ -335,3 +393,4 @@ export default function CreateConversationPage() {
     </div>
   );
 }
+
