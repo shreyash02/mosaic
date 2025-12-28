@@ -76,6 +76,7 @@ class ConversationBase(BaseModel):
     description: Optional[str] = None
     anonymity_level: AnonymityLevel
     results_access: ResultsAccess
+    invite_only: bool = False
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
@@ -98,6 +99,7 @@ class ConversationUpdate(BaseModel):
     description: Optional[str] = None
     anonymity_level: Optional[AnonymityLevel] = None
     results_access: Optional[ResultsAccess] = None
+    invite_only: Optional[bool] = None
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)

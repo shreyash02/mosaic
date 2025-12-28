@@ -69,6 +69,7 @@ export interface Conversation {
   description?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
+  invite_only: boolean;
   access_code: string;
   state: ConversationState;
   auto_analyze: boolean;
@@ -90,6 +91,7 @@ export interface ConversationCreate {
   description?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
+  invite_only?: boolean;
   questions: QuestionCreate[];
   auto_analyze?: boolean;
   max_response_length?: number;

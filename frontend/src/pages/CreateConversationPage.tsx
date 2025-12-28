@@ -14,6 +14,7 @@ export default function CreateConversationPage() {
   const [resultsAccess, setResultsAccess] = useState<ResultsAccess>(
     ResultsAccess.PUBLIC_LINK
   );
+  const [inviteOnly, setInviteOnly] = useState(false);
   const [questions, setQuestions] = useState<QuestionCreate[]>([
     { question_text: '', question_order: 0 },
   ]);
@@ -68,6 +69,7 @@ export default function CreateConversationPage() {
         description,
         anonymity_level: anonymityLevel,
         results_access: resultsAccess,
+        invite_only: inviteOnly,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
       });
@@ -156,6 +158,21 @@ export default function CreateConversationPage() {
                 Invite Code Holders - Only participants can view results
               </option>
             </select>
+          </div>
+
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={inviteOnly}
+                onChange={(e) => setInviteOnly(e.target.checked)}
+              />
+              <span>Invite-only mode - Only invited users can access this conversation</span>
+            </label>
+            <p className="form-help-text">
+              When enabled, only users who have been invited by email can view and submit responses.
+              For fully anonymous conversations, participant codes must be distributed only to invited users.
+            </p>
           </div>
         </div>
 

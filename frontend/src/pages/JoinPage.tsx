@@ -141,6 +141,9 @@ export default function JoinPage() {
       if (err.response?.status === 401) {
         // For non-fully-anonymous, redirect to login
         navigate(`/login?redirect=/join/${accessCode}`);
+      } else if (err.response?.status === 403) {
+        // Access denied - likely invite-only mode
+        setError(err.response?.data?.detail || 'You must be invited to access this conversation');
       } else {
         setError(err.response?.data?.detail || 'Failed to load conversation');
       }
@@ -174,7 +177,11 @@ export default function JoinPage() {
       await api.submitResponse(accessCode!, submitData);
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to submit response');
+      if (err.response?.status === 403) {
+        setError(err.response?.data?.detail || 'You must be invited to submit a response to this conversation');
+      } else {
+        setError(err.response?.data?.detail || 'Failed to submit response');
+      }
     } finally {
       setSubmitting(false);
     }

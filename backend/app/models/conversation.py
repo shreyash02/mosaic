@@ -36,6 +36,9 @@ class Conversation(Base):
     results_access = Column(String(50), nullable=False)
     # 'invite_code_holders', 'public_link'
 
+    invite_only = Column(Boolean, default=False, nullable=False)
+    # if true, only invited users can access the conversation
+
     auto_analyze = Column(Boolean, default=False, nullable=False)
     # if true, trigger analysis automatically when conversation closes
 

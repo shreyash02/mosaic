@@ -246,6 +246,22 @@ async def get_conversation_by_code(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Session token does not match conversation"
             )
+        
+        # If invite_only is enabled, verify that invitations exist
+        # For fully_anonymous, we trust that participant codes are distributed only to invited users
+        if conversation.invite_only:
+            # Check if any invitations exist for this conversation
+            has_invitations = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id
+            ).first()
+            
+            if not has_invitations:
+                # If invite_only is enabled but no invitations exist, this is a configuration error
+                # But we'll still allow access to prevent breaking existing conversations
+                pass
+            # Note: For fully_anonymous, we can't directly link participant codes to invitations
+            # since participant codes don't have emails. The facilitator must distribute
+            # participant codes only to invited users.
     else:
         # For platform_tracked/revealable, require authentication
         if not current_user:
@@ -254,27 +270,42 @@ async def get_conversation_by_code(
                 detail="Authentication required for this conversation type"
             )
         
-        # Check if user was invited (optional - invitations are optional, not required)
-        # If there are any invitations for this conversation, check if user is invited
-        has_invitations = db.query(ConversationInvitation).filter(
-            ConversationInvitation.conversation_id == conversation.id
-        ).first()
-        
-        if has_invitations:
-            # Check if this user was invited
+        # If invite_only is enabled, check if user was invited
+        if conversation.invite_only:
             invitation = db.query(ConversationInvitation).filter(
                 ConversationInvitation.conversation_id == conversation.id,
                 ConversationInvitation.invited_user_id == current_user.id
             ).first()
             
-            if invitation:
-                # Mark invitation as accepted if not already
-                if not invitation.is_accepted:
-                    invitation.is_accepted = True
-                    invitation.accepted_at = datetime.utcnow()
-                    db.commit()
-            # Note: We don't block access if not invited - invitations are optional
-            # The link can still work for any logged-in user
+            # Also check by email in case user doesn't have an account yet
+            if not invitation:
+                invitation = db.query(ConversationInvitation).filter(
+                    ConversationInvitation.conversation_id == conversation.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                ).first()
+            
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You must be invited to access this conversation"
+                )
+            
+            # Mark invitation as accepted if not already
+            if not invitation.is_accepted:
+                invitation.is_accepted = True
+                invitation.accepted_at = datetime.utcnow()
+                db.commit()
+        else:
+            # If not invite_only, still track invitation acceptance if user was invited
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                ConversationInvitation.invited_user_id == current_user.id
+            ).first()
+            
+            if invitation and not invitation.is_accepted:
+                invitation.is_accepted = True
+                invitation.accepted_at = datetime.utcnow()
+                db.commit()
     
     return conversation
 

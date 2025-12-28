@@ -15,6 +15,7 @@ from app.models.conversation import Conversation
 from app.models.question import Question
 from app.models.response import Response
 from app.models.participant_code import ParticipantCode
+from app.models.conversation_invitation import ConversationInvitation
 from app.schemas.response import (
     ResponseSubmit,
     Response as ResponseSchema,
@@ -295,6 +296,22 @@ async def submit_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This participant code has already been used"
             )
+        
+        # If invite_only is enabled, verify that invitations exist
+        # For fully_anonymous, we trust that participant codes are distributed only to invited users
+        if conversation.invite_only:
+            # Check if any invitations exist for this conversation
+            has_invitations = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id
+            ).first()
+            
+            if not has_invitations:
+                # If invite_only is enabled but no invitations exist, this is a configuration error
+                # But we'll still allow access to prevent breaking existing conversations
+                pass
+            # Note: For fully_anonymous, we can't directly link participant codes to invitations
+            # since participant codes don't have emails. The facilitator must distribute
+            # participant codes only to invited users.
 
     elif conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
         # Must be authenticated
@@ -303,6 +320,26 @@ async def submit_response(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required for this conversation type"
             )
+
+        # If invite_only is enabled, check if user was invited
+        if conversation.invite_only:
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                ConversationInvitation.invited_user_id == current_user.id
+            ).first()
+            
+            # Also check by email in case user doesn't have an account yet
+            if not invitation:
+                invitation = db.query(ConversationInvitation).filter(
+                    ConversationInvitation.conversation_id == conversation.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                ).first()
+            
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You must be invited to submit a response to this conversation"
+                )
 
         # Check if user already responded
         existing_response = db.query(Response).filter(
