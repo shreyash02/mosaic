@@ -20,6 +20,7 @@ from app.models import (
     Analysis,
     ParticipantCode,
     ConversationInvitation,
+    Admin,
 )
 
 # this is the Alembic Config object

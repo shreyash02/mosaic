@@ -16,6 +16,9 @@ import JoinPage from './pages/JoinPage';
 import AnalysisPage from './pages/AnalysisPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import AdminPortalPage from './pages/AdminPortalPage';
+import AdminUserDetailPage from './pages/AdminUserDetailPage';
+import AdminConversationDetailPage from './pages/AdminConversationDetailPage';
 
 import './App.css';
 
@@ -89,6 +92,9 @@ function App() {
 
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/adminportal" element={<AdminPortalPage />} />
+            <Route path="/adminportal/user/:id" element={<AdminUserDetailPage />} />
+            <Route path="/adminportal/conversation/:id" element={<AdminConversationDetailPage />} />
           </Routes>
         </div>
       </Router>

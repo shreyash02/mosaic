@@ -11,7 +11,7 @@ from starlette.responses import Response as StarletteResponse
 import os
 
 from app.core.config import settings
-from app.routes import auth, conversations, responses, analysis, organizations
+from app.routes import auth, conversations, responses, analysis, organizations, admin
 
 app = FastAPI(
     title="Mosaic API",
@@ -35,6 +35,7 @@ app.include_router(conversations.router, prefix="/api/conversations", tags=["con
 app.include_router(responses.router, prefix="/api", tags=["responses"])
 app.include_router(analysis.router, prefix="/api", tags=["analysis"])
 app.include_router(organizations.router, prefix="/api/organizations", tags=["organizations"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 
 @app.get("/health")

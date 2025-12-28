@@ -16,6 +16,11 @@ import type {
   CodeValidation,
   InviteUsersResponse,
   InvitationListResponse,
+  AdminLoginRequest,
+  AdminToken,
+  AdminUserInfo,
+  AdminConversationInfo,
+  AdminResponseInfo,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -270,6 +275,44 @@ class ApiService {
   async deleteInvitation(conversationId: string, invitationId: string): Promise<SuccessResponse> {
     const response = await this.client.delete<SuccessResponse>(
       `/conversations/${conversationId}/invitations/${invitationId}`
+    );
+    return response.data;
+  }
+
+  // Admin endpoints
+  async adminLogin(data: AdminLoginRequest): Promise<AdminToken> {
+    const response = await this.client.post<AdminToken>('/admin/login', data);
+    return response.data;
+  }
+
+  async adminListUsers(email?: string, first_name?: string): Promise<AdminUserInfo[]> {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (first_name) params.append('first_name', first_name);
+    const query = params.toString();
+    const response = await this.client.get<AdminUserInfo[]>(
+      `/admin/users${query ? `?${query}` : ''}`
+    );
+    return response.data;
+  }
+
+  async adminListConversations(creator_id?: string): Promise<AdminConversationInfo[]> {
+    const params = new URLSearchParams();
+    if (creator_id) params.append('creator_id', creator_id);
+    const query = params.toString();
+    const response = await this.client.get<AdminConversationInfo[]>(
+      `/admin/conversations${query ? `?${query}` : ''}`
+    );
+    return response.data;
+  }
+
+  async adminListResponses(user_id?: string, conversation_id?: string): Promise<AdminResponseInfo[]> {
+    const params = new URLSearchParams();
+    if (user_id) params.append('user_id', user_id);
+    if (conversation_id) params.append('conversation_id', conversation_id);
+    const query = params.toString();
+    const response = await this.client.get<AdminResponseInfo[]>(
+      `/admin/responses${query ? `?${query}` : ''}`
     );
     return response.data;
   }

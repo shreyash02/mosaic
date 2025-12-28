@@ -234,3 +234,43 @@ export interface InvitationListResponse {
   pending_invitations: number;
   invitations: ConversationInvitation[];
 }
+
+// Admin types
+export interface AdminLoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface AdminToken {
+  access_token: string;
+  token_type: string;
+}
+
+export interface AdminUserInfo {
+  id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminConversationInfo {
+  id: string;
+  title: string;
+  description: string | null;
+  creator_id: string;
+  state: string;
+  access_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminResponseInfo {
+  id: string;
+  conversation_id: string;
+  question_id: string;
+  participant_id: string | null;
+  response_text: string | null;
+  anonymity_level: string;
+  submitted_at: string;
+}

@@ -8,6 +8,7 @@ from app.models.response import Response
 from app.models.analysis import Analysis
 from app.models.participant_code import ParticipantCode
 from app.models.conversation_invitation import ConversationInvitation
+from app.models.admin import Admin
 
 __all__ = [
     "User",
@@ -19,4 +20,5 @@ __all__ = [
     "Analysis",
     "ParticipantCode",
     "ConversationInvitation",
+    "Admin",
 ]
