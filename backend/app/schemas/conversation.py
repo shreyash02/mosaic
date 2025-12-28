@@ -83,6 +83,7 @@ class ConversationBase(BaseModel):
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: bool = True
     time_extension_enabled: bool = True
+    timezone: Optional[str] = Field(default="UTC", description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
 
 
 class ConversationCreate(ConversationBase):
@@ -106,6 +107,7 @@ class ConversationUpdate(BaseModel):
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: Optional[bool] = None
     time_extension_enabled: Optional[bool] = None
+    timezone: Optional[str] = Field(None, description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
     questions: Optional[List[QuestionCreate]] = None
 
 
@@ -122,6 +124,7 @@ class Conversation(ConversationBase):
     analyzed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
 
     model_config = {"from_attributes": True}
 
@@ -166,5 +169,6 @@ class ConversationListItem(BaseModel):
     activated_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
     response_count: Optional[int] = 0
+    timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
 
     model_config = {"from_attributes": True}

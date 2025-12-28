@@ -96,9 +96,9 @@ export default function DashboardPage() {
                     <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
                   </div>
                   <div className="conversation-meta">
-                    <span>Created: {formatDateShort(conversation.created_at)}</span>
+                    <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
                     {conversation.activated_at && (
-                      <span>Activated: {formatDateShort(conversation.activated_at)}</span>
+                      <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
                     )}
                   </div>
                 </div>

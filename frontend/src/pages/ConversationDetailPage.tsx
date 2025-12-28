@@ -550,20 +550,20 @@ export default function ConversationDetailPage() {
 
           <div className="info-item">
             <label>Created:</label>
-            <span>{formatDate(conversation.created_at)}</span>
+            <span>{formatDate(conversation.created_at, conversation.timezone)}</span>
           </div>
 
           {conversation.activated_at && (
             <div className="info-item">
               <label>Activated:</label>
-              <span>{formatDate(conversation.activated_at)}</span>
+              <span>{formatDate(conversation.activated_at, conversation.timezone)}</span>
             </div>
           )}
 
           {conversation.closed_at && (
             <div className="info-item">
               <label>Closed:</label>
-              <span>{formatDate(conversation.closed_at)}</span>
+              <span>{formatDate(conversation.closed_at, conversation.timezone)}</span>
             </div>
           )}
 

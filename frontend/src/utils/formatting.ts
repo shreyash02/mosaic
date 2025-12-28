@@ -55,9 +55,13 @@ function getUserTimezone(): string | undefined {
  * - "December 26, 2025 at 10:18 AM"
  * - "Today at 2:30 PM"
  * - "Yesterday at 9:15 AM"
+ * 
+ * @param dateString - ISO date string from backend (assumed UTC if no timezone)
+ * @param backendTimezone - Optional timezone from backend (IANA timezone name, e.g., "UTC", "America/New_York")
  */
-export function formatDate(dateString: string): string {
-  console.log('[formatDate] Input dateString (UTC from backend):', dateString);
+export function formatDate(dateString: string, backendTimezone?: string): string {
+  console.log('[formatDate] Input dateString (from backend):', dateString);
+  console.log('[formatDate] Backend timezone:', backendTimezone || 'not provided (assuming UTC)');
   
   // Parse the date string (assumes ISO format from backend, which is UTC)
   // If the string doesn't end with 'Z' or have a timezone offset, treat it as UTC
@@ -80,11 +84,13 @@ export function formatDate(dateString: string): string {
   // Get current date in user's local timezone
   const now = new Date();
   const locale = getUserLocale();
-  const timezone = getUserTimezone();
+  // Always use user's local timezone for display (backend timezone is only for parsing context)
+  const displayTimezone = getUserTimezone();
   
   console.log('[formatDate] Current time (now):', now.toString());
   console.log('[formatDate] Using locale:', locale);
-  console.log('[formatDate] Using timezone:', timezone);
+  console.log('[formatDate] Backend timezone (for reference):', backendTimezone || 'not provided');
+  console.log('[formatDate] Display timezone (user local):', displayTimezone);
   
   // Create date objects for comparison (in local timezone)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -95,11 +101,12 @@ export function formatDate(dateString: string): string {
   console.log('[formatDate] dateOnly (local date only):', dateOnly.toString());
   console.log('[formatDate] today (local date only):', today.toString());
 
-  // Format options with timezone
+  // Format options - don't specify timeZone, let it use user's local timezone automatically
+  // The date is already parsed correctly (as UTC), so formatting will automatically convert to local time
   const dateOptions: Intl.DateTimeFormatOptions = {
     month: 'long',
     day: 'numeric',
-    timeZone: timezone,
+    // Don't set timeZone - let it use the user's local timezone automatically
   };
   
   const dateOptionsWithYear: Intl.DateTimeFormatOptions = {
@@ -109,49 +116,51 @@ export function formatDate(dateString: string): string {
 
   // Check if it's today
   if (dateOnly.getTime() === today.getTime()) {
-    return `Today at ${formatTime(date, locale, timezone)}`;
+    return `Today at ${formatTime(date, locale, displayTimezone)}`;
   }
 
   // Check if it's yesterday
   if (dateOnly.getTime() === yesterday.getTime()) {
-    return `Yesterday at ${formatTime(date, locale, timezone)}`;
+    return `Yesterday at ${formatTime(date, locale, displayTimezone)}`;
   }
 
   // Check if it's this year
   if (date.getFullYear() === now.getFullYear()) {
     const dateStr = date.toLocaleDateString(locale, dateOptions);
-    const timeStr = formatTime(date, locale, timezone);
+    const timeStr = formatTime(date, locale, displayTimezone);
     console.log('[formatDate] Formatted (this year):', `${dateStr} at ${timeStr}`);
     return `${dateStr} at ${timeStr}`;
   }
 
   // Full date with year
   const dateStr = date.toLocaleDateString(locale, dateOptionsWithYear);
-  const timeStr = formatTime(date, locale, timezone);
+  const timeStr = formatTime(date, locale, displayTimezone);
   console.log('[formatDate] Formatted (with year):', `${dateStr} at ${timeStr}`);
   return `${dateStr} at ${timeStr}`;
 }
 
 /**
  * Format time to 12-hour format with AM/PM using user's local timezone
+ * Note: timezone parameter is kept for API compatibility but not used
+ * The date is already in the correct timezone, so we let JavaScript use local timezone automatically
  */
 function formatTime(date: Date, locale?: string, timezone?: string): string {
+  // Don't specify timeZone - let it use the user's local timezone automatically
+  // The date object already represents the correct moment in time, so formatting
+  // will automatically convert to the user's local timezone
   const options: Intl.DateTimeFormatOptions = {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    // Don't set timeZone - let it use the user's local timezone automatically
   };
-  
-  if (timezone) {
-    options.timeZone = timezone;
-  }
   
   const formatted = date.toLocaleTimeString(locale || getUserLocale(), options);
   console.log('[formatTime] Input date:', date.toString());
   console.log('[formatTime] Using locale:', locale || getUserLocale());
-  console.log('[formatTime] Using timezone:', timezone);
+  console.log('[formatTime] Timezone parameter (not used for formatting):', timezone);
   console.log('[formatTime] Options:', options);
-  console.log('[formatTime] Formatted result:', formatted);
+  console.log('[formatTime] Formatted result (in user local timezone):', formatted);
   
   return formatted;
 }
@@ -162,9 +171,13 @@ function formatTime(date: Date, locale?: string, timezone?: string): string {
  * - "Dec 26, 2025"
  * - "Today"
  * - "Yesterday"
+ * 
+ * @param dateString - ISO date string from backend (assumed UTC if no timezone)
+ * @param backendTimezone - Optional timezone from backend (IANA timezone name, e.g., "UTC", "America/New_York")
  */
-export function formatDateShort(dateString: string): string {
-  console.log('[formatDateShort] Input dateString (UTC from backend):', dateString);
+export function formatDateShort(dateString: string, backendTimezone?: string): string {
+  console.log('[formatDateShort] Input dateString (from backend):', dateString);
+  console.log('[formatDateShort] Backend timezone:', backendTimezone || 'not provided (assuming UTC)');
   
   // Parse the date string (assumes ISO format from backend, which is UTC)
   // If the string doesn't end with 'Z' or have a timezone offset, treat it as UTC
@@ -184,10 +197,12 @@ export function formatDateShort(dateString: string): string {
   
   const now = new Date();
   const locale = getUserLocale();
-  const timezone = getUserTimezone();
+  // Always use user's local timezone for display (backend timezone is only for parsing context)
+  const displayTimezone = getUserTimezone();
   
   console.log('[formatDateShort] Using locale:', locale);
-  console.log('[formatDateShort] Using timezone:', timezone);
+  console.log('[formatDateShort] Backend timezone (for reference):', backendTimezone || 'not provided');
+  console.log('[formatDateShort] Display timezone (user local):', displayTimezone);
   
   // Create date objects for comparison (in local timezone)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -206,15 +221,13 @@ export function formatDateShort(dateString: string): string {
     return 'Yesterday';
   }
 
-  // Format options with timezone
+  // Format options - don't specify timeZone, let it use user's local timezone automatically
+  // The date is already parsed correctly (as UTC), so formatting will automatically convert to local time
   const dateOptions: Intl.DateTimeFormatOptions = {
     month: 'short',
     day: 'numeric',
+    // Don't set timeZone - let it use the user's local timezone automatically
   };
-  
-  if (timezone) {
-    dateOptions.timeZone = timezone;
-  }
 
   // Check if it's this year
   if (date.getFullYear() === now.getFullYear()) {

@@ -48,6 +48,9 @@ class Conversation(Base):
     auto_close_at = Column(DateTime, nullable=True)
     manual_close_enabled = Column(Boolean, default=True, nullable=False)
     time_extension_enabled = Column(Boolean, default=True, nullable=False)
+    
+    # Timezone for datetime fields (IANA timezone name, e.g., "UTC", "America/New_York", "Asia/Calcutta")
+    timezone = Column(String(100), nullable=True, default="UTC")
 
     # State
     state = Column(String(50), default="draft", nullable=False)

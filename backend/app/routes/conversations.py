@@ -114,6 +114,7 @@ async def create_conversation(
         auto_close_at=conversation_data.auto_close_at,
         manual_close_enabled=conversation_data.manual_close_enabled,
         time_extension_enabled=conversation_data.time_extension_enabled,
+        timezone=conversation_data.timezone or "UTC",
         state=ConversationState.DRAFT.value,
     )
 
@@ -187,6 +188,7 @@ async def list_conversations(
             "activated_at": conv.activated_at,
             "closed_at": conv.closed_at,
             "response_count": response_count,
+            "timezone": conv.timezone or "UTC",
         }
         conversations.append(ConversationListItem(**conv_dict))
 

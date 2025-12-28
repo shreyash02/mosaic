@@ -142,7 +142,7 @@ export default function AnalysisPage() {
             </div>
             <div className="detail-item">
               <label>Analysis Date:</label>
-              <span>{formatDate(analysis.created_at)}</span>
+              <span>{formatDate(analysis.created_at, conversation?.timezone)}</span>
             </div>
           </div>
         </div>

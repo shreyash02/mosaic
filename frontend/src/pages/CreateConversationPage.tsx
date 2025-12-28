@@ -77,12 +77,21 @@ export default function CreateConversationPage() {
       // Calculate total minutes from hours and minutes
       const totalMinutes = durationHours * 60 + durationMinutes;
       
+      // Get user's timezone from browser
+      let userTimezone = 'UTC';
+      try {
+        userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (err) {
+        console.warn('Failed to detect timezone, using UTC:', err);
+      }
+      
       const conversation = await api.createConversation({
         title,
         description,
         anonymity_level: anonymityLevel,
         results_access: resultsAccess,
         invite_only: inviteOnly,
+        timezone: userTimezone,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
       });

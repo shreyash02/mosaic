@@ -417,7 +417,7 @@ export default function JoinPage() {
 
         {conversation.auto_close_at && (
           <div className="close-notice">
-            <p>Closes at {formatDate(conversation.auto_close_at)}</p>
+            <p>Closes at {formatDate(conversation.auto_close_at, conversation.timezone)}</p>
           </div>
         )}
 

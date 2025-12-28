@@ -78,6 +78,7 @@ export interface Conversation {
   auto_close_at?: string;
   manual_close_enabled: boolean;
   time_extension_enabled: boolean;
+  timezone?: string;
   activated_at?: string;
   closed_at?: string;
   analyzed_at?: string;
@@ -99,6 +100,7 @@ export interface ConversationCreate {
   auto_close_at?: string;
   manual_close_enabled?: boolean;
   time_extension_enabled?: boolean;
+  timezone?: string;
 }
 
 export interface ConversationListItem {
@@ -111,6 +113,7 @@ export interface ConversationListItem {
   activated_at?: string;
   closed_at?: string;
   response_count?: number;
+  timezone?: string;
 }
 
 // Response types
