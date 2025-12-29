@@ -40,7 +40,7 @@ class QuestionBase(BaseModel):
     question_text: str = Field(..., min_length=1)
     question_type: str = Field(default="text", pattern="^(text|rating|single_choice|multiple_choice)$")
     question_order: int = Field(..., ge=0)
-    options: Optional[List[dict]] = None
+    options: Optional[dict] = None
 
 
 class QuestionCreate(QuestionBase):
@@ -55,7 +55,7 @@ class QuestionUpdate(BaseModel):
     question_text: Optional[str] = Field(None, min_length=1)
     question_type: Optional[str] = Field(None, pattern="^(text|rating|single_choice|multiple_choice)$")
     question_order: Optional[int] = Field(None, ge=0)
-    options: Optional[List[dict]] = None
+    options: Optional[dict] = None
 
 
 class Question(QuestionBase):

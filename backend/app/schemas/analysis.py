@@ -40,7 +40,10 @@ class Analysis(BaseModel):
     id: UUID
     conversation_id: UUID
     overall_summary: Optional[str] = None
-    themes: List[Theme] = []
+    themes: List[Theme] = []  # Deprecated: kept for backwards compatibility
+
+    # Per-question analysis
+    question_analyses: List["QuestionAnalysis"] = []
 
     # Metadata
     embedding_provider: Optional[str] = None
@@ -58,23 +61,52 @@ class Analysis(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# Rating statistics for rating questions
+class RatingStatistics(BaseModel):
+    """Statistics for rating question responses."""
+
+    average: float
+    min_value: int
+    max_value: int
+    distribution: dict  # {0: 5, 1: 3, 2: 8, ...}
+    total_responses: int
+
+
+# Poll choice result
+class PollChoiceResult(BaseModel):
+    """Result for a single poll choice."""
+
+    choice_id: str
+    label: str
+    count: int
+    percentage: float
+
+
+# Poll statistics for poll questions
+class PollStatistics(BaseModel):
+    """Statistics for poll question responses."""
+
+    total_responses: int
+    choices: List[PollChoiceResult]
+
+
 # Question-specific analysis (for multi-question conversations)
 class QuestionAnalysis(BaseModel):
     """Analysis for a specific question."""
 
     question_id: UUID
     question_text: str
-    themes: List[Theme] = []
+    question_type: str
     response_count: int
 
+    # For text questions
+    themes: List[Theme] = []
 
-# Detailed analysis with per-question breakdown
-class DetailedAnalysis(Analysis):
-    """Detailed analysis with per-question breakdown."""
+    # For rating questions
+    rating_stats: Optional[RatingStatistics] = None
 
-    question_analyses: List[QuestionAnalysis] = []
-
-    model_config = {"from_attributes": True}
+    # For poll questions
+    poll_stats: Optional[PollStatistics] = None
 
 
 # Analysis status

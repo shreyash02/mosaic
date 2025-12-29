@@ -19,7 +19,7 @@ class Analysis(Base):
 
     # Analysis results
     overall_summary = Column(Text, nullable=True)
-    themes = Column(JSONB, nullable=True)
+    themes = Column(JSONB, nullable=True)  # Deprecated: kept for backwards compatibility
     # Structure:
     # [
     #   {
@@ -30,6 +30,22 @@ class Analysis(Base):
     #       {"sentiment": "negative", "summary": "...", "count": 5},
     #       {"sentiment": "neutral", "summary": "...", "count": 2}
     #     ]
+    #   },
+    #   ...
+    # ]
+
+    # Per-question analysis
+    question_analyses = Column(JSONB, nullable=True)
+    # Structure:
+    # [
+    #   {
+    #     "question_id": "uuid",
+    #     "question_text": "What did you like?",
+    #     "question_type": "text",
+    #     "response_count": 45,
+    #     "themes": [...],  # For text questions
+    #     "rating_stats": {...},  # For rating questions
+    #     "poll_stats": {...}  # For poll questions
     #   },
     #   ...
     # ]

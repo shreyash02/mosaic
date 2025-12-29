@@ -91,9 +91,11 @@ class EmailService:
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                     <!-- Header Banner matching app header -->
                     <div style="background-color: white; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
-                        <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
-                            Mosaic
-                        </div>
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
+                                Mosaic
+                            </div>
+                        </a>
                     </div>
                     <div style="padding: 30px 20px;">
                         <h2 style="color: #2d3748; margin-top: 0;">You're Invited!</h2>
@@ -119,11 +121,6 @@ class EmailService:
                                 {invite_link}
                             </p>
                         </div>
-                        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-                            <p style="color: #718096; font-size: 14px; margin: 0;">
-                                <strong>Access Code:</strong> <code style="background-color: #edf2f7; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #2d3748;">{access_code}</code>
-                            </p>
-                        </div>
                     </div>
                 </div>
             </body>
@@ -140,8 +137,6 @@ You've been invited{inviter_text} to participate in a conversation:
 
 Join the conversation by clicking this link:
 {invite_link}
-
-Access Code: {access_code}
             """
             
             message = MessageSchema(

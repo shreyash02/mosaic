@@ -133,7 +133,12 @@ export default function JoinPage() {
         setResponses(
           convData.questions.map((q) => ({
             question_id: q.id,
-            response_text: '',
+            response_text: q.question_type === 'text' ? '' : undefined,
+            response_data: q.question_type !== 'text' ? (
+              q.question_type === 'rating' ? { rating: 5 } :
+              q.question_type === 'multiple_choice' ? { selected: [] } :
+              {}
+            ) : undefined,
           }))
         );
       }
@@ -164,6 +169,26 @@ export default function JoinPage() {
   const updateResponse = (questionId: string, text: string) => {
     setResponses((prev) =>
       prev.map((r) => (r.question_id === questionId ? { ...r, response_text: text } : r))
+    );
+  };
+
+  const updateRatingResponse = (questionId: string, rating: number) => {
+    setResponses((prev) =>
+      prev.map((r) =>
+        r.question_id === questionId
+          ? { ...r, response_data: { rating } }
+          : r
+      )
+    );
+  };
+
+  const updatePollResponse = (questionId: string, selected: string | string[]) => {
+    setResponses((prev) =>
+      prev.map((r) =>
+        r.question_id === questionId
+          ? { ...r, response_data: { selected } }
+          : r
+      )
     );
   };
 
@@ -424,25 +449,109 @@ export default function JoinPage() {
         <form onSubmit={handleSubmit} className="response-form">
           {error && <div className="error-message">{error}</div>}
 
-          {conversation.questions?.map((question, index) => (
-            <div key={question.id} className="form-group">
-              <label htmlFor={`question-${question.id}`}>
-                {index + 1}. {question.question_text}
-              </label>
-              <textarea
-                id={`question-${question.id}`}
-                value={responses.find((r) => r.question_id === question.id)?.response_text || ''}
-                onChange={(e) => updateResponse(question.id, e.target.value)}
-                placeholder="Type your response here..."
-                rows={4}
-                maxLength={conversation.max_response_length}
-              />
-              <small className="char-count">
-                {responses.find((r) => r.question_id === question.id)?.response_text?.length || 0} /{' '}
-                {conversation.max_response_length} characters
-              </small>
-            </div>
-          ))}
+          {conversation.questions?.map((question, index) => {
+            const response = responses.find((r) => r.question_id === question.id);
+
+            return (
+              <div key={question.id} className="form-group">
+                <label htmlFor={`question-${question.id}`}>
+                  {index + 1}. {question.question_text}
+                </label>
+
+                {/* Text Response */}
+                {(!question.question_type || question.question_type === 'text') && (
+                  <>
+                    <textarea
+                      id={`question-${question.id}`}
+                      value={response?.response_text || ''}
+                      onChange={(e) => updateResponse(question.id, e.target.value)}
+                      placeholder="Type your response here..."
+                      rows={4}
+                      maxLength={conversation.max_response_length}
+                    />
+                    <small className="char-count">
+                      {response?.response_text?.length || 0} / {conversation.max_response_length} characters
+                    </small>
+                  </>
+                )}
+
+                {/* Rating Response */}
+                {question.question_type === 'rating' && (
+                  <div className="rating-input">
+                    <input
+                      type="range"
+                      id={`question-${question.id}`}
+                      min={question.options?.min || 0}
+                      max={question.options?.max || 10}
+                      step={question.options?.step || 1}
+                      value={response?.response_data?.rating ?? 5}
+                      onChange={(e) => updateRatingResponse(question.id, parseInt(e.target.value))}
+                      className="rating-slider"
+                    />
+                    <div className="rating-value">
+                      <span className="rating-number">{response?.response_data?.rating ?? 5}</span>
+                      <span className="rating-range">
+                        ({question.options?.min || 0} - {question.options?.max || 10})
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Single Choice Poll */}
+                {question.question_type === 'single_choice' && (
+                  <div className="poll-input">
+                    {question.options?.choices?.map((choice) => (
+                      <div key={choice.id} className="radio-option">
+                        <label className="radio-label">
+                          <input
+                            type="radio"
+                            name={`question-${question.id}`}
+                            value={choice.id}
+                            checked={response?.response_data?.selected === choice.id}
+                            onChange={(e) => updatePollResponse(question.id, e.target.value)}
+                          />
+                          <span>{choice.label}</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Multiple Choice Poll */}
+                {question.question_type === 'multiple_choice' && (
+                  <div className="poll-input">
+                    <p className="poll-instruction">
+                      Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
+                    </p>
+                    {question.options?.choices?.map((choice) => (
+                      <div key={choice.id} className="checkbox-option">
+                        <label className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            value={choice.id}
+                            checked={(response?.response_data?.selected as string[] || []).includes(choice.id)}
+                            onChange={(e) => {
+                              const currentSelected = (response?.response_data?.selected as string[]) || [];
+                              const newSelected = e.target.checked
+                                ? [...currentSelected, choice.id]
+                                : currentSelected.filter(id => id !== choice.id);
+
+                              // Check max selections
+                              const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
+                              if (newSelected.length <= maxSelections) {
+                                updatePollResponse(question.id, newSelected);
+                              }
+                            }}
+                          />
+                          <span>{choice.label}</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {conversation.anonymity_level === 'revealable' && (
             <div className="form-group checkbox-group">

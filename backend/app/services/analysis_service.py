@@ -9,6 +9,7 @@ from anthropic import Anthropic
 
 from app.core.config import settings
 from app.models.response import Response
+from app.models.question import Question
 
 
 class AnalysisService:
@@ -21,13 +22,296 @@ class AnalysisService:
         self.embedding_model = "text-embedding-3-small"
         self.llm_model = "claude-sonnet-4-5-20250929"
 
+    def analyze_conversation(
+        self,
+        questions: List[Question],
+        responses: List[Response],
+        min_cluster_size: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Analyze all questions in a conversation with their responses.
+
+        Args:
+            questions: List of Question objects
+            responses: List of Response objects
+            min_cluster_size: Minimum number of responses to form a cluster (for text)
+
+        Returns:
+            Analysis results dict with per-question analysis
+        """
+        start_time = time.time()
+
+        # Group responses by question
+        responses_by_question = {}
+        for response in responses:
+            qid = str(response.question_id)
+            if qid not in responses_by_question:
+                responses_by_question[qid] = []
+            responses_by_question[qid].append(response)
+
+        # Analyze each question
+        question_analyses = []
+        total_analyzed = 0
+
+        for question in questions:
+            qid = str(question.id)
+            q_responses = responses_by_question.get(qid, [])
+
+            if not q_responses:
+                # No responses for this question
+                continue
+
+            # Analyze based on question type
+            if question.question_type == 'rating':
+                analysis = self._analyze_rating_question(question, q_responses)
+            elif question.question_type in ['single_choice', 'multiple_choice']:
+                analysis = self._analyze_poll_question(question, q_responses)
+            else:  # text
+                analysis = self._analyze_text_question(question, q_responses, min_cluster_size)
+
+            question_analyses.append(analysis)
+            total_analyzed += len(q_responses)
+
+        duration_ms = int((time.time() - start_time) * 1000)
+
+        return {
+            "overall_summary": self._generate_conversation_summary(question_analyses),
+            "question_analyses": question_analyses,
+            "embedding_provider": "openai",
+            "embedding_model": self.embedding_model,
+            "clustering_algorithm": "dbscan",
+            "llm_provider": "anthropic",
+            "llm_model": self.llm_model,
+            "total_responses_analyzed": total_analyzed,
+            "num_clusters_found": sum(len(qa.get("themes", [])) for qa in question_analyses),
+            "analysis_duration_ms": duration_ms
+        }
+
+    def _analyze_text_question(
+        self,
+        question: Question,
+        responses: List[Response],
+        min_cluster_size: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Analyze text question responses using embedding-based clustering and LLM summarization.
+
+        Args:
+            question: Question object
+            responses: List of Response objects for this question
+            min_cluster_size: Minimum number of responses to form a cluster
+
+        Returns:
+            Question analysis dict with themes
+        """
+        # Extract response texts
+        response_texts = []
+        for response in responses:
+            if response.response_text and response.response_text.strip():
+                response_texts.append(response.response_text)
+
+        base_result = {
+            "question_id": str(question.id),
+            "question_text": question.question_text,
+            "question_type": question.question_type,
+            "response_count": len(response_texts),
+            "themes": []
+        }
+
+        if len(response_texts) < min_cluster_size:
+            # Not enough responses for clustering
+            return base_result
+
+        # Generate embeddings
+        embeddings = self._generate_embeddings(response_texts)
+
+        # Cluster responses
+        clusters = self._cluster_embeddings(embeddings, min_samples=min_cluster_size)
+
+        # Analyze each cluster with LLM
+        themes = self._analyze_clusters(response_texts, clusters)
+
+        base_result["themes"] = themes
+        return base_result
+
+    def _analyze_rating_question(
+        self,
+        question: Question,
+        responses: List[Response]
+    ) -> Dict[str, Any]:
+        """
+        Compute statistics for rating question responses.
+
+        Args:
+            question: Question object
+            responses: List of Response objects for this question
+
+        Returns:
+            Question analysis dict with rating statistics
+        """
+        ratings = []
+        for response in responses:
+            if response.response_data and 'rating' in response.response_data:
+                ratings.append(response.response_data['rating'])
+
+        if not ratings:
+            return {
+                "question_id": str(question.id),
+                "question_text": question.question_text,
+                "question_type": question.question_type,
+                "response_count": 0,
+                "rating_stats": None
+            }
+
+        # Compute statistics
+        ratings_array = np.array(ratings)
+        average = float(np.mean(ratings_array))
+        min_val = int(np.min(ratings_array))
+        max_val = int(np.max(ratings_array))
+
+        # Compute distribution
+        distribution = {}
+        scale_min = question.options.get('min', 0) if question.options else 0
+        scale_max = question.options.get('max', 10) if question.options else 10
+
+        for i in range(scale_min, scale_max + 1):
+            distribution[str(i)] = int(np.sum(ratings_array == i))
+
+        return {
+            "question_id": str(question.id),
+            "question_text": question.question_text,
+            "question_type": question.question_type,
+            "response_count": len(ratings),
+            "rating_stats": {
+                "average": round(average, 2),
+                "min_value": min_val,
+                "max_value": max_val,
+                "distribution": distribution,
+                "total_responses": len(ratings)
+            }
+        }
+
+    def _analyze_poll_question(
+        self,
+        question: Question,
+        responses: List[Response]
+    ) -> Dict[str, Any]:
+        """
+        Compute statistics for poll question responses.
+
+        Args:
+            question: Question object
+            responses: List of Response objects for this question
+
+        Returns:
+            Question analysis dict with poll statistics
+        """
+        # Get all choices from question options
+        choices = question.options.get('choices', []) if question.options else []
+        choice_counts = {choice['id']: 0 for choice in choices}
+        choice_labels = {choice['id']: choice['label'] for choice in choices}
+
+        # Count selections
+        total_responses = 0
+        for response in responses:
+            if response.response_data and 'selected' in response.response_data:
+                selected = response.response_data['selected']
+                total_responses += 1
+
+                # Handle both single and multiple selections
+                if isinstance(selected, list):
+                    for choice_id in selected:
+                        if choice_id in choice_counts:
+                            choice_counts[choice_id] += 1
+                elif selected in choice_counts:
+                    choice_counts[selected] += 1
+
+        # Build choice results
+        choice_results = []
+        for choice in choices:
+            count = choice_counts[choice['id']]
+            percentage = (count / total_responses * 100) if total_responses > 0 else 0
+            choice_results.append({
+                "choice_id": choice['id'],
+                "label": choice['label'],
+                "count": count,
+                "percentage": round(percentage, 1)
+            })
+
+        return {
+            "question_id": str(question.id),
+            "question_text": question.question_text,
+            "question_type": question.question_type,
+            "response_count": total_responses,
+            "poll_stats": {
+                "total_responses": total_responses,
+                "choices": choice_results
+            }
+        }
+
+    def _generate_conversation_summary(self, question_analyses: List[Dict[str, Any]]) -> str:
+        """
+        Generate an overall summary for the entire conversation.
+
+        Args:
+            question_analyses: List of question analysis results
+
+        Returns:
+            Overall summary text
+        """
+        if not question_analyses:
+            return "No responses to analyze"
+
+        total_responses = sum(qa["response_count"] for qa in question_analyses)
+
+        # Build summary prompt
+        summaries = []
+        for qa in question_analyses:
+            q_type = qa["question_type"]
+            q_text = qa["question_text"]
+            count = qa["response_count"]
+
+            if q_type == "rating" and qa.get("rating_stats"):
+                avg = qa["rating_stats"]["average"]
+                summaries.append(f"- \"{q_text}\": Average rating {avg}/10 ({count} responses)")
+            elif q_type in ["single_choice", "multiple_choice"] and qa.get("poll_stats"):
+                top_choice = max(qa["poll_stats"]["choices"], key=lambda x: x["count"]) if qa["poll_stats"]["choices"] else None
+                if top_choice:
+                    summaries.append(f"- \"{q_text}\": Most popular choice '{top_choice['label']}' ({top_choice['percentage']}%, {count} responses)")
+            elif qa.get("themes"):
+                theme_list = ", ".join([t["theme"] for t in qa["themes"][:3]])
+                summaries.append(f"- \"{q_text}\": Key themes: {theme_list} ({count} responses)")
+            else:
+                summaries.append(f"- \"{q_text}\": {count} responses")
+
+        prompt = f"""Summarize the key insights from this feedback analysis in 2-3 sentences.
+
+Total responses across all questions: {total_responses}
+
+Question summaries:
+{chr(10).join(summaries)}
+
+Provide a concise, actionable summary of what these responses reveal about the overall feedback."""
+
+        try:
+            message = self.anthropic_client.messages.create(
+                model=self.llm_model,
+                max_tokens=300,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return message.content[0].text.strip()
+        except Exception as e:
+            return f"Analyzed {total_responses} responses across {len(question_analyses)} questions."
+
     def analyze_responses(
         self,
         responses: List[Response],
         min_cluster_size: int = 2
     ) -> Dict[str, Any]:
         """
-        Analyze responses using embedding-based clustering and LLM summarization.
+        DEPRECATED: Use analyze_conversation instead.
+
+        Legacy method for analyzing all responses together.
 
         Args:
             responses: List of Response objects to analyze

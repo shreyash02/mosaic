@@ -71,7 +71,7 @@ export default function EditConversationPage() {
           }))
         );
       } else {
-        setQuestions([{ question_text: '', question_order: 0 }]);
+        setQuestions([{ question_text: '', question_type: 'text', question_order: 0 }]);
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load conversation');
@@ -83,7 +83,7 @@ export default function EditConversationPage() {
   const addQuestion = () => {
     setQuestions([
       ...questions,
-      { question_text: '', question_order: questions.length },
+      { question_text: '', question_type: 'text', question_order: questions.length },
     ]);
   };
 
@@ -101,6 +101,79 @@ export default function EditConversationPage() {
   const updateQuestion = (index: number, text: string) => {
     const newQuestions = [...questions];
     newQuestions[index].question_text = text;
+    setQuestions(newQuestions);
+  };
+
+  const updateQuestionType = (index: number, type: string) => {
+    const newQuestions = [...questions];
+    newQuestions[index].question_type = type as any;
+
+    // Initialize default options based on type
+    if (type === 'rating') {
+      newQuestions[index].options = { min: 0, max: 10, step: 1 };
+    } else if (type === 'single_choice') {
+      newQuestions[index].options = {
+        mode: 'single',
+        max_selections: 1,
+        choices: [
+          { id: crypto.randomUUID(), label: '', order: 0 }
+        ]
+      };
+    } else if (type === 'multiple_choice') {
+      newQuestions[index].options = {
+        mode: 'multiple',
+        max_selections: 3,
+        choices: [
+          { id: crypto.randomUUID(), label: '', order: 0 }
+        ]
+      };
+    } else {
+      delete newQuestions[index].options;
+    }
+
+    setQuestions(newQuestions);
+  };
+
+  const addPollOption = (questionIndex: number) => {
+    const newQuestions = [...questions];
+    const choices = newQuestions[questionIndex].options?.choices || [];
+    choices.push({
+      id: crypto.randomUUID(),
+      label: '',
+      order: choices.length
+    });
+    if (newQuestions[questionIndex].options) {
+      newQuestions[questionIndex].options!.choices = choices;
+    }
+    setQuestions(newQuestions);
+  };
+
+  const removePollOption = (questionIndex: number, choiceId: string) => {
+    const newQuestions = [...questions];
+    const choices = newQuestions[questionIndex].options?.choices || [];
+    const filtered = choices.filter(c => c.id !== choiceId);
+    // Re-order
+    filtered.forEach((c, i) => c.order = i);
+    if (newQuestions[questionIndex].options) {
+      newQuestions[questionIndex].options!.choices = filtered;
+    }
+    setQuestions(newQuestions);
+  };
+
+  const updatePollOptionLabel = (questionIndex: number, choiceId: string, label: string) => {
+    const newQuestions = [...questions];
+    const choice = newQuestions[questionIndex].options?.choices?.find(c => c.id === choiceId);
+    if (choice) {
+      choice.label = label;
+    }
+    setQuestions(newQuestions);
+  };
+
+  const updateMaxSelections = (questionIndex: number, max: number) => {
+    const newQuestions = [...questions];
+    if (newQuestions[questionIndex].options) {
+      newQuestions[questionIndex].options!.max_selections = Math.max(1, max);
+    }
     setQuestions(newQuestions);
   };
 
@@ -302,13 +375,91 @@ export default function EditConversationPage() {
                   </button>
                 )}
               </div>
-              <input
-                type="text"
-                value={question.question_text}
-                onChange={(e) => updateQuestion(index, e.target.value)}
-                placeholder="Enter your question..."
-                required
-              />
+
+              <div className="form-group">
+                <label>Question Type</label>
+                <select
+                  value={question.question_type || 'text'}
+                  onChange={(e) => updateQuestionType(index, e.target.value)}
+                >
+                  <option value="text">Text Response</option>
+                  <option value="rating">Rating (0-10)</option>
+                  <option value="single_choice">Poll (Single Choice)</option>
+                  <option value="multiple_choice">Poll (Multiple Choice)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Question Text</label>
+                <input
+                  type="text"
+                  value={question.question_text}
+                  onChange={(e) => updateQuestion(index, e.target.value)}
+                  placeholder="Enter your question..."
+                  required
+                />
+              </div>
+
+              {question.question_type === 'rating' && (
+                <div className="question-config">
+                  <p className="config-info">
+                    Participants will rate on a scale from 0 to 10 using a slider.
+                  </p>
+                </div>
+              )}
+
+              {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
+                <div className="question-config">
+                  <div className="poll-options">
+                    <div className="config-header">
+                      <label>Answer Options</label>
+                      <button
+                        type="button"
+                        onClick={() => addPollOption(index)}
+                        className="btn btn-secondary btn-small"
+                      >
+                        + Add Option
+                      </button>
+                    </div>
+
+                    {question.options?.choices?.map((choice, choiceIndex) => (
+                      <div key={choice.id} className="poll-option-item">
+                        <span className="option-number">{choiceIndex + 1}.</span>
+                        <input
+                          type="text"
+                          value={choice.label}
+                          onChange={(e) => updatePollOptionLabel(index, choice.id, e.target.value)}
+                          placeholder={`Option ${choiceIndex + 1}`}
+                          required
+                        />
+                        {(question.options?.choices?.length || 0) > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removePollOption(index, choice.id)}
+                            className="btn-remove"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {question.question_type === 'multiple_choice' && (
+                    <div className="form-group">
+                      <label>Maximum Selections Allowed</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={question.options?.choices?.length || 1}
+                        value={question.options?.max_selections || 1}
+                        onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
+                      />
+                      <small>Participants can select up to this many options</small>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -318,7 +469,21 @@ export default function EditConversationPage() {
             type="button"
             onClick={() => setShowPreview(true)}
             className="btn btn-secondary btn-large"
-            disabled={!title.trim() || questions.some((q) => !q.question_text.trim())}
+            disabled={
+              !title.trim() ||
+              questions.some((q) => {
+                // Check if question text is empty
+                if (!q.question_text.trim()) return true;
+
+                // Check if poll questions have at least one option with a label
+                if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
+                  const hasValidOptions = q.options?.choices?.some(c => c.label.trim());
+                  if (!hasValidOptions) return true;
+                }
+
+                return false;
+              })
+            }
           >
             Preview
           </button>

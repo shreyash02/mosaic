@@ -85,39 +85,133 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        <div className="themes-section">
-          <h2>Themes & Insights</h2>
+        <div className="questions-section">
+          <h2>Question-by-Question Analysis</h2>
 
-          {analysis.themes.length === 0 ? (
-            <p className="no-themes">No distinct themes were identified in the responses.</p>
-          ) : (
-            <div className="themes-list">
-              {analysis.themes.map((theme, index) => (
-                <div key={index} className="theme-card">
-                  <div className="theme-header">
-                    <h3>{theme.theme}</h3>
-                    <span className="frequency-badge">{theme.frequency} responses</span>
+          {analysis.question_analyses && analysis.question_analyses.length > 0 ? (
+            <div className="questions-list">
+              {analysis.question_analyses.map((qa, index) => (
+                <div key={qa.question_id} className="question-analysis-card">
+                  <div className="question-header">
+                    <div>
+                      <h3>
+                        Q{index + 1}. {qa.question_text}
+                      </h3>
+                      <p className="question-meta">
+                        <span className="question-type-badge">{qa.question_type.replace('_', ' ')}</span>
+                        <span className="response-count">{qa.response_count} responses</span>
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="sentiment-clusters">
-                    {theme.clusters.map((cluster, clusterIndex) => (
-                      <div
-                        key={clusterIndex}
-                        className={`cluster cluster-${cluster.sentiment}`}
-                      >
-                        <div className="cluster-header">
-                          <span className={`sentiment-badge sentiment-${cluster.sentiment}`}>
-                            {cluster.sentiment}
-                          </span>
-                          <span className="cluster-count">{cluster.count} responses</span>
-                        </div>
-                        <p className="cluster-summary">{cluster.summary}</p>
+                  {/* Text Question Analysis */}
+                  {qa.question_type === 'text' && qa.themes && qa.themes.length > 0 && (
+                    <div className="text-analysis">
+                      <h4>Themes</h4>
+                      <div className="themes-list">
+                        {qa.themes.map((theme, themeIndex) => (
+                          <div key={themeIndex} className="theme-card">
+                            <div className="theme-header">
+                              <strong>{theme.theme}</strong>
+                              <span className="frequency-badge">{theme.frequency} responses</span>
+                            </div>
+                            <div className="sentiment-clusters">
+                              {theme.clusters.map((cluster, clusterIndex) => (
+                                <div
+                                  key={clusterIndex}
+                                  className={`cluster cluster-${cluster.sentiment}`}
+                                >
+                                  <div className="cluster-header">
+                                    <span className={`sentiment-badge sentiment-${cluster.sentiment}`}>
+                                      {cluster.sentiment}
+                                    </span>
+                                    <span className="cluster-count">{cluster.count} responses</span>
+                                  </div>
+                                  <p className="cluster-summary">{cluster.summary}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Rating Question Analysis */}
+                  {qa.question_type === 'rating' && qa.rating_stats && (
+                    <div className="rating-analysis">
+                      <div className="rating-summary">
+                        <div className="rating-average">
+                          <span className="average-label">Average Rating</span>
+                          <span className="average-value">{qa.rating_stats.average}</span>
+                          <span className="average-scale">/ 10</span>
+                        </div>
+                        <div className="rating-range">
+                          <span>Min: {qa.rating_stats.min_value}</span>
+                          <span>Max: {qa.rating_stats.max_value}</span>
+                        </div>
+                      </div>
+
+                      <div className="rating-distribution">
+                        <h4>Distribution</h4>
+                        {Object.entries(qa.rating_stats.distribution)
+                          .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                          .map(([rating, count]) => {
+                            const percentage = (count / qa.rating_stats!.total_responses) * 100;
+                            return (
+                              <div key={rating} className="distribution-bar">
+                                <span className="rating-label">{rating}</span>
+                                <div className="bar-container">
+                                  <div
+                                    className="bar-fill"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                                <span className="count-label">{count}</span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Poll Question Analysis */}
+                  {(qa.question_type === 'single_choice' || qa.question_type === 'multiple_choice') &&
+                    qa.poll_stats && (
+                      <div className="poll-analysis">
+                        <h4>Results</h4>
+                        <div className="poll-results">
+                          {qa.poll_stats.choices
+                            .sort((a, b) => b.count - a.count)
+                            .map((choice) => (
+                              <div key={choice.choice_id} className="poll-result-item">
+                                <div className="choice-header">
+                                  <span className="choice-label">{choice.label}</span>
+                                  <span className="choice-stats">
+                                    {choice.count} ({choice.percentage}%)
+                                  </span>
+                                </div>
+                                <div className="bar-container">
+                                  <div
+                                    className="bar-fill poll-bar"
+                                    style={{ width: `${choice.percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* No analysis available */}
+                  {qa.question_type === 'text' && (!qa.themes || qa.themes.length === 0) && (
+                    <p className="no-analysis">Not enough responses to identify themes.</p>
+                  )}
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="no-analysis">No analysis available.</p>
           )}
         </div>
 

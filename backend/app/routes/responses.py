@@ -389,6 +389,95 @@ async def submit_response(
                 detail=f"Response text exceeds maximum length of {conversation.max_response_length} characters"
             )
 
+    # Validate question-specific response data
+    question_map = {q.id: q for q in conversation.questions}
+    for response_item in response_data.responses:
+        question = question_map.get(response_item.question_id)
+        if not question:
+            continue
+
+        # Validate rating questions
+        if question.question_type == 'rating':
+            if not response_item.response_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Rating questions require response_data"
+                )
+            rating = response_item.response_data.get('rating')
+            if rating is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Rating value is required"
+                )
+            # Get min/max from options or use defaults
+            options = question.options or {}
+            min_val = options.get('min', 0)
+            max_val = options.get('max', 10)
+            if not isinstance(rating, (int, float)) or rating < min_val or rating > max_val:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Rating must be between {min_val} and {max_val}"
+                )
+
+        # Validate poll questions (single_choice/multiple_choice)
+        elif question.question_type in ['single_choice', 'multiple_choice']:
+            if not response_item.response_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Poll questions require response_data"
+                )
+            selected = response_item.response_data.get('selected')
+            if not selected:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="At least one option must be selected"
+                )
+
+            # Get valid choice IDs from question options
+            options = question.options or {}
+            choices = options.get('choices', [])
+            valid_ids = {choice['id'] for choice in choices}
+
+            # Validate single choice
+            if question.question_type == 'single_choice':
+                if not isinstance(selected, str):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Single choice must be a string ID"
+                    )
+                if selected not in valid_ids:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid option selected"
+                    )
+
+            # Validate multiple choice
+            elif question.question_type == 'multiple_choice':
+                if not isinstance(selected, list):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Multiple choice must be an array of IDs"
+                    )
+                if not selected:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="At least one option must be selected"
+                    )
+                # Check all selected IDs are valid
+                for choice_id in selected:
+                    if choice_id not in valid_ids:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Invalid option selected: {choice_id}"
+                        )
+                # Validate max_selections
+                max_selections = options.get('max_selections', len(choices))
+                if len(selected) > max_selections:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Maximum {max_selections} selections allowed"
+                    )
+
     # Create responses
     for response_item in response_data.responses:
         response = Response(

@@ -44,21 +44,40 @@ export enum ConversationState {
   DELETED = 'deleted',
 }
 
+export type QuestionType = 'text' | 'rating' | 'single_choice' | 'multiple_choice';
+
+export interface PollChoice {
+  id: string;
+  label: string;
+  order: number;
+}
+
+export interface QuestionOptions {
+  // For rating
+  min?: number;
+  max?: number;
+  step?: number;
+  // For poll
+  mode?: 'single' | 'multiple';
+  max_selections?: number;
+  choices?: PollChoice[];
+}
+
 export interface Question {
   id: string;
   conversation_id: string;
   question_text: string;
-  question_type: string;
+  question_type: QuestionType;
   question_order: number;
-  options?: any[];
+  options?: QuestionOptions;
   created_at: string;
 }
 
 export interface QuestionCreate {
   question_text: string;
-  question_type?: string;
+  question_type?: QuestionType;
   question_order: number;
-  options?: any[];
+  options?: QuestionOptions;
 }
 
 export interface Conversation {
@@ -172,11 +191,42 @@ export interface Theme {
   clusters: SentimentCluster[];
 }
 
+export interface RatingStatistics {
+  average: number;
+  min_value: number;
+  max_value: number;
+  distribution: Record<string, number>;
+  total_responses: number;
+}
+
+export interface PollChoiceResult {
+  choice_id: string;
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface PollStatistics {
+  total_responses: number;
+  choices: PollChoiceResult[];
+}
+
+export interface QuestionAnalysis {
+  question_id: string;
+  question_text: string;
+  question_type: QuestionType;
+  response_count: number;
+  themes?: Theme[];
+  rating_stats?: RatingStatistics;
+  poll_stats?: PollStatistics;
+}
+
 export interface Analysis {
   id: string;
   conversation_id: string;
   overall_summary: string;
-  themes: Theme[];
+  themes: Theme[];  // Deprecated
+  question_analyses: QuestionAnalysis[];
   embedding_provider: string;
   embedding_model: string;
   clustering_algorithm: string;

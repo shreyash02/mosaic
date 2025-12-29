@@ -16,7 +16,6 @@ from app.models.analysis import Analysis
 from app.schemas.analysis import (
     AnalyzeRequest,
     Analysis as AnalysisSchema,
-    DetailedAnalysis,
 )
 from app.schemas.conversation import ConversationState
 from app.schemas.common import SuccessResponse
@@ -47,6 +46,14 @@ def run_analysis_task(
     db = SessionLocal()
 
     try:
+        # Get conversation with questions
+        conversation = db.query(Conversation).filter(
+            Conversation.id == conversation_id
+        ).first()
+
+        if not conversation:
+            return
+
         # Get all responses for the conversation
         responses = db.query(Response).filter(
             Response.conversation_id == conversation_id
@@ -54,13 +61,18 @@ def run_analysis_task(
 
         # Run analysis
         analysis_service = AnalysisService()
-        results = analysis_service.analyze_responses(responses, min_cluster_size=min_cluster_size)
+        results = analysis_service.analyze_conversation(
+            conversation.questions,
+            responses,
+            min_cluster_size=min_cluster_size
+        )
 
         # Store results in database
         analysis = Analysis(
             conversation_id=conversation_id,
             overall_summary=results["overall_summary"],
-            themes=results["themes"],
+            themes=results.get("themes", []),  # Deprecated field
+            question_analyses=results["question_analyses"],
             embedding_provider=results["embedding_provider"],
             embedding_model=results["embedding_model"],
             clustering_algorithm=results["clustering_algorithm"],

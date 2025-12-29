@@ -57,7 +57,9 @@ from app.schemas.analysis import (
     Theme,
     SentimentCluster,
     QuestionAnalysis,
-    DetailedAnalysis,
+    RatingStatistics,
+    PollStatistics,
+    PollChoiceResult,
     AnalysisStatus,
 )
 
@@ -127,7 +129,9 @@ __all__ = [
     "Theme",
     "SentimentCluster",
     "QuestionAnalysis",
-    "DetailedAnalysis",
+    "RatingStatistics",
+    "PollStatistics",
+    "PollChoiceResult",
     "AnalysisStatus",
     # ParticipantCode
     "ParticipantCode",

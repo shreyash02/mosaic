@@ -59,23 +59,80 @@ export default function ConversationPreview({
                 questions.map((question, index) => {
                   // Handle both Question (has id) and QuestionCreate (no id) types
                   const questionId = 'id' in question ? String(question.id) : `preview-${index}`;
-                  
+
                   return (
                   <div key={questionId} className="form-group">
                     <label htmlFor={`preview-question-${questionId}`}>
                       {index + 1}. {question.question_text || 'Untitled Question'}
                     </label>
-                    <textarea
-                      id={`preview-question-${questionId}`}
-                      placeholder="Type your response here..."
-                      rows={4}
-                      maxLength={maxResponseLength}
-                      disabled
-                      readOnly
-                    />
-                    <small className="char-count">
-                      0 / {maxResponseLength} characters
-                    </small>
+
+                    {/* Text Response Preview */}
+                    {(!question.question_type || question.question_type === 'text') && (
+                      <>
+                        <textarea
+                          id={`preview-question-${questionId}`}
+                          placeholder="Type your response here..."
+                          rows={4}
+                          maxLength={maxResponseLength}
+                          disabled
+                          readOnly
+                        />
+                        <small className="char-count">
+                          0 / {maxResponseLength} characters
+                        </small>
+                      </>
+                    )}
+
+                    {/* Rating Preview */}
+                    {question.question_type === 'rating' && (
+                      <div className="rating-input">
+                        <input
+                          type="range"
+                          min={question.options?.min || 0}
+                          max={question.options?.max || 10}
+                          value={Math.floor((question.options?.max || 10) / 2)}
+                          disabled
+                          className="rating-slider"
+                        />
+                        <div className="rating-value">
+                          <span className="rating-number">{Math.floor((question.options?.max || 10) / 2)}</span>
+                          <span className="rating-range">
+                            ({question.options?.min || 0} - {question.options?.max || 10})
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Single Choice Preview */}
+                    {question.question_type === 'single_choice' && (
+                      <div className="poll-input">
+                        {question.options?.choices?.map((choice) => (
+                          <div key={choice.id} className="radio-option">
+                            <label className="radio-label">
+                              <input type="radio" disabled />
+                              <span>{choice.label}</span>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Multiple Choice Preview */}
+                    {question.question_type === 'multiple_choice' && (
+                      <div className="poll-input">
+                        <p className="poll-instruction">
+                          Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
+                        </p>
+                        {question.options?.choices?.map((choice) => (
+                          <div key={choice.id} className="checkbox-option">
+                            <label className="checkbox-label">
+                              <input type="checkbox" disabled />
+                              <span>{choice.label}</span>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   );
                 })
