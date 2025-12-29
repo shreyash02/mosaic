@@ -63,6 +63,19 @@ class Settings(BaseSettings):
     # Response limits
     MAX_RESPONSE_LENGTH: int = 10000
 
+    # Email Configuration
+    EMAIL_ENABLED: bool = True
+    EMAIL_FROM: str = ""
+    EMAIL_FROM_NAME: str = "Mosaic"
+    FRONTEND_URL: str = "http://localhost:5173"
+    
+    # SMTP Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

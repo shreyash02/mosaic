@@ -30,3 +30,7 @@ apscheduler==3.10.4
 
 # Utilities
 pydantic[email]>=2.10.0
+
+# Email
+fastapi-mail>=1.4.1
+aiosmtplib>=3.0.0
