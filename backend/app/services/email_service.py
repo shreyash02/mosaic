@@ -21,7 +21,7 @@ class EmailService:
                     ConnectionConfig(
                         MAIL_USERNAME=settings.SMTP_USER,
                         MAIL_PASSWORD=settings.SMTP_PASSWORD,
-                        MAIL_FROM=from_address,
+                        MAIL_FROM=settings.EMAIL_FROM or settings.SMTP_USER,
                         MAIL_PORT=settings.SMTP_PORT,
                         MAIL_SERVER=settings.SMTP_HOST,
                         MAIL_STARTTLS=settings.SMTP_USE_TLS,

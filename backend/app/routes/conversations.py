@@ -839,7 +839,6 @@ async def invite_users(
 
     # Send invitation emails asynchronously
     # Don't block the response if email sending fails
-    logger = logging.getLogger(__name__)
     for invitation in created_invitations:
         try:
             await email_service.send_invitation_email(
@@ -853,6 +852,7 @@ async def invite_users(
         except Exception as e:
             # Log error but don't fail the request
             # Email sending failures shouldn't prevent invitation creation
+            logger = logging.getLogger(__name__)
             logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
 
     return InviteUsersResponse(
