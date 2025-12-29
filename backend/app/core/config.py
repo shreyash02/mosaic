@@ -1,7 +1,24 @@
 """Application configuration."""
 
+import os
 from typing import List
 from pydantic_settings import BaseSettings
+
+
+def get_env_files() -> List[str]:
+    """Determine which .env files to load based on environment.
+    
+    Returns a list of env files to try in order. Pydantic will use the first
+    file that exists and contains the required variables.
+    """
+    env = os.getenv("ENVIRONMENT", "local").lower()
+    if env == "production":
+        return [".env.production", ".env"]
+    elif env == "local":
+        return [".env.local", ".env"]
+    else:
+        # Fallback to .env for backwards compatibility
+        return [".env"]
 
 
 class Settings(BaseSettings):
@@ -63,8 +80,21 @@ class Settings(BaseSettings):
     # Response limits
     MAX_RESPONSE_LENGTH: int = 10000
 
+    # Email Configuration
+    EMAIL_ENABLED: bool = True
+    EMAIL_FROM: str = "jampckd.help@gmail.com"
+    EMAIL_FROM_NAME: str = "Mosaic"
+    FRONTEND_URL: str = "http://localhost:5173"
+    
+    # SMTP Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "jampckd.help@gmail.com"
+    SMTP_PASSWORD: str = ""  # Set in .env file
+    SMTP_USE_TLS: bool = True
+
     class Config:
-        env_file = ".env"
+        env_file = get_env_files()
         case_sensitive = True
         extra = "ignore"  # Ignore extra environment variables
 

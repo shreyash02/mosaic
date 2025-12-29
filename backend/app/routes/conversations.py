@@ -1,5 +1,6 @@
 """Conversation routes."""
 
+import logging
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -44,6 +45,7 @@ from app.schemas.conversation_invitation import (
     ConversationInvitationWithUser,
 )
 from app.schemas.common import DeleteResponse
+from app.services.email_service import email_service
 
 router = APIRouter()
 
@@ -834,6 +836,24 @@ async def invite_users(
     # Refresh invitations
     for inv in created_invitations:
         db.refresh(inv)
+
+    # Send invitation emails asynchronously
+    # Don't block the response if email sending fails
+    logger = logging.getLogger(__name__)
+    for invitation in created_invitations:
+        try:
+            await email_service.send_invitation_email(
+                to_email=invitation.email,
+                conversation_title=conversation.title,
+                conversation_description=conversation.description,
+                access_code=conversation.access_code,
+                invitation_token=invitation.invitation_token,
+                inviter_name=current_user.full_name or current_user.email,
+            )
+        except Exception as e:
+            # Log error but don't fail the request
+            # Email sending failures shouldn't prevent invitation creation
+            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
 
     return InviteUsersResponse(
         conversation_id=conversation.id,
