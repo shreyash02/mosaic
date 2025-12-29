@@ -2,17 +2,47 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
-import { ConversationState } from '../types';
+import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
+
+type DateRange = 'all' | '7' | '30' | '90';
 
 export default function DashboardPage() {
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [groupRelated, setGroupRelated] = useState(false);
+  const [selectedStates, setSelectedStates] = useState<ConversationState[]>([]);
+  const [selectedAnonymityLevels, setSelectedAnonymityLevels] = useState<AnonymityLevel[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>('all');
+  const [showStateDropdown, setShowStateDropdown] = useState(false);
+  const [showAnonymityDropdown, setShowAnonymityDropdown] = useState(false);
+  const [showDateDropdown, setShowDateDropdown] = useState(false);
 
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const clickedDropdown = target.closest('.filter-dropdown-container');
+
+      if (!clickedDropdown) {
+        setShowStateDropdown(false);
+        setShowAnonymityDropdown(false);
+        setShowDateDropdown(false);
+      }
+    };
+
+    if (showStateDropdown || showAnonymityDropdown || showDateDropdown) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showStateDropdown, showAnonymityDropdown, showDateDropdown]);
 
   const loadConversations = async () => {
     try {
@@ -24,6 +54,34 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const groupConversations = (conversations: ConversationListItem[]) => {
+    // Build a map of conversation ID to conversation
+    const conversationMap = new Map(conversations.map(c => [c.id, c]));
+
+    // Build a map of parent ID to children
+    const childrenMap = new Map<string, ConversationListItem[]>();
+    const rootConversations: ConversationListItem[] = [];
+
+    conversations.forEach(conv => {
+      if (conv.parent_conversation_id) {
+        // This is a follow-up
+        const children = childrenMap.get(conv.parent_conversation_id) || [];
+        children.push(conv);
+        childrenMap.set(conv.parent_conversation_id, children);
+      } else {
+        // This is a root conversation (no parent)
+        rootConversations.push(conv);
+      }
+    });
+
+    // Sort children by created_at (oldest first)
+    childrenMap.forEach(children => {
+      children.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
+
+    return { rootConversations, childrenMap };
   };
 
 
@@ -49,6 +107,136 @@ export default function DashboardPage() {
     return classes[state];
   };
 
+  const renderConversationCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => (
+    <Link
+      key={conversation.id}
+      to={`/conversations/${conversation.id}`}
+      className={`conversation-card ${isFollowUp ? 'follow-up-card' : ''}`}
+    >
+      <div className="card-header">
+        <h3>
+          {isFollowUp && <span className="follow-up-arrow">↳ </span>}
+          {conversation.title}
+        </h3>
+        <span className={`status-badge ${getStateClass(conversation.state)}`}>
+          {getStateLabel(conversation.state)}
+        </span>
+      </div>
+      <div className="card-body">
+        <div className="conversation-meta">
+          <span>Access Code: <strong>{conversation.access_code}</strong></span>
+          <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
+        </div>
+        <div className="conversation-meta">
+          <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
+          {conversation.activated_at && (
+            <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+
+  const toggleStateFilter = (state: ConversationState) => {
+    if (selectedStates.includes(state)) {
+      setSelectedStates(selectedStates.filter(s => s !== state));
+    } else {
+      setSelectedStates([...selectedStates, state]);
+    }
+  };
+
+  const toggleAnonymityFilter = (level: AnonymityLevel) => {
+    if (selectedAnonymityLevels.includes(level)) {
+      setSelectedAnonymityLevels(selectedAnonymityLevels.filter(l => l !== level));
+    } else {
+      setSelectedAnonymityLevels([...selectedAnonymityLevels, level]);
+    }
+  };
+
+  const clearFilters = () => {
+    setSelectedStates([]);
+    setSelectedAnonymityLevels([]);
+    setDateRange('all');
+  };
+
+  const isWithinDateRange = (createdAt: string, range: DateRange): boolean => {
+    if (range === 'all') return true;
+
+    const now = new Date();
+    const created = new Date(createdAt);
+    const daysAgo = parseInt(range);
+    const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+
+    return created >= cutoffDate;
+  };
+
+  const filteredConversations = conversations.filter(c => {
+    // State filter
+    if (selectedStates.length > 0 && !selectedStates.includes(c.state)) {
+      return false;
+    }
+
+    // Anonymity level filter
+    if (selectedAnonymityLevels.length > 0 && !selectedAnonymityLevels.includes(c.anonymity_level)) {
+      return false;
+    }
+
+    // Date range filter
+    if (!isWithinDateRange(c.created_at, dateRange)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const { rootConversations, childrenMap } = groupConversations(filteredConversations);
+
+  const getStateCount = (state: ConversationState) => {
+    return conversations.filter(c => c.state === state).length;
+  };
+
+  const getAnonymityCount = (level: AnonymityLevel) => {
+    return conversations.filter(c => c.anonymity_level === level).length;
+  };
+
+  const getDateRangeCount = (range: DateRange) => {
+    return conversations.filter(c => isWithinDateRange(c.created_at, range)).length;
+  };
+
+  const getAnonymityLabel = (level: AnonymityLevel) => {
+    const labels: Record<AnonymityLevel, string> = {
+      [AnonymityLevel.FULLY_ANONYMOUS]: 'Fully Anonymous',
+      [AnonymityLevel.PLATFORM_TRACKED]: 'Platform Tracked',
+      [AnonymityLevel.REVEALABLE]: 'Revealable',
+    };
+    return labels[level];
+  };
+
+  const getDateRangeLabel = (range: DateRange) => {
+    const labels: Record<DateRange, string> = {
+      'all': 'All time',
+      '7': 'Last 7 days',
+      '30': 'Last 30 days',
+      '90': 'Last 90 days',
+    };
+    return labels[range];
+  };
+
+  const allStates = [
+    ConversationState.DRAFT,
+    ConversationState.ACTIVE,
+    ConversationState.CLOSED,
+    ConversationState.ANALYZED,
+  ];
+
+  const allAnonymityLevels = [
+    AnonymityLevel.FULLY_ANONYMOUS,
+    AnonymityLevel.PLATFORM_TRACKED,
+    AnonymityLevel.REVEALABLE,
+  ];
+
+  const allDateRanges: DateRange[] = ['7', '30', '90', 'all'];
+
   return (
     <div className="dashboard-page">
       <header className="dashboard-header">
@@ -56,11 +244,195 @@ export default function DashboardPage() {
           <h1>Dashboard</h1>
         </div>
         <div className="header-actions">
+          {conversations.length > 0 && (
+            <button
+              onClick={() => setGroupRelated(!groupRelated)}
+              className={`btn ${groupRelated ? 'btn-secondary' : 'btn-outline-secondary'}`}
+            >
+              {groupRelated ? '✓ Grouped' : 'Group Related'}
+            </button>
+          )}
           <Link to="/conversations/new" className="btn btn-primary">
             + New Conversation
           </Link>
         </div>
       </header>
+
+      {conversations.length > 0 && (
+        <div className="filter-bar">
+          <div className="filter-label">Filters:</div>
+
+          {/* State Filter */}
+          <div className="filter-dropdown-container">
+            <button
+              onClick={() => {
+                setShowStateDropdown(!showStateDropdown);
+                setShowAnonymityDropdown(false);
+                setShowDateDropdown(false);
+              }}
+              className="filter-dropdown-toggle"
+            >
+              {selectedStates.length === 0
+                ? 'All states'
+                : `${selectedStates.length} state${selectedStates.length > 1 ? 's' : ''}`
+              }
+              <span className={`dropdown-arrow ${showStateDropdown ? 'open' : ''}`}>▼</span>
+            </button>
+            {showStateDropdown && (
+              <div className="filter-dropdown-menu">
+                <div className="filter-dropdown-header">
+                  <span className="filter-dropdown-title">Filter by state</span>
+                  {selectedStates.length > 0 && (
+                    <button
+                      onClick={() => setSelectedStates([])}
+                      className="filter-clear-btn"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="filter-dropdown-items">
+                  {allStates.map((state) => {
+                    const count = getStateCount(state);
+                    if (count === 0) return null;
+
+                    return (
+                      <label
+                        key={state}
+                        className="filter-dropdown-item"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedStates.includes(state)}
+                          onChange={() => toggleStateFilter(state)}
+                        />
+                        <span className="filter-item-label">
+                          {getStateLabel(state)}
+                        </span>
+                        <span className="filter-item-count">{count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Anonymity Level Filter */}
+          <div className="filter-dropdown-container">
+            <button
+              onClick={() => {
+                setShowAnonymityDropdown(!showAnonymityDropdown);
+                setShowStateDropdown(false);
+                setShowDateDropdown(false);
+              }}
+              className="filter-dropdown-toggle"
+            >
+              {selectedAnonymityLevels.length === 0
+                ? 'All anonymity levels'
+                : `${selectedAnonymityLevels.length} level${selectedAnonymityLevels.length > 1 ? 's' : ''}`
+              }
+              <span className={`dropdown-arrow ${showAnonymityDropdown ? 'open' : ''}`}>▼</span>
+            </button>
+            {showAnonymityDropdown && (
+              <div className="filter-dropdown-menu">
+                <div className="filter-dropdown-header">
+                  <span className="filter-dropdown-title">Filter by anonymity</span>
+                  {selectedAnonymityLevels.length > 0 && (
+                    <button
+                      onClick={() => setSelectedAnonymityLevels([])}
+                      className="filter-clear-btn"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="filter-dropdown-items">
+                  {allAnonymityLevels.map((level) => {
+                    const count = getAnonymityCount(level);
+                    if (count === 0) return null;
+
+                    return (
+                      <label
+                        key={level}
+                        className="filter-dropdown-item"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAnonymityLevels.includes(level)}
+                          onChange={() => toggleAnonymityFilter(level)}
+                        />
+                        <span className="filter-item-label">
+                          {getAnonymityLabel(level)}
+                        </span>
+                        <span className="filter-item-count">{count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="filter-dropdown-container">
+            <button
+              onClick={() => {
+                setShowDateDropdown(!showDateDropdown);
+                setShowStateDropdown(false);
+                setShowAnonymityDropdown(false);
+              }}
+              className="filter-dropdown-toggle"
+            >
+              {getDateRangeLabel(dateRange)}
+              <span className={`dropdown-arrow ${showDateDropdown ? 'open' : ''}`}>▼</span>
+            </button>
+            {showDateDropdown && (
+              <div className="filter-dropdown-menu">
+                <div className="filter-dropdown-header">
+                  <span className="filter-dropdown-title">Filter by date</span>
+                </div>
+                <div className="filter-dropdown-items">
+                  {allDateRanges.map((range) => {
+                    const count = getDateRangeCount(range);
+
+                    return (
+                      <label
+                        key={range}
+                        className="filter-dropdown-item"
+                      >
+                        <input
+                          type="radio"
+                          name="dateRange"
+                          checked={dateRange === range}
+                          onChange={() => {
+                            setDateRange(range);
+                            setShowDateDropdown(false);
+                          }}
+                        />
+                        <span className="filter-item-label">
+                          {getDateRangeLabel(range)}
+                        </span>
+                        <span className="filter-item-count">{count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Clear All Filters */}
+          {(selectedStates.length > 0 || selectedAnonymityLevels.length > 0 || dateRange !== 'all') && (
+            <button
+              onClick={clearFilters}
+              className="btn btn-outline-secondary btn-small"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
+      )}
 
       {error && <div className="error-message">{error}</div>}
 
@@ -74,11 +446,56 @@ export default function DashboardPage() {
             Create Conversation
           </Link>
         </div>
+      ) : groupRelated ? (
+        rootConversations.length === 0 ? (
+          <div className="empty-state">
+            <h3>No conversations found</h3>
+            <p>No conversations match the selected filter</p>
+            <button
+              onClick={clearFilters}
+              className="btn btn-secondary"
+            >
+              Clear Filter
+            </button>
+          </div>
+        ) : (
+          <div className="conversations-list">
+            <h2>Your Conversations</h2>
+            <div className="conversation-groups">
+              {rootConversations.map((conversation) => {
+                const children = childrenMap.get(conversation.id) || [];
+                const hasChildren = children.length > 0;
+
+                return (
+                  <div key={conversation.id} className={`conversation-group ${hasChildren ? 'has-follow-ups' : ''}`}>
+                    {renderConversationCard(conversation, false)}
+                    {hasChildren && (
+                      <div className="follow-ups-container">
+                        {children.map((child) => renderConversationCard(child, true))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
+      ) : filteredConversations.length === 0 ? (
+        <div className="empty-state">
+          <h3>No conversations found</h3>
+          <p>No conversations match the selected filter</p>
+          <button
+            onClick={clearFilters}
+            className="btn btn-secondary"
+          >
+            Clear Filter
+          </button>
+        </div>
       ) : (
         <div className="conversations-list">
           <h2>Your Conversations</h2>
           <div className="conversation-grid">
-            {conversations.map((conversation) => (
+            {filteredConversations.map((conversation) => (
               <Link
                 key={conversation.id}
                 to={`/conversations/${conversation.id}`}

@@ -595,6 +595,150 @@ h3 {
   gap: 1rem;
 }
 
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-bar .btn {
+  margin-left: auto;
+}
+
+.filter-label {
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.filter-dropdown-container {
+  position: relative;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.filter-dropdown-toggle {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  background: #f7fafc;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #2d3748;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.filter-dropdown-toggle:hover {
+  background: #e2e8f0;
+  border-color: #a0aec0;
+}
+
+.dropdown-arrow {
+  font-size: 0.7rem;
+  color: #718096;
+  transition: transform 0.2s;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.filter-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f7fafc;
+}
+
+.filter-dropdown-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.filter-clear-btn {
+  font-size: 0.8rem;
+  color: #4299e1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-weight: 500;
+}
+
+.filter-clear-btn:hover {
+  color: #3182ce;
+  text-decoration: underline;
+}
+
+.filter-dropdown-items {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.filter-dropdown-item:hover {
+  background: #f7fafc;
+}
+
+.filter-dropdown-item input[type="checkbox"],
+.filter-dropdown-item input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.filter-item-label {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.filter-item-count {
+  font-size: 0.85rem;
+  color: #718096;
+  background: #e2e8f0;
+  padding: 0.125rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
@@ -621,6 +765,67 @@ h3 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
+}
+
+.conversation-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.conversation-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.conversation-group.has-follow-ups {
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.conversation-group.has-follow-ups > .conversation-card {
+  margin-bottom: 1rem;
+}
+
+.follow-ups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-left: 2rem;
+  position: relative;
+}
+
+.follow-ups-container::before {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  top: 0;
+  bottom: 0.75rem;
+  width: 2px;
+  background: linear-gradient(to bottom, #cbd5e0 0%, transparent 100%);
+}
+
+.follow-up-card {
+  position: relative;
+  opacity: 0.95;
+}
+
+.follow-up-card::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 50%;
+  width: 1.5rem;
+  height: 2px;
+  background: #cbd5e0;
+}
+
+.follow-up-arrow {
+  color: #718096;
+  margin-right: 0.25rem;
 }
 
 .conversation-card {
@@ -1509,6 +1714,26 @@ h3 {
     flex-wrap: wrap;
   }
 
+  .filter-bar {
+    padding: 1rem;
+  }
+
+  .filter-bar .btn {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+
+  .filter-dropdown-container {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filter-label {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
   .conversation-actions-top {
     flex-wrap: wrap;
     width: 100%;
@@ -1531,6 +1756,19 @@ h3 {
 
   .conversation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .follow-ups-container {
+    padding-left: 1rem;
+  }
+
+  .follow-ups-container::before {
+    left: 0.5rem;
+  }
+
+  .follow-up-card::before {
+    left: -0.75rem;
+    width: 0.75rem;
   }
 
   .cta-buttons {
