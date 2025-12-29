@@ -1,219 +1,528 @@
 # Mosaic
 
-> Collection of anonymous opinions or responses to questions/polls with AI-powered insights
+> Anonymous feedback collection platform with AI-powered insights
 
-Mosaic is a platform for collecting anonymous opinions or responses to questions/polls with configurable privacy levels, using LLMs to synthesize responses into thematic insights. Users can create time-bounded conversations with invite codes, collect responses with varying anonymity levels, and generate AI-powered analysis using embedding-based semantic clustering.
+Mosaic is a full-stack web application that enables organizations to collect honest, anonymous feedback from teams and communities, then unlock powerful insights using AI-driven analysis. The platform supports multiple anonymity levels, flexible access controls, email invitations, and provides comprehensive sentiment analysis powered by OpenAI embeddings and Claude Sonnet 4.5.
 
-## Features
+## Key Features
 
-- **Anonymous Opinions or Responses to Questions/Polls Collection** - Configurable anonymity levels (fully anonymous, platform-tracked, revealable)
-- **Smart Analysis** - Embedding-based clustering with Claude AI for theme extraction
-- **Time-Bounded Sessions** - Auto-close with timers or manual control
-- **Flexible Access** - Invite code-based participation
-- **Organizations** - Optional grouping for teams (Phase 2)
+### 🔒 Three Anonymity Levels
+- **Fully Anonymous**: Participant codes for one-time use with zero user tracking
+- **Platform Tracked**: Users authenticated internally but identity hidden from facilitator
+- **Revealable**: Users can optionally consent to reveal their identity with responses
 
-## Architecture
+### 🎯 Flexible Access Control
+- **Public Access**: Anyone with the access code can participate
+- **Invite-Only Mode**: Restricted to specific participant codes or email invitations
+- **Email Invitations**: Send personalized invitation links to specific users
+- **Participant Code System**: Generate unique codes for fully anonymous participation
 
-### Tech Stack
+### 🤖 AI-Powered Analysis
+- Automatic response clustering using OpenAI `text-embedding-3-small` (1536 dimensions)
+- DBSCAN algorithm for semantic grouping based on cosine similarity
+- Theme extraction and sentiment analysis via Claude Sonnet 4.5
+- Comprehensive summaries with actionable insights grouped by sentiment (positive/negative/neutral)
 
-- **Backend**: FastAPI (Python 3.11+)
-- **Frontend**: React + TypeScript + Vite
-- **Database**: PostgreSQL
-- **Embeddings**: OpenAI text-embedding-3-small
-- **Clustering**: scikit-learn (DBSCAN)
-- **LLM**: Claude Sonnet 3.5
-- **Deployment**: fly.io (MVP)
+### ⚡ Smart Scheduling & Time Management
+- Manual activation or scheduled auto-activation
+- Duration-based conversations with automatic closure
+- Time zone support for global teams
+- Flexible time extensions during active conversations
+- Manual close override when needed
 
-### Project Structure
+### 🔐 Authentication & Security
+- Email/password authentication with JWT tokens
+- Google OAuth 2.0 integration for seamless sign-in
+- Automatic token refresh on expiry
+- Protected routes with redirect preservation
+- Admin portal with separate authentication
+- Password hashing with bcrypt
+- CORS configuration for API security
+
+### 📊 Analytics & Management
+- Real-time response tracking and statistics
+- Participant count monitoring
+- Response rate calculation
+- Admin portal for system oversight
+- Conversation state management (draft → active → closed → analyzed)
+- Preview mode before activation
+
+### 🎨 Modern User Interface
+- Responsive design for all devices
+- Clean, accessible interface
+- Modal components for participant code display
+- Legal pages (Terms of Service, Privacy Policy)
+- Comprehensive error handling and success states
+
+## Tech Stack
+
+### Backend
+- **Framework**: FastAPI (Python 3.13)
+- **Database**: PostgreSQL with SQLAlchemy 2.0
+- **Authentication**: JWT tokens with refresh, OAuth 2.0 (Google)
+- **AI/ML**:
+  - OpenAI API (text-embedding-3-small for embeddings)
+  - Anthropic Claude Sonnet 4.5 (analysis & summarization)
+  - scikit-learn (DBSCAN clustering algorithm)
+  - NumPy (vector operations)
+- **Task Processing**: FastAPI BackgroundTasks for async analysis
+- **API Documentation**: Auto-generated OpenAPI/Swagger docs
+
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite for fast development and optimized builds
+- **Routing**: React Router v6 with protected routes
+- **HTTP Client**: Axios with interceptors for auth
+- **State Management**: React Context API
+- **Styling**: Custom CSS with responsive breakpoints
+
+## Project Structure
 
 ```
 mosaic/
-├── backend/               # FastAPI application
+├── backend/
 │   ├── app/
-│   │   ├── core/         # Configuration, database, security
-│   │   ├── models/       # SQLAlchemy models
-│   │   ├── schemas/      # Pydantic schemas
-│   │   ├── routes/       # API endpoints
-│   │   ├── services/     # Business logic
-│   │   │   ├── embeddings/  # OpenAI embedding generation
-│   │   │   └── llm/         # Claude analysis
-│   │   └── utils/        # Utilities
-│   ├── alembic/          # Database migrations
-│   └── tests/            # Tests
-├── frontend/             # React application
+│   │   ├── core/
+│   │   │   ├── config.py         # Environment config
+│   │   │   ├── database.py       # DB connection
+│   │   │   └── dependencies.py   # Auth dependencies
+│   │   ├── models/               # SQLAlchemy models
+│   │   │   ├── user.py
+│   │   │   ├── conversation.py
+│   │   │   ├── question.py
+│   │   │   ├── response.py
+│   │   │   ├── participant_code.py
+│   │   │   ├── conversation_invitation.py
+│   │   │   └── analysis.py
+│   │   ├── schemas/              # Pydantic schemas
+│   │   │   ├── user.py
+│   │   │   ├── conversation.py
+│   │   │   ├── response.py
+│   │   │   ├── analysis.py
+│   │   │   └── common.py
+│   │   ├── routes/               # API endpoints
+│   │   │   ├── auth.py          # Authentication & OAuth
+│   │   │   ├── conversations.py  # Conversation CRUD
+│   │   │   ├── responses.py      # Response submission
+│   │   │   ├── analysis.py       # AI analysis
+│   │   │   └── admin.py          # Admin portal
+│   │   ├── services/             # Business logic
+│   │   │   ├── analysis_service.py  # AI analysis pipeline
+│   │   │   └── oauth_service.py     # Google OAuth
+│   │   └── main.py               # FastAPI app
+│   ├── alembic/                  # Database migrations
+│   ├── requirements.txt          # Python dependencies
+│   └── .env                      # Environment variables
+│
+├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/     # API client
-│   │   ├── hooks/
-│   │   ├── types/
-│   │   └── utils/
-│   └── public/
-└── docs/                 # Documentation
+│   │   ├── components/           # React components
+│   │   │   ├── Header.tsx        # Navigation header
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── contexts/             # Context providers
+│   │   │   └── AuthContext.tsx   # Auth state management
+│   │   ├── pages/                # Page components
+│   │   │   ├── HomePage.tsx
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── RegisterPage.tsx
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── CreateConversationPage.tsx
+│   │   │   ├── EditConversationPage.tsx
+│   │   │   ├── ConversationDetailPage.tsx
+│   │   │   ├── ManageInvitationsPage.tsx
+│   │   │   ├── JoinPage.tsx
+│   │   │   ├── AnalysisPage.tsx
+│   │   │   ├── TermsOfServicePage.tsx
+│   │   │   ├── PrivacyPolicyPage.tsx
+│   │   │   ├── AdminPortalPage.tsx
+│   │   │   ├── AdminUserDetailPage.tsx
+│   │   │   └── AdminConversationDetailPage.tsx
+│   │   ├── services/             # API client
+│   │   │   └── api.ts            # Axios service layer
+│   │   ├── types/                # TypeScript definitions
+│   │   │   └── index.ts
+│   │   ├── App.tsx               # Main app component
+│   │   └── App.css               # Global styles
+│   ├── package.json              # Node dependencies
+│   └── .env                      # Environment variables
+│
+└── README.md                     # This file
 ```
 
 ## Getting Started
 
 ### Prerequisites
-
-- Python 3.11+
-- Node.js 20+
+- Python 3.13+
+- Node.js 18+
 - PostgreSQL 14+
-- Docker & Docker Compose (optional, recommended)
+- OpenAI API key
+- Anthropic API key
+- (Optional) Google OAuth credentials for social login
 
-### Environment Setup
+### Backend Setup
 
-1. **Clone the repository**
+1. **Create PostgreSQL database**
    ```bash
-   git clone <repository-url>
-   cd mosaic
+   createdb mosaic
    ```
 
-2. **Set up environment variables**
+2. **Set up Python environment**
    ```bash
-   cp backend/.env.example backend/.env
+   cd backend
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip3 install -r requirements.txt
    ```
 
-   Edit `backend/.env` and add your API keys:
-   ```
-   DATABASE_URL=postgresql://mosaic:mosaic@localhost:5432/mosaic
-   SECRET_KEY=<generate-a-secret-key>
+3. **Configure environment variables**
+
+   Create `.env` file in `backend/` directory:
+   ```env
+   # Database
+   DATABASE_URL=postgresql://user:password@localhost/mosaic
+
+   # Security
+   SECRET_KEY=your-secret-key-here-generate-with-openssl-rand-hex-32
+
+   # AI Services
    OPENAI_API_KEY=sk-...
    ANTHROPIC_API_KEY=sk-ant-...
+
+   # OAuth (Optional)
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
+
+   # CORS
+   FRONTEND_URL=http://localhost:3000
+
+   # Admin Portal
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=your-secure-admin-password
    ```
 
-### Running with Docker (Recommended)
+4. **Run database migrations**
+   ```bash
+   alembic upgrade head
+   ```
 
-```bash
-# Start all services
-make dev
+5. **Start the backend server**
+   ```bash
+   python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-# Or manually:
-docker-compose up
-```
+   Services available:
+   - API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+   - ReDoc: http://localhost:8000/redoc
 
-The services will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+### Frontend Setup
 
-### Running Locally
+1. **Install dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-#### Backend
+2. **Configure environment**
 
-```bash
-cd backend
+   Create `.env` file in `frontend/` directory:
+   ```env
+   VITE_API_URL=http://localhost:8000/api
+   ```
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
 
-# Install dependencies
-pip install -r requirements.txt
+   Frontend will be available at http://localhost:3000
 
-# Run migrations
-alembic upgrade head
+## Usage Guide
 
-# Start server
-uvicorn app.main:app --reload
-```
+### Creating a Conversation
 
-#### Frontend
+1. **Register/Login** to your account (or use Google OAuth)
+2. Navigate to **Dashboard** and click "+ New Conversation"
+3. **Configure the conversation**:
+   - **Title and Description**: Clear, descriptive information
+   - **Anonymity Level**: Choose from fully anonymous, platform tracked, or revealable
+   - **Access Control**: Public (anyone with code) or invite-only (restricted)
+   - **Questions**: Add 1 or more questions
+   - **Duration** (optional): Set hours/minutes for auto-close
+   - **Scheduling** (optional): Schedule activation for later
+   - **Time Zone** (optional): Specify for global teams
+4. **Preview** the participant experience before activating
+5. **Activate** immediately or schedule for later
 
-```bash
-cd frontend
+### Managing Access
 
-# Install dependencies
-npm install
+**For Public Conversations:**
+- Share the access code link: `http://localhost:3000/join/YOUR_ACCESS_CODE`
+- Anyone with the link can participate (subject to anonymity settings)
 
-# Start development server
-npm run dev
-```
+**For Invite-Only Conversations:**
+- **Generate Participant Codes**: Create unique codes for fully anonymous participation
+- **Send Email Invitations**: Invite specific users by email
+- View and manage all invitations from the conversation detail page
 
-### Database Migrations
+### Collecting Responses
 
-```bash
-# Create a new migration
-cd backend
-alembic revision --autogenerate -m "Description of changes"
+Participants:
+1. Visit the join link or enter the access code
+2. For invite-only: Enter their participant code or use invitation link
+3. Complete the response form
+4. Submit (one-time submission enforced)
 
-# Apply migrations
-alembic upgrade head
+### Managing Active Conversations
 
-# Rollback
-alembic downgrade -1
-```
+From the conversation detail page:
+- **Extend Time**: Add more hours to an active conversation
+- **Close Early**: Manually close before duration expires
+- **View Statistics**: Real-time response count and participant tracking
+- **Manage Codes**: View generated participant codes and usage status
+
+### Running AI Analysis
+
+After closing a conversation:
+1. Click **"Run AI Analysis"** button
+2. Analysis runs in the background (~15-30 seconds for typical datasets)
+3. View comprehensive results:
+   - **Overall Summary**: High-level insights
+   - **Themes**: Grouped similar responses with frequency counts
+   - **Sentiment Clusters**: Positive/negative/neutral breakdown per theme
+   - **Metadata**: Processing time, model info, cluster counts
+
+## API Endpoints
+
+### Authentication (`/api/auth`)
+- `POST /register` - Create new account
+- `POST /login` - Email/password login
+- `GET /me` - Get current user info
+- `POST /refresh` - Refresh access token
+- `GET /google/login` - Initiate Google OAuth flow
+- `GET /google/callback` - OAuth callback handler
+
+### Conversations (`/api/conversations`)
+- `POST /` - Create conversation
+- `GET /` - List user's conversations
+- `GET /{id}` - Get conversation details with questions
+- `PATCH /{id}` - Update conversation (draft only)
+- `DELETE /{id}` - Soft delete conversation
+- `POST /{id}/activate` - Activate conversation
+- `POST /{id}/close` - Close conversation
+- `POST /{id}/extend` - Extend active conversation time
+- `POST /{id}/participant-codes` - Generate participant codes
+- `GET /{id}/participant-codes` - List participant codes with usage
+- `GET /by-code/{access_code}` - Get conversation by access code
+
+### Invitations (`/api/conversations/{id}/invitations`)
+- `POST /` - Send email invitations
+- `GET /` - List all invitations with status
+- `DELETE /{invitation_id}` - Remove invitation
+
+### Responses (`/api/conversations`)
+- `POST /{code}/validate` - Validate access code
+- `POST /{code}/validate-participant` - Validate participant code
+- `GET /{code}/responses/check` - Check if user already responded
+- `POST /{code}/responses` - Submit response
+- `GET /{id}/responses` - Get all responses (owner only)
+- `GET /{id}/responses/stats` - Get response statistics
+
+### Analysis (`/api/conversations/{id}`)
+- `POST /analyze` - Trigger AI analysis (background task)
+- `GET /analysis` - Get analysis results
+
+### Admin (`/api/admin`)
+- `POST /login` - Admin authentication
+- `GET /users` - List all users (with filters)
+- `GET /conversations` - List all conversations
+- `GET /responses` - List all responses
+
+## Database Schema
+
+### Core Tables
+
+**users**
+- id, email, hashed_password, full_name
+- created_at, updated_at
+
+**conversations**
+- id, creator_id, organization_id (nullable)
+- title, description
+- anonymity_level (enum), results_access (enum)
+- invite_only (boolean), access_code (unique)
+- state (enum: draft/active/closed/analyzed/deleted)
+- auto_analyze, max_response_length
+- duration_minutes, timezone
+- scheduled_activate_at, auto_close_at
+- manual_close_enabled, time_extension_enabled
+- activated_at, closed_at, analyzed_at
+- created_at, updated_at
+
+**questions**
+- id, conversation_id
+- question_text, question_type, question_order
+- options (JSONB)
+- created_at
+
+**responses**
+- id, conversation_id, question_id
+- participant_id (nullable), participant_code_id (nullable)
+- response_text, response_data (JSONB)
+- anonymity_level, reveal_consent
+- submitted_at
+
+**participant_codes**
+- id, conversation_id
+- participant_code (unique), is_used
+- used_at, created_at
+
+**conversation_invitations**
+- id, conversation_id
+- email, invited_by_id, invited_user_id
+- invitation_token, is_accepted
+- accepted_at, created_at, expires_at
+
+**analyses**
+- id, conversation_id
+- overall_summary, themes (JSONB)
+- embedding_provider, embedding_model
+- clustering_algorithm
+- llm_provider, llm_model
+- total_responses_analyzed, num_clusters_found
+- analysis_duration_ms
+- created_at
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed schema and relationships.
 
 ## Development
 
-### Available Commands
+### Database Migrations
 
+**Create new migration:**
 ```bash
-make help          # Show all available commands
-make install       # Install dependencies
-make dev           # Start development environment
-make stop          # Stop all services
-make clean         # Clean up containers and volumes
-make migrate       # Run database migrations
-make db-reset      # Reset database
-```
-
-### Running Tests
-
-```bash
-# Backend tests
 cd backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
+alembic revision --autogenerate -m "Add new field to conversations"
 ```
 
-## API Documentation
+**Apply migrations:**
+```bash
+alembic upgrade head
+```
 
-Once the backend is running, visit:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+**Rollback last migration:**
+```bash
+alembic downgrade -1
+```
 
-## Design Documents
+### Building for Production
 
-- [Design Decisions](docs/DESIGN_DECISIONS.md) - Key architectural decisions
-- [System Design](docs/SYSTEM_DESIGN.md) - Detailed system architecture
-- [LLM Analysis Approach](docs/LLM_ANALYSIS_APPROACH.md) - Embedding-based clustering implementation
-- [Embedding Feasibility](docs/EMBEDDING_CLUSTERING_FEASIBILITY.md) - Feasibility analysis
+**Backend:**
+```bash
+# Install production WSGI server
+pip install gunicorn
 
-See [docs/](docs/) for complete documentation.
+# Run with multiple workers
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
 
-## Roadmap
+**Frontend:**
+```bash
+npm run build
+# Static files output to dist/
+# Serve with nginx, Vercel, or any static host
+```
 
-### Phase 1: Core MVP ✅ (In Progress)
-- [ ] User authentication (register, login, JWT refresh)
-- [ ] Conversation CRUD (create, activate, close)
-- [ ] Single question support
-- [ ] Text-only responses
-- [ ] Platform-tracked anonymity level
-- [ ] Manual close only
-- [ ] LLM analysis with embeddings + Claude
-- [ ] Results access: invite code holders
+## Environment Variables
 
-### Phase 2: Enhanced Features
-- [ ] Multi-question support
-- [ ] Auto-close timer + background jobs
-- [ ] All three anonymity levels
-- [ ] Public results access
-- [ ] Organizations support
+### Backend (.env)
+| Variable | Description | Required |
+|----------|-------------|----------|
+| DATABASE_URL | PostgreSQL connection string | ✅ Yes |
+| SECRET_KEY | JWT signing key (generate with `openssl rand -hex 32`) | ✅ Yes |
+| OPENAI_API_KEY | OpenAI API key for embeddings | ✅ Yes |
+| ANTHROPIC_API_KEY | Anthropic API key for Claude | ✅ Yes |
+| GOOGLE_CLIENT_ID | Google OAuth client ID | ❌ No |
+| GOOGLE_CLIENT_SECRET | Google OAuth client secret | ❌ No |
+| GOOGLE_REDIRECT_URI | OAuth callback URL | ❌ No |
+| FRONTEND_URL | Frontend origin for CORS | ✅ Yes |
+| ADMIN_USERNAME | Admin portal username | ✅ Yes |
+| ADMIN_PASSWORD | Admin portal password | ✅ Yes |
 
-### Phase 3: Advanced Features
-- [ ] Ratings and polls
-- [ ] Real-time response count
-- [ ] Analysis regeneration
-- [ ] Export results (PDF, CSV)
-- [ ] Analytics dashboard
+### Frontend (.env)
+| Variable | Description | Required |
+|----------|-------------|----------|
+| VITE_API_URL | Backend API base URL | ✅ Yes |
 
-## Contributing
+## Feature Status
 
-This is currently a private project. Contribution guidelines will be added later.
+### ✅ Completed
+- User authentication (email/password + JWT refresh)
+- Google OAuth integration
+- Conversation CRUD with full state management
+- Multi-question support
+- All three anonymity levels
+- Public and invite-only access modes
+- Participant code generation and tracking
+- Email invitation system
+- Text responses with character limits
+- Manual and auto-close functionality
+- Duration-based conversations with scheduling
+- Time zone support
+- Time extension for active conversations
+- AI analysis with embeddings + DBSCAN + Claude
+- Both access modes for results (invite code holders, public)
+- Admin portal with user/conversation/response views
+- Legal pages (Terms, Privacy)
+- Responsive UI with comprehensive styling
+- Preview mode before activation
+- Response duplicate prevention
+- Automatic token refresh
+- Protected routes with redirect preservation
+
+### 🚧 Future Enhancements
+- Organizations/teams support
+- Rating and poll question types
+- Real-time response count updates
+- Analysis regeneration
+- Export results (PDF, CSV)
+- Advanced analytics dashboard
+- Notification system
+- Response editing window
+- Batch invitation uploads
+
+## Troubleshooting
+
+**Backend won't start:**
+- Ensure PostgreSQL is running: `pg_isready`
+- Check DATABASE_URL format: `postgresql://user:password@host:port/database`
+- Verify Python 3.13+: `python3 --version`
+- Check all dependencies installed: `pip3 list`
+
+**Frontend build errors:**
+- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+- Check Node version: `node --version` (should be 18+)
+- Verify VITE_API_URL in .env
+
+**Analysis fails:**
+- Verify API keys are correct and active
+- Check API quotas/rate limits on OpenAI/Anthropic dashboards
+- Ensure conversation has at least one response
+- Check backend logs: look for detailed error messages
+- Verify the correct Claude model name: `claude-sonnet-4-5-20250929`
+
+**OAuth not working:**
+- Verify Google OAuth credentials in Google Cloud Console
+- Check GOOGLE_REDIRECT_URI matches exactly (including protocol and port)
+- Ensure authorized redirect URIs include your callback URL
+- Verify FRONTEND_URL for redirect after OAuth
+
+**Participant codes not working:**
+- Ensure conversation is in `active` state
+- Verify `invite_only` is `true` for the conversation
+- Check code hasn't been used already (one-time use)
+- Codes are case-sensitive
 
 ## License
 
@@ -221,4 +530,15 @@ Proprietary - All rights reserved
 
 ## Support
 
-For questions or issues, please contact the development team.
+For issues and questions:
+- Create an issue in the repository
+- See [ARCHITECTURE.md](ARCHITECTURE.md) for technical details
+- Contact the development team
+
+## Acknowledgments
+
+- [OpenAI](https://openai.com/) for embeddings API
+- [Anthropic](https://anthropic.com/) for Claude API
+- [FastAPI](https://fastapi.tiangolo.com/) framework
+- [React](https://react.dev/) and [Vite](https://vitejs.dev/) teams
+- [SQLAlchemy](https://www.sqlalchemy.org/) ORM
