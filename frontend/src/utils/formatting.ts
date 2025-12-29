@@ -243,6 +243,22 @@ export function formatDateShort(dateString: string, backendTimezone?: string): s
 }
 
 /**
+ * Format a Date object to the format required by datetime-local input (YYYY-MM-DDTHH:mm)
+ * This converts the date to local time, not UTC
+ * 
+ * @param date - Date object to format
+ * @returns String in format YYYY-MM-DDTHH:mm (local time)
+ */
+export function formatDateForDateTimeLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
  * Format a date as relative time (e.g., "2 days ago", "yesterday", "3 hours ago")
  */
 export function formatRelativeTime(dateString: string): string {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess, type QuestionCreate } from '../types';
+import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
 export default function CreateConversationPage() {
@@ -255,10 +256,9 @@ export default function CreateConversationPage() {
                 onChange={(e) => {
                   setScheduleActivation(e.target.checked);
                   if (e.target.checked) {
-                    // Set default to 1 hour from now
+                    // Set default to current time in local timezone
                     const defaultTime = new Date();
-                    defaultTime.setHours(defaultTime.getHours() + 1);
-                    setScheduledActivateAt(defaultTime.toISOString().slice(0, 16));
+                    setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
                   } else {
                     setScheduledActivateAt('');
                   }
@@ -280,7 +280,7 @@ export default function CreateConversationPage() {
                 type="datetime-local"
                 value={scheduledActivateAt}
                 onChange={(e) => setScheduledActivateAt(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
+                min={formatDateForDateTimeLocal(new Date())}
                 required={scheduleActivation}
               />
               <p className="form-help-text">

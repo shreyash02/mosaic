@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, ResponseStats, Analysis, InvitationListResponse } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
-import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
+import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
 export default function ConversationDetailPage() {
@@ -691,54 +691,49 @@ export default function ConversationDetailPage() {
             <h2>Activate Conversation</h2>
             <p>Choose when to activate this conversation:</p>
             
-            <div className="form-group" style={{ marginTop: '20px' }}>
-              <label htmlFor="activate-now">
-                <input
-                  type="radio"
-                  id="activate-now"
-                  name="activate-time"
-                  value="now"
-                  checked={!scheduledActivateAt}
-                  onChange={() => setScheduledActivateAt('')}
-                />
-                <span style={{ marginLeft: '8px' }}>Activate immediately</span>
-              </label>
-            </div>
+            <div className="form-group radio-group" style={{ marginTop: '20px' }}>
+              <div className="radio-option">
+                <label htmlFor="activate-now">
+                  <input
+                    type="radio"
+                    id="activate-now"
+                    name="activate-time"
+                    value="now"
+                    checked={!scheduledActivateAt}
+                    onChange={() => setScheduledActivateAt('')}
+                  />
+                  <span>Activate immediately</span>
+                </label>
+              </div>
 
-            <div className="form-group" style={{ marginTop: '15px' }}>
-              <label htmlFor="activate-scheduled">
-                <input
-                  type="radio"
-                  id="activate-scheduled"
-                  name="activate-time"
-                  value="scheduled"
-                  checked={!!scheduledActivateAt}
-                  onChange={() => {
-                    // Set default to 1 hour from now
-                    const defaultTime = new Date();
-                    defaultTime.setHours(defaultTime.getHours() + 1);
-                    setScheduledActivateAt(defaultTime.toISOString().slice(0, 16));
-                  }}
-                />
-                <span style={{ marginLeft: '8px' }}>Schedule activation</span>
-              </label>
-              
-              {scheduledActivateAt && (
-                <input
-                  type="datetime-local"
-                  value={scheduledActivateAt}
-                  onChange={(e) => setScheduledActivateAt(e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
-                  style={{
-                    marginTop: '10px',
-                    width: '100%',
-                    padding: '8px',
-                    fontSize: '14px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                  }}
-                />
-              )}
+              <div className="radio-option">
+                <label htmlFor="activate-scheduled">
+                  <input
+                    type="radio"
+                    id="activate-scheduled"
+                    name="activate-time"
+                    value="scheduled"
+                    checked={!!scheduledActivateAt}
+                    onChange={() => {
+                      // Set default to current time in local timezone
+                      const defaultTime = new Date();
+                      setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
+                    }}
+                  />
+                  <span>Schedule activation</span>
+                </label>
+                
+                {scheduledActivateAt && (
+                  <div style={{ marginLeft: '1.5rem', marginTop: '0.75rem' }}>
+                    <input
+                      type="datetime-local"
+                      value={scheduledActivateAt}
+                      onChange={(e) => setScheduledActivateAt(e.target.value)}
+                      min={formatDateForDateTimeLocal(new Date())}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {error && <div className="error-message" style={{ marginTop: '15px' }}>{error}</div>}
