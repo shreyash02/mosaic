@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, type QuestionCreate } from '../types';
+import { AnonymityLevel, ResultsAccess, type QuestionCreate, type Conversation } from '../types';
 import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
+interface LocationState {
+  isFollowUp?: boolean;
+  parentConversationId?: string;
+  copySettings?: boolean;
+  copyInvitations?: boolean;
+  parentConversation?: Conversation;
+}
+
 export default function CreateConversationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const followUpState = location.state as LocationState;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [anonymityLevel, setAnonymityLevel] = useState<AnonymityLevel>(
@@ -27,6 +38,24 @@ export default function CreateConversationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Prefill form if this is a follow-up conversation
+  useEffect(() => {
+    if (followUpState?.isFollowUp && followUpState.parentConversation && followUpState.copySettings) {
+      const parent = followUpState.parentConversation;
+      setTitle(`${parent.title} (Follow-up)`);
+      setDescription(parent.description || '');
+      setAnonymityLevel(parent.anonymity_level);
+      setResultsAccess(parent.results_access);
+      setInviteOnly(parent.invite_only);
+
+      // Copy duration if set
+      if (parent.duration_minutes) {
+        setDurationHours(Math.floor(parent.duration_minutes / 60));
+        setDurationMinutes(parent.duration_minutes % 60);
+      }
+    }
+  }, [followUpState]);
 
   const addQuestion = () => {
     setQuestions([
@@ -174,20 +203,24 @@ export default function CreateConversationPage() {
         timezone: userTimezone,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
-        ...(scheduleActivation && scheduledActivateAt && { 
+        ...(scheduleActivation && scheduledActivateAt && {
           // Send datetime string as-is (naive, in format YYYY-MM-DDTHH:mm)
           // Backend will interpret it in the conversation's timezone
           scheduled_activate_at: scheduledActivateAt + ':00' // Add seconds to make it valid ISO format
         }),
+        // Add parent_conversation_id if this is a follow-up
+        ...(followUpState?.isFollowUp && followUpState.parentConversationId && {
+          parent_conversation_id: followUpState.parentConversationId
+        }),
       });
-      
+
       // If invite-only is enabled and emails are provided, invite those users
       if (inviteOnly && inviteEmails.trim()) {
         const emails = inviteEmails
           .split(',')
           .map(e => e.trim())
           .filter(e => e.length > 0 && e.includes('@'));
-        
+
         if (emails.length > 0) {
           try {
             await api.inviteUsers(conversation.id, emails);
@@ -195,6 +228,26 @@ export default function CreateConversationPage() {
             // Log error but don't block navigation - invitations can be added later
             console.error('Failed to invite users during creation:', inviteErr);
           }
+        }
+      }
+
+      // If this is a follow-up and copyInvitations is true, copy invitations from parent
+      if (followUpState?.isFollowUp && followUpState.copyInvitations && followUpState.parentConversationId) {
+        try {
+          // Get parent invitations
+          const parentInvitations = await api.listInvitations(followUpState.parentConversationId);
+          if (parentInvitations.invitations && parentInvitations.invitations.length > 0) {
+            const emails = parentInvitations.invitations
+              .filter(inv => inv.email)
+              .map(inv => inv.email);
+
+            if (emails.length > 0) {
+              await api.inviteUsers(conversation.id, emails);
+            }
+          }
+        } catch (inviteErr: any) {
+          // Log error but don't block navigation - invitations can be added later
+          console.error('Failed to copy invitations from parent:', inviteErr);
         }
       }
       
@@ -209,8 +262,8 @@ export default function CreateConversationPage() {
   return (
     <div className="create-conversation-page">
       <div className="page-header">
-        <h1>Create New Conversation</h1>
-        <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
+        <h1>{followUpState?.isFollowUp ? 'Create Follow-up Conversation' : 'Create New Conversation'}</h1>
+        <button onClick={() => navigate(followUpState?.parentConversationId ? `/conversations/${followUpState.parentConversationId}` : '/dashboard')} className="btn btn-secondary">
           Cancel
         </button>
       </div>

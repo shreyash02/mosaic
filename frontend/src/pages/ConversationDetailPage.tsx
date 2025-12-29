@@ -37,7 +37,6 @@ export default function ConversationDetailPage() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [copyInvitations, setCopyInvitations] = useState(false);
   const [copySettings, setCopySettings] = useState(true);
-  const [creatingFollowUp, setCreatingFollowUp] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -124,20 +123,17 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const handleCreateFollowUp = async () => {
-    setCreatingFollowUp(true);
-    try {
-      const newConversation = await api.createFollowUp(id!, {
-        copy_invitations: copyInvitations,
-        copy_settings: copySettings,
-      });
-      navigate(`/conversations/${newConversation.id}/edit`);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create follow-up');
-    } finally {
-      setCreatingFollowUp(false);
-      setShowFollowUpModal(false);
-    }
+  const handleCreateFollowUp = () => {
+    // Navigate to create page with follow-up state
+    navigate('/conversations/new', {
+      state: {
+        isFollowUp: true,
+        parentConversationId: id,
+        copySettings: copySettings,
+        copyInvitations: copyInvitations,
+        parentConversation: conversation,
+      }
+    });
   };
 
   const copyInviteLink = async () => {
@@ -332,37 +328,25 @@ export default function ConversationDetailPage() {
           <button onClick={() => navigate('/dashboard')} className="btn-back">
             ← Back to Dashboard
           </button>
-          <h1>{conversation.title}</h1>
+          <div className="title-row">
+            <h1>{conversation.title}</h1>
+            <span className={`status-badge-inline status-${conversation.state}`}>
+              {conversation.state}
+            </span>
+          </div>
           {conversation.description && <p className="description">{conversation.description}</p>}
         </div>
         <div className="header-actions">
-          <span className={`status-badge status-${conversation.state}`}>
-            {conversation.state}
-          </span>
           <div className="conversation-actions-top">
-            <button
-              onClick={() => setShowPreview(true)}
-              className="btn btn-secondary btn-small"
-            >
-              Preview
-            </button>
-
+            {/* Primary state-specific action */}
             {conversation.state === ConversationState.DRAFT && (
-              <>
-                <Link
-                  to={`/conversations/${id}/edit`}
-                  className="btn btn-secondary btn-small"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => setShowActivateModal(true)}
-                  className="btn btn-primary btn-small"
-                  disabled={actionLoading}
-                >
-                  Activate
-                </button>
-              </>
+              <button
+                onClick={() => setShowActivateModal(true)}
+                className="btn btn-primary btn-small"
+                disabled={actionLoading}
+              >
+                Activate
+              </button>
             )}
 
             {conversation.state === ConversationState.ACTIVE && (
@@ -391,19 +375,37 @@ export default function ConversationDetailPage() {
               </Link>
             )}
 
+            {/* Secondary actions */}
+            <button
+              onClick={() => setShowPreview(true)}
+              className="btn btn-outline-secondary btn-small"
+            >
+              Preview
+            </button>
+
+            {conversation.state === ConversationState.DRAFT && (
+              <Link
+                to={`/conversations/${id}/edit`}
+                className="btn btn-outline-secondary btn-small"
+              >
+                Edit
+              </Link>
+            )}
+
             {(conversation.state === ConversationState.CLOSED || conversation.state === ConversationState.ANALYZED) && (
               <button
                 onClick={() => setShowFollowUpModal(true)}
-                className="btn btn-secondary btn-small"
+                className="btn btn-outline-secondary btn-small"
                 disabled={actionLoading}
               >
                 Create Follow-up
               </button>
             )}
 
+            {/* Destructive action */}
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="btn btn-danger btn-small"
+              className="btn btn-outline-danger btn-small"
               disabled={actionLoading}
             >
               Delete
@@ -856,16 +858,18 @@ export default function ConversationDetailPage() {
                   <span>Keep the same settings</span>
                 </label>
               </div>
-              <div className="checkbox-option">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={copyInvitations}
-                    onChange={(e) => setCopyInvitations(e.target.checked)}
-                  />
-                  <span>Send invitations to the same users</span>
-                </label>
-              </div>
+              {conversation.invite_only && (
+                <div className="checkbox-option">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={copyInvitations}
+                      onChange={(e) => setCopyInvitations(e.target.checked)}
+                    />
+                    <span>Send invitations to the same users</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#666', lineHeight: '1.6' }}>
@@ -887,9 +891,8 @@ export default function ConversationDetailPage() {
               <button
                 onClick={handleCreateFollowUp}
                 className="btn btn-primary"
-                disabled={creatingFollowUp}
               >
-                {creatingFollowUp ? 'Creating...' : 'Create Follow-up'}
+                Next
               </button>
             </div>
           </div>

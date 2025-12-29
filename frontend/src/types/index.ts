@@ -134,6 +134,7 @@ export interface ConversationCreate {
   manual_close_enabled?: boolean;
   time_extension_enabled?: boolean;
   timezone?: string;
+  parent_conversation_id?: string;
 }
 
 export interface ConversationListItem {

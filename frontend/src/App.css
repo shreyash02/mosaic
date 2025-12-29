@@ -158,6 +158,30 @@ h3 {
   font-size: 0.8rem;
 }
 
+.btn-outline-secondary {
+  background-color: #f7fafc;
+  color: #4a5568;
+  border: 1px solid #cbd5e0;
+}
+
+.btn-outline-secondary:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  border-color: #a0aec0;
+  color: #2d3748;
+}
+
+.btn-outline-danger {
+  background-color: #fff5f5;
+  color: #c53030;
+  border: 1px solid #fc8181;
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  background-color: #fed7d7;
+  border-color: #f56565;
+  color: #9b2c2c;
+}
+
 .btn-large {
   padding: 0.875rem 1.75rem;
   font-size: 1rem;
@@ -636,6 +660,17 @@ h3 {
   margin-left: 0.5rem;
 }
 
+.status-badge-inline {
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+}
+
 .status-draft {
   background-color: #e2e8f0;
   color: #4a5568;
@@ -717,13 +752,25 @@ h3 {
 
 .conversation-actions-top {
   display: flex;
-  gap: 0.75rem;
-  flex-wrap: nowrap;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   align-items: center;
 }
 
 .page-header h1 {
   margin-bottom: 0.5rem;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.title-row h1 {
+  margin-bottom: 0;
 }
 
 .page-header .description,
