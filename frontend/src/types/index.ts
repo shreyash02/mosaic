@@ -80,10 +80,18 @@ export interface QuestionCreate {
   options?: QuestionOptions;
 }
 
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  state: ConversationState;
+  created_at: string;
+}
+
 export interface Conversation {
   id: string;
   creator_id: string;
   organization_id?: string;
+  parent_conversation_id?: string;
   title: string;
   description?: string;
   anonymity_level: AnonymityLevel;
@@ -105,6 +113,10 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   questions?: Question[];
+  // Follow-up conversation fields
+  parent_conversation?: ConversationSummary;
+  follow_up_conversations?: ConversationSummary[];
+  is_follow_up?: boolean;
 }
 
 export interface ConversationCreate {
@@ -135,6 +147,19 @@ export interface ConversationListItem {
   closed_at?: string;
   response_count?: number;
   timezone?: string;
+  is_follow_up?: boolean;
+  parent_conversation_id?: string;
+}
+
+export interface CreateFollowUpRequest {
+  copy_invitations: boolean;
+  copy_settings: boolean;
+}
+
+export interface ConversationLineage {
+  current: Conversation;
+  ancestors: ConversationSummary[];
+  descendants: ConversationSummary[];
 }
 
 // Response types

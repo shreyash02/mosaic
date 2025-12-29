@@ -20,6 +20,9 @@ class Conversation(Base):
     creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
 
+    # Follow-up relationship
+    parent_conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # Basic info
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
@@ -74,6 +77,10 @@ class Conversation(Base):
     analyses = relationship("Analysis", back_populates="conversation", cascade="all, delete-orphan")
     participant_codes = relationship("ParticipantCode", back_populates="conversation", cascade="all, delete-orphan")
     invitations = relationship("ConversationInvitation", back_populates="conversation", cascade="all, delete-orphan")
+
+    # Follow-up conversation relationships
+    parent_conversation = relationship("Conversation", remote_side=[id], back_populates="follow_up_conversations", foreign_keys=[parent_conversation_id])
+    follow_up_conversations = relationship("Conversation", back_populates="parent_conversation", cascade="all, delete-orphan", foreign_keys="Conversation.parent_conversation_id")
 
     def __repr__(self):
         return f"<Conversation(id={self.id}, title={self.title}, state={self.state})>"

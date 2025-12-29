@@ -7,6 +7,8 @@ import type {
   Conversation,
   ConversationCreate,
   ConversationListItem,
+  CreateFollowUpRequest,
+  ConversationLineage,
   ResponseSubmit,
   ResponseWithQuestion,
   ResponseStats,
@@ -183,6 +185,21 @@ class ApiService {
   async listParticipantCodes(id: string): Promise<{ conversation_id: string; total_codes: number; used_codes: number; unused_codes: number; codes: Array<{ id: string; participant_code: string; is_used: boolean; used_at?: string; created_at: string }> }> {
     const response = await this.client.get<{ conversation_id: string; total_codes: number; used_codes: number; unused_codes: number; codes: Array<{ id: string; participant_code: string; is_used: boolean; used_at?: string; created_at: string }> }>(
       `/conversations/${id}/participant-codes`
+    );
+    return response.data;
+  }
+
+  async createFollowUp(id: string, request: CreateFollowUpRequest): Promise<Conversation> {
+    const response = await this.client.post<Conversation>(
+      `/conversations/${id}/create-follow-up`,
+      request
+    );
+    return response.data;
+  }
+
+  async getConversationLineage(id: string): Promise<ConversationLineage> {
+    const response = await this.client.get<ConversationLineage>(
+      `/conversations/${id}/lineage`
     );
     return response.data;
   }

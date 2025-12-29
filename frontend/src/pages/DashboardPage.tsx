@@ -85,7 +85,14 @@ export default function DashboardPage() {
                 className="conversation-card"
               >
                 <div className="card-header">
-                  <h3>{conversation.title}</h3>
+                  <h3>
+                    {conversation.title}
+                    {conversation.is_follow_up && (
+                      <span className="follow-up-badge" title="Follow-up conversation">
+                        ↳ Follow-up
+                      </span>
+                    )}
+                  </h3>
                   <span className={`status-badge ${getStateClass(conversation.state)}`}>
                     {getStateLabel(conversation.state)}
                   </span>

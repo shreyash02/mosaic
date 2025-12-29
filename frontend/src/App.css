@@ -2073,3 +2073,87 @@ h3 {
     min-width: 1.5rem;
   }
 }
+
+/* Follow-up Conversations Styles */
+.follow-up-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Parent conversation section */
+.parent-conversation-section {
+  padding: 1rem;
+  background: #f7fafc;
+  border-left: 4px solid #4299e1;
+  margin-bottom: 1rem;
+}
+
+.parent-conversation-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.parent-conversation-link a {
+  color: #4299e1;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.parent-conversation-link a:hover {
+  text-decoration: underline;
+}
+
+/* Follow-ups section */
+.follow-ups-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.follow-up-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+.follow-up-list li {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.follow-up-list li:last-child {
+  border-bottom: none;
+}
+
+.follow-up-list a {
+  color: #4299e1;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.follow-up-list a:hover {
+  text-decoration: underline;
+}
+
+.follow-up-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.follow-up-date {
+  font-size: 0.85rem;
+  color: #666;
+}

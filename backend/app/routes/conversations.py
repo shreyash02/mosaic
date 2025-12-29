@@ -26,6 +26,9 @@ from app.schemas.conversation import (
     Conversation as ConversationSchema,
     ConversationWithQuestions,
     ConversationListItem,
+    ConversationSummary,
+    ConversationLineage,
+    CreateFollowUpRequest,
     ActivateConversation,
     ExtendConversation,
     GenerateParticipantCodes,
@@ -212,6 +215,8 @@ async def list_conversations(
             "closed_at": conv.closed_at,
             "response_count": response_count,
             "timezone": conv.timezone or "UTC",
+            "is_follow_up": conv.parent_conversation_id is not None,
+            "parent_conversation_id": conv.parent_conversation_id,
         }
         conversations.append(ConversationListItem(**conv_dict))
 
@@ -371,7 +376,9 @@ async def get_conversation(
         Conversation with questions
     """
     conversation = db.query(Conversation).options(
-        joinedload(Conversation.questions)
+        joinedload(Conversation.questions),
+        joinedload(Conversation.parent_conversation),
+        joinedload(Conversation.follow_up_conversations)
     ).filter(
         Conversation.id == conversation_id,
         Conversation.creator_id == current_user.id,
@@ -383,6 +390,9 @@ async def get_conversation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found"
         )
+
+    # Set is_follow_up field
+    conversation.is_follow_up = conversation.parent_conversation_id is not None
 
     return conversation
 
@@ -965,4 +975,189 @@ async def delete_invitation(
         success=True,
         message="Invitation deleted successfully",
         deleted_id=str(invitation_id)
+    )
+
+
+@router.post("/{conversation_id}/create-follow-up", response_model=ConversationWithQuestions, status_code=status.HTTP_201_CREATED)
+async def create_follow_up_conversation(
+    conversation_id: UUID,
+    request: CreateFollowUpRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a follow-up conversation from a closed or analyzed conversation.
+
+    Args:
+        conversation_id: Parent conversation ID
+        request: Follow-up creation options
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Created follow-up conversation
+
+    Raises:
+        HTTPException: If parent conversation not found, user is not creator, or conversation not closed/analyzed
+    """
+    # Verify parent conversation exists and user is creator
+    parent_conversation = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.creator_id == current_user.id,
+        Conversation.state != ConversationState.DELETED
+    ).first()
+
+    if not parent_conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Check if parent conversation is closed or analyzed
+    if parent_conversation.state not in [ConversationState.CLOSED.value, ConversationState.ANALYZED.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only create follow-ups from closed or analyzed conversations"
+        )
+
+    # Generate unique access code
+    access_code = generate_access_code()
+    while db.query(Conversation).filter(Conversation.access_code == access_code).first():
+        access_code = generate_access_code()
+
+    # Create follow-up conversation
+    follow_up = Conversation(
+        creator_id=current_user.id,
+        organization_id=parent_conversation.organization_id,
+        parent_conversation_id=parent_conversation.id,
+        title=f"{parent_conversation.title} (Follow-up)",
+        description=parent_conversation.description,
+        access_code=access_code,
+        state=ConversationState.DRAFT.value,
+    )
+
+    # Inherit settings if requested
+    if request.copy_settings:
+        follow_up.anonymity_level = parent_conversation.anonymity_level
+        follow_up.results_access = parent_conversation.results_access
+        follow_up.max_response_length = parent_conversation.max_response_length
+        follow_up.manual_close_enabled = parent_conversation.manual_close_enabled
+        follow_up.time_extension_enabled = parent_conversation.time_extension_enabled
+        follow_up.timezone = parent_conversation.timezone
+        follow_up.invite_only = parent_conversation.invite_only
+        follow_up.auto_analyze = parent_conversation.auto_analyze
+    else:
+        # Use defaults
+        follow_up.anonymity_level = AnonymityLevel.PLATFORM_TRACKED.value
+        follow_up.results_access = "invite_code_holders"
+        follow_up.max_response_length = 10000
+        follow_up.manual_close_enabled = True
+        follow_up.time_extension_enabled = True
+        follow_up.timezone = "UTC"
+        follow_up.invite_only = False
+        follow_up.auto_analyze = False
+
+    db.add(follow_up)
+    db.flush()  # Get follow-up conversation ID
+
+    # Copy invitations if requested
+    if request.copy_invitations:
+        parent_invitations = db.query(ConversationInvitation).filter(
+            ConversationInvitation.conversation_id == parent_conversation.id
+        ).all()
+
+        for parent_inv in parent_invitations:
+            # Only copy if invited user still exists
+            if parent_inv.invited_user_id:
+                new_invitation = ConversationInvitation(
+                    conversation_id=follow_up.id,
+                    invited_by_user_id=current_user.id,
+                    invited_user_id=parent_inv.invited_user_id,
+                    status="pending"
+                )
+                db.add(new_invitation)
+
+    db.commit()
+    db.refresh(follow_up)
+
+    return follow_up
+
+
+@router.get("/{conversation_id}/lineage", response_model=ConversationLineage)
+async def get_conversation_lineage(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get conversation lineage (ancestors and descendants).
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Conversation lineage with ancestors and descendants
+
+    Raises:
+        HTTPException: If conversation not found
+    """
+    # Get current conversation
+    current_conversation = db.query(Conversation).options(
+        joinedload(Conversation.questions),
+        joinedload(Conversation.parent_conversation),
+        joinedload(Conversation.follow_up_conversations)
+    ).filter(
+        Conversation.id == conversation_id,
+        Conversation.creator_id == current_user.id,
+        Conversation.state != ConversationState.DELETED
+    ).first()
+
+    if not current_conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Set is_follow_up field
+    current_conversation.is_follow_up = current_conversation.parent_conversation_id is not None
+
+    # Walk up to find all ancestors
+    ancestors = []
+    current = current_conversation
+    while current.parent_conversation_id:
+        parent = db.query(Conversation).filter(
+            Conversation.id == current.parent_conversation_id,
+            Conversation.state != ConversationState.DELETED
+        ).first()
+        if parent:
+            ancestors.append(parent)
+            current = parent
+        else:
+            break
+
+    # Reverse to get oldest first
+    ancestors.reverse()
+
+    # Walk down to find all descendants (recursive)
+    def get_all_descendants(conv_id: UUID) -> List[Conversation]:
+        children = db.query(Conversation).filter(
+            Conversation.parent_conversation_id == conv_id,
+            Conversation.state != ConversationState.DELETED
+        ).all()
+
+        all_descendants = []
+        for child in children:
+            all_descendants.append(child)
+            all_descendants.extend(get_all_descendants(child.id))
+
+        return all_descendants
+
+    descendants = get_all_descendants(conversation_id)
+
+    return ConversationLineage(
+        current=current_conversation,
+        ancestors=ancestors,
+        descendants=descendants
     )

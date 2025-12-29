@@ -85,6 +85,7 @@ class ConversationBase(BaseModel):
     manual_close_enabled: bool = True
     time_extension_enabled: bool = True
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
+    parent_conversation_id: Optional[UUID] = None
 
 
 class ConversationCreate(ConversationBase):
@@ -113,6 +114,17 @@ class ConversationUpdate(BaseModel):
     questions: Optional[List[QuestionCreate]] = None
 
 
+class ConversationSummary(BaseModel):
+    """Simplified conversation summary for parent/child references."""
+
+    id: UUID
+    title: str
+    state: ConversationState
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class Conversation(ConversationBase):
     """Conversation schema returned in responses."""
 
@@ -127,6 +139,11 @@ class Conversation(ConversationBase):
     created_at: datetime
     updated_at: datetime
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
+
+    # Follow-up conversation fields
+    parent_conversation: Optional[ConversationSummary] = None
+    follow_up_conversations: List[ConversationSummary] = []
+    is_follow_up: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -159,6 +176,21 @@ class GenerateParticipantCodes(BaseModel):
     count: int = Field(..., ge=1, le=1000)
 
 
+class CreateFollowUpRequest(BaseModel):
+    """Schema for creating a follow-up conversation."""
+
+    copy_invitations: bool = False
+    copy_settings: bool = True
+
+
+class ConversationLineage(BaseModel):
+    """Schema for conversation lineage (ancestors and descendants)."""
+
+    current: Conversation
+    ancestors: List[ConversationSummary] = []
+    descendants: List[ConversationSummary] = []
+
+
 # Conversation list response
 class ConversationListItem(BaseModel):
     """Simplified conversation schema for list views."""
@@ -173,5 +205,7 @@ class ConversationListItem(BaseModel):
     closed_at: Optional[datetime] = None
     response_count: Optional[int] = 0
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
+    is_follow_up: bool = False
+    parent_conversation_id: Optional[UUID] = None
 
     model_config = {"from_attributes": True}
