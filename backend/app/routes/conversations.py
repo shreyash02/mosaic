@@ -127,6 +127,7 @@ async def create_conversation(
     conversation = Conversation(
         creator_id=current_user.id,
         organization_id=conversation_data.organization_id,
+        parent_conversation_id=conversation_data.parent_conversation_id,
         title=conversation_data.title,
         description=conversation_data.description,
         access_code=access_code,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
@@ -136,6 +136,23 @@ export default function DashboardPage() {
       </div>
     </Link>
   );
+
+  // Recursively render a conversation and all its descendants
+  const renderConversationWithFollowUps = (conversation: ConversationListItem, childrenMap: Map<string, ConversationListItem[]>, isFollowUp: boolean = false): JSX.Element => {
+    const children = childrenMap.get(conversation.id) || [];
+    const hasChildren = children.length > 0;
+
+    return (
+      <React.Fragment key={conversation.id}>
+        {renderConversationCard(conversation, isFollowUp)}
+        {hasChildren && (
+          <div className="follow-ups-container">
+            {children.map((child) => renderConversationWithFollowUps(child, childrenMap, true))}
+          </div>
+        )}
+      </React.Fragment>
+    );
+  };
 
   const toggleStateFilter = (state: ConversationState) => {
     if (selectedStates.includes(state)) {
@@ -468,12 +485,7 @@ export default function DashboardPage() {
 
                 return (
                   <div key={conversation.id} className={`conversation-group ${hasChildren ? 'has-follow-ups' : ''}`}>
-                    {renderConversationCard(conversation, false)}
-                    {hasChildren && (
-                      <div className="follow-ups-container">
-                        {children.map((child) => renderConversationCard(child, true))}
-                      </div>
-                    )}
+                    {renderConversationWithFollowUps(conversation, childrenMap, false)}
                   </div>
                 );
               })}
