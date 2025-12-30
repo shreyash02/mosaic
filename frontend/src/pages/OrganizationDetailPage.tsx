@@ -17,7 +17,9 @@ export default function OrganizationDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('conversations');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [userRole, setUserRole] = useState<'admin' | 'member' | null>(null);
+  const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -57,22 +59,38 @@ export default function OrganizationDetailPage() {
 
     if (!confirm('Are you sure you want to remove this member?')) return;
 
+    setUpdatingMemberId(userId);
+    setError('');
+    setSuccess('');
+
     try {
       await api.removeOrganizationMember(organization.id, userId);
       await loadOrganization(); // Reload to get updated member list
+      setSuccess('Member removed successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to remove member');
+      setError(err.response?.data?.detail || 'Failed to remove member');
+    } finally {
+      setUpdatingMemberId(null);
     }
   };
 
   const handleUpdateRole = async (userId: string, newRole: 'admin' | 'member') => {
     if (!organization || userRole !== 'admin') return;
 
+    setUpdatingMemberId(userId);
+    setError('');
+    setSuccess('');
+
     try {
       await api.updateOrganizationMemberRole(organization.id, userId, newRole);
       await loadOrganization(); // Reload to get updated member list
+      setSuccess(`Member role updated to ${newRole}`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to update role');
+      setError(err.response?.data?.detail || 'Failed to update role');
+    } finally {
+      setUpdatingMemberId(null);
     }
   };
 
@@ -148,6 +166,10 @@ export default function OrganizationDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Success/Error Messages */}
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
 
       {/* Tabs */}
       <div className="org-tabs">
@@ -262,22 +284,30 @@ export default function OrganizationDetailPage() {
                         {userRole === 'admin' && (
                           <td style={{ padding: '1rem' }}>
                             {!isCreator && (
-                              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <select
-                                  value={member.role}
-                                  onChange={(e) => handleUpdateRole(member.user_id, e.target.value as 'admin' | 'member')}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', borderRadius: '4px', border: '1px solid #cbd5e0' }}
-                                >
-                                  <option value="member">Member</option>
-                                  <option value="admin">Admin</option>
-                                </select>
-                                <button
-                                  onClick={() => handleRemoveMember(member.user_id)}
-                                  className="btn-remove"
-                                  style={{ fontSize: '0.875rem' }}
-                                >
-                                  Remove
-                                </button>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                {updatingMemberId === member.user_id ? (
+                                  <span style={{ fontSize: '0.875rem', color: '#718096' }}>Updating...</span>
+                                ) : (
+                                  <>
+                                    <select
+                                      value={member.role}
+                                      onChange={(e) => handleUpdateRole(member.user_id, e.target.value as 'admin' | 'member')}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', borderRadius: '4px', border: '1px solid #cbd5e0' }}
+                                      disabled={updatingMemberId !== null}
+                                    >
+                                      <option value="member">Member</option>
+                                      <option value="admin">Admin</option>
+                                    </select>
+                                    <button
+                                      onClick={() => handleRemoveMember(member.user_id)}
+                                      className="btn-remove"
+                                      style={{ fontSize: '0.875rem' }}
+                                      disabled={updatingMemberId !== null}
+                                    >
+                                      Remove
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </td>

@@ -23,6 +23,7 @@ import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import OrganizationDetailPage from './pages/OrganizationDetailPage';
+import OrganizationSettingsPage from './pages/OrganizationSettingsPage';
 import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 
@@ -137,6 +138,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrganizationDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizations/:id/settings"
+              element={
+                <ProtectedRoute>
+                  <OrganizationSettingsPage />
                 </ProtectedRoute>
               }
             />
