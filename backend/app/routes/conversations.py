@@ -8,7 +8,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
@@ -19,6 +19,7 @@ from app.models.question import Question
 from app.models.participant_code import ParticipantCode
 from app.models.response import Response
 from app.models.conversation_invitation import ConversationInvitation
+from app.models.organization import OrganizationMember
 from app.utils.timezone_utils import parse_datetime_with_timezone, convert_local_to_utc
 from app.schemas.conversation import (
     ConversationCreate,
@@ -49,6 +50,7 @@ from app.schemas.conversation_invitation import (
 )
 from app.schemas.common import DeleteResponse
 from app.services.email_service import email_service
+from app.services.organization_service import check_organization_membership
 
 router = APIRouter()
 
@@ -138,7 +140,20 @@ async def create_conversation(
             conversation_data.recurrence_end_date.isoformat() if isinstance(conversation_data.recurrence_end_date, datetime) else str(conversation_data.recurrence_end_date),
             conversation_timezone
         )
-    
+
+    # If organization_id is provided, verify user is member
+    if conversation_data.organization_id:
+        membership = check_organization_membership(
+            db,
+            conversation_data.organization_id,
+            current_user.id
+        )
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You must be a member of this organization to create conversations in it"
+            )
+
     # Create conversation
     conversation = Conversation(
         creator_id=current_user.id,
@@ -198,6 +213,10 @@ async def list_conversations(
     """
     List user's conversations.
 
+    Includes both:
+    - Conversations created by the user
+    - Conversations in organizations where the user is a member
+
     Args:
         skip: Number of conversations to skip
         limit: Maximum number of conversations to return
@@ -208,11 +227,19 @@ async def list_conversations(
     Returns:
         List of conversations
     """
+    # Get user's organizations
+    user_org_ids = db.query(OrganizationMember.organization_id).filter(
+        OrganizationMember.user_id == current_user.id
+    ).subquery()
+
     query = db.query(
         Conversation,
         func.count(Response.id).label('response_count')
     ).outerjoin(Response).filter(
-        Conversation.creator_id == current_user.id,
+        or_(
+            Conversation.creator_id == current_user.id,
+            Conversation.organization_id.in_(user_org_ids)
+        ),
         Conversation.state != ConversationState.DELETED
     ).group_by(Conversation.id)
 

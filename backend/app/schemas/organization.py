@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 
 # Organization schemas
@@ -76,3 +76,47 @@ class OrganizationWithMembers(Organization):
     members: List[OrganizationMember] = []
 
     model_config = {"from_attributes": True}
+
+
+# Organization Invitation schemas
+class InviteToOrganizationRequest(BaseModel):
+    """Schema for inviting users to an organization."""
+
+    emails: List[EmailStr] = Field(..., min_items=1, max_items=50)
+    role: str = Field(default="member", pattern="^(admin|member)$")
+
+
+class OrganizationInvitation(BaseModel):
+    """Organization invitation schema returned in responses."""
+
+    id: UUID
+    organization_id: UUID
+    email: EmailStr
+    invited_by_id: Optional[UUID]
+    invited_user_id: Optional[UUID]
+    invitation_token: str
+    role: str
+    is_accepted: bool
+    accepted_at: Optional[datetime]
+    created_at: datetime
+    expires_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
+class InviteToOrganizationResponse(BaseModel):
+    """Response after sending organization invitations."""
+
+    organization_id: UUID
+    invitations_created: int
+    invitations: List[OrganizationInvitation]
+
+
+class OrganizationInvitationListResponse(BaseModel):
+    """Response for listing all invitations for an organization."""
+
+    organization_id: UUID
+    total_invitations: int
+    accepted_invitations: int
+    pending_invitations: int
+    invitations: List[OrganizationInvitation]
