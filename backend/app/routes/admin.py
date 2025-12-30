@@ -414,6 +414,10 @@ async def reanalyze_conversation(
         db.delete(existing_analysis)
         db.commit()
 
+    # Set conversation state to ANALYZING
+    conversation.state = ConversationState.ANALYZING.value
+    db.commit()
+
     # Import the analysis function from the analysis route
     from app.routes.analysis import run_analysis_task
     from app.core.config import settings

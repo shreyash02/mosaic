@@ -29,6 +29,7 @@ class ConversationState(str, Enum):
     DRAFT = "draft"
     ACTIVE = "active"
     CLOSED = "closed"
+    ANALYZING = "analyzing"
     ANALYZED = "analyzed"
     DELETED = "deleted"
 

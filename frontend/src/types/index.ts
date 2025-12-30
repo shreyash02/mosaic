@@ -40,6 +40,7 @@ export enum ConversationState {
   DRAFT = 'draft',
   ACTIVE = 'active',
   CLOSED = 'closed',
+  ANALYZING = 'analyzing',
   ANALYZED = 'analyzed',
   DELETED = 'deleted',
 }

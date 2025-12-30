@@ -145,7 +145,14 @@ async def trigger_analysis(
             detail="Conversation not found"
         )
 
-    # Check if conversation is closed
+    # Check if analysis is already in progress
+    if conversation.state == ConversationState.ANALYZING.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Analysis is already in progress"
+        )
+
+    # Check if conversation is closed or analyzed
     if conversation.state not in [ConversationState.CLOSED.value, ConversationState.ANALYZED.value]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -172,6 +179,10 @@ async def trigger_analysis(
         # Delete old analysis to replace with new one
         db.delete(existing_analysis)
         db.commit()
+
+    # Set conversation state to ANALYZING
+    conversation.state = ConversationState.ANALYZING.value
+    db.commit()
 
     # Trigger background analysis
     from app.core.config import settings

@@ -396,6 +396,18 @@ export default function ConversationDetailPage() {
               </button>
             )}
 
+            {conversation.state === ConversationState.ANALYZING && (
+              <button
+                className="btn btn-primary btn-small"
+                disabled={true}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }}>
+                  <path d="M21 12a9 9 0 11-6.219-8.56" />
+                </svg>
+                Analyzing...
+              </button>
+            )}
+
             {conversation.state === ConversationState.ANALYZED && (
               <Link to={`/conversations/${id}/analysis`} className="btn btn-primary btn-small">
                 View Analysis

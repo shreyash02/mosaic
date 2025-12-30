@@ -71,7 +71,7 @@ class Conversation(Base):
 
     # State
     state = Column(String(50), default="draft", nullable=False)
-    # 'draft', 'active', 'closed', 'analyzed', 'deleted'
+    # 'draft', 'active', 'closed', 'analyzing', 'analyzed', 'deleted'
 
     activated_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, nullable=True)
