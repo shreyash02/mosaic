@@ -376,3 +376,69 @@ export interface AdminResponseInfo {
   anonymity_level: string;
   submitted_at: string;
 }
+
+// Organization types
+export interface Organization {
+  id: string;
+  name: string;
+  description?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationMember {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+  user?: User;
+}
+
+export interface OrganizationWithMembers extends Organization {
+  members: OrganizationMember[];
+}
+
+export interface OrganizationCreate {
+  name: string;
+  description?: string;
+}
+
+export interface OrganizationUpdate {
+  name?: string;
+  description?: string;
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  invited_by_id?: string;
+  invited_user_id?: string;
+  invitation_token: string;
+  role: 'admin' | 'member';
+  is_accepted: boolean;
+  accepted_at?: string;
+  created_at: string;
+  expires_at?: string;
+}
+
+export interface InviteToOrganizationRequest {
+  emails: string[];
+  role: 'admin' | 'member';
+}
+
+export interface InviteToOrganizationResponse {
+  organization_id: string;
+  invitations_created: number;
+  invitations: OrganizationInvitation[];
+}
+
+export interface OrganizationInvitationListResponse {
+  organization_id: string;
+  total_invitations: number;
+  accepted_invitations: number;
+  pending_invitations: number;
+  invitations: OrganizationInvitation[];
+}

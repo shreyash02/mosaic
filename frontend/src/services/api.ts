@@ -23,6 +23,14 @@ import type {
   AdminUserInfo,
   AdminConversationInfo,
   AdminResponseInfo,
+  Organization,
+  OrganizationCreate,
+  OrganizationUpdate,
+  OrganizationWithMembers,
+  OrganizationMember,
+  InviteToOrganizationRequest,
+  InviteToOrganizationResponse,
+  OrganizationInvitationListResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -331,6 +339,85 @@ class ApiService {
     const query = params.toString();
     const response = await this.client.get<AdminResponseInfo[]>(
       `/admin/responses${query ? `?${query}` : ''}`
+    );
+    return response.data;
+  }
+
+  // Organization endpoints
+  async createOrganization(data: OrganizationCreate): Promise<OrganizationWithMembers> {
+    const response = await this.client.post<OrganizationWithMembers>('/organizations', data);
+    return response.data;
+  }
+
+  async listOrganizations(): Promise<Organization[]> {
+    const response = await this.client.get<Organization[]>('/organizations');
+    return response.data;
+  }
+
+  async getOrganization(id: string): Promise<OrganizationWithMembers> {
+    const response = await this.client.get<OrganizationWithMembers>(`/organizations/${id}`);
+    return response.data;
+  }
+
+  async updateOrganization(id: string, data: OrganizationUpdate): Promise<Organization> {
+    const response = await this.client.patch<Organization>(`/organizations/${id}`, data);
+    return response.data;
+  }
+
+  async deleteOrganization(id: string): Promise<SuccessResponse> {
+    const response = await this.client.delete<SuccessResponse>(`/organizations/${id}`);
+    return response.data;
+  }
+
+  async addOrganizationMember(orgId: string, userId: string, role: 'admin' | 'member'): Promise<OrganizationMember> {
+    const response = await this.client.post<OrganizationMember>(
+      `/organizations/${orgId}/members`,
+      { user_id: userId, role }
+    );
+    return response.data;
+  }
+
+  async removeOrganizationMember(orgId: string, userId: string): Promise<SuccessResponse> {
+    const response = await this.client.delete<SuccessResponse>(
+      `/organizations/${orgId}/members/${userId}`
+    );
+    return response.data;
+  }
+
+  async updateOrganizationMemberRole(orgId: string, userId: string, role: 'admin' | 'member'): Promise<OrganizationMember> {
+    const response = await this.client.patch<OrganizationMember>(
+      `/organizations/${orgId}/members/${userId}`,
+      { role }
+    );
+    return response.data;
+  }
+
+  async listOrganizationConversations(orgId: string): Promise<ConversationListItem[]> {
+    const response = await this.client.get<ConversationListItem[]>(
+      `/organizations/${orgId}/conversations`
+    );
+    return response.data;
+  }
+
+  async inviteToOrganization(orgId: string, request: InviteToOrganizationRequest): Promise<InviteToOrganizationResponse> {
+    const response = await this.client.post<InviteToOrganizationResponse>(
+      `/organizations/${orgId}/invitations`,
+      request
+    );
+    return response.data;
+  }
+
+  async listOrganizationInvitations(orgId: string): Promise<OrganizationInvitationListResponse> {
+    const response = await this.client.get<OrganizationInvitationListResponse>(
+      `/organizations/${orgId}/invitations`
+    );
+    return response.data;
+  }
+
+  async acceptOrganizationInvitation(token: string): Promise<OrganizationMember> {
+    const response = await this.client.post<OrganizationMember>(
+      `/organizations/accept-invite/${token}`,
+      {}
     );
     return response.data;
   }

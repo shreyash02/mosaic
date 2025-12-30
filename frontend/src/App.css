@@ -942,6 +942,108 @@ h3 {
   color: #2d3748;
 }
 
+/* Organization Styles */
+.organization-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.organization-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.organization-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card-description {
+  color: #718096;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.card-meta {
+  display: flex;
+  gap: 1rem;
+  color: #718096;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  flex-grow: 1;
+  align-items: flex-end;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.meta-item strong {
+  color: #2d3748;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Organization Tabs */
+.org-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 2rem;
+}
+
+.org-tab {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #718096;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.org-tab:hover {
+  color: #2d3748;
+  background-color: #f7fafc;
+}
+
+.org-tab.active {
+  color: #4299e1;
+  border-bottom-color: #4299e1;
+}
+
+.org-tab-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.members-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 1.5rem;
+}
+
 /* Create Conversation */
 .create-conversation-page,
 .join-page,

@@ -88,6 +88,7 @@ export default function DashboardPage() {
       [ConversationState.DRAFT]: 'Draft',
       [ConversationState.ACTIVE]: 'Active',
       [ConversationState.CLOSED]: 'Closed',
+      [ConversationState.ANALYZING]: 'Analyzing',
       [ConversationState.ANALYZED]: 'Analyzed',
       [ConversationState.DELETED]: 'Deleted',
     };
@@ -99,6 +100,7 @@ export default function DashboardPage() {
       [ConversationState.DRAFT]: 'status-draft',
       [ConversationState.ACTIVE]: 'status-active',
       [ConversationState.CLOSED]: 'status-closed',
+      [ConversationState.ANALYZING]: 'status-analyzing',
       [ConversationState.ANALYZED]: 'status-analyzed',
       [ConversationState.DELETED]: 'status-deleted',
     };

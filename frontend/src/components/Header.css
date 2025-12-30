@@ -44,6 +44,34 @@
   opacity: 0.7;
 }
 
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 3rem;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 0.5rem 1rem;
+  color: #4a5568;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: #2d3748;
+  background-color: #f7fafc;
+}
+
+.nav-link.active {
+  color: #4299e1;
+  background-color: #ebf8ff;
+}
+
 .user-info {
   display: flex;
   align-items: center;

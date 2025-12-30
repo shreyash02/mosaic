@@ -19,9 +19,18 @@ export default function Header() {
             <span className="logo-text">Mosaic</span>
           </div>
         </Link>
-        
+
         {isAuthenticated && user && (
-          <div className="user-info">
+          <>
+            <nav className="header-nav">
+              <Link to="/dashboard" className="nav-link">
+                Dashboard
+              </Link>
+              <Link to="/organizations" className="nav-link">
+                Organizations
+              </Link>
+            </nav>
+            <div className="user-info">
             <div className="user-details">
               <span className="user-name">{user.full_name}</span>
               <span className="user-email">{user.email}</span>
@@ -30,6 +39,7 @@ export default function Header() {
               Logout
             </button>
           </div>
+          </>
         )}
       </div>
     </header>

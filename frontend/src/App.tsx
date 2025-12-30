@@ -20,6 +20,9 @@ import AdminPortalPage from './pages/AdminPortalPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import AdminConversationDetailPage from './pages/AdminConversationDetailPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
+import OrganizationsPage from './pages/OrganizationsPage';
+import CreateOrganizationPage from './pages/CreateOrganizationPage';
+import OrganizationDetailPage from './pages/OrganizationDetailPage';
 
 import './App.css';
 
@@ -105,6 +108,33 @@ function App() {
               element={
                 <ProtectedRoute>
                   <EditConversationPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizations"
+              element={
+                <ProtectedRoute>
+                  <OrganizationsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizations/new"
+              element={
+                <ProtectedRoute>
+                  <CreateOrganizationPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizations/:id"
+              element={
+                <ProtectedRoute>
+                  <OrganizationDetailPage />
                 </ProtectedRoute>
               }
             />
