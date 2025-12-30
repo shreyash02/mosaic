@@ -120,7 +120,7 @@ export default function OrganizationDetailPage() {
 
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="dashboard-page">
         <div className="loading">Loading organization...</div>
       </div>
     );
@@ -128,7 +128,7 @@ export default function OrganizationDetailPage() {
 
   if (error || !organization) {
     return (
-      <div className="page-container">
+      <div className="dashboard-page">
         <div className="error-message">{error || 'Organization not found'}</div>
         <Link to="/organizations" className="btn btn-secondary">
           Back to Organizations
@@ -138,8 +138,8 @@ export default function OrganizationDetailPage() {
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
+    <div className="dashboard-page">
+      <header className="dashboard-header">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
             <h1>{organization.name}</h1>
@@ -165,7 +165,7 @@ export default function OrganizationDetailPage() {
             </>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Success/Error Messages */}
       {error && <div className="error-message">{error}</div>}

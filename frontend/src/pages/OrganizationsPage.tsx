@@ -64,15 +64,15 @@ export default function OrganizationsPage() {
 
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="dashboard-page">
         <div className="loading">Loading organizations...</div>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
+    <div className="dashboard-page">
+      <header className="dashboard-header">
         <div>
           <h1>Organizations</h1>
           <p className="description">
@@ -84,7 +84,7 @@ export default function OrganizationsPage() {
             Create Organization
           </Link>
         </div>
-      </div>
+      </header>
 
       {error && <div className="error-message">{error}</div>}
 
