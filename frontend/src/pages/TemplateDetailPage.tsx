@@ -177,19 +177,17 @@ export default function TemplateDetailPage() {
                 className="btn btn-primary btn-small"
                 disabled={actionLoading}
               >
-                Create Conversation Now
+                New Conversation
               </button>
             )}
 
-            {template.state === ConversationState.DRAFT && (
-              <button
-                onClick={handleEdit}
-                className="btn btn-outline-secondary btn-small"
-                disabled={actionLoading}
-              >
-                Edit Template
-              </button>
-            )}
+            <button
+              onClick={handleEdit}
+              className="btn btn-outline-secondary btn-small"
+              disabled={actionLoading}
+            >
+              Edit Template
+            </button>
 
             <button
               onClick={() => setShowDeleteModal(true)}

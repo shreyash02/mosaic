@@ -432,7 +432,10 @@ async def update_conversation(
     db: Session = Depends(get_db)
 ):
     """
-    Update conversation (only in draft state).
+    Update conversation.
+
+    - Regular conversations can only be updated in draft state
+    - Templates can be updated at any time (changes apply to future instances only)
 
     Args:
         conversation_id: Conversation ID
@@ -444,12 +447,17 @@ async def update_conversation(
         Updated conversation
 
     Raises:
-        HTTPException: If conversation is not in draft state
+        HTTPException: If conversation cannot be updated
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
 
-    # Only allow updates in draft state
-    if conversation.state != ConversationState.DRAFT.value:
+    # Check if this is a template (has recurrence_pattern and no series_id)
+    is_template = (conversation.series_id is None and
+                   conversation.recurrence_pattern is not None)
+
+    # Only allow updates in draft state for regular conversations
+    # Templates can be updated at any time
+    if not is_template and conversation.state != ConversationState.DRAFT.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Can only update conversations in draft state"
