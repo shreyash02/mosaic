@@ -263,12 +263,12 @@ export default function OrganizationDetailPage() {
                         <td style={{ padding: '1rem' }}>
                           <div>
                             <div style={{ fontWeight: 500 }}>
-                              {member.user?.email}
+                              {member.user?.full_name || member.user?.email}
                               {isCreator && <span style={{ marginLeft: '0.5rem', color: '#718096', fontSize: '0.85rem' }}>(Creator)</span>}
                             </div>
-                            {member.user?.full_name && (
+                            {member.user?.full_name && member.user?.email && (
                               <div style={{ color: '#718096', fontSize: '0.875rem' }}>
-                                {member.user.full_name}
+                                {member.user.email}
                               </div>
                             )}
                           </div>

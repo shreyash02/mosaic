@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from app.core.database import get_db
@@ -70,7 +70,11 @@ async def create_organization(
     )
     db.add(member)
     db.commit()
-    db.refresh(organization)
+
+    # Eagerly load members with user data
+    organization = db.query(Organization).options(
+        joinedload(Organization.members).joinedload(OrganizationMember.user)
+    ).filter(Organization.id == organization.id).first()
 
     return organization
 
@@ -110,13 +114,18 @@ async def get_organization(
     Get organization details with member list.
 
     - Check user is member of organization
-    - Return full organization details including all members
+    - Return full organization details including all members with user data
     """
     # Check if organization exists
     organization = get_organization_or_404(db, organization_id)
 
     # Check user is member
     require_organization_membership(db, organization_id, current_user)
+
+    # Eagerly load members with user data
+    organization = db.query(Organization).options(
+        joinedload(Organization.members).joinedload(OrganizationMember.user)
+    ).filter(Organization.id == organization_id).first()
 
     return organization
 

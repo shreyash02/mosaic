@@ -5,6 +5,8 @@ from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr
 
+from app.schemas.user import User
+
 
 # Organization schemas
 class OrganizationBase(BaseModel):
@@ -65,6 +67,7 @@ class OrganizationMember(OrganizationMemberBase):
     organization_id: UUID
     user_id: UUID
     joined_at: datetime
+    user: Optional[User] = None
 
     model_config = {"from_attributes": True}
 
