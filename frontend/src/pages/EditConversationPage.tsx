@@ -45,16 +45,16 @@ export default function EditConversationPage() {
 
       const conv = await api.getConversation(id!);
 
-      // Check if conversation is in draft state
-      if (conv.state !== 'draft') {
+      // Check if this is a template
+      const isTemp = conv.series_id === null && conv.recurrence_pattern !== undefined && conv.recurrence_pattern !== null;
+      setIsTemplate(isTemp);
+
+      // Only enforce draft state for regular conversations (not templates)
+      if (!isTemp && conv.state !== 'draft') {
         setError('Only draft conversations can be edited');
         setTimeout(() => navigate(`/conversations/${id}`), 2000);
         return;
       }
-
-      // Check if this is a template
-      const isTemp = conv.series_id === null && conv.recurrence_pattern !== undefined && conv.recurrence_pattern !== null;
-      setIsTemplate(isTemp);
 
       // Populate form with existing data
       setTitle(conv.title);
