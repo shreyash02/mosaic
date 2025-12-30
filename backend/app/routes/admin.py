@@ -14,6 +14,7 @@ from app.models.admin import Admin
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.response import Response
+from app.models.analysis import Analysis
 from app.schemas.admin import (
     AdminLoginRequest,
     AdminToken,
@@ -21,6 +22,7 @@ from app.schemas.admin import (
     AdminConversationInfo,
     AdminResponseInfo,
 )
+from app.schemas.analysis import Analysis as AnalysisSchema
 
 router = APIRouter()
 security = HTTPBasic(auto_error=False)
@@ -306,4 +308,48 @@ async def list_responses(
 
     responses = query.order_by(Response.submitted_at.desc()).all()
     return responses
+
+
+@router.get("/conversations/{conversation_id}/analysis", response_model=AnalysisSchema)
+async def get_conversation_analysis(
+    conversation_id: UUID,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get analysis results for a conversation (admin only).
+
+    Args:
+        conversation_id: Conversation ID
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        Analysis results
+
+    Raises:
+        HTTPException: If conversation not found or no analysis exists
+    """
+    # Verify conversation exists
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Get analysis
+    analysis = db.query(Analysis).filter(
+        Analysis.conversation_id == conversation_id
+    ).order_by(
+        Analysis.created_at.desc()
+    ).first()
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No analysis found for this conversation"
+        )
+
+    return analysis
 

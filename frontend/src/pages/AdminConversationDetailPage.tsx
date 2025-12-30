@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import type { AdminConversationInfo, AdminUserInfo, AdminResponseInfo } from '../types';
+import type { AdminConversationInfo, AdminUserInfo, AdminResponseInfo, Analysis } from '../types';
 import './AdminPortalPage.css';
 
 export default function AdminConversationDetailPage() {
@@ -9,6 +9,7 @@ export default function AdminConversationDetailPage() {
   const [conversation, setConversation] = useState<AdminConversationInfo | null>(null);
   const [creator, setCreator] = useState<AdminUserInfo | null>(null);
   const [responses, setResponses] = useState<AdminResponseInfo[]>([]);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -61,6 +62,19 @@ export default function AdminConversationDetailPage() {
         `/admin/responses?conversation_id=${id}`
       );
       setResponses(responsesResponse.data);
+
+      // Load analysis if conversation is analyzed
+      if (conversationResponse.data.state === 'analyzed') {
+        try {
+          const analysisResponse = await adminClient.get<Analysis>(
+            `/admin/conversations/${id}/analysis`
+          );
+          setAnalysis(analysisResponse.data);
+        } catch (err) {
+          console.error('Failed to load analysis:', err);
+          // Don't fail the whole page if analysis fails to load
+        }
+      }
     } catch (err: any) {
       if (err.response?.status === 401) {
         navigate('/adminportal');
@@ -186,6 +200,115 @@ export default function AdminConversationDetailPage() {
             {responses.length === 0 && <p className="no-data">No responses found</p>}
           </div>
         </div>
+
+        {analysis && (
+          <div className="admin-section">
+            <h2>Analysis</h2>
+
+            <div className="detail-card">
+              <div className="detail-row">
+                <strong>Analysis Created:</strong>{' '}
+                <span>{new Date(analysis.created_at).toLocaleString()}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Responses Analyzed:</strong>{' '}
+                <span>{analysis.total_responses_analyzed}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Analysis Duration:</strong>{' '}
+                <span>{(analysis.analysis_duration_ms / 1000).toFixed(2)}s</span>
+              </div>
+            </div>
+
+            <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
+              <h3>Overall Summary</h3>
+              <div className="detail-card">
+                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  {analysis.overall_summary}
+                </p>
+              </div>
+            </div>
+
+            {analysis.question_analyses && analysis.question_analyses.length > 0 && (
+              <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
+                <h3>Question-Level Analysis</h3>
+                {analysis.question_analyses.map((qa, index) => (
+                  <div key={qa.question_id} className="detail-card" style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ marginTop: 0, color: '#2c5282' }}>
+                      Question {index + 1}: {qa.question_text}
+                    </h4>
+                    <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>
+                      Type: {qa.question_type} | Responses: {qa.response_count}
+                    </p>
+
+                    {qa.themes && qa.themes.length > 0 && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <strong>Themes:</strong>
+                        {qa.themes.map((theme, themeIndex) => (
+                          <div key={themeIndex} style={{ marginLeft: '1rem', marginTop: '0.75rem' }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748' }}>
+                              {theme.theme} ({theme.frequency} mentions)
+                            </div>
+                            {theme.clusters && theme.clusters.length > 0 && (
+                              <div style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+                                {theme.clusters.map((cluster, clusterIndex) => (
+                                  <div key={clusterIndex} style={{ marginBottom: '0.5rem' }}>
+                                    <span style={{
+                                      fontWeight: '500',
+                                      color: cluster.sentiment === 'positive' ? '#38a169' :
+                                             cluster.sentiment === 'negative' ? '#e53e3e' : '#718096'
+                                    }}>
+                                      {cluster.sentiment}
+                                    </span>
+                                    {' '}({cluster.count}): {cluster.summary}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {qa.rating_stats && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <strong>Rating Statistics:</strong>
+                        <div style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+                          <p>Average: {qa.rating_stats.average.toFixed(2)}</p>
+                          <p>Min: {qa.rating_stats.min_value} | Max: {qa.rating_stats.max_value}</p>
+                          <p>Distribution:</p>
+                          <ul>
+                            {Object.entries(qa.rating_stats.distribution).map(([rating, count]) => (
+                              <li key={rating}>
+                                {rating}: {count} response{count !== 1 ? 's' : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+
+                    {qa.poll_stats && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <strong>Poll Results:</strong>
+                        <div style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+                          <p>Total Responses: {qa.poll_stats.total_responses}</p>
+                          <ul>
+                            {qa.poll_stats.choices.map((choice) => (
+                              <li key={choice.choice_id}>
+                                {choice.label}: {choice.count} ({choice.percentage.toFixed(1)}%)
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
