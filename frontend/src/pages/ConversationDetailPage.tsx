@@ -14,6 +14,7 @@ export default function ConversationDetailPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -61,6 +62,16 @@ export default function ConversationDetailPage() {
 
       setConversation(convData);
       setStats(statsData);
+
+      // Load organization name if this is an org conversation
+      if (convData.organization_id) {
+        try {
+          const orgData = await api.getOrganization(convData.organization_id);
+          setOrganizationName(orgData.name);
+        } catch (err) {
+          console.error('Failed to load organization:', err);
+        }
+      }
 
       // Load analysis if available
       if (convData.state === ConversationState.ANALYZED) {
@@ -342,6 +353,34 @@ export default function ConversationDetailPage() {
             <span className={`status-badge-inline status-${conversation.state}`}>
               {conversation.state}
             </span>
+            {organizationName && (
+              <Link
+                to={`/organizations/${conversation.organization_id}`}
+                className="badge"
+                style={{
+                  backgroundColor: '#EBF8FF',
+                  color: '#2C5282',
+                  textDecoration: 'none',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: '6px',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.025em',
+                  marginLeft: '0.75rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+                title="View organization"
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M1.5 14.25c0 .138.112.25.25.25H4v-1.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v1.25h2.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25v12.5Z"/>
+                  <path d="M11.5 3.25h3.25v11.5H11.5V3.25Z"/>
+                </svg>
+                {organizationName}
+              </Link>
+            )}
             {conversation.series_id === null && conversation.recurrence_pattern && (
               <span className="badge recurring-badge" title="Recurring Template">
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle' }}>

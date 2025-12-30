@@ -15,6 +15,7 @@ interface LocationState {
   copyQuestions?: boolean;
   parentConversation?: Conversation;
   createTemplate?: boolean;
+  organizationId?: string;  // Pre-selected organization
 }
 
 export default function CreateConversationPage() {
@@ -46,6 +47,28 @@ export default function CreateConversationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>('');
+
+  // Load organizations on mount
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      try {
+        const orgs = await api.listOrganizations();
+        setOrganizations(orgs);
+      } catch (err) {
+        console.error('Failed to load organizations:', err);
+      }
+    };
+    loadOrganizations();
+  }, []);
+
+  // Pre-select organization from location state
+  useEffect(() => {
+    if (followUpState?.organizationId) {
+      setSelectedOrganizationId(followUpState.organizationId);
+    }
+  }, [followUpState?.organizationId]);
 
   // Auto-enable recurring if creating a template
   useEffect(() => {
@@ -283,6 +306,10 @@ export default function CreateConversationPage() {
         ...(followUpState?.seriesId && {
           series_id: followUpState.seriesId
         }),
+        // Add organization_id if selected
+        ...(selectedOrganizationId && {
+          organization_id: selectedOrganizationId
+        }),
         // Add recurring fields if enabled (for templates only, not instances)
         ...(enableRecurring && {
           recurrence_pattern: recurrencePattern,
@@ -372,6 +399,39 @@ export default function CreateConversationPage() {
         )}
 
         <div className="form-section">
+          {/* Organization Selector */}
+          {organizations.length > 0 && (
+            <div className="form-group">
+              <label htmlFor="organization">Organization (optional)</label>
+              <select
+                id="organization"
+                value={selectedOrganizationId}
+                onChange={(e) => setSelectedOrganizationId(e.target.value)}
+                style={{
+                  padding: '0.75rem',
+                  fontSize: '0.9rem',
+                  border: '1px solid #cbd5e0',
+                  borderRadius: '6px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                <option value="">Personal Conversation</option>
+                {organizations.map(org => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+              <small>
+                {selectedOrganizationId
+                  ? 'This conversation will be visible to all organization members'
+                  : 'Create a personal conversation or select an organization'}
+              </small>
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="title">Conversation Title *</label>
             <input
@@ -380,7 +440,7 @@ export default function CreateConversationPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              placeholder="e.g., Team retrospective: what’s working & what’s not"
+              placeholder="e.g., Team retrospective: what's working & what's not"
             />
           </div>
 

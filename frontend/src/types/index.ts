@@ -148,6 +148,7 @@ export interface ConversationCreate {
   manual_close_enabled?: boolean;
   time_extension_enabled?: boolean;
   timezone?: string;
+  organization_id?: string;
   parent_conversation_id?: string;
   series_id?: string;  // Set when creating an instance from a template
   recurrence_pattern?: RecurrencePattern;
@@ -166,6 +167,7 @@ export interface ConversationListItem {
   closed_at?: string;
   response_count?: number;
   timezone?: string;
+  organization_id?: string;
   is_follow_up?: boolean;
   parent_conversation_id?: string;
   series_id?: string;
