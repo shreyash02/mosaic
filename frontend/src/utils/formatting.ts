@@ -245,7 +245,7 @@ export function formatDateShort(dateString: string, backendTimezone?: string): s
 /**
  * Format a Date object to the format required by datetime-local input (YYYY-MM-DDTHH:mm)
  * This converts the date to local time, not UTC
- * 
+ *
  * @param date - Date object to format
  * @returns String in format YYYY-MM-DDTHH:mm (local time)
  */
@@ -256,6 +256,26 @@ export function formatDateForDateTimeLocal(date: Date): string {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Convert UTC datetime string from backend to datetime-local format in user's local timezone
+ *
+ * @param utcDateString - ISO datetime string from backend (assumed UTC)
+ * @returns String in format YYYY-MM-DDTHH:mm (in user's local timezone)
+ */
+export function convertUTCToLocalDateTimeString(utcDateString: string): string {
+  // Parse the UTC string - append 'Z' if no timezone indicator
+  let dateStr = utcDateString;
+  if (!dateStr.endsWith('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+    dateStr = dateStr + 'Z';
+  }
+
+  // Create Date object (will parse as UTC and store as UTC internally)
+  const date = new Date(dateStr);
+
+  // Format using local time components (getFullYear, getMonth, etc. automatically convert to local)
+  return formatDateForDateTimeLocal(date);
 }
 
 /**

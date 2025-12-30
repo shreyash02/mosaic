@@ -59,7 +59,14 @@ async def validate_code(
             valid=False,
             message="Invalid access code. Please check the code and try again."
         )
-    
+
+    # Check if this is a template (templates cannot receive responses)
+    if conversation.series_id is None and conversation.recurrence_pattern is not None:
+        return CodeValidation(
+            valid=False,
+            message="This is a recurring template. Templates cannot receive responses directly. Please use a conversation instance created from this template."
+        )
+
     # Check if conversation is active
     if conversation.state != ConversationState.ACTIVE.value:
         if conversation.state == ConversationState.CLOSED.value:
@@ -274,6 +281,13 @@ async def submit_response(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found"
+        )
+
+    # Check if this is a template (templates cannot receive responses)
+    if conversation.series_id is None and conversation.recurrence_pattern is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot submit responses to templates. Templates are used to create recurring conversation instances. Please use a conversation instance instead."
         )
 
     # Check if conversation is active

@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, type QuestionCreate, type Conversation } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation } from '../types';
 import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
 interface LocationState {
   isFollowUp?: boolean;
+  isRecurring?: boolean;
   parentConversationId?: string;
+  seriesId?: string;  // Template ID when creating an instance
   copySettings?: boolean;
   copyInvitations?: boolean;
+  copyQuestions?: boolean;
   parentConversation?: Conversation;
+  createTemplate?: boolean;
 }
 
 export default function CreateConversationPage() {
@@ -35,26 +39,75 @@ export default function CreateConversationPage() {
   const [durationMinutes, setDurationMinutes] = useState<number>(0);
   const [scheduleActivation, setScheduleActivation] = useState(false);
   const [scheduledActivateAt, setScheduledActivateAt] = useState('');
+  const [enableRecurring, setEnableRecurring] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(RecurrencePattern.WEEKLY);
+  const [nextInstanceDate, setNextInstanceDate] = useState('');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Auto-enable recurring if creating a template
+  useEffect(() => {
+    if (followUpState?.createTemplate) {
+      setEnableRecurring(true);
+    }
+  }, [followUpState?.createTemplate]);
+
   // Prefill form if this is a follow-up conversation
   useEffect(() => {
-    if (followUpState?.isFollowUp && followUpState.parentConversation && followUpState.copySettings) {
-      const parent = followUpState.parentConversation;
-      setTitle(`${parent.title} (Follow-up)`);
-      setDescription(parent.description || '');
-      setAnonymityLevel(parent.anonymity_level);
-      setResultsAccess(parent.results_access);
-      setInviteOnly(parent.invite_only);
+    const loadParentData = async () => {
+      if (followUpState?.isFollowUp && followUpState.parentConversation) {
+        const parent = followUpState.parentConversation;
 
-      // Copy duration if set
-      if (parent.duration_minutes) {
-        setDurationHours(Math.floor(parent.duration_minutes / 60));
-        setDurationMinutes(parent.duration_minutes % 60);
+        // Set title based on type (recurring vs follow-up)
+        if (followUpState.isRecurring) {
+          // For recurring, try to increment number or add #2
+          const match = parent.title.match(/#(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1]) + 1;
+            setTitle(parent.title.replace(/#\d+$/, `#${num}`));
+          } else {
+            setTitle(`${parent.title} #2`);
+          }
+        } else {
+          setTitle(`${parent.title} (Follow-up)`);
+        }
+
+        if (followUpState.copySettings) {
+          setDescription(parent.description || '');
+          setAnonymityLevel(parent.anonymity_level);
+          setResultsAccess(parent.results_access);
+          setInviteOnly(parent.invite_only);
+
+          // Copy duration if set
+          if (parent.duration_minutes) {
+            setDurationHours(Math.floor(parent.duration_minutes / 60));
+            setDurationMinutes(parent.duration_minutes % 60);
+          }
+        }
+
+        // Copy questions if requested
+        if (followUpState.copyQuestions && followUpState.parentConversationId) {
+          try {
+            const fullParent = await api.getConversation(followUpState.parentConversationId);
+            if (fullParent.questions && fullParent.questions.length > 0) {
+              const copiedQuestions = fullParent.questions.map((q, index) => ({
+                question_text: q.question_text,
+                question_type: q.question_type,
+                question_order: index,
+                options: q.options
+              }));
+              setQuestions(copiedQuestions);
+            }
+          } catch (err) {
+            console.error('Failed to copy questions:', err);
+          }
+        }
       }
-    }
+    };
+
+    loadParentData();
   }, [followUpState]);
 
   const addQuestion = () => {
@@ -180,6 +233,20 @@ export default function CreateConversationPage() {
       }
     }
 
+    // Validate recurring schedule for templates
+    if (followUpState?.createTemplate || enableRecurring) {
+      if (!nextInstanceDate) {
+        setError('First instance date is required for recurring templates');
+        return;
+      }
+      const firstInstanceDate = new Date(nextInstanceDate);
+      const now = new Date();
+      if (firstInstanceDate <= now) {
+        setError('First instance date must be in the future');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -211,6 +278,16 @@ export default function CreateConversationPage() {
         // Add parent_conversation_id if this is a follow-up
         ...(followUpState?.isFollowUp && followUpState.parentConversationId && {
           parent_conversation_id: followUpState.parentConversationId
+        }),
+        // Add series_id if creating an instance from a template
+        ...(followUpState?.seriesId && {
+          series_id: followUpState.seriesId
+        }),
+        // Add recurring fields if enabled (for templates only, not instances)
+        ...(enableRecurring && {
+          recurrence_pattern: recurrencePattern,
+          ...(nextInstanceDate && { next_instance_date: nextInstanceDate + ':00' }),
+          ...(recurrenceEndDate && { recurrence_end_date: recurrenceEndDate + ':00' }),
         }),
       });
 
@@ -262,7 +339,13 @@ export default function CreateConversationPage() {
   return (
     <div className="create-conversation-page">
       <div className="page-header">
-        <h1>{followUpState?.isFollowUp ? 'Create Follow-up Conversation' : 'Create New Conversation'}</h1>
+        <h1>
+          {followUpState?.createTemplate
+            ? 'Create Recurring Template'
+            : followUpState?.isFollowUp
+              ? 'Create Follow-up Conversation'
+              : 'Create New Conversation'}
+        </h1>
         <button onClick={() => navigate(followUpState?.parentConversationId ? `/conversations/${followUpState.parentConversationId}` : '/dashboard')} className="btn btn-secondary">
           Cancel
         </button>
@@ -270,6 +353,23 @@ export default function CreateConversationPage() {
 
       <form onSubmit={handleSubmit} className="conversation-form">
         {error && <div className="error-message">{error}</div>}
+
+        {followUpState?.createTemplate && (
+          <div className="info-banner" style={{
+            background: '#EBF8FF',
+            border: '1px solid #90CDF4',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            color: '#2C5282'
+          }}>
+            <strong>Creating a Recurring Template</strong>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+              This template will be used to automatically create conversation instances based on your schedule.
+              The template itself won't accept responses - only the instances created from it will.
+            </p>
+          </div>
+        )}
 
         <div className="form-section">
           <div className="form-group">
@@ -456,6 +556,89 @@ export default function CreateConversationPage() {
               Maximum duration is 48 hours. The conversation will automatically close after this duration.
             </p>
           </div>
+
+          {/* Recurring Schedule */}
+          <div className="form-group">
+            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+              <input
+                type="checkbox"
+                checked={enableRecurring}
+                onChange={(e) => setEnableRecurring(e.target.checked)}
+                style={{ marginRight: '0.5rem' }}
+                disabled={followUpState?.createTemplate}
+              />
+              <span style={{ fontWeight: 600 }}>
+                {followUpState?.createTemplate ? 'Recurring Schedule (Required for Templates)' : 'Enable Recurring Schedule'}
+              </span>
+            </label>
+            <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+              {followUpState?.createTemplate
+                ? 'Set the schedule for automatically creating conversation instances from this template.'
+                : 'Enable this to create a template that automatically generates new conversation instances on a schedule (e.g., weekly team pulse).'}
+            </p>
+
+            {enableRecurring && (
+              <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="recurrencePattern">Recurrence Pattern</label>
+                  <select
+                    id="recurrencePattern"
+                    value={recurrencePattern}
+                    onChange={(e) => setRecurrencePattern(e.target.value as RecurrencePattern)}
+                    required
+                  >
+                    <option value={RecurrencePattern.WEEKLY}>Weekly</option>
+                    <option value={RecurrencePattern.BIWEEKLY}>Every 2 weeks</option>
+                    <option value={RecurrencePattern.MONTHLY}>Monthly</option>
+                    <option value={RecurrencePattern.QUARTERLY}>Quarterly (every 3 months)</option>
+                  </select>
+                  <p className="form-help-text">
+                    How often should new instances be created automatically?
+                  </p>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="nextInstanceDate">Create First Instance On</label>
+                  <input
+                    type="datetime-local"
+                    id="nextInstanceDate"
+                    value={nextInstanceDate}
+                    onChange={(e) => setNextInstanceDate(e.target.value)}
+                    required
+                  />
+                  <p className="form-help-text">
+                    When should the first recurring instance be created? Subsequent instances will be created based on the recurrence pattern.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="recurrenceEndDate">End Recurring Schedule (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    id="recurrenceEndDate"
+                    value={recurrenceEndDate}
+                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                  />
+                  <p className="form-help-text">
+                    When should the recurring schedule stop? Leave empty to continue indefinitely.
+                  </p>
+                </div>
+
+                <div style={{
+                  background: '#EBF8FF',
+                  border: '1px solid #90CDF4',
+                  borderRadius: '6px',
+                  padding: '1rem',
+                  marginTop: '1rem'
+                }}>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#2C5282' }}>
+                    <strong>Note:</strong> This conversation will serve as a template. New instances will be created automatically
+                    with the same questions, settings, and invitations based on your schedule.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="form-section">
@@ -593,7 +776,11 @@ export default function CreateConversationPage() {
             Preview
           </button>
           <button type="submit" className="btn btn-primary btn-large" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Conversation'}
+            {loading
+              ? 'Creating...'
+              : followUpState?.createTemplate
+                ? 'Create Template'
+                : 'Create Conversation'}
           </button>
         </div>
       </form>

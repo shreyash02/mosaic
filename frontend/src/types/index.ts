@@ -44,6 +44,13 @@ export enum ConversationState {
   DELETED = 'deleted',
 }
 
+export enum RecurrencePattern {
+  WEEKLY = 'weekly',
+  BIWEEKLY = 'biweekly',
+  MONTHLY = 'monthly',
+  QUARTERLY = 'quarterly',
+}
+
 export type QuestionType = 'text' | 'rating' | 'single_choice' | 'multiple_choice';
 
 export interface PollChoice {
@@ -117,6 +124,12 @@ export interface Conversation {
   parent_conversation?: ConversationSummary;
   follow_up_conversations?: ConversationSummary[];
   is_follow_up?: boolean;
+  // Recurring conversation fields
+  series_id?: string;
+  is_recurring_instance?: boolean;
+  recurrence_pattern?: RecurrencePattern;
+  next_instance_date?: string;
+  recurrence_end_date?: string;
 }
 
 export interface ConversationCreate {
@@ -135,6 +148,10 @@ export interface ConversationCreate {
   time_extension_enabled?: boolean;
   timezone?: string;
   parent_conversation_id?: string;
+  series_id?: string;  // Set when creating an instance from a template
+  recurrence_pattern?: RecurrencePattern;
+  next_instance_date?: string;
+  recurrence_end_date?: string;
 }
 
 export interface ConversationListItem {
@@ -150,11 +167,15 @@ export interface ConversationListItem {
   timezone?: string;
   is_follow_up?: boolean;
   parent_conversation_id?: string;
+  series_id?: string;
+  is_recurring_instance?: boolean;
+  recurrence_pattern?: RecurrencePattern;
 }
 
 export interface CreateFollowUpRequest {
   copy_invitations: boolean;
   copy_settings: boolean;
+  copy_questions: boolean;
 }
 
 export interface ConversationLineage {

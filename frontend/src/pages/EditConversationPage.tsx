@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, type QuestionCreate, type Question } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question, type Conversation } from '../types';
+import { convertUTCToLocalDateTimeString } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
 export default function EditConversationPage() {
@@ -25,6 +26,12 @@ export default function EditConversationPage() {
   const [loading, setLoading] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  // Recurring template fields
+  const [isTemplate, setIsTemplate] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(RecurrencePattern.WEEKLY);
+  const [nextInstanceDate, setNextInstanceDate] = useState('');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [conversation, setConversation] = useState<Conversation | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -35,35 +42,67 @@ export default function EditConversationPage() {
   const loadConversation = async () => {
     try {
       setLoadingConversation(true);
-      const conversation = await api.getConversation(id!);
-      
+      setError(''); // Clear any previous errors
+
+      const conv = await api.getConversation(id!);
+      setConversation(conv);
+
       // Check if conversation is in draft state
-      if (conversation.state !== 'draft') {
+      if (conv.state !== 'draft') {
         setError('Only draft conversations can be edited');
         setTimeout(() => navigate(`/conversations/${id}`), 2000);
         return;
       }
 
+      // Check if this is a template
+      const isTemp = conv.series_id === null && conv.recurrence_pattern !== undefined && conv.recurrence_pattern !== null;
+      setIsTemplate(isTemp);
+
       // Populate form with existing data
-      setTitle(conversation.title);
-      setDescription(conversation.description || '');
-      setAnonymityLevel(conversation.anonymity_level);
-      setResultsAccess(conversation.results_access);
-      setInviteOnly(conversation.invite_only || false);
-      
+      setTitle(conv.title);
+      setDescription(conv.description || '');
+      setAnonymityLevel(conv.anonymity_level);
+      setResultsAccess(conv.results_access);
+      setInviteOnly(conv.invite_only || false);
+
       // Convert duration_minutes to hours and minutes
-      if (conversation.duration_minutes) {
-        setDurationHours(Math.floor(conversation.duration_minutes / 60));
-        setDurationMinutes(conversation.duration_minutes % 60);
+      if (conv.duration_minutes) {
+        setDurationHours(Math.floor(conv.duration_minutes / 60));
+        setDurationMinutes(conv.duration_minutes % 60);
       } else {
         setDurationHours(48);
         setDurationMinutes(0);
       }
-      
+
+      // Load recurring fields if template
+      if (isTemp && conv.recurrence_pattern) {
+        setRecurrencePattern(conv.recurrence_pattern as RecurrencePattern);
+
+        try {
+          if (conv.next_instance_date) {
+            const formattedDate = convertUTCToLocalDateTimeString(conv.next_instance_date);
+            setNextInstanceDate(formattedDate);
+          }
+          if (conv.recurrence_end_date) {
+            const formattedDate = convertUTCToLocalDateTimeString(conv.recurrence_end_date);
+            setRecurrenceEndDate(formattedDate);
+          }
+        } catch (dateErr) {
+          console.error('Error formatting dates:', dateErr);
+          // Fallback: try substring approach
+          if (conv.next_instance_date) {
+            setNextInstanceDate(conv.next_instance_date.substring(0, 16));
+          }
+          if (conv.recurrence_end_date) {
+            setRecurrenceEndDate(conv.recurrence_end_date.substring(0, 16));
+          }
+        }
+      }
+
       // Convert Question[] to QuestionCreate[]
-      if (conversation.questions && conversation.questions.length > 0) {
+      if (conv.questions && conv.questions.length > 0) {
         setQuestions(
-          conversation.questions.map((q: Question) => ({
+          conv.questions.map((q: Question) => ({
             question_text: q.question_text,
             question_type: q.question_type || 'text',
             question_order: q.question_order,
@@ -74,7 +113,8 @@ export default function EditConversationPage() {
         setQuestions([{ question_text: '', question_type: 'text', question_order: 0 }]);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load conversation');
+      console.error('Error loading conversation:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to load conversation');
     } finally {
       setLoadingConversation(false);
     }
@@ -201,8 +241,14 @@ export default function EditConversationPage() {
         invite_only: inviteOnly,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
+        // Include recurring fields if this is a template
+        ...(isTemplate && {
+          recurrence_pattern: recurrencePattern,
+          ...(nextInstanceDate && { next_instance_date: nextInstanceDate + ':00' }),
+          ...(recurrenceEndDate && { recurrence_end_date: recurrenceEndDate + ':00' }),
+        }),
       });
-      navigate(`/conversations/${id}`);
+      navigate(isTemplate ? `/templates/${id}` : `/conversations/${id}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update conversation');
     } finally {
@@ -217,8 +263,8 @@ export default function EditConversationPage() {
   return (
     <div className="create-conversation-page">
       <div className="page-header">
-        <h1>Edit Conversation</h1>
-        <button onClick={() => navigate(`/conversations/${id}`)} className="btn btn-secondary">
+        <h1>{isTemplate ? 'Edit Template' : 'Edit Conversation'}</h1>
+        <button onClick={() => navigate(isTemplate ? `/templates/${id}` : `/conversations/${id}`)} className="btn btn-secondary">
           Cancel
         </button>
       </div>
@@ -352,6 +398,56 @@ export default function EditConversationPage() {
             </p>
           </div>
         </div>
+
+        {/* Recurring Schedule Section - Only for templates */}
+        {isTemplate && (
+          <div className="form-section">
+            <h2>Recurring Schedule</h2>
+            <p className="form-help-text">Configure when new instances should be automatically created from this template.</p>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label htmlFor="recurrencePattern">Recurrence Pattern *</label>
+              <select
+                id="recurrencePattern"
+                value={recurrencePattern}
+                onChange={(e) => setRecurrencePattern(e.target.value as RecurrencePattern)}
+                required
+              >
+                <option value={RecurrencePattern.WEEKLY}>Weekly</option>
+                <option value={RecurrencePattern.BIWEEKLY}>Every 2 weeks</option>
+                <option value={RecurrencePattern.MONTHLY}>Monthly</option>
+                <option value={RecurrencePattern.QUARTERLY}>Quarterly</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label htmlFor="nextInstanceDate">Next Instance Date *</label>
+              <input
+                type="datetime-local"
+                id="nextInstanceDate"
+                value={nextInstanceDate}
+                onChange={(e) => setNextInstanceDate(e.target.value)}
+                required
+              />
+              <p className="form-help-text">
+                When should the next recurring instance be created?
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="recurrenceEndDate">End Recurring Schedule (Optional)</label>
+              <input
+                type="datetime-local"
+                id="recurrenceEndDate"
+                value={recurrenceEndDate}
+                onChange={(e) => setRecurrenceEndDate(e.target.value)}
+              />
+              <p className="form-help-text">
+                When should the recurring schedule stop? Leave empty to continue indefinitely.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="form-section">
           <div className="section-header">

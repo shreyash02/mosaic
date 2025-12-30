@@ -106,7 +106,7 @@ async def create_conversation(
 
     # Get conversation timezone
     conversation_timezone = conversation_data.timezone or "UTC"
-    
+
     # Convert scheduled_activate_at from conversation timezone to UTC if provided
     scheduled_activate_at_utc = None
     if conversation_data.scheduled_activate_at:
@@ -114,12 +114,28 @@ async def create_conversation(
             conversation_data.scheduled_activate_at.isoformat() if isinstance(conversation_data.scheduled_activate_at, datetime) else str(conversation_data.scheduled_activate_at),
             conversation_timezone
         )
-    
+
     # Convert auto_close_at from conversation timezone to UTC if provided
     auto_close_at_utc = None
     if conversation_data.auto_close_at:
         auto_close_at_utc = parse_datetime_with_timezone(
             conversation_data.auto_close_at.isoformat() if isinstance(conversation_data.auto_close_at, datetime) else str(conversation_data.auto_close_at),
+            conversation_timezone
+        )
+
+    # Convert next_instance_date from conversation timezone to UTC if provided (for recurring templates)
+    next_instance_date_utc = None
+    if conversation_data.next_instance_date:
+        next_instance_date_utc = parse_datetime_with_timezone(
+            conversation_data.next_instance_date.isoformat() if isinstance(conversation_data.next_instance_date, datetime) else str(conversation_data.next_instance_date),
+            conversation_timezone
+        )
+
+    # Convert recurrence_end_date from conversation timezone to UTC if provided
+    recurrence_end_date_utc = None
+    if conversation_data.recurrence_end_date:
+        recurrence_end_date_utc = parse_datetime_with_timezone(
+            conversation_data.recurrence_end_date.isoformat() if isinstance(conversation_data.recurrence_end_date, datetime) else str(conversation_data.recurrence_end_date),
             conversation_timezone
         )
     
@@ -143,6 +159,12 @@ async def create_conversation(
         time_extension_enabled=conversation_data.time_extension_enabled,
         timezone=conversation_timezone,
         state=ConversationState.DRAFT.value,
+        # Recurring conversation fields
+        series_id=conversation_data.series_id,  # Set when creating an instance from a template
+        is_recurring_instance=conversation_data.series_id is not None,  # Auto-set based on series_id
+        recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
+        next_instance_date=next_instance_date_utc,
+        recurrence_end_date=recurrence_end_date_utc,
     )
 
     db.add(conversation)
@@ -218,6 +240,10 @@ async def list_conversations(
             "timezone": conv.timezone or "UTC",
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
+            # Recurring conversation fields
+            "series_id": conv.series_id,
+            "is_recurring_instance": conv.is_recurring_instance or False,
+            "recurrence_pattern": conv.recurrence_pattern,
         }
         conversations.append(ConversationListItem(**conv_dict))
 
@@ -432,13 +458,25 @@ async def update_conversation(
     # Handle questions update separately (if provided)
     questions_to_update = update_data.questions
     update_dict = update_data.model_dump(exclude_unset=True, exclude={'questions'})
-    
+
+    # Get conversation timezone for datetime conversions
+    conversation_timezone = conversation.timezone or "UTC"
+
     # Update conversation fields
     for field, value in update_dict.items():
         if field == 'anonymity_level' and value:
             setattr(conversation, field, value.value)
         elif field == 'results_access' and value:
             setattr(conversation, field, value.value)
+        elif field == 'recurrence_pattern' and value:
+            setattr(conversation, field, value.value)
+        elif field in ['next_instance_date', 'recurrence_end_date'] and value:
+            # Convert from conversation timezone to UTC
+            value_utc = parse_datetime_with_timezone(
+                value.isoformat() if isinstance(value, datetime) else str(value),
+                conversation_timezone
+            )
+            setattr(conversation, field, value_utc)
         else:
             setattr(conversation, field, value)
 
@@ -1077,6 +1115,25 @@ async def create_follow_up_conversation(
                     status="pending"
                 )
                 db.add(new_invitation)
+
+    # Copy questions if requested
+    if request.copy_questions:
+        parent_questions = db.query(Question).filter(
+            Question.conversation_id == parent_conversation.id
+        ).order_by(Question.question_order).all()
+
+        for parent_q in parent_questions:
+            new_question = Question(
+                conversation_id=follow_up.id,
+                question_text=parent_q.question_text,
+                question_type=parent_q.question_type,
+                question_order=parent_q.question_order,
+                options=parent_q.options
+            )
+            db.add(new_question)
+
+        # Mark as recurring instance if questions are copied
+        follow_up.is_recurring_instance = True
 
     db.commit()
     db.refresh(follow_up)

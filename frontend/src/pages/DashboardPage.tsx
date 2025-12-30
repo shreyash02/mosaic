@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
@@ -8,6 +8,7 @@ import { formatDateShort } from '../utils/formatting';
 type DateRange = 'all' | '7' | '30' | '90';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -115,7 +116,13 @@ export default function DashboardPage() {
     >
       <div className="card-header">
         <h3>
-          {isFollowUp && <span className="follow-up-arrow">↳ </span>}
+          {isFollowUp && (
+            conversation.is_recurring_instance ? (
+              <span className="recurring-arrow" title="Recurring instance">↻ </span>
+            ) : (
+              <span className="follow-up-arrow" title="Follow-up">↳ </span>
+            )
+          )}
           {conversation.title}
         </h3>
         <span className={`status-badge ${getStateClass(conversation.state)}`}>
@@ -187,7 +194,16 @@ export default function DashboardPage() {
     return created >= cutoffDate;
   };
 
-  const filteredConversations = conversations.filter(c => {
+  // Separate templates from actual conversations
+  const templates = conversations.filter(c =>
+    c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null
+  );
+
+  const actualConversations = conversations.filter(c =>
+    !(c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null)
+  );
+
+  const filteredConversations = actualConversations.filter(c => {
     // State filter
     if (selectedStates.length > 0 && !selectedStates.includes(c.state)) {
       return false;
@@ -209,15 +225,15 @@ export default function DashboardPage() {
   const { rootConversations, childrenMap } = groupConversations(filteredConversations);
 
   const getStateCount = (state: ConversationState) => {
-    return conversations.filter(c => c.state === state).length;
+    return actualConversations.filter(c => c.state === state).length;
   };
 
   const getAnonymityCount = (level: AnonymityLevel) => {
-    return conversations.filter(c => c.anonymity_level === level).length;
+    return actualConversations.filter(c => c.anonymity_level === level).length;
   };
 
   const getDateRangeCount = (range: DateRange) => {
-    return conversations.filter(c => isWithinDateRange(c.created_at, range)).length;
+    return actualConversations.filter(c => isWithinDateRange(c.created_at, range)).length;
   };
 
   const getAnonymityLabel = (level: AnonymityLevel) => {
@@ -275,7 +291,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {conversations.length > 0 && (
+      {actualConversations.length > 0 && (
         <div className="filter-bar">
           <div className="filter-label">Filters:</div>
 
@@ -517,9 +533,15 @@ export default function DashboardPage() {
                   <h3>
                     {conversation.title}
                     {conversation.is_follow_up && (
-                      <span className="follow-up-badge" title="Follow-up conversation">
-                        ↳ Follow-up
-                      </span>
+                      conversation.is_recurring_instance ? (
+                        <span className="recurring-badge" title="Recurring instance">
+                          ↻ Recurring
+                        </span>
+                      ) : (
+                        <span className="follow-up-badge" title="Follow-up conversation">
+                          ↳ Follow-up
+                        </span>
+                      )
                     )}
                   </h3>
                   <span className={`status-badge ${getStateClass(conversation.state)}`}>
@@ -543,6 +565,77 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Recurring Templates Section */}
+      <div className="conversations-list" style={{ marginTop: '3rem' }}>
+        <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <h2 style={{ margin: 0 }}>Recurring Templates</h2>
+            <span style={{
+              marginLeft: '1rem',
+              padding: '0.25rem 0.75rem',
+              background: '#EBF8FF',
+              color: '#2C5282',
+              borderRadius: '12px',
+              fontSize: '0.9rem',
+              fontWeight: 600
+            }}>
+              {templates.length}
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/conversations/new', { state: { createTemplate: true } })}
+            className="btn btn-primary btn-small"
+          >
+            + Create Template
+          </button>
+        </div>
+        <p style={{ color: '#718096', marginBottom: '1.5rem' }}>
+          Templates are used to automatically create recurring conversation instances. They cannot receive responses directly.
+        </p>
+
+        {templates.length > 0 && (
+          <div className="conversation-grid">
+            {templates.map((template) => (
+              <Link
+                key={template.id}
+                to={`/templates/${template.id}`}
+                className="conversation-card template-card"
+                style={{ borderColor: '#90CDF4', background: '#F7FAFC' }}
+              >
+                <div className="card-header">
+                  <h3>
+                    🔄 {template.title}
+                    <span className="template-badge" style={{
+                      fontSize: '0.7rem',
+                      color: '#2C5282',
+                      background: '#BEE3F8',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '12px',
+                      marginLeft: '0.5rem',
+                      fontWeight: 600
+                    }}>
+                      TEMPLATE
+                    </span>
+                  </h3>
+                  <span className={`status-badge ${getStateClass(template.state)}`}>
+                    {getStateLabel(template.state)}
+                  </span>
+                </div>
+                <div className="card-body">
+                  <div className="conversation-meta">
+                    <span>Pattern: <strong>{template.recurrence_pattern}</strong></span>
+                    <span>Instances: <strong>{conversations.filter(c => c.series_id === template.id).length}</strong></span>
+                  </div>
+                  <div className="conversation-meta">
+                    <span>Created: {formatDateShort(template.created_at, template.timezone)}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

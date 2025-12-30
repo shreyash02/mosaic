@@ -45,6 +45,13 @@ export default function ConversationDetailPage() {
     }
   }, [id]);
 
+  // Redirect to template page if this is a template
+  useEffect(() => {
+    if (conversation && conversation.series_id === null && conversation.recurrence_pattern) {
+      navigate(`/templates/${id}`, { replace: true });
+    }
+  }, [conversation, id, navigate]);
+
   const loadConversation = async () => {
     try {
       const [convData, statsData] = await Promise.all([
@@ -131,6 +138,22 @@ export default function ConversationDetailPage() {
         parentConversationId: id,
         copySettings: copySettings,
         copyInvitations: copyInvitations,
+        parentConversation: conversation,
+      }
+    });
+  };
+
+  const handleRepeatConversation = () => {
+    // Navigate to create page with all options copied (recurring instance)
+    navigate('/conversations/new', {
+      state: {
+        isFollowUp: true,
+        isRecurring: true,
+        parentConversationId: id,
+        seriesId: conversation?.series_id || id,  // Use existing series_id, or this conversation's id if it's a template
+        copySettings: true,
+        copyInvitations: true,
+        copyQuestions: true,
         parentConversation: conversation,
       }
     });
@@ -329,10 +352,18 @@ export default function ConversationDetailPage() {
             ← Back to Dashboard
           </button>
           <div className="title-row">
-            <h1>{conversation.title}</h1>
+            <h1>
+              {conversation.series_id === null && conversation.recurrence_pattern && (
+                <span className="recurring-icon" title="Recurring Template">🔄</span>
+              )}
+              {conversation.title}
+            </h1>
             <span className={`status-badge-inline status-${conversation.state}`}>
               {conversation.state}
             </span>
+            {conversation.series_id === null && conversation.recurrence_pattern && (
+              <span className="badge recurring-badge">TEMPLATE</span>
+            )}
           </div>
           {conversation.description && <p className="description">{conversation.description}</p>}
         </div>
@@ -393,13 +424,24 @@ export default function ConversationDetailPage() {
             )}
 
             {(conversation.state === ConversationState.CLOSED || conversation.state === ConversationState.ANALYZED) && (
-              <button
-                onClick={() => setShowFollowUpModal(true)}
-                className="btn btn-outline-secondary btn-small"
-                disabled={actionLoading}
-              >
-                Create Follow-up
-              </button>
+              <>
+                <button
+                  onClick={handleRepeatConversation}
+                  className="btn btn-secondary btn-small"
+                  disabled={actionLoading}
+                  title="Copy everything (questions, settings, invitations) to create a new instance"
+                >
+                  Repeat Conversation
+                </button>
+                <button
+                  onClick={() => setShowFollowUpModal(true)}
+                  className="btn btn-outline-secondary btn-small"
+                  disabled={actionLoading}
+                  title="Create a follow-up with customizable options"
+                >
+                  Create Follow-up
+                </button>
+              </>
             )}
 
             {/* Destructive action */}

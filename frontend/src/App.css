@@ -828,6 +828,22 @@ h3 {
   margin-right: 0.25rem;
 }
 
+.recurring-arrow {
+  color: #4299e1;
+  margin-right: 0.25rem;
+  font-weight: 600;
+}
+
+.recurring-badge {
+  font-size: 0.7rem;
+  color: #2c5282;
+  background: #bee3f8;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  margin-left: 0.5rem;
+  font-weight: 600;
+}
+
 .conversation-card {
   background: white;
   padding: 1.5rem;
@@ -2441,4 +2457,130 @@ h3 {
 .follow-up-date {
   font-size: 0.85rem;
   color: #666;
+}
+
+/* Template-specific styles */
+.recurring-icon {
+  font-size: 1.5rem;
+  margin-right: 0.5rem;
+}
+
+.schedule-info {
+  background: #f7fafc;
+  padding: 1rem;
+  border-radius: 6px;
+  border-left: 4px solid #4299e1;
+}
+
+.schedule-info p {
+  margin: 0.5rem 0;
+  color: #2d3748;
+}
+
+.settings-info {
+  background: #f7fafc;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.settings-info p {
+  margin: 0.5rem 0;
+  color: #2d3748;
+}
+
+.questions-list {
+  margin-top: 0.5rem;
+}
+
+.question-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f7fafc;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  align-items: flex-start;
+}
+
+.question-number {
+  font-weight: 600;
+  color: #4299e1;
+  min-width: 1.5rem;
+}
+
+.question-content {
+  flex: 1;
+}
+
+.question-text {
+  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.question-type {
+  font-size: 0.85rem;
+  color: #718096;
+  background: #e2e8f0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.instances-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.instance-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s;
+}
+
+.instance-card:hover {
+  border-color: #4299e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.instance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.instance-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2d3748;
+}
+
+.instance-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.instance-details p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.no-data {
+  text-align: center;
+  padding: 2rem;
+  color: #718096;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.no-data p {
+  margin: 0.5rem 0;
 }

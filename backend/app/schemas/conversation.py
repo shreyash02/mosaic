@@ -33,6 +33,15 @@ class ConversationState(str, Enum):
     DELETED = "deleted"
 
 
+class RecurrencePattern(str, Enum):
+    """Recurrence pattern options."""
+
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+
+
 # Question schemas (nested within conversation)
 class QuestionBase(BaseModel):
     """Base question schema."""
@@ -87,12 +96,18 @@ class ConversationBase(BaseModel):
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
     parent_conversation_id: Optional[UUID] = None
 
+    # Recurring conversation fields
+    recurrence_pattern: Optional[RecurrencePattern] = Field(None, description="Pattern for recurring conversations (only set on template)")
+    next_instance_date: Optional[datetime] = Field(None, description="When to create the next instance (only set on template)")
+    recurrence_end_date: Optional[datetime] = Field(None, description="When to stop creating instances (only set on template)")
+
 
 class ConversationCreate(ConversationBase):
     """Schema for creating a conversation."""
 
     organization_id: Optional[UUID] = None
     questions: List[QuestionCreate] = Field(..., min_items=1)
+    series_id: Optional[UUID] = None  # Set when creating an instance from a template
 
 
 class ConversationUpdate(BaseModel):
@@ -112,6 +127,10 @@ class ConversationUpdate(BaseModel):
     time_extension_enabled: Optional[bool] = None
     timezone: Optional[str] = Field(None, description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
     questions: Optional[List[QuestionCreate]] = None
+    # Recurring template fields
+    recurrence_pattern: Optional[RecurrencePattern] = None
+    next_instance_date: Optional[datetime] = None
+    recurrence_end_date: Optional[datetime] = None
 
 
 class ConversationSummary(BaseModel):
@@ -144,6 +163,13 @@ class Conversation(ConversationBase):
     parent_conversation: Optional[ConversationSummary] = None
     follow_up_conversations: List[ConversationSummary] = []
     is_follow_up: bool = False
+
+    # Recurring conversation fields
+    series_id: Optional[UUID] = None
+    is_recurring_instance: bool = False
+    recurrence_pattern: Optional[RecurrencePattern] = None
+    next_instance_date: Optional[datetime] = None
+    recurrence_end_date: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -181,6 +207,7 @@ class CreateFollowUpRequest(BaseModel):
 
     copy_invitations: bool = False
     copy_settings: bool = True
+    copy_questions: bool = False
 
 
 class ConversationLineage(BaseModel):
@@ -207,5 +234,10 @@ class ConversationListItem(BaseModel):
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
     is_follow_up: bool = False
     parent_conversation_id: Optional[UUID] = None
+
+    # Recurring conversation fields
+    series_id: Optional[UUID] = None
+    is_recurring_instance: bool = False
+    recurrence_pattern: Optional[RecurrencePattern] = None
 
     model_config = {"from_attributes": True}

@@ -19,6 +19,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AdminPortalPage from './pages/AdminPortalPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import AdminConversationDetailPage from './pages/AdminConversationDetailPage';
+import TemplateDetailPage from './pages/TemplateDetailPage';
 
 import './App.css';
 
@@ -86,6 +87,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AnalysisPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/templates/:id"
+              element={
+                <ProtectedRoute>
+                  <TemplateDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/templates/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <EditConversationPage />
                 </ProtectedRoute>
               }
             />

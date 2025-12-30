@@ -9,8 +9,11 @@ from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.conversation import Conversation
 from app.models.response import Response
+from app.models.question import Question
+from app.models.conversation_invitation import ConversationInvitation
 from app.schemas.conversation import ConversationState
 from app.routes.analysis import run_analysis_task
+from app.utils.access_code import generate_access_code
 import logging
 import asyncio
 
@@ -128,6 +131,172 @@ async def check_scheduled_closures():
         db.close()
 
 
+async def create_recurring_instances():
+    """
+    Check for recurring conversation templates and create new instances.
+
+    Finds templates where:
+    - next_instance_date <= now
+    - recurrence_pattern is set
+    - recurrence_end_date has not passed (or is None)
+    """
+    db: Session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+
+        # Find templates that need new instances
+        # Templates are conversations with series_id = NULL and recurrence_pattern set
+        templates = db.query(Conversation).filter(
+            Conversation.series_id.is_(None),
+            Conversation.recurrence_pattern.isnot(None),
+            Conversation.next_instance_date <= now,
+            Conversation.next_instance_date.isnot(None),
+            # Either no end date, or end date hasn't passed
+            (Conversation.recurrence_end_date.is_(None)) | (Conversation.recurrence_end_date > now)
+        ).all()
+
+        if templates:
+            logger.info(f"Found {len(templates)} recurring template(s) to create instances for")
+
+        for template in templates:
+            try:
+                logger.info(f"Creating recurring instance for template {template.id} ({template.title})")
+
+                # Calculate instance number for title
+                existing_instances = db.query(Conversation).filter(
+                    Conversation.series_id == template.id
+                ).count()
+                instance_number = existing_instances + 1
+
+                # Determine title for new instance
+                # Try to increment existing number or add new number
+                import re
+                match = re.search(r'#(\d+)$', template.title)
+                if match:
+                    base_title = template.title[:match.start()].strip()
+                    new_title = f"{base_title} #{instance_number}"
+                else:
+                    new_title = f"{template.title} #{instance_number}"
+
+                # Generate unique access code
+                access_code = generate_access_code()
+                while db.query(Conversation).filter(Conversation.access_code == access_code).first():
+                    access_code = generate_access_code()
+
+                # Find the latest instance to use as parent
+                latest_instance = db.query(Conversation).filter(
+                    Conversation.series_id == template.id
+                ).order_by(Conversation.created_at.desc()).first()
+
+                parent_id = latest_instance.id if latest_instance else template.id
+
+                # Create new instance
+                new_instance = Conversation(
+                    creator_id=template.creator_id,
+                    organization_id=template.organization_id,
+                    parent_conversation_id=parent_id,
+                    series_id=template.id,
+                    is_recurring_instance=True,
+                    title=new_title,
+                    description=template.description,
+                    access_code=access_code,
+                    state=ConversationState.DRAFT.value,
+                    anonymity_level=template.anonymity_level,
+                    results_access=template.results_access,
+                    invite_only=template.invite_only,
+                    auto_analyze=template.auto_analyze,
+                    max_response_length=template.max_response_length,
+                    duration_minutes=template.duration_minutes,
+                    manual_close_enabled=template.manual_close_enabled,
+                    time_extension_enabled=template.time_extension_enabled,
+                    timezone=template.timezone,
+                )
+
+                db.add(new_instance)
+                db.flush()  # Get the new instance ID
+
+                # Copy questions from template
+                template_questions = db.query(Question).filter(
+                    Question.conversation_id == template.id
+                ).order_by(Question.question_order).all()
+
+                for q in template_questions:
+                    new_question = Question(
+                        conversation_id=new_instance.id,
+                        question_text=q.question_text,
+                        question_type=q.question_type,
+                        question_order=q.question_order,
+                        options=q.options
+                    )
+                    db.add(new_question)
+
+                # Copy invitations from template
+                template_invitations = db.query(ConversationInvitation).filter(
+                    ConversationInvitation.conversation_id == template.id
+                ).all()
+
+                for inv in template_invitations:
+                    if inv.invited_user_id:
+                        new_invitation = ConversationInvitation(
+                            conversation_id=new_instance.id,
+                            invited_by_user_id=template.creator_id,
+                            invited_user_id=inv.invited_user_id,
+                            status="pending"
+                        )
+                        db.add(new_invitation)
+
+                # Calculate next instance date based on recurrence pattern
+                next_date = calculate_next_instance_date(
+                    template.next_instance_date,
+                    template.recurrence_pattern
+                )
+
+                # Update template's next_instance_date
+                template.next_instance_date = next_date
+
+                db.commit()
+                logger.info(f"Successfully created recurring instance {new_instance.id} for template {template.id}")
+                logger.info(f"Next instance scheduled for {next_date}")
+
+            except Exception as e:
+                logger.error(f"Error creating instance for template {template.id}: {e}", exc_info=True)
+                db.rollback()
+                # Continue with other templates
+                continue
+
+    except Exception as e:
+        logger.error(f"Error in create_recurring_instances: {e}", exc_info=True)
+    finally:
+        db.close()
+
+
+def calculate_next_instance_date(current_date: datetime, pattern: str) -> datetime:
+    """
+    Calculate the next instance date based on recurrence pattern.
+
+    Args:
+        current_date: Current next_instance_date
+        pattern: Recurrence pattern (weekly, biweekly, monthly, quarterly)
+
+    Returns:
+        Next instance datetime
+    """
+    if pattern == "weekly":
+        return current_date + timedelta(weeks=1)
+    elif pattern == "biweekly":
+        return current_date + timedelta(weeks=2)
+    elif pattern == "monthly":
+        # Add approximately one month (30 days)
+        # For more precise month handling, we'd use dateutil
+        return current_date + timedelta(days=30)
+    elif pattern == "quarterly":
+        # Add approximately 3 months (90 days)
+        return current_date + timedelta(days=90)
+    else:
+        logger.warning(f"Unknown recurrence pattern: {pattern}, defaulting to weekly")
+        return current_date + timedelta(weeks=1)
+
+
 def start_scheduler():
     """Start the background scheduler."""
     if scheduler.running:
@@ -151,9 +320,18 @@ def start_scheduler():
         replace_existing=True,
         max_instances=1
     )
-    
+
+    # Add job to create recurring instances every 15 minutes
+    scheduler.add_job(
+        create_recurring_instances,
+        trigger=IntervalTrigger(minutes=15),
+        id='create_recurring_instances',
+        replace_existing=True,
+        max_instances=1
+    )
+
     scheduler.start()
-    logger.info("Scheduler started with activation and closure check jobs")
+    logger.info("Scheduler started with activation, closure, and recurring instance check jobs")
 
 
 def shutdown_scheduler():

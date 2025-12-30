@@ -1,0 +1,317 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { api } from '../services/api';
+import type { Conversation, ConversationListItem } from '../types';
+import { ConversationState, RecurrencePattern } from '../types';
+import { formatDate } from '../utils/formatting';
+
+export default function TemplateDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [template, setTemplate] = useState<Conversation | null>(null);
+  const [instances, setInstances] = useState<ConversationListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      loadTemplate();
+      loadInstances();
+    }
+  }, [id]);
+
+  const loadTemplate = async () => {
+    try {
+      const data = await api.getConversation(id!);
+
+      // Verify this is actually a template
+      if (data.series_id !== null || !data.recurrence_pattern) {
+        setError('This is not a recurring template');
+        setLoading(false);
+        return;
+      }
+
+      setTemplate(data);
+    } catch (err: any) {
+      setError('Failed to load template');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInstances = async () => {
+    try {
+      // Get all conversations and filter for instances of this template
+      const allConversations = await api.getConversations();
+      const templateInstances = allConversations.filter(
+        (conv: ConversationListItem) => conv.series_id === id
+      );
+      setInstances(templateInstances);
+    } catch (err: any) {
+      console.error('Failed to load instances:', err);
+    }
+  };
+
+  const handleCreateInstanceNow = () => {
+    if (!template) return;
+
+    // Navigate to create page to create a new instance manually
+    navigate('/conversations/new', {
+      state: {
+        isFollowUp: true,
+        isRecurring: true,
+        parentConversationId: id,
+        seriesId: id,  // Pass template ID as series_id
+        copySettings: true,
+        copyInvitations: true,
+        copyQuestions: true,
+        parentConversation: template,
+      }
+    });
+  };
+
+  const handleEdit = () => {
+    navigate(`/templates/${id}/edit`);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.deleteConversation(id!);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete template');
+      setShowDeleteModal(false);
+    }
+  };
+
+  const formatRecurrencePattern = (pattern?: RecurrencePattern) => {
+    if (!pattern) return '';
+    const map: Record<RecurrencePattern, string> = {
+      [RecurrencePattern.WEEKLY]: 'Weekly',
+      [RecurrencePattern.BIWEEKLY]: 'Every 2 weeks',
+      [RecurrencePattern.MONTHLY]: 'Monthly',
+      [RecurrencePattern.QUARTERLY]: 'Quarterly',
+    };
+    return map[pattern] || pattern;
+  };
+
+  if (loading) {
+    return (
+      <div className="container">
+        <div className="loading">Loading template...</div>
+      </div>
+    );
+  }
+
+  if (error && !template) {
+    return (
+      <div className="container">
+        <div className="error-message">{error}</div>
+        <Link to="/dashboard" className="btn btn-secondary">Back to Dashboard</Link>
+      </div>
+    );
+  }
+
+  if (!template) {
+    return (
+      <div className="container">
+        <div className="error-message">Template not found</div>
+        <Link to="/dashboard" className="btn btn-secondary">Back to Dashboard</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="conversation-detail-page">
+      <div className="page-header">
+        <div>
+          <button onClick={() => navigate('/dashboard')} className="btn-back">
+            ← Back to Dashboard
+          </button>
+          <div className="title-row">
+            <h1>
+              <span className="recurring-icon" title="Recurring Template">🔄</span>
+              {template.title}
+            </h1>
+            <span className="badge recurring-badge">TEMPLATE</span>
+          </div>
+          {template.description && <p className="description">{template.description}</p>}
+        </div>
+        <div className="header-actions">
+          <div className="conversation-actions-top">
+            <button
+              onClick={handleCreateInstanceNow}
+              className="btn btn-primary btn-small"
+              disabled={actionLoading}
+            >
+              Create Instance Now
+            </button>
+
+            <button
+              onClick={handleEdit}
+              className="btn btn-outline-secondary btn-small"
+              disabled={actionLoading}
+            >
+              Edit Template
+            </button>
+
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="btn btn-outline-danger btn-small"
+              disabled={actionLoading}
+            >
+              Delete Template
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="conversation-content">
+        <div className="info-panel">
+          <h2>Recurrence Schedule</h2>
+
+          <div className="info-item">
+            <label>Pattern:</label>
+            <span>{formatRecurrencePattern(template.recurrence_pattern)}</span>
+          </div>
+
+          <div className="info-item">
+            <label>Next Instance:</label>
+            <span>{template.next_instance_date ? formatDate(template.next_instance_date) : 'Not scheduled'}</span>
+          </div>
+
+          <div className="info-item">
+            <label>Ends:</label>
+            <span>{template.recurrence_end_date ? formatDate(template.recurrence_end_date) : 'Never (continues indefinitely)'}</span>
+          </div>
+        </div>
+
+        <div className="info-panel">
+          <h2>Template Settings</h2>
+
+          <div className="info-item">
+            <label>Anonymity Level:</label>
+            <span>{template.anonymity_level}</span>
+          </div>
+
+          <div className="info-item">
+            <label>Results Access:</label>
+            <span>{template.results_access}</span>
+          </div>
+
+          <div className="info-item">
+            <label>Invite Only:</label>
+            <span>{template.invite_only ? 'Yes' : 'No'}</span>
+          </div>
+
+          <div className="info-item">
+            <label>Auto Analyze:</label>
+            <span>{template.auto_analyze ? 'Yes' : 'No'}</span>
+          </div>
+
+          {template.duration_minutes && (
+            <div className="info-item">
+              <label>Duration:</label>
+              <span>{template.duration_minutes} minutes</span>
+            </div>
+          )}
+        </div>
+
+        <div className="info-panel">
+          <h2>Questions ({template.questions?.length || 0})</h2>
+
+          {template.questions && template.questions.length > 0 ? (
+            <div className="questions-list">
+              {template.questions
+                .sort((a, b) => a.question_order - b.question_order)
+                .map((q, index) => (
+                  <div key={q.id} className="question-item">
+                    <span className="question-number">{index + 1}.</span>
+                    <div className="question-content">
+                      <p className="question-text">{q.question_text}</p>
+                      <span className="question-type">{q.question_type}</span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <p className="no-data">No questions defined</p>
+          )}
+        </div>
+
+        <div className="info-panel">
+          <h2>Instances Created ({instances.length})</h2>
+
+          {instances.length > 0 ? (
+            instances
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map((instance) => (
+                <div key={instance.id} className="info-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                  <Link
+                    to={`/conversations/${instance.id}`}
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <strong style={{ fontSize: '1rem', color: '#2d3748' }}>{instance.title}</strong>
+                      <span className={`status-badge-inline status-${instance.state}`}>
+                        {instance.state}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#718096', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                      <span>Created: {formatDate(instance.created_at)}</span>
+                      {instance.activated_at && (
+                        <span>Activated: {formatDate(instance.activated_at)}</span>
+                      )}
+                      {instance.closed_at && (
+                        <span>Closed: {formatDate(instance.closed_at)}</span>
+                      )}
+                      {instance.response_count !== undefined && (
+                        <span>Responses: {instance.response_count}</span>
+                      )}
+                    </div>
+                  </Link>
+                </div>
+              ))
+          ) : (
+            <p style={{ color: '#718096', textAlign: 'center', padding: '2rem' }}>
+              No instances have been created from this template yet.<br />
+              Instances will be created automatically based on the schedule, or you can create one manually.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Template?</h2>
+            <p>
+              Are you sure you want to delete this template? This will also delete all instances created from this template.
+              This action cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="btn btn-danger"
+              >
+                Delete Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
