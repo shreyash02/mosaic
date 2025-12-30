@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question, type Conversation } from '../types';
 import { convertUTCToLocalDateTimeString } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 export default function EditConversationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
+  const [conversation, setConversation] = useState<Conversation | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [anonymityLevel, setAnonymityLevel] = useState<AnonymityLevel>(
@@ -44,6 +47,7 @@ export default function EditConversationPage() {
       setError(''); // Clear any previous errors
 
       const conv = await api.getConversation(id!);
+      setConversation(conv);
 
       // Check if this is a template
       const isTemp = conv.series_id === null && conv.recurrence_pattern !== undefined && conv.recurrence_pattern !== null;
@@ -256,6 +260,27 @@ export default function EditConversationPage() {
 
   if (loadingConversation) {
     return <div className="loading">Loading conversation...</div>;
+  }
+
+  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
+  const conversationOrgId = conversation?.organization_id || null;
+  const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
+
+  if (!conversation || wrongWorkspace) {
+    return (
+      <div className="dashboard-page">
+        <div className="page-header">
+          <h1>Conversation Not Found</h1>
+        </div>
+        <div className="empty-state">
+          <h3>This conversation doesn't exist or you don't have access to it</h3>
+          <p>The conversation may have been deleted or you may not have permission to view it.</p>
+          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

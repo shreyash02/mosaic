@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, InvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 export default function ManageInvitationsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,15 +92,22 @@ export default function ManageInvitationsPage() {
     );
   }
 
-  if (!conversation) {
+  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
+  const conversationOrgId = conversation?.organization_id || null;
+  const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
+
+  if (!conversation || wrongWorkspace) {
     return (
-      <div className="container">
-        <div className="card">
+      <div className="dashboard-page">
+        <div className="page-header">
           <h1>Conversation Not Found</h1>
-          <p>The conversation you're looking for doesn't exist or you don't have access to it.</p>
-          <Link to="/dashboard" className="btn btn-primary">
+        </div>
+        <div className="empty-state">
+          <h3>This conversation doesn't exist or you don't have access to it</h3>
+          <p>The conversation may have been deleted or you may not have permission to view it.</p>
+          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
             Back to Dashboard
-          </Link>
+          </button>
         </div>
       </div>
     );

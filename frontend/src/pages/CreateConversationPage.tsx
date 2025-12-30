@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation } from '../types';
 import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 interface LocationState {
   isFollowUp?: boolean;
@@ -22,6 +23,7 @@ export default function CreateConversationPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const followUpState = location.state as LocationState;
+  const { currentOrgId, currentWorkspaceName } = useOrganization();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -47,28 +49,6 @@ export default function CreateConversationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>('');
-
-  // Load organizations on mount
-  useEffect(() => {
-    const loadOrganizations = async () => {
-      try {
-        const orgs = await api.listOrganizations();
-        setOrganizations(orgs);
-      } catch (err) {
-        console.error('Failed to load organizations:', err);
-      }
-    };
-    loadOrganizations();
-  }, []);
-
-  // Pre-select organization from location state
-  useEffect(() => {
-    if (followUpState?.organizationId) {
-      setSelectedOrganizationId(followUpState.organizationId);
-    }
-  }, [followUpState?.organizationId]);
 
   // Auto-enable recurring if creating a template
   useEffect(() => {
@@ -306,9 +286,9 @@ export default function CreateConversationPage() {
         ...(followUpState?.seriesId && {
           series_id: followUpState.seriesId
         }),
-        // Add organization_id if selected
-        ...(selectedOrganizationId && {
-          organization_id: selectedOrganizationId
+        // Add organization_id from current workspace context
+        ...(currentOrgId && {
+          organization_id: currentOrgId
         }),
         // Add recurring fields if enabled (for templates only, not instances)
         ...(enableRecurring && {
@@ -399,38 +379,25 @@ export default function CreateConversationPage() {
         )}
 
         <div className="form-section">
-          {/* Organization Selector */}
-          {organizations.length > 0 && (
-            <div className="form-group">
-              <label htmlFor="organization">Organization (optional)</label>
-              <select
-                id="organization"
-                value={selectedOrganizationId}
-                onChange={(e) => setSelectedOrganizationId(e.target.value)}
-                style={{
-                  padding: '0.75rem',
-                  fontSize: '0.9rem',
-                  border: '1px solid #cbd5e0',
-                  borderRadius: '6px',
-                  backgroundColor: 'white',
-                  cursor: 'pointer',
-                  width: '100%'
-                }}
-              >
-                <option value="">Personal Conversation</option>
-                {organizations.map(org => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
-              <small>
-                {selectedOrganizationId
-                  ? 'This conversation will be visible to all organization members'
-                  : 'Create a personal conversation or select an organization'}
-              </small>
+          {/* Workspace indicator */}
+          <div className="form-group" style={{
+            backgroundColor: '#f7fafc',
+            padding: '1rem',
+            borderRadius: '6px',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '0.25rem' }}>
+              Creating conversation in:
             </div>
-          )}
+            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#2d3748' }}>
+              {currentWorkspaceName}
+            </div>
+            <small style={{ color: '#718096' }}>
+              {currentOrgId
+                ? 'This conversation will be visible to all organization members'
+                : 'This is a personal conversation'}
+            </small>
+          </div>
 
           <div className="form-group">
             <label htmlFor="title">Conversation Title *</label>

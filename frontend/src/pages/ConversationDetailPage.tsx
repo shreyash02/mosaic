@@ -5,10 +5,12 @@ import type { Conversation, ResponseStats, Analysis, InvitationListResponse } fr
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [stats, setStats] = useState<ResponseStats | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -335,8 +337,25 @@ export default function ConversationDetailPage() {
     return <div className="loading">Loading conversation...</div>;
   }
 
-  if (!conversation) {
-    return <div className="error">Conversation not found</div>;
+  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
+  const conversationOrgId = conversation?.organization_id || null;
+  const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
+
+  if (!conversation || wrongWorkspace) {
+    return (
+      <div className="dashboard-page">
+        <div className="page-header">
+          <h1>Conversation Not Found</h1>
+        </div>
+        <div className="empty-state">
+          <h3>This conversation doesn't exist or you don't have access to it</h3>
+          <p>The conversation may have been deleted or you may not have permission to view it.</p>
+          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

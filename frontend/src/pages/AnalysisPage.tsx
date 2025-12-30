@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Analysis, Conversation } from '../types';
 import { formatDate } from '../utils/formatting';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,27 @@ export default function AnalysisPage() {
 
   if (loading) {
     return <div className="loading">Loading analysis...</div>;
+  }
+
+  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
+  const conversationOrgId = conversation?.organization_id || null;
+  const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
+
+  if (!conversation || wrongWorkspace) {
+    return (
+      <div className="dashboard-page">
+        <div className="page-header">
+          <h1>Conversation Not Found</h1>
+        </div>
+        <div className="empty-state">
+          <h3>This conversation doesn't exist or you don't have access to it</h3>
+          <p>The conversation may have been deleted or you may not have permission to view it.</p>
+          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (error || !analysis) {

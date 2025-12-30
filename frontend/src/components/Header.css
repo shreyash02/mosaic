@@ -121,3 +121,130 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Organization Switcher */
+.org-switcher {
+  position: relative;
+  margin-left: 2rem;
+}
+
+.org-switcher-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background-color: white;
+  color: #2d3748;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.org-switcher-trigger:hover {
+  background-color: #f7fafc;
+  border-color: #a0aec0;
+}
+
+.org-switcher .org-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.org-switcher .org-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.org-switcher .dropdown-arrow {
+  font-size: 0.7rem;
+  color: #718096;
+  transition: transform 0.2s;
+}
+
+.org-switcher-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  min-width: 250px;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.org-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background-color: transparent;
+  color: #2d3748;
+  font-size: 0.9rem;
+  font-weight: 400;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.org-switcher-item:hover {
+  background-color: #f7fafc;
+  color: #2d3748;
+}
+
+.org-switcher-item.active {
+  background-color: #ebf8ff;
+  color: #4299e1;
+  font-weight: 500;
+}
+
+.org-switcher-item .org-icon {
+  font-size: 1.1rem;
+}
+
+.org-switcher-divider {
+  height: 1px;
+  background-color: #e2e8f0;
+  margin: 0.5rem 0;
+}
+
+.org-switcher-label {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.org-switcher-manage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: transparent;
+  color: #4299e1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.org-switcher-manage:hover {
+  background-color: #ebf8ff;
+}
+

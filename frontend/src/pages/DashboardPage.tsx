@@ -4,11 +4,14 @@ import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
+import { useOrganization } from '../contexts/OrganizationContext';
+import axios from 'axios';
 
 type DateRange = 'all' | '7' | '30' | '90';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -19,14 +22,10 @@ export default function DashboardPage() {
   const [showStateDropdown, setShowStateDropdown] = useState(false);
   const [showAnonymityDropdown, setShowAnonymityDropdown] = useState(false);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>('all');
-  const [showOrganizationDropdown, setShowOrganizationDropdown] = useState(false);
 
   useEffect(() => {
     loadConversations();
-    loadOrganizations();
-  }, []);
+  }, [currentOrgId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -37,11 +36,10 @@ export default function DashboardPage() {
         setShowStateDropdown(false);
         setShowAnonymityDropdown(false);
         setShowDateDropdown(false);
-        setShowOrganizationDropdown(false);
       }
     };
 
-    if (showStateDropdown || showAnonymityDropdown || showDateDropdown || showOrganizationDropdown) {
+    if (showStateDropdown || showAnonymityDropdown || showDateDropdown) {
       document.addEventListener('click', handleClickOutside);
     }
 
@@ -52,22 +50,36 @@ export default function DashboardPage() {
 
   const loadConversations = async () => {
     try {
-      const data = await api.getConversations();
+      setLoading(true);
+      let data: ConversationListItem[];
+
+      if (isPersonalWorkspace) {
+        // Personal workspace - fetch all conversations and filter for those without organization_id
+        const allConversations = await api.getConversations();
+        data = allConversations.filter(c => !c.organization_id);
+      } else {
+        // Organization workspace - fetch org-specific conversations
+        data = await api.listOrganizationConversations(currentOrgId!);
+      }
+
       setConversations(data);
+      setError('');
     } catch (err: any) {
+      // Check if error is due to organization access issues (403/404)
+      if (axios.isAxiosError(err) && !isPersonalWorkspace) {
+        const status = err.response?.status;
+        if (status === 403 || status === 404) {
+          console.warn('Organization access error. Refreshing organizations...');
+          // Refresh organizations to check if user still has access
+          await refreshOrganizations();
+          return; // refreshOrganizations will handle switching to Personal if needed
+        }
+      }
+
       setError('Failed to load conversations');
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadOrganizations = async () => {
-    try {
-      const orgs = await api.listOrganizations();
-      setOrganizations(orgs);
-    } catch (err: any) {
-      console.error('Failed to load organizations:', err);
     }
   };
 
@@ -137,20 +149,6 @@ export default function DashboardPage() {
             )
           )}
           {conversation.title}
-          {conversation.organization_id && (
-            <span
-              className="status-badge"
-              style={{
-                backgroundColor: '#EBF8FF',
-                color: '#2C5282',
-                marginLeft: '0.5rem',
-                fontSize: '0.75rem'
-              }}
-              title="Organization conversation"
-            >
-              {organizations.find(org => org.id === conversation.organization_id)?.name || 'Organization'}
-            </span>
-          )}
         </h3>
         <span className={`status-badge ${getStateClass(conversation.state)}`}>
           {getStateLabel(conversation.state)}
@@ -208,7 +206,6 @@ export default function DashboardPage() {
     setSelectedStates([]);
     setSelectedAnonymityLevels([]);
     setDateRange('all');
-    setSelectedOrganizationId('all');
   };
 
   const isWithinDateRange = (createdAt: string, range: DateRange): boolean => {
@@ -245,17 +242,6 @@ export default function DashboardPage() {
     // Date range filter
     if (!isWithinDateRange(c.created_at, dateRange)) {
       return false;
-    }
-
-    // Organization filter
-    if (selectedOrganizationId !== 'all') {
-      if (selectedOrganizationId === 'personal') {
-        // Show only personal conversations (no organization_id)
-        if (c.organization_id) return false;
-      } else {
-        // Show only conversations from selected organization
-        if (c.organization_id !== selectedOrganizationId) return false;
-      }
     }
 
     return true;
@@ -494,84 +480,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Organization Filter */}
-          {organizations.length > 0 && (
-            <div className="filter-dropdown-container">
-              <button
-                onClick={() => {
-                  setShowOrganizationDropdown(!showOrganizationDropdown);
-                  setShowStateDropdown(false);
-                  setShowAnonymityDropdown(false);
-                  setShowDateDropdown(false);
-                }}
-                className="filter-dropdown-toggle"
-              >
-                {selectedOrganizationId === 'all'
-                  ? 'All Conversations'
-                  : selectedOrganizationId === 'personal'
-                  ? 'Personal Only'
-                  : organizations.find(org => org.id === selectedOrganizationId)?.name || 'Organization'}
-                <span className={`dropdown-arrow ${showOrganizationDropdown ? 'open' : ''}`}>▼</span>
-              </button>
-              {showOrganizationDropdown && (
-                <div className="filter-dropdown-menu">
-                  <div className="filter-dropdown-header">
-                    <span className="filter-dropdown-title">Filter by organization</span>
-                  </div>
-                  <div className="filter-dropdown-items">
-                    <label className="filter-dropdown-item">
-                      <input
-                        type="radio"
-                        name="organizationFilter"
-                        checked={selectedOrganizationId === 'all'}
-                        onChange={() => {
-                          setSelectedOrganizationId('all');
-                          setShowOrganizationDropdown(false);
-                        }}
-                      />
-                      <span className="filter-item-label">All Conversations</span>
-                      <span className="filter-item-count">{conversations.length}</span>
-                    </label>
-                    <label className="filter-dropdown-item">
-                      <input
-                        type="radio"
-                        name="organizationFilter"
-                        checked={selectedOrganizationId === 'personal'}
-                        onChange={() => {
-                          setSelectedOrganizationId('personal');
-                          setShowOrganizationDropdown(false);
-                        }}
-                      />
-                      <span className="filter-item-label">Personal Only</span>
-                      <span className="filter-item-count">
-                        {conversations.filter(c => !c.organization_id).length}
-                      </span>
-                    </label>
-                    {organizations.map(org => (
-                      <label key={org.id} className="filter-dropdown-item">
-                        <input
-                          type="radio"
-                          name="organizationFilter"
-                          checked={selectedOrganizationId === org.id}
-                          onChange={() => {
-                            setSelectedOrganizationId(org.id);
-                            setShowOrganizationDropdown(false);
-                          }}
-                        />
-                        <span className="filter-item-label">{org.name}</span>
-                        <span className="filter-item-count">
-                          {conversations.filter(c => c.organization_id === org.id).length}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Clear All Filters */}
-          {(selectedStates.length > 0 || selectedAnonymityLevels.length > 0 || dateRange !== 'all' || selectedOrganizationId !== 'all') && (
+          {(selectedStates.length > 0 || selectedAnonymityLevels.length > 0 || dateRange !== 'all') && (
             <button
               onClick={clearFilters}
               className="btn btn-outline-secondary btn-small"
@@ -588,8 +498,8 @@ export default function DashboardPage() {
         <div className="loading">Loading conversations...</div>
       ) : conversations.length === 0 ? (
         <div className="empty-state">
-          <h3>No conversations yet</h3>
-          <p>Create your first conversation to start collecting feedback</p>
+          <h3>No conversations in {currentWorkspaceName}</h3>
+          <p>Create your first conversation in this workspace</p>
           <Link to="/conversations/new" className="btn btn-primary">
             Create Conversation
           </Link>

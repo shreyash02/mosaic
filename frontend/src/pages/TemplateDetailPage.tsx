@@ -4,10 +4,12 @@ import { api } from '../services/api';
 import type { Conversation, ConversationListItem } from '../types';
 import { ConversationState, RecurrencePattern } from '../types';
 import { formatDate } from '../utils/formatting';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 export default function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
   const [template, setTemplate] = useState<Conversation | null>(null);
   const [instances, setInstances] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,19 +121,32 @@ export default function TemplateDetailPage() {
     );
   }
 
-  if (error && !template) {
+  // Check if template doesn't exist (404 from API) OR belongs to wrong workspace
+  const templateOrgId = template?.organization_id || null;
+  const wrongWorkspace = template && templateOrgId !== currentOrgId;
+
+  if (!template || wrongWorkspace) {
     return (
-      <div className="container">
-        <div className="error-message">{error}</div>
-        <Link to="/dashboard" className="btn btn-secondary">Back to Dashboard</Link>
+      <div className="dashboard-page">
+        <div className="page-header">
+          <h1>Conversation Not Found</h1>
+        </div>
+        <div className="empty-state">
+          <h3>This conversation doesn't exist or you don't have access to it</h3>
+          <p>The conversation may have been deleted or you may not have permission to view it.</p>
+          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!template) {
+  // Show error if not a valid template
+  if (error && template) {
     return (
       <div className="container">
-        <div className="error-message">Template not found</div>
+        <div className="error-message">{error}</div>
         <Link to="/dashboard" className="btn btn-secondary">Back to Dashboard</Link>
       </div>
     );
