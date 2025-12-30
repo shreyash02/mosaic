@@ -835,12 +835,14 @@ h3 {
 }
 
 .recurring-badge {
-  font-size: 0.7rem;
-  color: #2c5282;
-  background: #bee3f8;
-  padding: 0.125rem 0.5rem;
-  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
   margin-left: 0.5rem;
+  background: #bee3f8;
+  color: #2c5282;
+  border-radius: 4px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 

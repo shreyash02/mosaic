@@ -77,6 +77,19 @@ export default function TemplateDetailPage() {
     navigate(`/templates/${id}/edit`);
   };
 
+  const handlePublish = async () => {
+    if (!template) return;
+    setActionLoading(true);
+    try {
+      const updated = await api.activateConversation(id!);
+      setTemplate(updated);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to publish template');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       await api.deleteConversation(id!);
@@ -133,30 +146,50 @@ export default function TemplateDetailPage() {
           </button>
           <div className="title-row">
             <h1>
-              <span className="recurring-icon" title="Recurring Template">🔄</span>
               {template.title}
             </h1>
-            <span className="badge recurring-badge">TEMPLATE</span>
+            <span className={`status-badge-inline status-${template.state}`}>
+              {template.state === ConversationState.DRAFT ? 'Unpublished' : 'Published'}
+            </span>
+            <span className="badge recurring-badge" title="Recurring Template">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
+                <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+              </svg>
+              TEMPLATE
+            </span>
           </div>
           {template.description && <p className="description">{template.description}</p>}
         </div>
         <div className="header-actions">
           <div className="conversation-actions-top">
-            <button
-              onClick={handleCreateInstanceNow}
-              className="btn btn-primary btn-small"
-              disabled={actionLoading}
-            >
-              Create Instance Now
-            </button>
+            {template.state === ConversationState.DRAFT ? (
+              <button
+                onClick={handlePublish}
+                className="btn btn-primary btn-small"
+                disabled={actionLoading}
+              >
+                Publish Template
+              </button>
+            ) : (
+              <button
+                onClick={handleCreateInstanceNow}
+                className="btn btn-primary btn-small"
+                disabled={actionLoading}
+              >
+                Create Conversation Now
+              </button>
+            )}
 
-            <button
-              onClick={handleEdit}
-              className="btn btn-outline-secondary btn-small"
-              disabled={actionLoading}
-            >
-              Edit Template
-            </button>
+            {template.state === ConversationState.DRAFT && (
+              <button
+                onClick={handleEdit}
+                className="btn btn-outline-secondary btn-small"
+                disabled={actionLoading}
+              >
+                Edit Template
+              </button>
+            )}
 
             <button
               onClick={() => setShowDeleteModal(true)}
@@ -171,9 +204,21 @@ export default function TemplateDetailPage() {
 
       {error && <div className="error-message">{error}</div>}
 
+      {template.state === ConversationState.DRAFT && (
+        <div className="info-message" style={{ margin: '1rem 0', padding: '1rem', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px' }}>
+          <strong>Template is unpublished.</strong> Publish this template to enable automatic conversation creation based on the recurrence schedule. You can also create conversations manually anytime.
+        </div>
+      )}
+
       <div className="conversation-content">
         <div className="info-panel">
           <h2>Recurrence Schedule</h2>
+
+          {template.state === ConversationState.DRAFT && (
+            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Automatic conversations will be created once the template is published.
+            </p>
+          )}
 
           <div className="info-item">
             <label>Pattern:</label>
@@ -181,7 +226,7 @@ export default function TemplateDetailPage() {
           </div>
 
           <div className="info-item">
-            <label>Next Instance:</label>
+            <label>Next Conversation:</label>
             <span>{template.next_instance_date ? formatDate(template.next_instance_date) : 'Not scheduled'}</span>
           </div>
 
@@ -245,7 +290,7 @@ export default function TemplateDetailPage() {
         </div>
 
         <div className="info-panel">
-          <h2>Instances Created ({instances.length})</h2>
+          <h2>Conversations created ({instances.length})</h2>
 
           {instances.length > 0 ? (
             instances

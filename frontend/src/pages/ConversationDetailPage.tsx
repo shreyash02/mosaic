@@ -143,22 +143,6 @@ export default function ConversationDetailPage() {
     });
   };
 
-  const handleRepeatConversation = () => {
-    // Navigate to create page with all options copied (recurring instance)
-    navigate('/conversations/new', {
-      state: {
-        isFollowUp: true,
-        isRecurring: true,
-        parentConversationId: id,
-        seriesId: conversation?.series_id || id,  // Use existing series_id, or this conversation's id if it's a template
-        copySettings: true,
-        copyInvitations: true,
-        copyQuestions: true,
-        parentConversation: conversation,
-      }
-    });
-  };
-
   const copyInviteLink = async () => {
     const link = `${window.location.origin}/join/${conversation?.access_code}`;
     try {
@@ -353,16 +337,28 @@ export default function ConversationDetailPage() {
           </button>
           <div className="title-row">
             <h1>
-              {conversation.series_id === null && conversation.recurrence_pattern && (
-                <span className="recurring-icon" title="Recurring Template">🔄</span>
-              )}
               {conversation.title}
             </h1>
             <span className={`status-badge-inline status-${conversation.state}`}>
               {conversation.state}
             </span>
             {conversation.series_id === null && conversation.recurrence_pattern && (
-              <span className="badge recurring-badge">TEMPLATE</span>
+              <span className="badge recurring-badge" title="Recurring Template">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
+                  <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                </svg>
+                TEMPLATE
+              </span>
+            )}
+            {conversation.is_recurring_instance && (
+              <span className="badge recurring-badge" title="Recurring Instance">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
+                  <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                </svg>
+                RECURRING
+              </span>
             )}
           </div>
           {conversation.description && <p className="description">{conversation.description}</p>}
@@ -400,7 +396,7 @@ export default function ConversationDetailPage() {
               </button>
             )}
 
-            {conversation.state === ConversationState.ANALYZED && analysis && (
+            {conversation.state === ConversationState.ANALYZED && (
               <Link to={`/conversations/${id}/analysis`} className="btn btn-primary btn-small">
                 View Analysis
               </Link>
@@ -424,24 +420,13 @@ export default function ConversationDetailPage() {
             )}
 
             {(conversation.state === ConversationState.CLOSED || conversation.state === ConversationState.ANALYZED) && (
-              <>
-                <button
-                  onClick={handleRepeatConversation}
-                  className="btn btn-secondary btn-small"
-                  disabled={actionLoading}
-                  title="Copy everything (questions, settings, invitations) to create a new instance"
-                >
-                  Repeat Conversation
-                </button>
-                <button
-                  onClick={() => setShowFollowUpModal(true)}
-                  className="btn btn-outline-secondary btn-small"
-                  disabled={actionLoading}
-                  title="Create a follow-up with customizable options"
-                >
-                  Create Follow-up
-                </button>
-              </>
+              <button
+                onClick={() => setShowFollowUpModal(true)}
+                className="btn btn-outline-secondary btn-small"
+                disabled={actionLoading}
+              >
+                Create Follow-up
+              </button>
             )}
 
             {/* Destructive action */}
@@ -705,7 +690,13 @@ export default function ConversationDetailPage() {
           {/* Parent Conversation Section */}
           {conversation.parent_conversation && (
             <div className="info-item parent-conversation-section">
-              <label>Parent Conversation:</label>
+              <label>
+                {conversation.is_recurring_instance
+                  ? 'Created from template:'
+                  : conversation.is_follow_up
+                    ? 'Followed up from:'
+                    : 'Parent Conversation:'}
+              </label>
               <div className="parent-conversation-link">
                 <Link to={`/conversations/${conversation.parent_conversation.id}`}>
                   ← {conversation.parent_conversation.title}

@@ -58,9 +58,6 @@ export default function DashboardPage() {
   };
 
   const groupConversations = (conversations: ConversationListItem[]) => {
-    // Build a map of conversation ID to conversation
-    const conversationMap = new Map(conversations.map(c => [c.id, c]));
-
     // Build a map of parent ID to children
     const childrenMap = new Map<string, ConversationListItem[]>();
     const rootConversations: ConversationListItem[] = [];
@@ -535,11 +532,18 @@ export default function DashboardPage() {
                     {conversation.is_follow_up && (
                       conversation.is_recurring_instance ? (
                         <span className="recurring-badge" title="Recurring instance">
-                          ↻ Recurring
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
+                            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                          </svg>
+                          Recurring
                         </span>
                       ) : (
                         <span className="follow-up-badge" title="Follow-up conversation">
-                          ↳ Follow-up
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
+                            <path d="M8 2a.5.5 0 0 1 .5.5v10.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V2.5A.5.5 0 0 1 8 2z"/>
+                          </svg>
+                          Follow-up
                         </span>
                       )
                     )}
@@ -605,7 +609,11 @@ export default function DashboardPage() {
               >
                 <div className="card-header">
                   <h3>
-                    🔄 {template.title}
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                      <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                      <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                    </svg>
+                    {template.title}
                     <span className="template-badge" style={{
                       fontSize: '0.7rem',
                       color: '#2C5282',
@@ -619,13 +627,13 @@ export default function DashboardPage() {
                     </span>
                   </h3>
                   <span className={`status-badge ${getStateClass(template.state)}`}>
-                    {getStateLabel(template.state)}
+                    {template.state === ConversationState.DRAFT ? 'Unpublished' : 'Published'}
                   </span>
                 </div>
                 <div className="card-body">
                   <div className="conversation-meta">
                     <span>Pattern: <strong>{template.recurrence_pattern}</strong></span>
-                    <span>Instances: <strong>{conversations.filter(c => c.series_id === template.id).length}</strong></span>
+                    <span>Conversations: <strong>{conversations.filter(c => c.series_id === template.id).length}</strong></span>
                   </div>
                   <div className="conversation-meta">
                     <span>Created: {formatDateShort(template.created_at, template.timezone)}</span>

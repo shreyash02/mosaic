@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # Sentiment cluster within a theme
@@ -43,7 +43,7 @@ class Analysis(BaseModel):
     themes: List[Theme] = []  # Deprecated: kept for backwards compatibility
 
     # Per-question analysis
-    question_analyses: List["QuestionAnalysis"] = []
+    question_analyses: Optional[List["QuestionAnalysis"]] = []
 
     # Metadata
     embedding_provider: Optional[str] = None
@@ -59,6 +59,12 @@ class Analysis(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator('question_analyses', 'themes', mode='before')
+    @classmethod
+    def ensure_list(cls, v):
+        """Convert None to empty list."""
+        return v if v is not None else []
 
 
 # Rating statistics for rating questions

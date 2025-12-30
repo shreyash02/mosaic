@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question, type Conversation } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question } from '../types';
 import { convertUTCToLocalDateTimeString } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 
@@ -31,7 +31,6 @@ export default function EditConversationPage() {
   const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(RecurrencePattern.WEEKLY);
   const [nextInstanceDate, setNextInstanceDate] = useState('');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
-  const [conversation, setConversation] = useState<Conversation | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -45,7 +44,6 @@ export default function EditConversationPage() {
       setError(''); // Clear any previous errors
 
       const conv = await api.getConversation(id!);
-      setConversation(conv);
 
       // Check if conversation is in draft state
       if (conv.state !== 'draft') {
