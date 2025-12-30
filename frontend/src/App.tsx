@@ -23,6 +23,8 @@ import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import OrganizationDetailPage from './pages/OrganizationDetailPage';
+import InviteMembersPage from './pages/InviteMembersPage';
+import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 
 import './App.css';
 
@@ -135,6 +137,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrganizationDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizations/:id/invite"
+              element={
+                <ProtectedRoute>
+                  <InviteMembersPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizations/accept-invite/:token"
+              element={
+                <ProtectedRoute>
+                  <AcceptOrganizationInvitePage />
                 </ProtectedRoute>
               }
             />
