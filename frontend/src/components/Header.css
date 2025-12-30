@@ -149,8 +149,14 @@
 }
 
 .org-switcher .org-icon {
-  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+}
+
+.org-switcher .org-icon svg {
+  display: block;
 }
 
 .org-switcher .org-name {
@@ -210,7 +216,14 @@
 }
 
 .org-switcher-item .org-icon {
-  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.org-switcher-item .org-icon svg {
+  display: block;
 }
 
 .org-switcher-divider {
