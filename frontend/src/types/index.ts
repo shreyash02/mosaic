@@ -226,16 +226,18 @@ export interface ResponseCheck {
 }
 
 // Analysis types
-export interface SentimentCluster {
-  sentiment: string;
+export interface Perspective {
+  name: string;
   summary: string;
   count: number;
 }
 
 export interface Theme {
   theme: string;
+  summary: string;
   frequency: number;
-  clusters: SentimentCluster[];
+  perspectives: Perspective[];
+  key_points?: string[];
 }
 
 export interface RatingStatistics {

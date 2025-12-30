@@ -245,24 +245,38 @@ export default function AdminConversationDetailPage() {
                       <div style={{ marginTop: '1rem' }}>
                         <strong>Themes:</strong>
                         {qa.themes.map((theme, themeIndex) => (
-                          <div key={themeIndex} style={{ marginLeft: '1rem', marginTop: '0.75rem' }}>
-                            <div style={{ fontWeight: '600', color: '#2d3748' }}>
-                              {theme.theme} ({theme.frequency} mentions)
+                          <div key={themeIndex} style={{ marginLeft: '1rem', marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f7fafc', borderRadius: '4px' }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '1rem' }}>
+                              {theme.theme} ({theme.frequency} responses)
                             </div>
-                            {theme.clusters && theme.clusters.length > 0 && (
-                              <div style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
-                                {theme.clusters.map((cluster, clusterIndex) => (
-                                  <div key={clusterIndex} style={{ marginBottom: '0.5rem' }}>
-                                    <span style={{
-                                      fontWeight: '500',
-                                      color: cluster.sentiment === 'positive' ? '#38a169' :
-                                             cluster.sentiment === 'negative' ? '#e53e3e' : '#718096'
-                                    }}>
-                                      {cluster.sentiment}
-                                    </span>
-                                    {' '}({cluster.count}): {cluster.summary}
+                            <div style={{ marginTop: '0.5rem', color: '#4a5568', fontSize: '0.875rem' }}>
+                              {theme.summary}
+                            </div>
+
+                            {theme.perspectives && theme.perspectives.length > 0 && (
+                              <div style={{ marginLeft: '1rem', marginTop: '0.75rem' }}>
+                                <strong style={{ fontSize: '0.875rem', color: '#2d3748' }}>Perspectives:</strong>
+                                {theme.perspectives.map((perspective, perspectiveIndex) => (
+                                  <div key={perspectiveIndex} style={{ marginTop: '0.5rem', marginLeft: '0.5rem' }}>
+                                    <div style={{ fontWeight: '500', color: '#2c5282' }}>
+                                      {perspective.name} ({perspective.count})
+                                    </div>
+                                    <div style={{ marginLeft: '0.5rem', color: '#718096', fontSize: '0.875rem' }}>
+                                      {perspective.summary}
+                                    </div>
                                   </div>
                                 ))}
+                              </div>
+                            )}
+
+                            {theme.key_points && theme.key_points.length > 0 && (
+                              <div style={{ marginLeft: '1rem', marginTop: '0.75rem' }}>
+                                <strong style={{ fontSize: '0.875rem', color: '#2d3748' }}>Key Points:</strong>
+                                <ul style={{ marginTop: '0.25rem', marginLeft: '1rem', color: '#4a5568', fontSize: '0.875rem' }}>
+                                  {theme.key_points.map((point, pointIndex) => (
+                                    <li key={pointIndex}>{point}</li>
+                                  ))}
+                                </ul>
                               </div>
                             )}
                           </div>

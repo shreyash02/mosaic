@@ -115,22 +115,35 @@ export default function AnalysisPage() {
                               <strong>{theme.theme}</strong>
                               <span className="frequency-badge">{theme.frequency} responses</span>
                             </div>
-                            <div className="sentiment-clusters">
-                              {theme.clusters.map((cluster, clusterIndex) => (
-                                <div
-                                  key={clusterIndex}
-                                  className={`cluster cluster-${cluster.sentiment}`}
-                                >
-                                  <div className="cluster-header">
-                                    <span className={`sentiment-badge sentiment-${cluster.sentiment}`}>
-                                      {cluster.sentiment}
-                                    </span>
-                                    <span className="cluster-count">{cluster.count} responses</span>
-                                  </div>
-                                  <p className="cluster-summary">{cluster.summary}</p>
-                                </div>
-                              ))}
+                            <div className="theme-summary">
+                              <p>{theme.summary}</p>
                             </div>
+
+                            {theme.perspectives && theme.perspectives.length > 0 && (
+                              <div className="perspectives-list">
+                                <h5>Perspectives</h5>
+                                {theme.perspectives.map((perspective, perspectiveIndex) => (
+                                  <div key={perspectiveIndex} className="perspective-item">
+                                    <div className="perspective-header">
+                                      <strong>{perspective.name}</strong>
+                                      <span className="perspective-count">{perspective.count} responses</span>
+                                    </div>
+                                    <p className="perspective-summary">{perspective.summary}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {theme.key_points && theme.key_points.length > 0 && (
+                              <div className="key-points-list">
+                                <h5>Key Points</h5>
+                                <ul>
+                                  {theme.key_points.map((point, pointIndex) => (
+                                    <li key={pointIndex}>{point}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

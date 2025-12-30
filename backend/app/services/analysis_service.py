@@ -470,27 +470,31 @@ Provide a concise, actionable summary of what these responses reveal about the o
             cluster_texts: List of response texts in the cluster
 
         Returns:
-            Theme data with name and sentiment clusters
+            Theme data with name, summary, perspectives, and key points
         """
         prompt = f"""Analyze the following {len(cluster_texts)} responses and:
-1. Identify the main theme they share (2-4 words)
-2. Group them by sentiment (positive, negative, or neutral)
-3. For each sentiment group, provide a brief summary
+1. Identify the main theme they share (give it a short name with 1-6 words)
+2. Provide a brief summary of what this theme encompasses
+3. Break down the theme into natural perspectives or viewpoints (don't force sentiment - use whatever grouping makes sense)
+4. Extract key points that appear across the responses (optional - only if there are clear, distinct points)
+
+IMPORTANT: Do NOT reference specific response numbers in your summaries (don't say "Response 1 and 3" or similar). Instead, describe the overall patterns.
 
 Responses:
-{chr(10).join(f"{i+1}. {text}" for i, text in enumerate(cluster_texts))}
+{chr(10).join(f"- {text}" for text in cluster_texts)}
 
 Return your analysis in this exact JSON format:
 {{
-  "theme": "Theme Name Here",
-  "clusters": [
-    {{"sentiment": "positive", "summary": "Brief summary of positive responses", "count": X}},
-    {{"sentiment": "negative", "summary": "Brief summary of negative responses", "count": Y}},
-    {{"sentiment": "neutral", "summary": "Brief summary of neutral responses", "count": Z}}
-  ]
+  "theme": "Short, descriptive theme name",
+  "summary": "Overall description of what this theme encompasses",
+  "perspectives": [
+    {{"name": "Perspective name", "summary": "What this perspective expresses", "count": X}},
+    {{"name": "Another perspective", "summary": "What this perspective expresses", "count": Y}}
+  ],
+  "key_points": ["Key point 1", "Key point 2"]  // Optional - omit if not applicable
 }}
 
-Only include sentiment groups that actually exist in the responses. Each response should be counted in exactly one sentiment group."""
+The number of perspectives should match the natural groupings in the responses (could be 1-5 or more). Each response should be counted in exactly one perspective."""
 
         message = self.anthropic_client.messages.create(
             model=self.llm_model,
@@ -519,18 +523,19 @@ Only include sentiment groups that actually exist in the responses. Each respons
 
             result = json.loads(json_text)
 
-            # Filter out empty sentiment clusters
-            if "clusters" in result:
-                result["clusters"] = [c for c in result["clusters"] if c.get("count", 0) > 0]
+            # Filter out empty perspectives
+            if "perspectives" in result:
+                result["perspectives"] = [p for p in result["perspectives"] if p.get("count", 0) > 0]
 
             return result
         except json.JSONDecodeError:
             # Fallback if JSON parsing fails
             return {
                 "theme": "Miscellaneous Feedback",
-                "clusters": [
+                "summary": f"Collection of {len(cluster_texts)} related responses",
+                "perspectives": [
                     {
-                        "sentiment": "neutral",
+                        "name": "General feedback",
                         "summary": f"Collection of {len(cluster_texts)} related responses",
                         "count": len(cluster_texts)
                     }
@@ -594,9 +599,12 @@ Provide a concise, actionable summary of what these responses reveal."""
         # Take a sample if there are many responses
         sample_texts = texts[:10] if len(texts) > 10 else texts
 
-        prompt = f"""Summarize the main points from these {len(texts)} feedback responses in 2-3 sentences:
+        prompt = f"""Summarize the main points from these {len(texts)} feedback responses in 2-3 sentences.
 
-{chr(10).join(f"{i+1}. {text}" for i, text in enumerate(sample_texts))}
+Do NOT reference specific response numbers. Instead, describe the overall patterns and common themes.
+
+Responses:
+{chr(10).join(f"- {text}" for text in sample_texts)}
 {"..." if len(texts) > 10 else ""}
 
 Provide a concise summary of the key feedback."""

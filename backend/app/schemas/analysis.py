@@ -6,11 +6,11 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
-# Sentiment cluster within a theme
-class SentimentCluster(BaseModel):
-    """Sentiment cluster within a theme."""
+# Perspective within a theme
+class Perspective(BaseModel):
+    """A perspective or viewpoint within a theme."""
 
-    sentiment: str = Field(..., pattern="^(positive|negative|neutral)$")
+    name: str = Field(..., min_length=1)
     summary: str
     count: int = Field(..., ge=0)
 
@@ -20,8 +20,10 @@ class Theme(BaseModel):
     """Theme extracted from analysis."""
 
     theme: str = Field(..., min_length=1)
+    summary: str = Field(..., min_length=1)
     frequency: int = Field(..., ge=0)
-    clusters: List[SentimentCluster] = []
+    perspectives: List[Perspective] = []
+    key_points: Optional[List[str]] = None
 
 
 # Request to trigger analysis
