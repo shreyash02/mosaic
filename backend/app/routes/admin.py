@@ -23,6 +23,8 @@ from app.schemas.admin import (
     AdminResponseInfo,
 )
 from app.schemas.analysis import Analysis as AnalysisSchema
+from app.schemas.common import SuccessResponse
+from app.schemas.conversation import ConversationState
 
 router = APIRouter()
 security = HTTPBasic(auto_error=False)
@@ -352,4 +354,85 @@ async def get_conversation_analysis(
         )
 
     return analysis
+
+
+@router.post("/conversations/{conversation_id}/reanalyze", response_model=SuccessResponse)
+async def reanalyze_conversation(
+    conversation_id: UUID,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Trigger re-analysis for a conversation (admin only).
+
+    This will delete the existing analysis and create a new one.
+    The conversation must be in ANALYZED state.
+
+    Args:
+        conversation_id: Conversation ID
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        Success response
+
+    Raises:
+        HTTPException: If conversation not found, not analyzed, or no responses exist
+    """
+    # Verify conversation exists
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Check if conversation is in analyzed state
+    if conversation.state != ConversationState.ANALYZED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation must be in analyzed state to re-run analysis"
+        )
+
+    # Check if there are responses to analyze
+    response_count = db.query(Response).filter(
+        Response.conversation_id == conversation_id
+    ).count()
+
+    if response_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No responses to analyze"
+        )
+
+    # Delete existing analysis
+    existing_analysis = db.query(Analysis).filter(
+        Analysis.conversation_id == conversation_id
+    ).first()
+
+    if existing_analysis:
+        db.delete(existing_analysis)
+        db.commit()
+
+    # Import the analysis function from the analysis route
+    from app.routes.analysis import run_analysis_task
+    from app.core.config import settings
+
+    # Run analysis synchronously for admin (simpler, admins can wait)
+    try:
+        run_analysis_task(
+            conversation_id=conversation_id,
+            db_url=settings.DATABASE_URL,
+            min_cluster_size=2
+        )
+
+        return SuccessResponse(
+            success=True,
+            message="Analysis completed successfully"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analysis failed: {str(e)}"
+        )
 

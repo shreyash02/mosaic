@@ -12,6 +12,7 @@ export default function AdminConversationDetailPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reanalyzing, setReanalyzing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -32,7 +33,7 @@ export default function AdminConversationDetailPage() {
       const axios = (await import('axios')).default;
       const API_BASE_URL = import.meta.env.VITE_API_URL ||
         (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-      
+
       const adminClient = axios.create({
         baseURL: API_BASE_URL,
         headers: {
@@ -83,6 +84,49 @@ export default function AdminConversationDetailPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReanalyze = async () => {
+    if (!id) return;
+
+    try {
+      setReanalyzing(true);
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) {
+        navigate('/adminportal');
+        return;
+      }
+
+      const axios = (await import('axios')).default;
+      const API_BASE_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+
+      const adminClient = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      await adminClient.post(`/admin/conversations/${id}/reanalyze`);
+
+      // Reload analysis
+      const analysisResponse = await adminClient.get<Analysis>(
+        `/admin/conversations/${id}/analysis`
+      );
+      setAnalysis(analysisResponse.data);
+
+      alert('Analysis completed successfully!');
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        navigate('/adminportal');
+      } else {
+        alert(err.response?.data?.detail || 'Failed to re-run analysis');
+      }
+    } finally {
+      setReanalyzing(false);
     }
   };
 
@@ -201,9 +245,44 @@ export default function AdminConversationDetailPage() {
           </div>
         </div>
 
+        {/* Show Re-run Analysis button when conversation is analyzed, even if analysis data is missing/invalid */}
+        {conversation?.state === 'analyzed' && !analysis && (
+          <div className="admin-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Analysis</h2>
+              <button
+                onClick={handleReanalyze}
+                disabled={reanalyzing}
+                className="btn btn-primary"
+                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+              >
+                {reanalyzing ? 'Re-analyzing...' : 'Re-run Analysis'}
+              </button>
+            </div>
+            <div className="detail-card">
+              <p style={{ color: '#718096', fontStyle: 'italic' }}>
+                Analysis data is not available or invalid. Click "Re-run Analysis" to generate new analysis.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Show full analysis section when data is valid */}
         {analysis && (
           <div className="admin-section">
-            <h2>Analysis</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Analysis</h2>
+              {conversation?.state === 'analyzed' && (
+                <button
+                  onClick={handleReanalyze}
+                  disabled={reanalyzing}
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                >
+                  {reanalyzing ? 'Re-analyzing...' : 'Re-run Analysis'}
+                </button>
+              )}
+            </div>
 
             <div className="detail-card">
               <div className="detail-row">
