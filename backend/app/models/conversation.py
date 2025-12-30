@@ -66,7 +66,7 @@ class Conversation(Base):
     manual_close_enabled = Column(Boolean, default=True, nullable=False)
     time_extension_enabled = Column(Boolean, default=True, nullable=False)
     
-    # Timezone for datetime fields (IANA timezone name, e.g., "UTC", "America/New_York", "Asia/Calcutta")
+    # Timezone for datetime fields (IANA timezone name, e.g., "UTC", "America/New_York", "Asia/Kolkata")
     timezone = Column(String(100), nullable=True, default="UTC")
 
     # State

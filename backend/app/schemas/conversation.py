@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, List, Any
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
@@ -93,13 +93,25 @@ class ConversationBase(BaseModel):
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: bool = True
     time_extension_enabled: bool = True
-    timezone: Optional[str] = Field(default="UTC", description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
+    timezone: Optional[str] = Field(default="UTC", description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Kolkata')")
     parent_conversation_id: Optional[UUID] = None
 
     # Recurring conversation fields
     recurrence_pattern: Optional[RecurrencePattern] = Field(None, description="Pattern for recurring conversations (only set on template)")
     next_instance_date: Optional[datetime] = Field(None, description="When to create the next instance (only set on template)")
     recurrence_end_date: Optional[datetime] = Field(None, description="When to stop creating instances (only set on template)")
+
+    @field_validator('timezone')
+    @classmethod
+    def normalize_timezone(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize timezone, converting legacy names to current names."""
+        if v is None:
+            return v
+        from app.utils.timezone_utils import normalize_timezone
+        try:
+            return normalize_timezone(v)
+        except ValueError as e:
+            raise ValueError(f"Invalid timezone: {v}") from e
 
 
 class ConversationCreate(ConversationBase):
@@ -125,12 +137,24 @@ class ConversationUpdate(BaseModel):
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: Optional[bool] = None
     time_extension_enabled: Optional[bool] = None
-    timezone: Optional[str] = Field(None, description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Calcutta')")
+    timezone: Optional[str] = Field(None, description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Kolkata')")
     questions: Optional[List[QuestionCreate]] = None
     # Recurring template fields
     recurrence_pattern: Optional[RecurrencePattern] = None
     next_instance_date: Optional[datetime] = None
     recurrence_end_date: Optional[datetime] = None
+
+    @field_validator('timezone')
+    @classmethod
+    def normalize_timezone(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize timezone, converting legacy names to current names."""
+        if v is None:
+            return v
+        from app.utils.timezone_utils import normalize_timezone
+        try:
+            return normalize_timezone(v)
+        except ValueError as e:
+            raise ValueError(f"Invalid timezone: {v}") from e
 
 
 class ConversationSummary(BaseModel):
