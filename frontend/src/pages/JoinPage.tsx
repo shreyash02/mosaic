@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { CodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
-import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
+import { formatDate } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
 
 export default function JoinPage() {

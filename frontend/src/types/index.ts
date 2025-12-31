@@ -140,6 +140,7 @@ export interface ConversationCreate {
   description?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
+  show_verbatim_responses?: boolean;
   invite_only?: boolean;
   questions: QuestionCreate[];
   auto_analyze?: boolean;
@@ -212,6 +213,7 @@ export interface Response {
   reveal_consent: boolean;
   submitted_at: string;
   participant_id?: string;
+  participant_code_used?: string;
 }
 
 export interface ResponseWithQuestion extends Response {

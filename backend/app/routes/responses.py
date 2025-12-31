@@ -577,6 +577,7 @@ async def get_responses(
             "reveal_consent": response.reveal_consent,
             "submitted_at": response.submitted_at,
             "participant_id": response.participant_id if response.reveal_consent else None,
+            "participant_code_used": response.participant_code_used,
             "question_text": question_text
         }
         response_list.append(ResponseWithQuestion(**response_dict))

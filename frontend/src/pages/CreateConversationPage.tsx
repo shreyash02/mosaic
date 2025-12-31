@@ -265,7 +265,9 @@ export default function CreateConversationPage() {
       } catch (err) {
         console.warn('Failed to detect timezone, using UTC:', err);
       }
-      
+
+      console.log('Creating conversation with showVerbatimResponses:', showVerbatimResponses);
+
       const conversation = await api.createConversation({
         title,
         description,
@@ -482,7 +484,10 @@ export default function CreateConversationPage() {
               <input
                 type="checkbox"
                 checked={showVerbatimResponses}
-                onChange={(e) => setShowVerbatimResponses(e.target.checked)}
+                onChange={(e) => {
+                  console.log('Checkbox changed to:', e.target.checked);
+                  setShowVerbatimResponses(e.target.checked);
+                }}
               />
               <span>Show verbatim responses - Allow viewers to see raw responses</span>
             </label>

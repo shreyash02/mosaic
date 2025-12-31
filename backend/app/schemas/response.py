@@ -39,6 +39,7 @@ class Response(BaseModel):
 
     # Only included for owner viewing revealed responses
     participant_id: Optional[UUID] = None
+    participant_code_used: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

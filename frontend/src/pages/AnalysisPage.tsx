@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Analysis, Conversation } from '../types';
+import type { Analysis, Conversation, ResponseWithQuestion } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 
@@ -11,8 +11,10 @@ export default function AnalysisPage() {
   const { currentOrgId } = useOrganization();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [responses, setResponses] = useState<ResponseWithQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [groupBy, setGroupBy] = useState<'question' | 'responder'>('question');
 
   useEffect(() => {
     if (id) {
@@ -28,12 +30,45 @@ export default function AnalysisPage() {
       ]);
       setAnalysis(analysisData);
       setConversation(convData);
+
+      // Load responses if verbatim responses are enabled
+      if (convData.show_verbatim_responses) {
+        try {
+          const responsesData = await api.getResponses(id!);
+          setResponses(responsesData.responses);
+        } catch (err) {
+          console.error('Failed to load responses:', err);
+        }
+      }
     } catch (err: any) {
       setError('Failed to load analysis');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const groupResponsesByQuestion = () => {
+    const grouped: Record<string, ResponseWithQuestion[]> = {};
+    responses.forEach(response => {
+      if (!grouped[response.question_id]) {
+        grouped[response.question_id] = [];
+      }
+      grouped[response.question_id].push(response);
+    });
+    return grouped;
+  };
+
+  const groupResponsesByParticipant = () => {
+    const grouped: Record<string, ResponseWithQuestion[]> = {};
+    responses.forEach(response => {
+      const key = response.participant_code_used || response.participant_id || response.id;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(response);
+    });
+    return grouped;
   };
 
   if (loading) {
@@ -250,6 +285,74 @@ export default function AnalysisPage() {
             <p className="no-analysis">No analysis available.</p>
           )}
         </div>
+
+        {/* Verbatim Responses Section */}
+        {conversation?.show_verbatim_responses && responses.length > 0 && (
+          <div className="verbatim-responses-section">
+            <div className="section-header">
+              <div>
+                <h3>Verbatim Responses</h3>
+                <p className="section-description">All responses submitted by participants.</p>
+              </div>
+              <div className="grouping-controls">
+                <label htmlFor="groupBy">Group by:</label>
+                <select
+                  id="groupBy"
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as 'question' | 'responder')}
+                  className="group-select"
+                >
+                  <option value="question">Question</option>
+                  <option value="responder">Responder</option>
+                </select>
+              </div>
+            </div>
+
+            {groupBy === 'question' ? (
+              <div className="responses-by-question">
+                {Object.entries(groupResponsesByQuestion()).map(([questionId, questionResponses]) => (
+                  <div key={questionId} className="question-group">
+                    <h4 className="question-group-title">{questionResponses[0].question_text}</h4>
+                    <div className="responses-list">
+                      {questionResponses.map((response, index) => (
+                        <div key={response.id} className="response-item">
+                          <div className="response-header">
+                            <span className="response-number">#{index + 1}</span>
+                            <span className="response-date">{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                          </div>
+                          <div className="response-content">
+                            {response.response_text || <em>No text response</em>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="responses-by-participant">
+                {Object.entries(groupResponsesByParticipant()).map(([participantKey, participantResponses], index) => (
+                  <div key={participantKey} className="participant-group">
+                    <h4 className="participant-group-title">Responder #{index + 1}</h4>
+                    <div className="responses-list">
+                      {participantResponses.map((response) => (
+                        <div key={response.id} className="response-item">
+                          <div className="response-header">
+                            <span className="response-question">{response.question_text}</span>
+                            <span className="response-date">{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                          </div>
+                          <div className="response-content">
+                            {response.response_text || <em>No text response</em>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="technical-details">
           <h3>Technical Details</h3>

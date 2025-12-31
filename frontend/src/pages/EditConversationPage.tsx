@@ -20,6 +20,9 @@ export default function EditConversationPage() {
     ResultsAccess.PUBLIC_LINK
   );
   const [inviteOnly, setInviteOnly] = useState(false);
+  const [showVerbatimResponses, setShowVerbatimResponses] = useState(false);
+  const [scheduleActivation, setScheduleActivation] = useState(false);
+  const [scheduledActivateAt, setScheduledActivateAt] = useState('');
   const [questions, setQuestions] = useState<QuestionCreate[]>([
     { question_text: '', question_order: 0 },
   ]);
@@ -66,6 +69,19 @@ export default function EditConversationPage() {
       setAnonymityLevel(conv.anonymity_level);
       setResultsAccess(conv.results_access);
       setInviteOnly(conv.invite_only || false);
+      setShowVerbatimResponses(conv.show_verbatim_responses || false);
+
+      // Handle scheduled activation
+      if (conv.scheduled_activate_at) {
+        setScheduleActivation(true);
+        try {
+          const formattedDate = convertUTCToLocalDateTimeString(conv.scheduled_activate_at);
+          setScheduledActivateAt(formattedDate);
+        } catch (err) {
+          console.error('Error formatting scheduled activation:', err);
+          setScheduledActivateAt(conv.scheduled_activate_at.substring(0, 16));
+        }
+      }
 
       // Convert duration_minutes to hours and minutes
       if (conv.duration_minutes) {
@@ -240,9 +256,13 @@ export default function EditConversationPage() {
         description,
         anonymity_level: anonymityLevel,
         results_access: resultsAccess,
+        show_verbatim_responses: showVerbatimResponses,
         invite_only: inviteOnly,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
+        ...(scheduleActivation && scheduledActivateAt && {
+          scheduled_activate_at: scheduledActivateAt + ':00'
+        }),
         // Include recurring fields if this is a template
         ...(isTemplate && {
           recurrence_pattern: recurrencePattern,
@@ -344,20 +364,45 @@ export default function EditConversationPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="resultsAccess">Results Access *</label>
+            <label htmlFor="resultsAccess">Who can see results? *</label>
             <select
               id="resultsAccess"
               value={resultsAccess}
               onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
               required
             >
-              <option value={ResultsAccess.PUBLIC_LINK}>
-                Public Link - Anyone with link can view results
+              <option value={ResultsAccess.CREATOR_ONLY}>
+                Creator Only - Feedback collection mode
               </option>
-              <option value={ResultsAccess.INVITE_CODE_HOLDERS}>
-                Invite Code Holders - Only participants can view results
+              <option value={ResultsAccess.PARTICIPANTS}>
+                All Participants - Collaborative mode
+              </option>
+              <option value={ResultsAccess.PUBLIC_LINK}>
+                Anyone with Link - Public sharing mode
               </option>
             </select>
+            <p className="form-help-text">
+              {resultsAccess === ResultsAccess.CREATOR_ONLY &&
+                "Participants submit responses and receive a confirmation message. Only you can see the results and analysis."}
+              {resultsAccess === ResultsAccess.PARTICIPANTS &&
+                "Participants who can respond (have access code or invitation) can also view all responses and analysis."}
+              {resultsAccess === ResultsAccess.PUBLIC_LINK &&
+                "Anyone with the results link can view responses and analysis, even without responding."}
+            </p>
+          </div>
+
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={showVerbatimResponses}
+                onChange={(e) => setShowVerbatimResponses(e.target.checked)}
+              />
+              <span>Show verbatim responses - Allow viewers to see raw responses</span>
+            </label>
+            <p className="form-help-text">
+              When enabled, viewers can see all raw responses along with AI analysis. When disabled, only AI-generated summaries and themes are visible, protecting individual response privacy while sharing insights.
+            </p>
           </div>
 
           <div className="form-group checkbox-group">
@@ -420,6 +465,38 @@ export default function EditConversationPage() {
               Maximum duration is 48 hours.
             </p>
           </div>
+        </div>
+
+        <div className="form-section">
+          <h2>Timing Settings</h2>
+
+          <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
+            <label htmlFor="scheduleActivation">
+              <input
+                id="scheduleActivation"
+                type="checkbox"
+                checked={scheduleActivation}
+                onChange={(e) => setScheduleActivation(e.target.checked)}
+              />
+              <span>Schedule activation for later</span>
+            </label>
+          </div>
+
+          {scheduleActivation && (
+            <div className="form-group">
+              <label htmlFor="scheduledActivateAt">Activate at *</label>
+              <input
+                id="scheduledActivateAt"
+                type="datetime-local"
+                value={scheduledActivateAt}
+                onChange={(e) => setScheduledActivateAt(e.target.value)}
+                required={scheduleActivation}
+              />
+              <p className="form-help-text">
+                The conversation will be automatically activated at this time.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Recurring Schedule Section - Only for templates */}
