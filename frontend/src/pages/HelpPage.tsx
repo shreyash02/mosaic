@@ -182,10 +182,30 @@ export default function HelpPage() {
         <p style={{ color: '#4a5568', marginBottom: '1rem' }}>
           Can't find what you're looking for? Here are some additional resources:
         </p>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <Link to="/dashboard" className="btn btn-secondary">
-            Back to Dashboard
-          </Link>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <strong style={{ color: '#2d3748' }}>Email Support</strong>
+            <p style={{ color: '#4a5568', margin: '0.25rem 0 0 0' }}>
+              Have questions or need assistance? Email us at{' '}
+              <a href="mailto:shreyash02@gmail.com" style={{ color: '#4299e1', textDecoration: 'none' }}>
+                shreyash02@gmail.com
+              </a>
+            </p>
+          </div>
+          <div>
+            <strong style={{ color: '#2d3748' }}>Report an Issue</strong>
+            <p style={{ color: '#4a5568', margin: '0.25rem 0 0 0' }}>
+              Found a bug or have a feature request?{' '}
+              <a
+                href="https://github.com/mosaic-ask-app/mosaic-support/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4299e1', textDecoration: 'none' }}
+              >
+                Submit an issue on GitHub
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>
