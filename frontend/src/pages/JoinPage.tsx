@@ -31,6 +31,10 @@ export default function JoinPage() {
   const [success, setSuccess] = useState(false);
   const [hasAlreadySubmitted, setHasAlreadySubmitted] = useState(false);
   const [alreadySubmittedMessage, setAlreadySubmittedMessage] = useState('');
+  const [showTrustScreen, setShowTrustScreen] = useState(false);
+  const [canProceedFromTrustScreen, setCanProceedFromTrustScreen] = useState(false);
+  const [trustScreenAcknowledged, setTrustScreenAcknowledged] = useState(false);
+  const [trustScreenCountdown, setTrustScreenCountdown] = useState(10);
 
   // Step 1: Validate access code when available
   useEffect(() => {
@@ -45,6 +49,35 @@ export default function JoinPage() {
       loadConversation();
     }
   }, [accessCodeValidated, participantCodeValidated]);
+
+  // Trust screen timer: enable "Continue" button after 10 seconds
+  useEffect(() => {
+    if (showTrustScreen && !canProceedFromTrustScreen) {
+      // Reset countdown when trust screen is shown
+      setTrustScreenCountdown(10);
+
+      // Update countdown every second
+      const countdownInterval = setInterval(() => {
+        setTrustScreenCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Enable continue button after 10 seconds
+      const enableTimer = setTimeout(() => {
+        setCanProceedFromTrustScreen(true);
+      }, 10000);
+
+      return () => {
+        clearInterval(countdownInterval);
+        clearTimeout(enableTimer);
+      };
+    }
+  }, [showTrustScreen]);
 
   const validateAccessCode = async () => {
     setLoading(true);
@@ -142,6 +175,9 @@ export default function JoinPage() {
           }))
         );
       }
+
+      // Show trust screen before allowing responses
+      setShowTrustScreen(true);
     } catch (err: any) {
       const status = err.response?.status;
       const detail = err.response?.data?.detail;
@@ -426,6 +462,118 @@ export default function JoinPage() {
 
   if (!conversation) {
     return <div className="error">Conversation not found</div>;
+  }
+
+  // Show trust screen before allowing response form
+  if (showTrustScreen && !trustScreenAcknowledged) {
+    return (
+      <div className="join-page">
+        <div className="join-container">
+          <div style={{
+            maxWidth: '600px',
+            margin: '0 auto',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              backgroundColor: '#f7fafc',
+              border: '2px solid #4299e1',
+              borderRadius: '12px',
+              padding: '2rem',
+              marginBottom: '2rem'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '1.5rem'
+              }}>
+                <span style={{ color: '#4299e1', display: 'flex' }}>
+                  <LockIcon size={48} />
+                </span>
+              </div>
+
+              <h2 style={{ color: '#2d3748', marginBottom: '1rem' }}>
+                Before You Respond
+              </h2>
+
+              <p style={{ color: '#4a5568', fontSize: '1.05rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                Please take a moment to understand how your privacy is protected in this conversation.
+              </p>
+
+              <div style={{
+                textAlign: 'left',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                padding: '1.5rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <strong style={{ color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
+                    Your Identity:
+                  </strong>
+                  <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.6' }}>
+                    {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
+                      'Your responses are completely anonymous. Not even the conversation creator can identify you.'}
+                    {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED &&
+                      'The platform tracks that you responded, but your identity is not revealed in the results.'}
+                    {conversation.anonymity_level === AnonymityLevel.REVEALABLE &&
+                      'You can choose whether to reveal your identity with your responses.'}
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <strong style={{ color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
+                    Who Can See Results:
+                  </strong>
+                  <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.6' }}>
+                    {conversation.results_access === ResultsAccess.CREATOR_ONLY &&
+                      'Only the conversation creator can view results and analysis.'}
+                    {conversation.results_access === ResultsAccess.PARTICIPANTS &&
+                      'All participants (anyone who can respond) can view results and analysis.'}
+                    {conversation.results_access === ResultsAccess.PUBLIC_LINK &&
+                      'Anyone with the results link can view, even without responding.'}
+                  </p>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
+                    What Can Be Seen:
+                  </strong>
+                  <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.6' }}>
+                    {conversation.show_verbatim_responses ?
+                      'Viewers can see your exact responses along with AI-generated summaries and themes.' :
+                      'Viewers can only see AI-generated summaries and themes. Your exact responses remain private.'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setTrustScreenAcknowledged(true)}
+                disabled={!canProceedFromTrustScreen}
+                className="btn btn-primary btn-large"
+                style={{
+                  width: '100%',
+                  opacity: canProceedFromTrustScreen ? 1 : 0.5,
+                  cursor: canProceedFromTrustScreen ? 'pointer' : 'not-allowed'
+                }}
+              >
+                {canProceedFromTrustScreen ? 'I Understand, Continue' : `Please read (${trustScreenCountdown}s)`}
+              </button>
+
+              {!canProceedFromTrustScreen && (
+                <p style={{
+                  marginTop: '0.75rem',
+                  color: '#718096',
+                  fontSize: '0.9rem'
+                }}>
+                  Please take a moment to review the privacy settings above.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
