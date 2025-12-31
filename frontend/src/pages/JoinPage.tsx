@@ -3,8 +3,8 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { CodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
-import { formatAnonymityLevel, formatDate } from '../utils/formatting';
-import { AnonymityLevel } from '../types';
+import { formatAnonymityLevel, formatResultsAccess, formatDate } from '../utils/formatting';
+import { AnonymityLevel, ResultsAccess } from '../types';
 
 export default function JoinPage() {
   const { accessCode: accessCodeFromPath } = useParams<{ accessCode: string }>();
@@ -434,11 +434,57 @@ export default function JoinPage() {
         <header className="join-header">
           <h1>{conversation.title}</h1>
           {conversation.description && <p className="description">{conversation.description}</p>}
-          <p className="privacy-note">
-            <LockIcon size={16} className="privacy-icon" />
-            Your responses are {formatAnonymityLevel(conversation.anonymity_level)}
-          </p>
         </header>
+
+        <div style={{
+          backgroundColor: '#f7fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          marginBottom: '1.5rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <LockIcon size={20} className="privacy-icon" />
+            <h3 style={{ margin: 0, marginLeft: '0.5rem', fontSize: '1rem', fontWeight: '600' }}>
+              Privacy & Visibility Settings
+            </h3>
+          </div>
+
+          <div style={{ marginLeft: '1.75rem' }}>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <strong>Your Identity:</strong>
+              <p style={{ margin: '0.25rem 0 0 0', color: '#4a5568' }}>
+                {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
+                  'Your responses are completely anonymous. Not even the conversation creator can identify you.'}
+                {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED &&
+                  'The platform tracks that you responded, but your identity is not revealed in the results.'}
+                {conversation.anonymity_level === AnonymityLevel.REVEALABLE &&
+                  'You can choose whether to reveal your identity with your responses.'}
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '0.75rem' }}>
+              <strong>Who Can See Results:</strong>
+              <p style={{ margin: '0.25rem 0 0 0', color: '#4a5568' }}>
+                {conversation.results_access === ResultsAccess.CREATOR_ONLY &&
+                  'Only the conversation creator can view results and analysis. You will receive a confirmation after submitting.'}
+                {conversation.results_access === ResultsAccess.PARTICIPANTS &&
+                  'All participants (anyone who can respond) can view results and analysis.'}
+                {conversation.results_access === ResultsAccess.PUBLIC_LINK &&
+                  'Anyone with the results link can view, even without responding.'}
+              </p>
+            </div>
+
+            <div>
+              <strong>What Can Be Seen:</strong>
+              <p style={{ margin: '0.25rem 0 0 0', color: '#4a5568' }}>
+                {conversation.show_verbatim_responses ?
+                  'Viewers can see your exact responses along with AI-generated summaries and themes.' :
+                  'Viewers can only see AI-generated summaries and themes. Your exact responses remain private.'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {conversation.auto_close_at && (
           <div className="close-notice">
