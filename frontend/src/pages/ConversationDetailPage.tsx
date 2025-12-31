@@ -55,6 +55,28 @@ export default function ConversationDetailPage() {
     }
   }, [conversation, id, navigate]);
 
+  // Poll for analysis completion when state is ANALYZING
+  useEffect(() => {
+    if (!conversation || conversation.state !== ConversationState.ANALYZING) {
+      return;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const convData = await api.getConversation(id!);
+        if (convData.state !== ConversationState.ANALYZING) {
+          // Analysis completed or failed, reload everything
+          await loadConversation();
+          clearInterval(pollInterval);
+        }
+      } catch (err) {
+        console.error('Error polling for analysis status:', err);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [conversation?.state, id]);
+
   const loadConversation = async () => {
     try {
       const [convData, statsData] = await Promise.all([
@@ -122,6 +144,8 @@ export default function ConversationDetailPage() {
     setActionLoading(true);
     try {
       await api.triggerAnalysis(id!);
+      // Reload conversation to get updated state (ANALYZING)
+      await loadConversation();
       setShowAnalysisSuccess(true);
       setTimeout(() => {
         setShowAnalysisSuccess(false);
