@@ -137,6 +137,9 @@ export default function Header() {
               <Link to="/organizations" className="nav-link">
                 Organizations
               </Link>
+              <Link to="/help" className="nav-link">
+                Help
+              </Link>
             </nav>
             <div className="user-info">
             <div className="user-details">

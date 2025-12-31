@@ -28,6 +28,15 @@ import OrganizationDetailPage from './pages/OrganizationDetailPage';
 import OrganizationSettingsPage from './pages/OrganizationSettingsPage';
 import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
+import HelpPage from './pages/HelpPage';
+import CreatingConversationsHelp from './pages/help/CreatingConversationsHelp';
+import InvitingParticipantsHelp from './pages/help/InvitingParticipantsHelp';
+import RespondingHelp from './pages/help/RespondingHelp';
+import ClosingConversationsHelp from './pages/help/ClosingConversationsHelp';
+import AnalysisHelp from './pages/help/AnalysisHelp';
+import FollowUpsHelp from './pages/help/FollowUpsHelp';
+import RecurringConversationsHelp from './pages/help/RecurringConversationsHelp';
+import OrganizationsHelp from './pages/help/OrganizationsHelp';
 
 import './App.css';
 
@@ -178,6 +187,17 @@ function App() {
             <Route path="/adminportal" element={<AdminPortalPage />} />
             <Route path="/adminportal/user/:id" element={<AdminUserDetailPage />} />
             <Route path="/adminportal/conversation/:id" element={<AdminConversationDetailPage />} />
+
+            {/* Help Pages */}
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/help/creating-conversations" element={<CreatingConversationsHelp />} />
+            <Route path="/help/inviting-participants" element={<InvitingParticipantsHelp />} />
+            <Route path="/help/responding" element={<RespondingHelp />} />
+            <Route path="/help/closing-conversations" element={<ClosingConversationsHelp />} />
+            <Route path="/help/analysis" element={<AnalysisHelp />} />
+            <Route path="/help/follow-ups" element={<FollowUpsHelp />} />
+            <Route path="/help/recurring-conversations" element={<RecurringConversationsHelp />} />
+            <Route path="/help/organizations" element={<OrganizationsHelp />} />
             </Routes>
             </div>
           </OrganizationProvider>
