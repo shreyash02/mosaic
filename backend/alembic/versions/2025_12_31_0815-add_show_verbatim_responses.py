@@ -21,7 +21,7 @@ def upgrade():
     Add show_verbatim_responses field to control whether raw responses are visible.
     If False, only AI summaries/themes are shown. If True, both raw responses and analysis visible.
     """
-    op.add_column('conversations', sa.Column('show_verbatim_responses', sa.Boolean(), nullable=False, server_default='true'))
+    op.add_column('conversations', sa.Column('show_verbatim_responses', sa.Boolean(), nullable=False, server_default='false'))
 
 
 def downgrade():

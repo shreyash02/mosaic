@@ -33,7 +33,7 @@ export default function CreateConversationPage() {
   const [resultsAccess, setResultsAccess] = useState<ResultsAccess>(
     ResultsAccess.PARTICIPANTS
   );
-  const [showVerbatimResponses, setShowVerbatimResponses] = useState(true);
+  const [showVerbatimResponses, setShowVerbatimResponses] = useState(false);
   const [inviteOnly, setInviteOnly] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [questions, setQuestions] = useState<QuestionCreate[]>([

@@ -87,7 +87,7 @@ class ConversationBase(BaseModel):
     description: Optional[str] = None
     anonymity_level: AnonymityLevel
     results_access: ResultsAccess
-    show_verbatim_responses: bool = True
+    show_verbatim_responses: bool = False
     invite_only: bool = False
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)

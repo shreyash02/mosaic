@@ -51,7 +51,7 @@ class Conversation(Base):
     results_access = Column(String(50), nullable=False)
     # 'creator_only', 'participants', 'public_link'
 
-    show_verbatim_responses = Column(Boolean, default=True, nullable=False)
+    show_verbatim_responses = Column(Boolean, default=False, nullable=False)
     # if true, raw responses are visible (along with analysis); if false, only AI summaries/themes shown
 
     invite_only = Column(Boolean, default=False, nullable=False)
