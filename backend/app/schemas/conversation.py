@@ -259,6 +259,7 @@ class ConversationListItem(BaseModel):
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
     is_follow_up: bool = False
     parent_conversation_id: Optional[UUID] = None
+    organization_id: Optional[UUID] = None
 
     # Recurring conversation fields
     series_id: Optional[UUID] = None

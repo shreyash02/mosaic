@@ -267,6 +267,7 @@ async def list_conversations(
             "timezone": conv.timezone or "UTC",
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
+            "organization_id": conv.organization_id,
             # Recurring conversation fields
             "series_id": conv.series_id,
             "is_recurring_instance": conv.is_recurring_instance or False,
