@@ -383,6 +383,23 @@ export interface AdminResponseInfo {
   submitted_at: string;
 }
 
+export interface AdminAnalysisInfo {
+  id: string;
+  conversation_id: string;
+  conversation_title: string;
+  summary: string;
+  created_at: string;
+}
+
+export interface AdminOrganizationInfo {
+  id: string;
+  name: string;
+  description: string | null;
+  creator_id: string;
+  member_count: number;
+  created_at: string;
+}
+
 // Organization types
 export interface Organization {
   id: string;

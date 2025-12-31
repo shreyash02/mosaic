@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.response import Response
 from app.models.analysis import Analysis
+from app.models.organization import Organization
 from app.schemas.admin import (
     AdminLoginRequest,
     AdminToken,
@@ -310,6 +311,90 @@ async def list_responses(
 
     responses = query.order_by(Response.submitted_at.desc()).all()
     return responses
+
+
+@router.get("/analyses")
+async def list_analyses(
+    conversation_id: Optional[UUID] = None,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    List all analyses with optional filters.
+
+    Args:
+        conversation_id: Filter by conversation ID
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        List of analyses with conversation info
+    """
+    query = db.query(Analysis).join(Conversation)
+
+    if conversation_id:
+        query = query.filter(Analysis.conversation_id == conversation_id)
+
+    analyses = query.order_by(Analysis.created_at.desc()).all()
+
+    # Return analyses with conversation title
+    result = []
+    for analysis in analyses:
+        conversation = db.query(Conversation).filter(Conversation.id == analysis.conversation_id).first()
+        summary = analysis.overall_summary or ""
+        result.append({
+            "id": str(analysis.id),
+            "conversation_id": str(analysis.conversation_id),
+            "conversation_title": conversation.title if conversation else "Unknown",
+            "summary": summary[:200] + "..." if len(summary) > 200 else summary,
+            "created_at": analysis.created_at.isoformat(),
+        })
+
+    return result
+
+
+@router.get("/organizations")
+async def list_organizations(
+    name: Optional[str] = None,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    List all organizations with optional filters.
+
+    Args:
+        name: Filter by organization name (partial match)
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        List of organizations
+    """
+    query = db.query(Organization)
+
+    if name:
+        query = query.filter(Organization.name.ilike(f"%{name}%"))
+
+    organizations = query.order_by(Organization.created_at.desc()).all()
+
+    # Return organizations with member count
+    result = []
+    for org in organizations:
+        from app.models.organization import OrganizationMember
+        member_count = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == org.id
+        ).count()
+
+        result.append({
+            "id": str(org.id),
+            "name": org.name,
+            "description": org.description,
+            "creator_id": str(org.created_by),
+            "member_count": member_count,
+            "created_at": org.created_at.isoformat(),
+        })
+
+    return result
 
 
 @router.get("/conversations/{conversation_id}/analysis", response_model=AnalysisSchema)

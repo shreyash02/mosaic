@@ -5,10 +5,12 @@ import type {
   AdminUserInfo,
   AdminConversationInfo,
   AdminResponseInfo,
+  AdminAnalysisInfo,
+  AdminOrganizationInfo,
 } from '../types';
 import './AdminPortalPage.css';
 
-type TabType = 'users' | 'conversations' | 'responses';
+type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations';
 
 export default function AdminPortalPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,6 +34,14 @@ export default function AdminPortalPage() {
   const [responses, setResponses] = useState<AdminResponseInfo[]>([]);
   const [responseUserIdFilter, setResponseUserIdFilter] = useState('');
   const [responseConversationIdFilter, setResponseConversationIdFilter] = useState('');
+
+  // Analyses state
+  const [analyses, setAnalyses] = useState<AdminAnalysisInfo[]>([]);
+  const [analysisConversationIdFilter, setAnalysisConversationIdFilter] = useState('');
+
+  // Organizations state
+  const [organizations, setOrganizations] = useState<AdminOrganizationInfo[]>([]);
+  const [organizationNameFilter, setOrganizationNameFilter] = useState('');
 
   useEffect(() => {
     // Check if admin token exists
@@ -74,6 +84,8 @@ export default function AdminPortalPage() {
     setUsers([]);
     setConversations([]);
     setResponses([]);
+    setAnalyses([]);
+    setOrganizations([]);
   };
 
   const loadData = async () => {
@@ -125,6 +137,22 @@ export default function AdminPortalPage() {
           `/admin/responses${query ? `?${query}` : ''}`
         );
         setResponses(response.data);
+      } else if (activeTab === 'analyses') {
+        const params = new URLSearchParams();
+        if (analysisConversationIdFilter) params.append('conversation_id', analysisConversationIdFilter);
+        const query = params.toString();
+        const response = await adminClient.get<AdminAnalysisInfo[]>(
+          `/admin/analyses${query ? `?${query}` : ''}`
+        );
+        setAnalyses(response.data);
+      } else if (activeTab === 'organizations') {
+        const params = new URLSearchParams();
+        if (organizationNameFilter) params.append('name', organizationNameFilter);
+        const query = params.toString();
+        const response = await adminClient.get<AdminOrganizationInfo[]>(
+          `/admin/organizations${query ? `?${query}` : ''}`
+        );
+        setOrganizations(response.data);
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
@@ -207,6 +235,18 @@ export default function AdminPortalPage() {
           onClick={() => setActiveTab('responses')}
         >
           Responses
+        </button>
+        <button
+          className={`tab ${activeTab === 'analyses' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analyses')}
+        >
+          Analyses
+        </button>
+        <button
+          className={`tab ${activeTab === 'organizations' ? 'active' : ''}`}
+          onClick={() => setActiveTab('organizations')}
+        >
+          Organizations
         </button>
       </div>
 
@@ -404,6 +444,114 @@ export default function AdminPortalPage() {
                 </tbody>
               </table>
               {responses.length === 0 && <p className="no-data">No responses found</p>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analyses' && (
+          <div className="admin-section">
+            <h2>Analyses</h2>
+            <div className="filters">
+              <div className="filter-group">
+                <label>Conversation ID:</label>
+                <input
+                  type="text"
+                  value={analysisConversationIdFilter}
+                  onChange={(e) => setAnalysisConversationIdFilter(e.target.value)}
+                  placeholder="Filter by conversation ID"
+                />
+              </div>
+              <button onClick={handleFilter} className="btn btn-primary">
+                Apply Filters
+              </button>
+            </div>
+            <div className="table-container">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Conversation ID</th>
+                    <th>Conversation Title</th>
+                    <th>Summary</th>
+                    <th>Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analyses.map((analysis) => (
+                    <tr key={analysis.id}>
+                      <td>{analysis.id}</td>
+                      <td>
+                        <Link to={`/adminportal/conversation/${analysis.conversation_id}`} className="link-button">
+                          {analysis.conversation_id}
+                        </Link>
+                      </td>
+                      <td>{analysis.conversation_title}</td>
+                      <td className="response-text">
+                        {analysis.summary.length > 150 ? (
+                          <span title={analysis.summary}>
+                            {analysis.summary.substring(0, 150)}...
+                          </span>
+                        ) : (
+                          analysis.summary
+                        )}
+                      </td>
+                      <td>{new Date(analysis.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {analyses.length === 0 && <p className="no-data">No analyses found</p>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'organizations' && (
+          <div className="admin-section">
+            <h2>Organizations</h2>
+            <div className="filters">
+              <div className="filter-group">
+                <label>Name:</label>
+                <input
+                  type="text"
+                  value={organizationNameFilter}
+                  onChange={(e) => setOrganizationNameFilter(e.target.value)}
+                  placeholder="Filter by name"
+                />
+              </div>
+              <button onClick={handleFilter} className="btn btn-primary">
+                Apply Filters
+              </button>
+            </div>
+            <div className="table-container">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Creator ID</th>
+                    <th>Member Count</th>
+                    <th>Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organizations.map((org) => (
+                    <tr key={org.id}>
+                      <td>{org.id}</td>
+                      <td>{org.name}</td>
+                      <td>{org.description || '-'}</td>
+                      <td>
+                        <Link to={`/adminportal/user/${org.creator_id}`} className="link-button">
+                          {org.creator_id}
+                        </Link>
+                      </td>
+                      <td>{org.member_count}</td>
+                      <td>{new Date(org.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {organizations.length === 0 && <p className="no-data">No organizations found</p>}
             </div>
           </div>
         )}
