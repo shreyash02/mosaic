@@ -32,7 +32,8 @@ export enum AnonymityLevel {
 }
 
 export enum ResultsAccess {
-  INVITE_CODE_HOLDERS = 'invite_code_holders',
+  CREATOR_ONLY = 'creator_only',
+  PARTICIPANTS = 'participants',
   PUBLIC_LINK = 'public_link',
 }
 
@@ -104,6 +105,7 @@ export interface Conversation {
   description?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
+  show_verbatim_responses: boolean;
   invite_only: boolean;
   access_code: string;
   state: ConversationState;

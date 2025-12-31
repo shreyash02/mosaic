@@ -86,16 +86,41 @@ export default function CreatingConversationsHelp() {
           <p>Control who can view the results:</p>
 
           <div style={{ marginLeft: '1rem' }}>
-            <h3>Invite Code Holders</h3>
+            <h3>Creator Only (Feedback Collection)</h3>
             <p>
-              Anyone who has the access code can view results. Good for transparent,
-              collaborative conversations where everyone can see all responses.
+              Participants submit responses and receive a confirmation message only. You're the only one who can see the results and analysis. This mode is perfect for performance reviews, feedback collection, or surveys where responders shouldn't see aggregated data. It creates a focused environment for gathering honest input without participants being influenced by others' responses.
             </p>
 
-            <h3>Public Link</h3>
+            <h3>All Participants (Collaborative)</h3>
             <p>
-              Anyone with the results link can view them. Use this for maximum transparency
-              or when you want to share results widely.
+              Everyone who can respond (has the access code or invitation) can also view all responses and analysis. This creates a transparent, collaborative environment where participants can see how their input fits into the broader conversation. Great for team discussions, brainstorming sessions, or when you want to build collective understanding through shared visibility.
+            </p>
+
+            <h3>Anyone with Link (Public)</h3>
+            <p>
+              Maximum transparency - anyone with the results link can view responses and analysis, even without responding themselves. Use this for public surveys, community feedback, or when you want to share insights widely beyond just the participants.
+            </p>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '2.5rem' }}>
+          <h2>Verbatim Responses</h2>
+          <p>Control what viewers can see when they access results:</p>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <h3>Show Verbatim Responses (Default)</h3>
+            <p>
+              When enabled, viewers with results access can see both raw individual responses and AI-generated analysis. This provides complete transparency, allowing viewers to read exactly what each participant said alongside the summarized themes and insights. This is ideal when you want full openness and when individual response privacy isn't a concern.
+            </p>
+
+            <h3>Hide Verbatim Responses (AI Summaries Only)</h3>
+            <p>
+              When disabled, viewers can only see AI-generated summaries, themes, and analysis - not the raw individual responses. This protects participant privacy while still sharing valuable insights. Use this when you want to share what was learned from the conversation without exposing individual submissions. Perfect for sensitive feedback, performance reviews, or when you want to protect anonymity while still sharing aggregated findings.
+            </p>
+
+            <h3>How It Works with Results Access</h3>
+            <p>
+              This setting works alongside "Results Access" to give you precise control. For example, you might set Results Access to "All Participants" but disable verbatim responses - this lets participants see the AI-generated themes and insights without viewing each other's raw submissions. Or you could set Results Access to "Creator Only" with verbatim responses enabled, giving you full access to everything while participants only receive a confirmation.
             </p>
           </div>
         </section>

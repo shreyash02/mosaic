@@ -1124,7 +1124,7 @@ async def create_follow_up_conversation(
     else:
         # Use defaults
         follow_up.anonymity_level = AnonymityLevel.PLATFORM_TRACKED.value
-        follow_up.results_access = "invite_code_holders"
+        follow_up.results_access = "participants"
         follow_up.max_response_length = 10000
         follow_up.manual_close_enabled = True
         follow_up.time_extension_enabled = True

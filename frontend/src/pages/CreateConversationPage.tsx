@@ -31,8 +31,9 @@ export default function CreateConversationPage() {
     AnonymityLevel.PLATFORM_TRACKED
   );
   const [resultsAccess, setResultsAccess] = useState<ResultsAccess>(
-    ResultsAccess.PUBLIC_LINK
+    ResultsAccess.PARTICIPANTS
   );
+  const [showVerbatimResponses, setShowVerbatimResponses] = useState(true);
   const [inviteOnly, setInviteOnly] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [questions, setQuestions] = useState<QuestionCreate[]>([
@@ -81,6 +82,7 @@ export default function CreateConversationPage() {
           setDescription(parent.description || '');
           setAnonymityLevel(parent.anonymity_level);
           setResultsAccess(parent.results_access);
+          setShowVerbatimResponses(parent.show_verbatim_responses);
           setInviteOnly(parent.invite_only);
 
           // Copy duration if set
@@ -269,6 +271,7 @@ export default function CreateConversationPage() {
         description,
         anonymity_level: anonymityLevel,
         results_access: resultsAccess,
+        show_verbatim_responses: showVerbatimResponses,
         invite_only: inviteOnly,
         timezone: userTimezone,
         questions,
@@ -447,20 +450,45 @@ export default function CreateConversationPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="resultsAccess">Results Access *</label>
+            <label htmlFor="resultsAccess">Who can see results? *</label>
             <select
               id="resultsAccess"
               value={resultsAccess}
               onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
               required
             >
-              <option value={ResultsAccess.PUBLIC_LINK}>
-                Public Link - Anyone with link can view results
+              <option value={ResultsAccess.CREATOR_ONLY}>
+                Creator Only - Feedback collection mode
               </option>
-              <option value={ResultsAccess.INVITE_CODE_HOLDERS}>
-                Invite Code Holders - Only participants can view results
+              <option value={ResultsAccess.PARTICIPANTS}>
+                All Participants - Collaborative mode
+              </option>
+              <option value={ResultsAccess.PUBLIC_LINK}>
+                Anyone with Link - Public sharing mode
               </option>
             </select>
+            <p className="form-help-text">
+              {resultsAccess === ResultsAccess.CREATOR_ONLY &&
+                "Participants submit responses and receive a confirmation message. Only you can see the results and analysis."}
+              {resultsAccess === ResultsAccess.PARTICIPANTS &&
+                "Participants who can respond (have access code or invitation) can also view all responses and analysis."}
+              {resultsAccess === ResultsAccess.PUBLIC_LINK &&
+                "Anyone with the results link can view responses and analysis, even without responding."}
+            </p>
+          </div>
+
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={showVerbatimResponses}
+                onChange={(e) => setShowVerbatimResponses(e.target.checked)}
+              />
+              <span>Show verbatim responses - Allow viewers to see raw responses</span>
+            </label>
+            <p className="form-help-text">
+              When enabled, viewers can see all raw responses along with AI analysis. When disabled, only AI-generated summaries and themes are visible, protecting individual response privacy while sharing insights.
+            </p>
           </div>
 
           <div className="form-group checkbox-group">

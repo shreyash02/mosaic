@@ -49,7 +49,10 @@ class Conversation(Base):
     max_response_length = Column(Integer, default=10000, nullable=False)
 
     results_access = Column(String(50), nullable=False)
-    # 'invite_code_holders', 'public_link'
+    # 'creator_only', 'participants', 'public_link'
+
+    show_verbatim_responses = Column(Boolean, default=True, nullable=False)
+    # if true, raw responses are visible (along with analysis); if false, only AI summaries/themes shown
 
     invite_only = Column(Boolean, default=False, nullable=False)
     # if true, only invited users can access the conversation

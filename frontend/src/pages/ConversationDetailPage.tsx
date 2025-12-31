@@ -584,6 +584,11 @@ export default function ConversationDetailPage() {
             <span>{formatResultsAccess(conversation.results_access)}</span>
           </div>
 
+          <div className="info-item">
+            <label>Verbatim Responses:</label>
+            <span>{conversation.show_verbatim_responses ? 'Visible' : 'Hidden (AI summaries only)'}</span>
+          </div>
+
           {stats && (
             <>
               <div className="info-item">

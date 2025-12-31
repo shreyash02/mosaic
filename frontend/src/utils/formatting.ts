@@ -21,8 +21,9 @@ export function formatResultsAccess(access: ResultsAccess | string): string {
   // Since enum values are the same as string literals, we only need the enum values
   // They will work for both enum and string inputs
   const mapping: Record<string, string> = {
-    [ResultsAccess.PUBLIC_LINK]: 'Public Link',
-    [ResultsAccess.INVITE_CODE_HOLDERS]: 'Invite Code Holders',
+    [ResultsAccess.CREATOR_ONLY]: 'Creator Only',
+    [ResultsAccess.PARTICIPANTS]: 'All Participants',
+    [ResultsAccess.PUBLIC_LINK]: 'Anyone with Link',
   };
   return mapping[access] || access.toString().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }

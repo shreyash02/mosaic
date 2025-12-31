@@ -19,7 +19,8 @@ class AnonymityLevel(str, Enum):
 class ResultsAccess(str, Enum):
     """Results access options."""
 
-    INVITE_CODE_HOLDERS = "invite_code_holders"
+    CREATOR_ONLY = "creator_only"
+    PARTICIPANTS = "participants"
     PUBLIC_LINK = "public_link"
 
 
@@ -86,6 +87,7 @@ class ConversationBase(BaseModel):
     description: Optional[str] = None
     anonymity_level: AnonymityLevel
     results_access: ResultsAccess
+    show_verbatim_responses: bool = True
     invite_only: bool = False
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
@@ -130,6 +132,7 @@ class ConversationUpdate(BaseModel):
     description: Optional[str] = None
     anonymity_level: Optional[AnonymityLevel] = None
     results_access: Optional[ResultsAccess] = None
+    show_verbatim_responses: Optional[bool] = None
     invite_only: Optional[bool] = None
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
