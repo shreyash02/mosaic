@@ -13,6 +13,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const [participatedConversations, setParticipatedConversations] = useState<ConversationListItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'owned' | 'participated'>('owned');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [groupRelated, setGroupRelated] = useState(false);
@@ -57,9 +59,19 @@ export default function DashboardPage() {
         // Personal workspace - fetch all conversations and filter for those without organization_id
         const allConversations = await api.getConversations();
         data = allConversations.filter(c => !c.organization_id);
+
+        // Also load participated conversations (only in personal workspace)
+        try {
+          const participatedData = await api.getParticipatedConversations();
+          setParticipatedConversations(participatedData);
+        } catch (participatedErr) {
+          console.error('Failed to load participated conversations:', participatedErr);
+          setParticipatedConversations([]);
+        }
       } else {
         // Organization workspace - fetch org-specific conversations
         data = await api.listOrganizationConversations(currentOrgId!);
+        setParticipatedConversations([]); // Clear participated in org view
       }
 
       setConversations(data);
@@ -169,6 +181,47 @@ export default function DashboardPage() {
     </Link>
   );
 
+  const renderParticipatedConversationCard = (conversation: ConversationListItem) => {
+    // For participated conversations, link to analysis if analyzed, otherwise show status
+    const linkTo = conversation.state === ConversationState.ANALYZED
+      ? `/conversations/${conversation.id}/analysis`
+      : null;
+
+    const card = (
+      <div
+        key={conversation.id}
+        className={`conversation-card ${!linkTo ? 'conversation-card-disabled' : ''}`}
+      >
+        <div className="card-header">
+          <h3>{conversation.title}</h3>
+          <span className={`status-badge ${getStateClass(conversation.state)}`}>
+            {getStateLabel(conversation.state)}
+          </span>
+        </div>
+        <div className="card-body">
+          <div className="conversation-meta">
+            <span>Responded: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
+            {conversation.state === ConversationState.ANALYZED && (
+              <span style={{ color: '#4299e1', fontWeight: 500 }}>Click to view results →</span>
+            )}
+            {conversation.state === ConversationState.ANALYZING && (
+              <span style={{ color: '#718096' }}>Analysis in progress...</span>
+            )}
+            {(conversation.state === ConversationState.ACTIVE || conversation.state === ConversationState.CLOSED) && (
+              <span style={{ color: '#718096' }}>Check back for results</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+
+    return linkTo ? (
+      <Link key={conversation.id} to={linkTo} style={{ textDecoration: 'none' }}>
+        {card}
+      </Link>
+    ) : card;
+  };
+
   // Recursively render a conversation and all its descendants
   const renderConversationWithFollowUps = (conversation: ConversationListItem, childrenMap: Map<string, ConversationListItem[]>, isFollowUp: boolean = false): JSX.Element => {
     const children = childrenMap.get(conversation.id) || [];
@@ -219,12 +272,15 @@ export default function DashboardPage() {
     return created >= cutoffDate;
   };
 
-  // Separate templates from actual conversations
-  const templates = conversations.filter(c =>
-    c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null
-  );
+  // Get the appropriate conversation list based on active tab
+  const currentConversations = activeTab === 'owned' ? conversations : participatedConversations;
 
-  const actualConversations = conversations.filter(c =>
+  // Separate templates from actual conversations (only in owned tab)
+  const templates = activeTab === 'owned' ? conversations.filter(c =>
+    c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null
+  ) : [];
+
+  const actualConversations = currentConversations.filter(c =>
     !(c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null)
   );
 
@@ -302,7 +358,7 @@ export default function DashboardPage() {
           <h1>Dashboard</h1>
         </div>
         <div className="header-actions">
-          {conversations.length > 0 && (
+          {conversations.length > 0 && activeTab === 'owned' && (
             <button
               onClick={() => setGroupRelated(!groupRelated)}
               className={`btn ${groupRelated ? 'btn-secondary' : 'btn-outline-secondary'}`}
@@ -310,11 +366,33 @@ export default function DashboardPage() {
               {groupRelated ? '✓ Grouped' : 'Group Related'}
             </button>
           )}
-          <Link to="/conversations/new" className="btn btn-primary">
-            + New Conversation
-          </Link>
+          {activeTab === 'owned' && (
+            <Link to="/conversations/new" className="btn btn-primary">
+              + New Conversation
+            </Link>
+          )}
         </div>
       </header>
+
+      {/* Tabs - only show in personal workspace */}
+      {isPersonalWorkspace && (
+        <div className="dashboard-tabs">
+          <button
+            className={`tab-button ${activeTab === 'owned' ? 'active' : ''}`}
+            onClick={() => setActiveTab('owned')}
+          >
+            My Conversations
+            {conversations.length > 0 && <span className="tab-count">{conversations.length}</span>}
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'participated' ? 'active' : ''}`}
+            onClick={() => setActiveTab('participated')}
+          >
+            Participated
+            {participatedConversations.length > 0 && <span className="tab-count">{participatedConversations.length}</span>}
+          </button>
+        </div>
+      )}
 
       {actualConversations.length > 0 && (
         <div className="filter-bar">
@@ -496,15 +574,24 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="loading">Loading conversations...</div>
-      ) : conversations.length === 0 ? (
+      ) : actualConversations.length === 0 ? (
         <div className="empty-state">
-          <h3>No conversations in {currentWorkspaceName}</h3>
-          <p>Create your first conversation in this workspace</p>
-          <Link to="/conversations/new" className="btn btn-primary">
-            Create Conversation
-          </Link>
+          {activeTab === 'owned' ? (
+            <>
+              <h3>No conversations in {currentWorkspaceName}</h3>
+              <p>Create your first conversation in this workspace</p>
+              <Link to="/conversations/new" className="btn btn-primary">
+                Create Conversation
+              </Link>
+            </>
+          ) : (
+            <>
+              <h3>No participated conversations</h3>
+              <p>You haven't responded to any conversations yet. When you submit responses to conversations, they'll appear here.</p>
+            </>
+          )}
         </div>
-      ) : groupRelated ? (
+      ) : groupRelated && activeTab === 'owned' ? (
         rootConversations.length === 0 ? (
           <div className="empty-state">
             <h3>No conversations found</h3>
@@ -518,7 +605,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="conversations-list">
-            <h2>Your Conversations</h2>
+            <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
             <div className="conversation-groups">
               {rootConversations.map((conversation) => {
                 const children = childrenMap.get(conversation.id) || [];
@@ -546,54 +633,58 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="conversations-list">
-          <h2>Your Conversations</h2>
+          <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
           <div className="conversation-grid">
-            {filteredConversations.map((conversation) => (
-              <Link
-                key={conversation.id}
-                to={`/conversations/${conversation.id}`}
-                className="conversation-card"
-              >
-                <div className="card-header">
-                  <h3>
-                    {conversation.title}
-                    {conversation.is_follow_up && (
-                      conversation.is_recurring_instance ? (
-                        <span className="recurring-badge" title="Recurring instance">
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
-                            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                          </svg>
-                          Recurring
-                        </span>
-                      ) : (
-                        <span className="follow-up-badge" title="Follow-up conversation">
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
-                            <path d="M8 2a.5.5 0 0 1 .5.5v10.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V2.5A.5.5 0 0 1 8 2z"/>
-                          </svg>
-                          Follow-up
-                        </span>
-                      )
-                    )}
-                  </h3>
-                  <span className={`status-badge ${getStateClass(conversation.state)}`}>
-                    {getStateLabel(conversation.state)}
-                  </span>
-                </div>
-                <div className="card-body">
-                  <div className="conversation-meta">
-                    <span>Access Code: <strong>{conversation.access_code}</strong></span>
-                    <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
+            {activeTab === 'owned' ? (
+              filteredConversations.map((conversation) => (
+                <Link
+                  key={conversation.id}
+                  to={`/conversations/${conversation.id}`}
+                  className="conversation-card"
+                >
+                  <div className="card-header">
+                    <h3>
+                      {conversation.title}
+                      {conversation.is_follow_up && (
+                        conversation.is_recurring_instance ? (
+                          <span className="recurring-badge" title="Recurring instance">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
+                              <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                              <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                            </svg>
+                            Recurring
+                          </span>
+                        ) : (
+                          <span className="follow-up-badge" title="Follow-up conversation">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
+                              <path d="M8 2a.5.5 0 0 1 .5.5v10.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V2.5A.5.5 0 0 1 8 2z"/>
+                            </svg>
+                            Follow-up
+                          </span>
+                        )
+                      )}
+                    </h3>
+                    <span className={`status-badge ${getStateClass(conversation.state)}`}>
+                      {getStateLabel(conversation.state)}
+                    </span>
                   </div>
-                  <div className="conversation-meta">
-                    <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-                    {conversation.activated_at && (
-                      <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
-                    )}
+                  <div className="card-body">
+                    <div className="conversation-meta">
+                      <span>Access Code: <strong>{conversation.access_code}</strong></span>
+                      <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
+                    </div>
+                    <div className="conversation-meta">
+                      <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
+                      {conversation.activated_at && (
+                        <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))
+            ) : (
+              filteredConversations.map((conversation) => renderParticipatedConversationCard(conversation))
+            )}
           </div>
         </div>
       )}

@@ -223,6 +223,11 @@ async def get_analysis(
     """
     Get analysis results for a conversation.
 
+    Access control based on results_access setting:
+    - CREATOR_ONLY: Only the conversation creator can view
+    - PARTICIPANTS: Creator and anyone who submitted a response can view
+    - PUBLIC_LINK: Anyone authenticated can view
+
     Args:
         conversation_id: Conversation ID
         current_user: Current authenticated user
@@ -232,12 +237,14 @@ async def get_analysis(
         Analysis results
 
     Raises:
-        HTTPException: If conversation not found, user is not owner, or no analysis exists
+        HTTPException: If conversation not found, user doesn't have access, or no analysis exists
     """
-    # Verify user owns the conversation
+    from app.models.response import Response
+    from app.schemas.conversation import ResultsAccess
+
+    # Get the conversation
     conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.creator_id == current_user.id
+        Conversation.id == conversation_id
     ).first()
 
     if not conversation:
@@ -245,6 +252,31 @@ async def get_analysis(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found"
         )
+
+    # Check access permissions
+    is_creator = conversation.creator_id == current_user.id
+
+    if not is_creator:
+        # Not the creator - check results_access setting
+        if conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
+            # Only creator can view
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
+            # Check if user has submitted a response
+            has_responded = db.query(Response).filter(
+                Response.conversation_id == conversation_id,
+                Response.participant_id == current_user.id
+            ).first() is not None
+
+            if not has_responded:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Conversation not found"
+                )
+        # PUBLIC_LINK allows anyone authenticated to view (no additional check needed)
 
     # Get analysis
     analysis = db.query(Analysis).filter(
@@ -258,5 +290,11 @@ async def get_analysis(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No analysis found for this conversation"
         )
+
+    # Add conversation metadata to analysis response for participant access
+    analysis.conversation_title = conversation.title
+    analysis.conversation_timezone = conversation.timezone
+    analysis.show_verbatim_responses = conversation.show_verbatim_responses
+    analysis.organization_id = conversation.organization_id
 
     return analysis

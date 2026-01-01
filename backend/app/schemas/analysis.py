@@ -69,6 +69,12 @@ class Analysis(BaseModel):
 
     created_at: datetime
 
+    # Conversation metadata (for participant access)
+    conversation_title: Optional[str] = None
+    conversation_timezone: Optional[str] = None
+    show_verbatim_responses: Optional[bool] = None
+    organization_id: Optional[UUID] = None
+
     model_config = {"from_attributes": True}
 
     @field_validator('question_analyses', 'themes', mode='before')

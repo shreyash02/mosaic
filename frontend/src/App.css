@@ -601,6 +601,58 @@ h3 {
   gap: 1rem;
 }
 
+.dashboard-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #718096;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: -2px;
+}
+
+.tab-button:hover {
+  color: #4a5568;
+  background-color: #f7fafc;
+}
+
+.tab-button.active {
+  color: #4299e1;
+  border-bottom-color: #4299e1;
+  background-color: #f7fafc;
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  background-color: #e2e8f0;
+  color: #4a5568;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tab-button.active .tab-count {
+  background-color: #4299e1;
+  color: white;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;
@@ -866,6 +918,22 @@ h3 {
 .conversation-card:hover {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+.conversation-card-disabled {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  color: inherit;
+  display: block;
+  cursor: default;
+  opacity: 0.8;
+}
+
+.conversation-card-disabled:hover {
+  box-shadow: none;
+  transform: none;
 }
 
 .card-header {

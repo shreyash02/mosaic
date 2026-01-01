@@ -299,6 +299,11 @@ export interface Analysis {
   num_clusters_found: number;
   analysis_duration_ms: number;
   created_at: string;
+  // Conversation metadata (for participant access)
+  conversation_title?: string;
+  conversation_timezone?: string;
+  show_verbatim_responses?: boolean;
+  organization_id?: string;
 }
 
 // API Response types

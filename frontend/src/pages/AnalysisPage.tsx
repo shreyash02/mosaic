@@ -15,19 +15,36 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [groupBy, setGroupBy] = useState<'question' | 'responder'>('question');
+  const [canAccessConversation, setCanAccessConversation] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (id) {
       loadAnalysis();
+      checkConversationAccess();
     }
   }, [id]);
 
+  const checkConversationAccess = async () => {
+    if (!id) return;
+    try {
+      // Try to load the conversation detail to check if user has access
+      await api.getConversation(id);
+      setCanAccessConversation(true);
+    } catch (err: any) {
+      // If 404 or 403, user doesn't have access (they're a participant)
+      if (err.response?.status === 404 || err.response?.status === 403) {
+        setCanAccessConversation(false);
+      } else {
+        // For other errors, assume they might have access (will show button)
+        setCanAccessConversation(true);
+      }
+    }
+  };
+
   const loadAnalysis = async () => {
     try {
-      const [analysisData, convData] = await Promise.all([
-        api.getAnalysis(id!),
-        api.getConversation(id!),
-      ]);
+      const analysisData = await api.getAnalysis(id!);
+
       // Debug: log surprising insights
       if (analysisData.surprising_insights) {
         console.log('Surprising insights found:', analysisData.surprising_insights);
@@ -35,10 +52,19 @@ export default function AnalysisPage() {
         console.log('No surprising insights in analysis data');
       }
       setAnalysis(analysisData);
-      setConversation(convData);
+
+      // Create a minimal conversation object from analysis metadata
+      const minimalConv: any = {
+        id,
+        title: analysisData.conversation_title || 'Untitled Conversation',
+        timezone: analysisData.conversation_timezone || 'UTC',
+        show_verbatim_responses: analysisData.show_verbatim_responses || false,
+        organization_id: analysisData.organization_id || null,
+      };
+      setConversation(minimalConv);
 
       // Load responses if verbatim responses are enabled
-      if (convData.show_verbatim_responses) {
+      if (analysisData.show_verbatim_responses) {
         try {
           const responsesData = await api.getResponses(id!);
           setResponses(responsesData.responses);
@@ -103,25 +129,42 @@ export default function AnalysisPage() {
   }
 
   if (error || !analysis) {
+    const handleErrorBackClick = () => {
+      if (canAccessConversation) {
+        navigate(`/conversations/${id}`);
+      } else {
+        navigate('/dashboard');
+      }
+    };
+
     return (
       <div className="analysis-page">
         <div className="error-state">
           <h2>Analysis Not Available</h2>
           <p>{error || 'No analysis has been run for this conversation yet.'}</p>
-          <button onClick={() => navigate(`/conversations/${id}`)} className="btn btn-primary">
-            Back to Conversation
+          <button onClick={handleErrorBackClick} className="btn btn-primary">
+            {canAccessConversation ? 'Back to Conversation' : 'Back to Dashboard'}
           </button>
         </div>
       </div>
     );
   }
 
+  const handleBackClick = () => {
+    if (canAccessConversation) {
+      navigate(`/conversations/${id}`);
+    } else {
+      // Participant - navigate to dashboard instead
+      navigate('/dashboard');
+    }
+  };
+
   return (
     <div className="analysis-page">
       <div className="page-header">
         <div>
-          <button onClick={() => navigate(`/conversations/${id}`)} className="btn-back">
-            ← Back to Conversation
+          <button onClick={handleBackClick} className="btn-back">
+            ← {canAccessConversation === false ? 'Back to Dashboard' : 'Back to Conversation'}
           </button>
           <h1>Analysis Results</h1>
           {conversation && <p className="subtitle">{conversation.title}</p>}

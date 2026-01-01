@@ -532,23 +532,29 @@ async def get_responses(
     db: Session = Depends(get_db)
 ):
     """
-    Get all responses for a conversation (owner only).
+    Get all responses for a conversation.
+
+    Access control based on results_access and show_verbatim_responses settings:
+    - Creator always has access
+    - If show_verbatim_responses is disabled, only creator can view
+    - If enabled, access follows results_access rules (CREATOR_ONLY, PARTICIPANTS, PUBLIC_LINK)
 
     Args:
         conversation_id: Conversation ID
         current_user: Current authenticated user
-        db: Database session
+        db: Session = Depends(get_db)
 
     Returns:
         List of responses with question text
 
     Raises:
-        HTTPException: If conversation not found or user is not the owner
+        HTTPException: If conversation not found or user doesn't have access
     """
-    # Verify user owns the conversation
+    from app.schemas.conversation import ResultsAccess
+
+    # Get the conversation
     conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.creator_id == current_user.id
+        Conversation.id == conversation_id
     ).first()
 
     if not conversation:
@@ -556,6 +562,38 @@ async def get_responses(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found"
         )
+
+    # Check access permissions
+    is_creator = conversation.creator_id == current_user.id
+
+    # Verbatim responses must be enabled for non-creators to view
+    if not is_creator and not conversation.show_verbatim_responses:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    if not is_creator:
+        # Not the creator - check results_access setting
+        if conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
+            # Only creator can view
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
+            # Check if user has submitted a response
+            has_responded = db.query(Response).filter(
+                Response.conversation_id == conversation_id,
+                Response.participant_id == current_user.id
+            ).first() is not None
+
+            if not has_responded:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Conversation not found"
+                )
+        # PUBLIC_LINK allows anyone authenticated to view (no additional check needed)
 
     # Get all responses with question text
     responses = db.query(
