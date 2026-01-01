@@ -51,9 +51,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         setCurrentOrganizationState(null);
         localStorage.setItem(STORAGE_KEY, 'personal');
 
-        // Show alert to user
-        alert(`You no longer have access to "${currentOrganization?.name}". Switched to Personal workspace.`);
-
         // Navigate to dashboard
         navigate('/dashboard');
         return;

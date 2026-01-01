@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type {
   AdminUserInfo,
@@ -13,13 +13,18 @@ import './AdminPortalPage.css';
 type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations';
 
 export default function AdminPortalPage() {
+  const navigate = useNavigate();
+  const { tab } = useParams<{ tab?: string }>();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<TabType>('users');
+  // Get active tab from URL, default to 'users'
+  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations'].includes(tab)) 
+    ? tab as TabType 
+    : 'users';
   
   // Users state
   const [users, setUsers] = useState<AdminUserInfo[]>([]);
@@ -51,6 +56,13 @@ export default function AdminPortalPage() {
       loadData();
     }
   }, []);
+
+  useEffect(() => {
+    // Redirect to /adminportal/users if no tab specified
+    if (!tab && isAuthenticated) {
+      navigate('/adminportal/users', { replace: true });
+    }
+  }, [tab, isAuthenticated, navigate]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -218,36 +230,36 @@ export default function AdminPortalPage() {
       </div>
 
       <div className="admin-tabs">
-        <button
+        <Link
+          to="/adminportal/users"
           className={`tab ${activeTab === 'users' ? 'active' : ''}`}
-          onClick={() => setActiveTab('users')}
         >
           Users
-        </button>
-        <button
+        </Link>
+        <Link
+          to="/adminportal/conversations"
           className={`tab ${activeTab === 'conversations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('conversations')}
         >
           Conversations
-        </button>
-        <button
+        </Link>
+        <Link
+          to="/adminportal/responses"
           className={`tab ${activeTab === 'responses' ? 'active' : ''}`}
-          onClick={() => setActiveTab('responses')}
         >
           Responses
-        </button>
-        <button
+        </Link>
+        <Link
+          to="/adminportal/analyses"
           className={`tab ${activeTab === 'analyses' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analyses')}
         >
           Analyses
-        </button>
-        <button
+        </Link>
+        <Link
+          to="/adminportal/organizations"
           className={`tab ${activeTab === 'organizations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('organizations')}
         >
           Organizations
-        </button>
+        </Link>
       </div>
 
       {error && <div className="error-message">{error}</div>}

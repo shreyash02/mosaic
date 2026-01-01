@@ -185,6 +185,7 @@ function App() {
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/adminportal" element={<AdminPortalPage />} />
+            <Route path="/adminportal/:tab" element={<AdminPortalPage />} />
             <Route path="/adminportal/user/:id" element={<AdminUserDetailPage />} />
             <Route path="/adminportal/conversation/:id" element={<AdminConversationDetailPage />} />
 

@@ -24,7 +24,7 @@ export default function AdminUserDetailPage() {
     try {
       const adminToken = localStorage.getItem('admin_token');
       if (!adminToken) {
-        navigate('/adminportal');
+        navigate('/adminportal/users');
         return;
       }
 
@@ -57,7 +57,7 @@ export default function AdminUserDetailPage() {
       setResponses(responsesResponse.data);
     } catch (err: any) {
       if (err.response?.status === 401) {
-        navigate('/adminportal');
+        navigate('/adminportal/users');
       } else {
         setError(err.response?.data?.detail || 'Failed to load user data.');
       }
@@ -81,7 +81,7 @@ export default function AdminUserDetailPage() {
       <div className="admin-portal">
         <div className="admin-content">
           {error && <div className="error-message">{error}</div>}
-          <Link to="/adminportal" className="btn btn-secondary">Back to Admin Portal</Link>
+          <Link to="/adminportal/users" className="btn btn-secondary">Back to Admin Portal</Link>
         </div>
       </div>
     );

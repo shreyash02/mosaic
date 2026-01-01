@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import './Header.css';
 
 export default function Header() {
+  const location = useLocation();
+  
+  // Hide header on admin portal routes
+  if (location.pathname.startsWith('/adminportal')) {
+    return null;
+  }
   const { user, logout, isAuthenticated } = useAuth();
   const {
     currentWorkspaceName,

@@ -26,7 +26,7 @@ export default function AdminConversationDetailPage() {
     try {
       const adminToken = localStorage.getItem('admin_token');
       if (!adminToken) {
-        navigate('/adminportal');
+        navigate('/adminportal/conversations');
         return;
       }
 
@@ -78,7 +78,7 @@ export default function AdminConversationDetailPage() {
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
-        navigate('/adminportal');
+        navigate('/adminportal/conversations');
       } else {
         setError(err.response?.data?.detail || 'Failed to load conversation data.');
       }
@@ -94,7 +94,7 @@ export default function AdminConversationDetailPage() {
       setReanalyzing(true);
       const adminToken = localStorage.getItem('admin_token');
       if (!adminToken) {
-        navigate('/adminportal');
+        navigate('/adminportal/conversations');
         return;
       }
 
@@ -121,7 +121,7 @@ export default function AdminConversationDetailPage() {
       alert('Analysis completed successfully!');
     } catch (err: any) {
       if (err.response?.status === 401) {
-        navigate('/adminportal');
+        navigate('/adminportal/conversations');
       } else {
         alert(err.response?.data?.detail || 'Failed to re-run analysis');
       }
@@ -145,7 +145,7 @@ export default function AdminConversationDetailPage() {
       <div className="admin-portal">
         <div className="admin-content">
           {error && <div className="error-message">{error}</div>}
-          <Link to="/adminportal" className="btn btn-secondary">Back to Admin Portal</Link>
+          <Link to="/adminportal/conversations" className="btn btn-secondary">Back to Admin Portal</Link>
         </div>
       </div>
     );
