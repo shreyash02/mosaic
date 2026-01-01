@@ -103,9 +103,11 @@ async def validate_participant_code(
 ) -> CodeValidation:
     """
     Validate a participant code for a fully_anonymous conversation (second step).
-    
+
     This validates the participant code and returns a session token that can be used
     to access conversation details without authentication.
+
+    Now supports reusable codes: allows both used and unused codes for viewing results.
 
     Args:
         access_code: Conversation access code (already validated)
@@ -113,55 +115,58 @@ async def validate_participant_code(
         db: Database session
 
     Returns:
-        Validation result with session token
+        Validation result with session token and submission status
     """
     from app.core.security import create_participant_session_token
-    
-    # First verify the access_code is valid and conversation is active
+
+    # First verify the access_code is valid (conversation can be in any state now)
     conversation = db.query(Conversation).filter(
-        Conversation.access_code == access_code,
-        Conversation.state == ConversationState.ACTIVE.value
+        Conversation.access_code == access_code
     ).first()
-    
+
     if not conversation:
         return CodeValidation(
             valid=False,
             message="Invalid access code"
         )
-    
+
     # Check if conversation is fully_anonymous
     if conversation.anonymity_level != AnonymityLevel.FULLY_ANONYMOUS.value:
         return CodeValidation(
             valid=False,
             message="Participant codes are only required for fully anonymous conversations"
         )
-    
-    # Validate participant code belongs to this conversation and is unused
+
+    # Validate participant code belongs to this conversation (accept both used and unused)
     participant_code_obj = db.query(ParticipantCode).filter(
         ParticipantCode.participant_code == participant_code,
-        ParticipantCode.conversation_id == conversation.id,
-        ParticipantCode.is_used == False
+        ParticipantCode.conversation_id == conversation.id
     ).first()
-    
+
     if not participant_code_obj:
         return CodeValidation(
             valid=False,
-            message="Invalid or already used participant code"
+            message="Invalid participant code"
         )
-    
+
+    # Check if this participant code has already been used to submit
+    has_submitted = participant_code_obj.is_used
+
     # Create session token
     session_token = create_participant_session_token(
         access_code=access_code,
         participant_code=participant_code,
         conversation_id=conversation.id
     )
-    
+
     return CodeValidation(
         valid=True,
         conversation_id=conversation.id,
         message="Valid participant code",
         requires_participant_code=False,
-        session_token=session_token
+        session_token=session_token,
+        has_submitted=has_submitted,
+        conversation_state=conversation.state
     )
 
 

@@ -314,6 +314,8 @@ export interface CodeValidation {
   message: string;
   requires_participant_code?: boolean;
   session_token?: string;
+  has_submitted?: boolean;
+  conversation_state?: string;
 }
 
 // Invitation types

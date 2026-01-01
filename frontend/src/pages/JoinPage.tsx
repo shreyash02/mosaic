@@ -18,7 +18,8 @@ export default function JoinPage() {
   const [accessCode, setAccessCode] = useState<string | null>(
     accessCodeFromPath || accessCodeFromQuery || null
   );
-  const [participantCode, setParticipantCode] = useState('');
+  const participantCodeFromQuery = searchParams.get('participant_code');
+  const [participantCode, setParticipantCode] = useState(participantCodeFromQuery || '');
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [validation, setValidation] = useState<CodeValidation | null>(null);
   const [accessCodeValidated, setAccessCodeValidated] = useState(false);
@@ -47,6 +48,14 @@ export default function JoinPage() {
       validateAccessCode();
     }
   }, [accessCode]);
+
+  // Step 2.5: Auto-validate participant code from URL if present
+  useEffect(() => {
+    if (accessCodeValidated && validation?.requires_participant_code && participantCodeFromQuery && !participantCodeValidated) {
+      // Automatically validate participant code from URL
+      validateParticipantCodeFromURL();
+    }
+  }, [accessCodeValidated, validation?.requires_participant_code, participantCodeFromQuery]);
 
   // Step 3: Load conversation after participant code is validated (or if not needed)
   useEffect(() => {
@@ -126,11 +135,71 @@ export default function JoinPage() {
     }
   };
 
+  const validateParticipantCodeFromURL = async () => {
+    if (!participantCodeFromQuery) return;
+
+    setValidating(true);
+    setError('');
+
+    try {
+      const validationResult = await api.validateParticipantCode(accessCode!, participantCodeFromQuery);
+
+      if (validationResult.valid && validationResult.session_token) {
+        setSessionToken(validationResult.session_token);
+        setValidation(validationResult);
+
+        // Handle different scenarios based on conversation state and submission status
+        const state = validationResult.conversation_state;
+        const hasSubmitted = validationResult.has_submitted;
+
+        if (state === 'active') {
+          if (hasSubmitted) {
+            // Already submitted to an active conversation
+            setHasAlreadySubmitted(true);
+            setAlreadySubmittedMessage('You have already submitted your response to this conversation.');
+            setParticipantCodeValidated(true);  // Still load conversation to show title/description
+          } else {
+            // Can submit - normal flow
+            setParticipantCodeValidated(true);
+          }
+        } else if (state === 'analyzed') {
+          if (hasSubmitted) {
+            // Redirect to analysis page
+            navigate(`/conversations/${validationResult.conversation_id}/analysis`);
+          } else {
+            // Too late to respond
+            setError('This conversation has been closed. It is no longer accepting responses.');
+          }
+        } else if (state === 'closed' || state === 'analyzing') {
+          if (hasSubmitted) {
+            // Load conversation and show "results will be available soon" message
+            setParticipantCodeValidated(true);
+            setHasAlreadySubmitted(true);
+            setAlreadySubmittedMessage(
+              state === 'analyzing'
+                ? 'Your response has been recorded. Analysis is in progress. Please check back soon for results.'
+                : 'Your response has been recorded. Analysis will be available soon.'
+            );
+          } else {
+            // Too late to respond
+            setError('This conversation has been closed. It is no longer accepting responses.');
+          }
+        }
+      } else {
+        setError(validationResult.message || 'Invalid participant code');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to validate participant code');
+    } finally {
+      setValidating(false);
+    }
+  };
+
   const handleParticipantCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidating(true);
     setError('');
-    
+
     const codeToValidate = participantCode.trim();
     if (!codeToValidate) {
       setError('Please enter a participant code');
@@ -140,10 +209,48 @@ export default function JoinPage() {
 
     try {
       const validationResult = await api.validateParticipantCode(accessCode!, codeToValidate);
-      
+
       if (validationResult.valid && validationResult.session_token) {
         setSessionToken(validationResult.session_token);
-        setParticipantCodeValidated(true);
+        setValidation(validationResult);
+
+        // Handle different scenarios based on conversation state and submission status
+        const state = validationResult.conversation_state;
+        const hasSubmitted = validationResult.has_submitted;
+
+        if (state === 'active') {
+          if (hasSubmitted) {
+            // Already submitted to an active conversation
+            setHasAlreadySubmitted(true);
+            setAlreadySubmittedMessage('You have already submitted your response to this conversation.');
+            setParticipantCodeValidated(true);  // Still load conversation to show title/description
+          } else {
+            // Can submit - normal flow
+            setParticipantCodeValidated(true);
+          }
+        } else if (state === 'analyzed') {
+          if (hasSubmitted) {
+            // Redirect to analysis page
+            navigate(`/conversations/${validationResult.conversation_id}/analysis`);
+          } else {
+            // Too late to respond
+            setError('This conversation has been closed. It is no longer accepting responses.');
+          }
+        } else if (state === 'closed' || state === 'analyzing') {
+          if (hasSubmitted) {
+            // Load conversation and show "results will be available soon" message
+            setParticipantCodeValidated(true);
+            setHasAlreadySubmitted(true);
+            setAlreadySubmittedMessage(
+              state === 'analyzing'
+                ? 'Your response has been recorded. Analysis is in progress. Please check back soon for results.'
+                : 'Your response has been recorded. Analysis will be available soon.'
+            );
+          } else {
+            // Too late to respond
+            setError('This conversation has been closed. It is no longer accepting responses.');
+          }
+        }
       } else {
         setError(validationResult.message || 'Invalid participant code');
       }
@@ -705,14 +812,60 @@ export default function JoinPage() {
   }
 
   if (success) {
+    // Generate view results link
+    const viewResultsLink = conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
+      ? `/join/${accessCode}?participant_code=${participantCode}`
+      : `/conversations/${conversation?.id}`;
+
     return (
       <div className="join-page">
         <div className="success-state">
           <h2>Thank You!</h2>
           <p>Your response has been submitted successfully.</p>
           <p className="success-note">
-            Your feedback is anonymous and will help improve the conversation.
+            Your feedback will help improve the conversation.
           </p>
+
+          {conversation?.results_access !== ResultsAccess.CREATOR_ONLY && (
+            <div style={{
+              marginTop: '1.5rem',
+              padding: '1.5rem',
+              backgroundColor: '#f7fafc',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem', color: '#2d3748' }}>
+                View Results
+              </h3>
+              <p style={{ margin: '0 0 1rem 0', color: '#4a5568', fontSize: '0.9rem' }}>
+                {conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
+                  ? 'Save this link to view the analysis results once they are ready:'
+                  : 'You can view the results and analysis once the conversation is analyzed:'}
+              </p>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '0.75rem',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e0',
+                marginBottom: '1rem',
+                fontFamily: 'monospace',
+                fontSize: '0.85rem',
+                wordBreak: 'break-all',
+                color: '#2d3748'
+              }}>
+                {window.location.origin}{viewResultsLink}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}${viewResultsLink}`);
+                }}
+                className="btn btn-secondary"
+                style={{ width: '100%' }}
+              >
+                Copy Link
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
