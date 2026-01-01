@@ -138,6 +138,15 @@ if os.path.exists(static_dir):
             return FileResponse(favicon_path)
         raise HTTPException(status_code=404)
 
+    # Serve Google verification file
+    @app.get("/google40bd8cd1e724b4c9.html")
+    async def google_verification():
+        """Serve Google site verification file."""
+        verification_path = os.path.join(static_dir, "google40bd8cd1e724b4c9.html")
+        if os.path.exists(verification_path):
+            return FileResponse(verification_path, media_type="text/html")
+        raise HTTPException(status_code=404)
+
     # Serve index.html for root
     @app.get("/")
     async def serve_index():
@@ -151,8 +160,8 @@ if os.path.exists(static_dir):
     @app.get("/{full_path:path}")
     async def serve_spa(request: Request, full_path: str):
         """Serve the React app for all non-API routes."""
-        # Don't handle API routes, health, sitemap, or robots.txt
-        if full_path.startswith("api/") or full_path in ["health", "sitemap.xml", "robots.txt"]:
+        # Don't handle API routes, health, sitemap, robots.txt, or Google verification
+        if full_path.startswith("api/") or full_path in ["health", "sitemap.xml", "robots.txt", "google40bd8cd1e724b4c9.html"]:
             raise HTTPException(status_code=404)
 
         # For /assets/ requests, try to serve the file directly
