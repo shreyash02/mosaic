@@ -5,13 +5,15 @@ import type { CodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
 import { formatDate } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function JoinPage() {
   const { accessCode: accessCodeFromPath } = useParams<{ accessCode: string }>();
   const [searchParams] = useSearchParams();
   const accessCodeFromQuery = searchParams.get('code');
   const navigate = useNavigate();
-  
+  const { user, logout, isAuthenticated } = useAuth();
+
   // Use code from path, query param, or require manual input
   const [accessCode, setAccessCode] = useState<string | null>(
     accessCodeFromPath || accessCodeFromQuery || null
@@ -35,6 +37,9 @@ export default function JoinPage() {
   const [canProceedFromTrustScreen, setCanProceedFromTrustScreen] = useState(false);
   const [trustScreenAcknowledged, setTrustScreenAcknowledged] = useState(false);
   const [trustScreenCountdown, setTrustScreenCountdown] = useState(10);
+  const [showAnonymousConflict, setShowAnonymousConflict] = useState(false);
+  const [showIncognitoModal, setShowIncognitoModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Step 1: Validate access code when available
   useEffect(() => {
@@ -85,8 +90,17 @@ export default function JoinPage() {
     try {
       const validationResult = await api.validateCode(accessCode!);
       setValidation(validationResult);
-      
+
       if (validationResult.valid) {
+        // Check for anonymous conflict: fully anonymous conversation + logged in user
+        // Use localStorage check instead of isAuthenticated to avoid race conditions with auth context
+        const hasAuthToken = !!localStorage.getItem('access_token');
+        if (validationResult.requires_participant_code && hasAuthToken) {
+          setShowAnonymousConflict(true);
+          setLoading(false);
+          return;
+        }
+
         setAccessCodeValidated(true);
         // If not fully_anonymous, we need authentication - redirect to login
         // But first check if user is already logged in (they might have come from a share link)
@@ -199,6 +213,54 @@ export default function JoinPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinueAnonymously = async () => {
+    // Logout the user and proceed with the fully anonymous conversation
+    logout();
+    setShowAnonymousConflict(false);
+
+    // Re-validate the access code now that user is logged out
+    // This time it won't trigger the anonymous conflict since there's no auth token
+    setLoading(true);
+    setError('');
+    try {
+      const validationResult = await api.validateCode(accessCode!);
+      setValidation(validationResult);
+
+      if (validationResult.valid) {
+        // User is now logged out, so no conflict check needed
+        setAccessCodeValidated(true);
+      } else {
+        setError(validationResult.message || 'Invalid access code');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to validate access code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUseIncognito = async () => {
+    // Copy the current URL to clipboard if possible
+    const currentUrl = window.location.href;
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      setLinkCopied(true);
+    } catch (err) {
+      // Clipboard API might fail, but still show the modal with the link
+      setLinkCopied(false);
+    }
+    setShowIncognitoModal(true);
+  };
+
+  const handleCancelAnonymous = () => {
+    // Navigate back to dashboard or home
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/');
     }
   };
 
@@ -372,6 +434,220 @@ export default function JoinPage() {
               Try Another Code
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show anonymous conflict interstitial if logged in user tries to access fully anonymous conversation
+  if (showAnonymousConflict) {
+    return (
+      <div className="join-page">
+        <div className="join-container">
+          <div style={{
+            maxWidth: '600px',
+            margin: '0 auto',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              backgroundColor: '#fff7ed',
+              border: '2px solid #f97316',
+              borderRadius: '12px',
+              padding: '2rem',
+              marginBottom: '1rem'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '1.5rem'
+              }}>
+                <span style={{ color: '#f97316', display: 'flex' }}>
+                  <LockIcon size={48} />
+                </span>
+              </div>
+
+              <h2 style={{ color: '#9a3412', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                This is a Fully Anonymous Conversation
+              </h2>
+
+              <p style={{ color: '#7c2d12', fontSize: '1.05rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                You're currently logged in as <strong>{user?.email}</strong>, but this conversation requires full anonymity.
+              </p>
+
+              <div style={{
+                textAlign: 'left',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                padding: '1.5rem',
+                marginBottom: '1.5rem',
+                border: '1px solid #fed7aa'
+              }}>
+                <p style={{ margin: '0 0 1rem 0', color: '#78350f', lineHeight: '1.6' }}>
+                  <strong>To protect your privacy:</strong> Your responses cannot be linked to your account in any way.
+                  You must respond without being logged in.
+                </p>
+                <p style={{ margin: 0, color: '#78350f', lineHeight: '1.6' }}>
+                  <strong>Choose an option below</strong> to proceed anonymously:
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <button
+                  onClick={handleContinueAnonymously}
+                  className="btn btn-primary btn-large"
+                  style={{ width: '100%' }}
+                >
+                  Continue Anonymously (Log Out)
+                </button>
+                <p style={{
+                  margin: '0 0 0.5rem 0',
+                  color: '#92400e',
+                  fontSize: '0.875rem',
+                  fontStyle: 'italic'
+                }}>
+                  This will log you out temporarily so you can respond anonymously
+                </p>
+
+                <button
+                  onClick={handleUseIncognito}
+                  className="btn btn-secondary btn-large"
+                  style={{ width: '100%' }}
+                >
+                  Use Incognito/Private Window
+                </button>
+                <p style={{
+                  margin: '0 0 0.5rem 0',
+                  color: '#92400e',
+                  fontSize: '0.875rem',
+                  fontStyle: 'italic'
+                }}>
+                  We'll copy the link so you can open it in a private browser window
+                </p>
+
+                <button
+                  onClick={handleCancelAnonymous}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', marginTop: '0.5rem' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Incognito Instructions Modal */}
+          {showIncognitoModal && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000
+            }} onClick={() => {
+              setShowIncognitoModal(false);
+              setLinkCopied(false);
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                maxWidth: '500px',
+                width: '90%',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+              }} onClick={(e) => e.stopPropagation()}>
+                <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#2d3748' }}>
+                  Open in Incognito/Private Window
+                </h2>
+
+                {linkCopied && (
+                  <div style={{
+                    backgroundColor: '#d1fae5',
+                    border: '1px solid #6ee7b7',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <p style={{ margin: 0, color: '#065f46', fontWeight: '600' }}>
+                      ✓ Link copied to clipboard!
+                    </p>
+                  </div>
+                )}
+
+                <div style={{
+                  backgroundColor: '#f7fafc',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <p style={{ margin: '0 0 0.75rem 0', color: '#4a5568', fontWeight: '600' }}>
+                    Follow these steps:
+                  </p>
+                  <ol style={{ margin: 0, paddingLeft: '1.5rem', color: '#4a5568', lineHeight: '1.8' }}>
+                    <li>Open an incognito/private browser window:
+                      <ul style={{ marginTop: '0.25rem', paddingLeft: '1.5rem', listStyleType: 'disc' }}>
+                        <li><strong>Chrome/Edge:</strong> Ctrl+Shift+N (Cmd+Shift+N on Mac)</li>
+                        <li><strong>Firefox:</strong> Ctrl+Shift+P (Cmd+Shift+P on Mac)</li>
+                        <li><strong>Safari:</strong> Cmd+Shift+N</li>
+                      </ul>
+                    </li>
+                    <li style={{ marginTop: '0.5rem' }}>
+                      {linkCopied ? 'Paste the link (Ctrl+V or Cmd+V)' : 'Copy and paste this URL'}
+                    </li>
+                    <li style={{ marginTop: '0.5rem' }}>Respond to the conversation anonymously</li>
+                  </ol>
+                </div>
+
+                {!linkCopied && (
+                  <div style={{
+                    backgroundColor: '#f7fafc',
+                    border: '1px solid #cbd5e0',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    marginBottom: '1.5rem',
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    wordBreak: 'break-all',
+                    color: '#2d3748'
+                  }}>
+                    {window.location.href}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  {!linkCopied && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(window.location.href);
+                          setLinkCopied(true);
+                        } catch (err) {
+                          // Fallback if clipboard fails
+                        }
+                      }}
+                      className="btn btn-secondary"
+                    >
+                      Copy Link
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowIncognitoModal(false);
+                      setLinkCopied(false);
+                    }}
+                    className="btn btn-primary"
+                  >
+                    Got It
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -760,9 +1036,9 @@ export default function JoinPage() {
             </div>
           )}
 
-          <button 
-            type="submit" 
-            className="btn btn-primary btn-large" 
+          <button
+            type="submit"
+            className="btn btn-primary btn-large"
             disabled={submitting}
           >
             {submitting ? 'Submitting...' : 'Submit Response'}
