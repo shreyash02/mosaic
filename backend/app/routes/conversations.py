@@ -278,6 +278,79 @@ async def list_conversations(
     return conversations
 
 
+@router.get("/participated", response_model=List[ConversationListItem])
+async def list_participated_conversations(
+    skip: int = 0,
+    limit: int = 100,
+    state: Optional[ConversationState] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    List conversations where the user has submitted responses.
+
+    This endpoint returns conversations the user participated in (submitted responses to)
+    but did not create. Useful for showing "My Responses" or "Participated" tab.
+
+    Args:
+        skip: Number of conversations to skip
+        limit: Maximum number of conversations to return
+        state: Optional filter by conversation state
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        List of conversations where user has participated
+    """
+    # Get conversation IDs where user has responses
+    participated_conv_ids = db.query(Response.conversation_id).filter(
+        Response.participant_id == current_user.id
+    ).distinct().subquery()
+
+    query = db.query(
+        Conversation,
+        func.count(Response.id).label('response_count')
+    ).outerjoin(Response).filter(
+        Conversation.id.in_(participated_conv_ids),
+        Conversation.creator_id != current_user.id,  # Exclude conversations user created
+        Conversation.state != ConversationState.DELETED
+    ).group_by(Conversation.id)
+
+    if state:
+        query = query.filter(Conversation.state == state.value)
+
+    query = query.order_by(Conversation.created_at.desc())
+    query = query.offset(skip).limit(limit)
+
+    results = query.all()
+
+    # Build response with response count
+    conversations = []
+    for conv, response_count in results:
+        conv_dict = {
+            "id": conv.id,
+            "title": conv.title,
+            "state": conv.state,
+            "anonymity_level": conv.anonymity_level,
+            "access_code": conv.access_code,
+            "created_at": conv.created_at,
+            "activated_at": conv.activated_at,
+            "closed_at": conv.closed_at,
+            "response_count": response_count,
+            "timezone": conv.timezone or "UTC",
+            "is_follow_up": conv.parent_conversation_id is not None,
+            "parent_conversation_id": conv.parent_conversation_id,
+            "organization_id": conv.organization_id,
+            # Recurring conversation fields
+            "series_id": conv.series_id,
+            "is_recurring_instance": conv.is_recurring_instance or False,
+            "recurrence_pattern": conv.recurrence_pattern,
+        }
+        conversations.append(ConversationListItem(**conv_dict))
+
+    return conversations
+
+
 @router.get("/by-code/{access_code}", response_model=ConversationWithQuestions)
 async def get_conversation_by_code(
     access_code: str,

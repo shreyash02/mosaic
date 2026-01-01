@@ -147,6 +147,11 @@ class ApiService {
     return response.data;
   }
 
+  async getParticipatedConversations(): Promise<ConversationListItem[]> {
+    const response = await this.client.get<ConversationListItem[]>('/conversations/participated');
+    return response.data;
+  }
+
   async getConversation(id: string): Promise<Conversation> {
     const response = await this.client.get<Conversation>(`/conversations/${id}`);
     return response.data;
