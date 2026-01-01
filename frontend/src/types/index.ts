@@ -273,6 +273,7 @@ export interface QuestionAnalysis {
   question_type: QuestionType;
   response_count: number;
   themes?: Theme[];
+  summary?: string;  // Summary when themes aren't available or as additional context
   rating_stats?: RatingStatistics;
   poll_stats?: PollStatistics;
 }

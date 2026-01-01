@@ -119,11 +119,15 @@ class AnalysisService:
             "question_text": question.question_text,
             "question_type": question.question_type,
             "response_count": len(response_texts),
-            "themes": []
+            "themes": [],
+            "summary": None
         }
 
         if len(response_texts) < min_cluster_size:
-            # Not enough responses for clustering
+            # Not enough responses for clustering, but still generate a summary
+            if response_texts:
+                summary = self._generate_simple_summary(response_texts)
+                base_result["summary"] = summary
             return base_result
 
         # Generate embeddings
@@ -136,6 +140,12 @@ class AnalysisService:
         themes = self._analyze_clusters(response_texts, clusters)
 
         base_result["themes"] = themes
+        
+        # Generate a summary even when we have themes (for consistency)
+        if response_texts:
+            summary = self._generate_simple_summary(response_texts)
+            base_result["summary"] = summary
+        
         return base_result
 
     def _analyze_rating_question(

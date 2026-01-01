@@ -294,9 +294,18 @@ export default function AnalysisPage() {
                       </div>
                     )}
 
-                  {/* No analysis available */}
+                  {/* Summary when no themes available */}
                   {qa.question_type === 'text' && (!qa.themes || qa.themes.length === 0) && (
-                    <p className="no-analysis">Not enough responses to identify themes.</p>
+                    <div className="text-analysis">
+                      {qa.summary ? (
+                        <div className="question-summary">
+                          <h4>Summary</h4>
+                          <p className="summary-text">{qa.summary}</p>
+                        </div>
+                      ) : (
+                        <p className="no-analysis">Not enough responses to generate analysis.</p>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}

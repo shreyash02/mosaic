@@ -172,6 +172,7 @@ class QuestionAnalysis(BaseModel):
 
     # For text questions
     themes: List[Theme] = []
+    summary: Optional[str] = None  # Summary when themes aren't available or as additional context
 
     # For rating questions
     rating_stats: Optional[RatingStatistics] = None

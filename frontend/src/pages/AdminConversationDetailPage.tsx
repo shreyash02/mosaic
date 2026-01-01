@@ -336,6 +336,16 @@ export default function AdminConversationDetailPage() {
                       Type: {qa.question_type} | Responses: {qa.response_count}
                     </p>
 
+                    {/* Show summary if no themes available */}
+                    {qa.question_type === 'text' && (!qa.themes || qa.themes.length === 0) && qa.summary && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <strong>Summary:</strong>
+                        <p style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                          {qa.summary}
+                        </p>
+                      </div>
+                    )}
+
                     {qa.themes && qa.themes.length > 0 && (
                       <div style={{ marginTop: '1rem' }}>
                         <strong>Themes:</strong>
