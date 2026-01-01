@@ -21,18 +21,33 @@ export default function OrganizationsPage() {
     try {
       const data = await api.listOrganizations();
 
+      // Get current user once
+      const currentUser = await api.getCurrentUser();
+
       // Enrich with member count and user role by fetching details for each org
       const enrichedOrgs = await Promise.all(
         data.map(async (org) => {
           try {
             const details = await api.getOrganization(org.id);
-            const currentUser = localStorage.getItem('user_id');
-            const userMembership = details.members.find(m => m.user_id === currentUser);
+            const userMembership = details.members.find(m => m.user_id === currentUser.id);
+
+            // If user is the creator, they should be admin (even if membership record has wrong role)
+            // Compare as strings to ensure type consistency
+            const isCreator = String(details.created_by) === String(currentUser.id);
+            let userRole: 'admin' | 'member' | undefined;
+
+            if (isCreator) {
+              // Creator is always admin, regardless of membership record
+              userRole = 'admin';
+            } else if (userMembership) {
+              // Use membership role for non-creators
+              userRole = userMembership.role as 'admin' | 'member';
+            }
 
             return {
               ...org,
               memberCount: details.members.length,
-              userRole: userMembership?.role as 'admin' | 'member' | undefined
+              userRole
             };
           } catch (err) {
             console.error(`Failed to load details for org ${org.id}:`, err);

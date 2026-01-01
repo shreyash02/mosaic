@@ -36,7 +36,15 @@ export default function OrganizationDetailPage() {
       // Get current user role
       const currentUser = await api.getCurrentUser();
       const membership = data.members.find(m => m.user_id === currentUser.id);
-      setUserRole(membership?.role || null);
+
+      // If user is the creator, they should be admin (even if membership record has wrong role)
+      // Compare as strings to ensure type consistency
+      const isCreator = String(data.created_by) === String(currentUser.id);
+      if (isCreator) {
+        setUserRole('admin');
+      } else {
+        setUserRole(membership?.role || null);
+      }
     } catch (err: any) {
       console.error('Failed to load organization:', err);
       setError('Failed to load organization');
