@@ -1,7 +1,7 @@
 """Analysis service for LLM-powered response analysis."""
 
 import time
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from sklearn.cluster import DBSCAN
 from openai import OpenAI
@@ -74,9 +74,13 @@ class AnalysisService:
 
         duration_ms = int((time.time() - start_time) * 1000)
 
+        # Generate "What Surprised Us" insights
+        surprising_insights = self._generate_surprising_insights(questions, responses, question_analyses)
+
         return {
             "overall_summary": self._generate_conversation_summary(question_analyses),
             "question_analyses": question_analyses,
+            "surprising_insights": surprising_insights,
             "embedding_provider": "openai",
             "embedding_model": self.embedding_model,
             "clustering_algorithm": "dbscan",
@@ -616,3 +620,229 @@ Provide a concise summary of the key feedback."""
         )
 
         return message.content[0].text.strip()
+
+    def _generate_surprising_insights(
+        self,
+        questions: List[Question],
+        responses: List[Response],
+        question_analyses: List[Dict[str, Any]]
+    ) -> Optional[List[Dict[str, str]]]:
+        """
+        Generate "What Surprised Us" insights highlighting unexpected themes, tensions, and minority views.
+
+        Args:
+            questions: List of Question objects
+            responses: List of Response objects
+            question_analyses: List of question analysis results
+
+        Returns:
+            List of surprising insights with title and description, or None if insufficient data
+        """
+        if not question_analyses or not responses:
+            print(f"DEBUG: _generate_surprising_insights - insufficient data: question_analyses={len(question_analyses) if question_analyses else 0}, responses={len(responses) if responses else 0}")
+            return None
+        
+        print(f"DEBUG: _generate_surprising_insights - starting generation with {len(question_analyses)} question analyses and {len(responses)} responses")
+
+        # Group responses by question
+        responses_by_question = {}
+        for response in responses:
+            qid = str(response.question_id)
+            if qid not in responses_by_question:
+                responses_by_question[qid] = []
+            responses_by_question[qid].append(response)
+
+        # Build context for the prompt
+        analysis_context = []
+        for qa in question_analyses:
+            q_text = qa["question_text"]
+            q_type = qa["question_type"]
+            count = qa["response_count"]
+
+            context_item = f"Question: \"{q_text}\" ({q_type}, {count} responses)\n"
+
+            if q_type == "text":
+                # Always include text questions, even if no themes were found
+                qid = qa["question_id"]
+                q_responses = responses_by_question.get(qid, [])
+                
+                if qa.get("themes"):
+                    # Include theme information
+                    themes_info = []
+                    for theme in qa["themes"]:
+                        theme_desc = f"  - {theme['theme']}: {theme['summary']} ({theme['frequency']} responses)"
+                        if theme.get("perspectives"):
+                            perspectives = ", ".join([p["name"] for p in theme["perspectives"]])
+                            theme_desc += f" [Perspectives: {perspectives}]"
+                        themes_info.append(theme_desc)
+                    context_item += "  Themes identified:\n" + "\n".join(themes_info) + "\n"
+                
+                # Always include sample responses for text questions
+                if q_responses:
+                    text_responses = [r.response_text for r in q_responses if r.response_text and r.response_text.strip()]
+                    if text_responses:
+                        # Include all responses (or a larger sample) so LLM can see what was said
+                        sample_size = min(10, len(text_responses))  # Increased from 5 to 10
+                        sample_responses = text_responses[:sample_size]
+                        if not qa.get("themes"):
+                            # If no themes, make it clear these are the actual responses
+                            context_item += "  Responses (no themes identified):\n"
+                        else:
+                            context_item += "  Sample responses:\n"
+                        context_item += "\n".join([f"    - {r}" for r in sample_responses])
+                        if len(text_responses) > sample_size:
+                            context_item += f"\n    ... and {len(text_responses) - sample_size} more responses"
+                elif not qa.get("themes"):
+                    # No themes and no responses found (shouldn't happen, but handle it)
+                    context_item += "  No themes identified and no responses found."
+            elif q_type == "rating" and qa.get("rating_stats"):
+                stats = qa["rating_stats"]
+                context_item += f"  Average: {stats['average']}/10, Range: {stats['min_value']}-{stats['max_value']}"
+            elif q_type in ["single_choice", "multiple_choice"] and qa.get("poll_stats"):
+                stats = qa["poll_stats"]
+                top_choice = max(stats["choices"], key=lambda x: x["count"]) if stats["choices"] else None
+                if top_choice:
+                    context_item += f"  Most popular: {top_choice['label']} ({top_choice['percentage']}%)"
+
+            analysis_context.append(context_item)
+
+        # Build prompt for surprising insights
+        total_responses = len(responses)
+        prompt = f"""You are analyzing feedback data to identify surprising, unexpected, or noteworthy insights.
+
+Focus on:
+1. Unexpected themes or patterns that emerge
+2. Tensions or contradictions in the responses
+3. Minority views that differ from the majority
+4. Insights that challenge assumptions
+5. Notable variations or outliers
+
+Total responses analyzed: {total_responses}
+
+Analysis context:
+{chr(10).join(analysis_context)}
+
+Your task: Generate 2-4 key surprising insights. Each insight must have:
+- A concise, engaging title (3-8 words) that captures the surprise
+- A detailed description (2-4 sentences) explaining the insight, why it's surprising, and what it means
+
+CRITICAL: You MUST respond with ONLY valid JSON. Do not include any markdown formatting, explanations, or text outside the JSON structure.
+
+Return your response as a JSON object with this exact structure:
+{{
+  "insights": [
+    {{
+      "title": "Short, engaging title",
+      "description": "Detailed explanation of the insight, why it's surprising, and what it means. This should be 2-4 sentences that help readers understand what was unexpected or noteworthy."
+    }},
+    {{
+      "title": "Another insight title",
+      "description": "Another detailed explanation..."
+    }}
+  ]
+}}
+
+IMPORTANT: 
+- Return ONLY the JSON object, nothing else
+- Do not wrap it in markdown code blocks
+- Do not add any explanatory text before or after
+- Ensure the JSON is valid and can be parsed directly
+
+Focus on the most interesting and actionable insights. If there are no particularly surprising insights, you can still provide 1-2 thoughtful reflections on what stands out as noteworthy or different from what might have been expected."""
+
+        try:
+            message = self.anthropic_client.messages.create(
+                model=self.llm_model,
+                max_tokens=1200,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            # Extract JSON from response
+            response_text = message.content[0].text
+            print(f"DEBUG: _generate_surprising_insights - LLM response received, length: {len(response_text)}")
+            print(f"DEBUG: _generate_surprising_insights - Response preview: {response_text[:200]}")
+            
+            # Try to parse JSON from the response
+            import json
+            import re
+            try:
+                # Try multiple strategies to extract JSON
+                json_text = None
+                
+                # Strategy 1: Look for JSON in markdown code blocks
+                if "```json" in response_text:
+                    json_start = response_text.find("```json") + 7
+                    json_end = response_text.find("```", json_start)
+                    if json_end > json_start:
+                        json_text = response_text[json_start:json_end].strip()
+                elif "```" in response_text:
+                    json_start = response_text.find("```") + 3
+                    json_end = response_text.find("```", json_start)
+                    if json_end > json_start:
+                        json_text = response_text[json_start:json_end].strip()
+                
+                # Strategy 2: Look for JSON object pattern { ... }
+                if not json_text:
+                    # Try to find JSON object boundaries
+                    json_match = re.search(r'\{[^{}]*"insights"[^{}]*\[.*?\]\s*\}', response_text, re.DOTALL)
+                    if json_match:
+                        json_text = json_match.group(0).strip()
+                
+                # Strategy 3: Try the entire response as JSON
+                if not json_text:
+                    json_text = response_text.strip()
+                    # Remove any leading/trailing non-JSON text
+                    json_text = re.sub(r'^[^{]*', '', json_text)  # Remove text before first {
+                    json_text = re.sub(r'[^}]*$', '', json_text)  # Remove text after last }
+                    json_text = json_text.strip()
+                
+                if not json_text:
+                    print(f"DEBUG: _generate_surprising_insights - Could not extract JSON from response")
+                    return None
+                
+                print(f"DEBUG: _generate_surprising_insights - Extracted JSON text length: {len(json_text)}")
+                print(f"DEBUG: _generate_surprising_insights - JSON preview: {json_text[:200]}")
+                
+                result = json.loads(json_text)
+                print(f"DEBUG: _generate_surprising_insights - JSON parsed successfully")
+                
+                # Extract insights array
+                insights = result.get("insights", [])
+                print(f"DEBUG: _generate_surprising_insights - Found {len(insights) if insights else 0} insights in response")
+                
+                # Validate and return
+                if insights and isinstance(insights, list):
+                    # Ensure each insight has title and description
+                    validated_insights = []
+                    for insight in insights:
+                        if isinstance(insight, dict):
+                            title = insight.get("title")
+                            description = insight.get("description")
+                            
+                            if title and description:
+                                title_str = str(title).strip()
+                                desc_str = str(description).strip()
+                                
+                                if title_str and desc_str:
+                                    validated_insights.append({
+                                        "title": title_str,
+                                        "description": desc_str
+                                    })
+                    
+                    # Return the list (even if empty, let the schema handle None conversion)
+                    print(f"DEBUG: _generate_surprising_insights - Returning {len(validated_insights)} validated insights")
+                    return validated_insights if validated_insights else None
+                print(f"DEBUG: _generate_surprising_insights - No insights found or not a list")
+                return None
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON from surprising insights response: {str(e)}")
+                print(f"Response text: {response_text[:500]}")
+                import traceback
+                traceback.print_exc()
+                return None
+        except Exception as e:
+            # Return None on error rather than failing the entire analysis
+            print(f"Error generating surprising insights: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None

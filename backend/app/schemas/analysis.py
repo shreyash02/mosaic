@@ -15,6 +15,14 @@ class Perspective(BaseModel):
     count: int = Field(..., ge=0)
 
 
+# Surprising insight
+class SurprisingInsight(BaseModel):
+    """A surprising insight from the analysis."""
+
+    title: str = Field(..., min_length=1)
+    description: str = Field(..., min_length=1)
+
+
 # Theme extracted from responses
 class Theme(BaseModel):
     """Theme extracted from analysis."""
@@ -43,6 +51,7 @@ class Analysis(BaseModel):
     conversation_id: UUID
     overall_summary: Optional[str] = None
     themes: List[Theme] = []  # Deprecated: kept for backwards compatibility
+    surprising_insights: Optional[List["SurprisingInsight"]] = None  # AI-generated "What Surprised Us" section
 
     # Per-question analysis
     question_analyses: Optional[List["QuestionAnalysis"]] = []
@@ -67,6 +76,60 @@ class Analysis(BaseModel):
     def ensure_list(cls, v):
         """Convert None to empty list."""
         return v if v is not None else []
+    
+    @field_validator('surprising_insights', mode='before')
+    @classmethod
+    def validate_surprising_insights(cls, v):
+        """Validate and convert surprising_insights field.
+        
+        Handles:
+        - None -> None (keep as None since it's Optional)
+        - String (JSON string from DB) -> Parse and validate
+        - String (old markdown format) -> None (discard old markdown text)
+        - List -> Validate each item
+        - Invalid data -> None
+        """
+        import json
+        
+        if v is None:
+            return None
+        
+        # If it's a string, try to parse it as JSON first
+        # (JSONB from PostgreSQL might be serialized as a string)
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                # Recursively call validation on parsed data
+                return cls.validate_surprising_insights(parsed)
+            except (json.JSONDecodeError, ValueError):
+                # Not valid JSON - likely old markdown format, discard it
+                return None
+        
+        # If it's already a list, validate each item
+        if isinstance(v, list):
+            validated = []
+            for item in v:
+                if isinstance(item, dict):
+                    # Validate required fields - be lenient with types
+                    title = item.get("title")
+                    description = item.get("description")
+                    
+                    if title and description:
+                        # Convert to string if needed and strip
+                        title_str = str(title).strip() if title else ""
+                        desc_str = str(description).strip() if description else ""
+                        
+                        if title_str and desc_str:
+                            validated.append({
+                                "title": title_str,
+                                "description": desc_str
+                            })
+            
+            # Return validated list if we have items, otherwise None
+            return validated if validated else None
+        
+        # Invalid format, return None
+        return None
 
 
 # Rating statistics for rating questions

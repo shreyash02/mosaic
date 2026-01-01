@@ -73,6 +73,7 @@ def run_analysis_task(
             overall_summary=results["overall_summary"],
             themes=results.get("themes", []),  # Deprecated field
             question_analyses=results["question_analyses"],
+            surprising_insights=results.get("surprising_insights"),
             embedding_provider=results["embedding_provider"],
             embedding_model=results["embedding_model"],
             clustering_algorithm=results["clustering_algorithm"],

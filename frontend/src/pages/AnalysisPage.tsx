@@ -28,6 +28,12 @@ export default function AnalysisPage() {
         api.getAnalysis(id!),
         api.getConversation(id!),
       ]);
+      // Debug: log surprising insights
+      if (analysisData.surprising_insights) {
+        console.log('Surprising insights found:', analysisData.surprising_insights);
+      } else {
+        console.log('No surprising insights in analysis data');
+      }
       setAnalysis(analysisData);
       setConversation(convData);
 
@@ -142,6 +148,20 @@ export default function AnalysisPage() {
             </div>
           </div>
         </div>
+
+        {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
+          <div className="analysis-summary-card">
+            <h2>What Surprised Us</h2>
+            <div className="surprising-insights-list">
+              {analysis.surprising_insights.map((insight, index) => (
+                <div key={index} className="surprising-insight-item">
+                  <h3 className="insight-title">{insight.title}</h3>
+                  <p className="insight-description">{insight.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="questions-section">
           <h2>Question-by-Question Analysis</h2>

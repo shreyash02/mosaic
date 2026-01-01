@@ -308,6 +308,22 @@ export default function AdminConversationDetailPage() {
               </div>
             </div>
 
+            {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
+              <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
+                <h3>What Surprised Us</h3>
+                {analysis.surprising_insights.map((insight, index) => (
+                  <div key={index} className="detail-card" style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ marginTop: 0, color: '#2c5282', marginBottom: '0.5rem' }}>
+                      {insight.title}
+                    </h4>
+                    <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', margin: 0 }}>
+                      {insight.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {analysis.question_analyses && analysis.question_analyses.length > 0 && (
               <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
                 <h3>Question-Level Analysis</h3>

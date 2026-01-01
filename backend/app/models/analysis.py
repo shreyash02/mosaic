@@ -20,6 +20,15 @@ class Analysis(Base):
     # Analysis results
     overall_summary = Column(Text, nullable=True)
     themes = Column(JSONB, nullable=True)  # Deprecated: kept for backwards compatibility
+    surprising_insights = Column(JSONB, nullable=True)  # AI-generated "What Surprised Us" section
+    # Structure:
+    # [
+    #   {
+    #     "title": "The Recommendation Paradox",
+    #     "description": "Perhaps the most striking finding is..."
+    #   },
+    #   ...
+    # ]
     # Structure:
     # [
     #   {

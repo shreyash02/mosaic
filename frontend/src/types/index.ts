@@ -277,12 +277,18 @@ export interface QuestionAnalysis {
   poll_stats?: PollStatistics;
 }
 
+export interface SurprisingInsight {
+  title: string;
+  description: string;
+}
+
 export interface Analysis {
   id: string;
   conversation_id: string;
   overall_summary: string;
   themes: Theme[];  // Deprecated
   question_analyses: QuestionAnalysis[];
+  surprising_insights?: SurprisingInsight[];  // AI-generated "What Surprised Us" section
   embedding_provider: string;
   embedding_model: string;
   clustering_algorithm: string;
