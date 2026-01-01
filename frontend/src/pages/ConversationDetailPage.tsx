@@ -6,6 +6,7 @@ import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
+import QRCode from 'qrcode';
 
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,11 +41,16 @@ export default function ConversationDetailPage() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [copyInvitations, setCopyInvitations] = useState(false);
   const [copySettings, setCopySettings] = useState(true);
+  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [generatingQRCode, setGeneratingQRCode] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadConversation();
       loadInvitations();
+      // Clear QR code when conversation changes
+      setQrCodeDataUrl(null);
     }
   }, [id]);
 
@@ -207,6 +213,49 @@ export default function ConversationDetailPage() {
       }
       document.body.removeChild(textArea);
     }
+  };
+
+  const getInviteLink = () => {
+    return `${window.location.origin}/join/${conversation?.access_code}`;
+  };
+
+  const generateQRCode = async () => {
+    if (!conversation?.access_code) return;
+    
+    // If QR code already generated, just show the modal
+    if (qrCodeDataUrl) {
+      setShowQRCodeModal(true);
+      return;
+    }
+
+    setGeneratingQRCode(true);
+    try {
+      const link = getInviteLink();
+      const dataUrl = await QRCode.toDataURL(link, {
+        width: 400,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+      setQrCodeDataUrl(dataUrl);
+      setShowQRCodeModal(true);
+    } catch (err) {
+      console.error('Failed to generate QR code', err);
+      setError('Failed to generate QR code');
+    } finally {
+      setGeneratingQRCode(false);
+    }
+  };
+
+  const downloadQRCode = () => {
+    if (!qrCodeDataUrl) return;
+
+    const link = document.createElement('a');
+    link.download = `qr-code-${conversation?.access_code || 'conversation'}.png`;
+    link.href = qrCodeDataUrl;
+    link.click();
   };
 
   const handleGenerateCodes = async () => {
@@ -556,12 +605,21 @@ export default function ConversationDetailPage() {
                     ? 'Share this link with participants. They will need a participant code to access.'
                     : 'Share this link with logged-in users. They can access the conversation directly.'}
                 </p>
-                <button
-                  onClick={copyInviteLink}
-                  className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}
-                >
-                  {linkCopied ? '✓ Copied!' : 'Copy Link'}
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={copyInviteLink}
+                    className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}
+                  >
+                    {linkCopied ? '✓ Copied!' : 'Copy Link'}
+                  </button>
+                  <button
+                    onClick={generateQRCode}
+                    className="btn btn-small btn-secondary"
+                    disabled={generatingQRCode}
+                  >
+                    {generatingQRCode ? 'Generating...' : 'Show QR Code'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1091,6 +1149,57 @@ export default function ConversationDetailPage() {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRCodeModal && qrCodeDataUrl && (
+        <div className="modal-overlay" onClick={() => setShowQRCodeModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>QR Code</h2>
+              <button
+                onClick={() => setShowQRCodeModal(false)}
+                className="btn btn-secondary btn-small"
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <img 
+                src={qrCodeDataUrl} 
+                alt="QR Code for conversation link" 
+                style={{ 
+                  maxWidth: '100%', 
+                  height: 'auto',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  backgroundColor: '#fff'
+                }}
+              />
+            </div>
+            <p style={{ marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>
+              Scan this QR code to access the conversation
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button
+                onClick={downloadQRCode}
+                className="btn btn-primary"
+              >
+                Download QR Code
+              </button>
+              <button
+                onClick={() => {
+                  copyInviteLink();
+                  setShowQRCodeModal(false);
+                }}
+                className="btn btn-secondary"
+              >
+                Copy Link Instead
+              </button>
             </div>
           </div>
         </div>
