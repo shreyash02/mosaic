@@ -9,6 +9,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import Message
 from starlette.responses import Response as StarletteResponse
+from datetime import datetime
 import os
 
 from app.core.config import settings
@@ -56,16 +57,79 @@ async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
 
+
+@app.get("/sitemap.xml")
+async def sitemap():
+    """Generate and serve sitemap.xml for web crawlers."""
+    base_url = settings.BASE_URL.rstrip('/')
+
+    # Public routes that should be indexed by search engines
+    # Excluding protected routes and dynamic routes with IDs
+    public_routes = [
+        "/",
+        "/login",
+        "/register",
+        "/terms",
+        "/privacy",
+        "/help",
+        "/help/creating-conversations",
+        "/help/inviting-participants",
+        "/help/responding",
+        "/help/closing-conversations",
+        "/help/analysis",
+        "/help/follow-ups",
+        "/help/recurring-conversations",
+        "/help/organizations",
+    ]
+
+    # Generate sitemap XML
+    sitemap_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    sitemap_xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+
+    # Use current date for lastmod
+    lastmod = datetime.now().strftime('%Y-%m-%d')
+
+    for route in public_routes:
+        sitemap_xml += '  <url>\n'
+        sitemap_xml += f'    <loc>{base_url}{route}</loc>\n'
+        sitemap_xml += f'    <lastmod>{lastmod}</lastmod>\n'
+        sitemap_xml += '    <changefreq>weekly</changefreq>\n'
+        sitemap_xml += '    <priority>0.8</priority>\n'
+        sitemap_xml += '  </url>\n'
+
+    sitemap_xml += '</urlset>'
+
+    return Response(content=sitemap_xml, media_type="application/xml")
+
+
+@app.get("/robots.txt")
+async def robots():
+    """Generate and serve robots.txt for web crawlers."""
+    base_url = settings.BASE_URL.rstrip('/')
+
+    robots_txt = "User-agent: *\n"
+    robots_txt += "Allow: /\n"
+    robots_txt += "Disallow: /api/\n"
+    robots_txt += "Disallow: /dashboard\n"
+    robots_txt += "Disallow: /conversations/\n"
+    robots_txt += "Disallow: /organizations/\n"
+    robots_txt += "Disallow: /adminportal\n"
+    robots_txt += "Disallow: /auth/\n"
+    robots_txt += "\n"
+    robots_txt += f"Sitemap: {base_url}/sitemap.xml\n"
+
+    return Response(content=robots_txt, media_type="text/plain")
+
 # Serve static files (frontend build)
 static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
 if os.path.exists(static_dir):
     assets_dir = os.path.join(static_dir, "assets")
-    
+
     # Create a StaticFiles instance for assets
     if os.path.exists(assets_dir):
         assets_static = StaticFiles(directory=assets_dir)
         app.mount("/assets", assets_static, name="assets")
-    
+
     # Serve favicon
     @app.get("/favicon.svg")
     async def favicon():
@@ -73,7 +137,7 @@ if os.path.exists(static_dir):
         if os.path.exists(favicon_path):
             return FileResponse(favicon_path)
         raise HTTPException(status_code=404)
-    
+
     # Serve index.html for root
     @app.get("/")
     async def serve_index():
@@ -82,15 +146,15 @@ if os.path.exists(static_dir):
         if os.path.exists(index_path):
             return FileResponse(index_path)
         raise HTTPException(status_code=404)
-    
+
     # Catch-all for SPA routes - but we need to handle assets differently
     @app.get("/{full_path:path}")
     async def serve_spa(request: Request, full_path: str):
         """Serve the React app for all non-API routes."""
-        # Don't handle API routes or health
-        if full_path.startswith("api/") or full_path == "health":
+        # Don't handle API routes, health, sitemap, or robots.txt
+        if full_path.startswith("api/") or full_path in ["health", "sitemap.xml", "robots.txt"]:
             raise HTTPException(status_code=404)
-        
+
         # For /assets/ requests, try to serve the file directly
         if full_path.startswith("assets/"):
             # Extract the asset path (may include subdirectories)
@@ -104,7 +168,7 @@ if os.path.exists(static_dir):
             if os.path.exists(asset_path) and os.path.isfile(asset_path):
                 return FileResponse(asset_path)
             raise HTTPException(status_code=404)
-        
+
         # For all other routes, serve index.html (SPA routing)
         index_path = os.path.join(static_dir, "index.html")
         if os.path.exists(index_path):

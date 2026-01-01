@@ -73,7 +73,7 @@ export default function InvitingParticipantsHelp() {
               borderRadius: '6px',
               marginTop: '0.5rem'
             }}>
-              https://your-domain.com/join/ABC123
+              https://mosaic-autumn-snow-9557.fly.dev/join/ABC123
             </code>
 
             <h3>Best For</h3>

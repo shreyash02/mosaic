@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /conversations/
+Disallow: /organizations/
+Disallow: /adminportal
+Disallow: /auth/
+
+Sitemap: https://mosaic-autumn-snow-9557.fly.dev/sitemap.xml
