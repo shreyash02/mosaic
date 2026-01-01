@@ -877,6 +877,30 @@ export default function JoinPage() {
       <div className="join-page">
         <div className="join-container">
           <header className="join-header">
+            {conversation.header_image_url && (
+              <div style={{ 
+                marginBottom: '1.5rem',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                maxHeight: '300px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#f7fafc'
+              }}>
+                <img 
+                  src={conversation.header_image_url} 
+                  alt="Conversation header" 
+                  style={{ 
+                    width: '100%', 
+                    height: 'auto',
+                    maxHeight: '300px',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }} 
+                />
+              </div>
+            )}
             <h1>{conversation.title}</h1>
             {conversation.description && <p className="description">{conversation.description}</p>}
           </header>
@@ -1009,6 +1033,30 @@ export default function JoinPage() {
     <div className="join-page">
       <div className="join-container">
         <header className="join-header">
+          {conversation.header_image_url && (
+            <div style={{ 
+              marginBottom: '1.5rem',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              maxHeight: '300px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f7fafc'
+            }}>
+              <img 
+                src={conversation.header_image_url} 
+                alt="Conversation header" 
+                style={{ 
+                  width: '100%', 
+                  height: 'auto',
+                  maxHeight: '300px',
+                  objectFit: 'cover',
+                  display: 'block'
+                }} 
+              />
+            </div>
+          )}
           <h1>{conversation.title}</h1>
           {conversation.description && <p className="description">{conversation.description}</p>}
         </header>

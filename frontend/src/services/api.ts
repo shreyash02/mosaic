@@ -426,6 +426,24 @@ class ApiService {
     );
     return response.data;
   }
+
+  // Upload endpoints
+  async uploadImage(file: File): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Use a separate axios instance for file uploads to avoid Content-Type header issues
+    const response = await axios.post<{ url: string }>(
+      `${this.client.defaults.baseURL}/upload-image`,
+      formData,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          // Don't set Content-Type - browser will set it automatically with boundary
+        },
+      }
+    );
+    return response.data;
+  }
 }
 
 export const api = new ApiService();

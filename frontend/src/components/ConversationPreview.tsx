@@ -7,6 +7,7 @@ interface ConversationPreviewProps {
   // Alternative props for use during creation (before conversation exists)
   title?: string;
   description?: string;
+  headerImageUrl?: string;
   anonymityLevel?: AnonymityLevel;
   questions?: QuestionCreate[] | Question[];
   maxResponseLength?: number;
@@ -17,6 +18,7 @@ export default function ConversationPreview({
   conversation,
   title: titleProp,
   description: descriptionProp,
+  headerImageUrl: headerImageUrlProp,
   anonymityLevel: anonymityLevelProp,
   questions: questionsProp,
   maxResponseLength: maxResponseLengthProp,
@@ -25,6 +27,7 @@ export default function ConversationPreview({
   // Use conversation object if provided, otherwise use individual props
   const title = conversation?.title || titleProp || 'Untitled Conversation';
   const description = conversation?.description || descriptionProp;
+  const headerImageUrl = conversation?.header_image_url || headerImageUrlProp;
   const anonymityLevel = conversation?.anonymity_level || anonymityLevelProp || AnonymityLevel.PLATFORM_TRACKED;
   const maxResponseLength = conversation?.max_response_length || maxResponseLengthProp || 10000;
   
@@ -42,6 +45,30 @@ export default function ConversationPreview({
         <div className="preview-content">
           <div className="join-container">
             <header className="join-header">
+              {headerImageUrl && (
+                <div style={{ 
+                  marginBottom: '1.5rem',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  maxHeight: '300px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f7fafc'
+                }}>
+                  <img 
+                    src={headerImageUrl} 
+                    alt="Conversation header" 
+                    style={{ 
+                      width: '100%', 
+                      height: 'auto',
+                      maxHeight: '300px',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }} 
+                  />
+                </div>
+              )}
               <h1>{title}</h1>
               {description && <p className="description">{description}</p>}
               <p className="privacy-note">

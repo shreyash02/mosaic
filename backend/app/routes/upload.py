@@ -1,0 +1,99 @@
+"""File upload routes."""
+
+import os
+import secrets
+import string
+from pathlib import Path
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.dependencies import get_current_user
+from app.models.user import User
+from app.core.config import settings
+
+router = APIRouter()
+
+# Use volume mount path in production, local path in development
+# Fly.io volumes are mounted at /data
+# Can be overridden with UPLOAD_DIR environment variable for local development
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/data/uploads"))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Allowed image extensions
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def generate_filename(original_filename: str) -> str:
+    """Generate a unique filename."""
+    ext = Path(original_filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    # Generate random string
+    alphabet = string.ascii_letters + string.digits
+    random_str = ''.join(secrets.choice(alphabet) for _ in range(16))
+    return f"{random_str}{ext}"
+
+
+@router.post("/upload-image")
+async def upload_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload an image file.
+    
+    Returns the URL path to access the uploaded image.
+    """
+    # Check file size
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
+        )
+    
+    # Generate filename
+    filename = generate_filename(file.filename or "image.jpg")
+    file_path = UPLOAD_DIR / filename
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(contents)
+    
+    # Return URL path (relative to API base)
+    return {"url": f"/api/uploads/{filename}"}
+
+
+@router.get("/uploads/{filename}")
+async def get_uploaded_file(filename: str):
+    """Serve uploaded files."""
+    file_path = UPLOAD_DIR / filename
+    
+    # Security: prevent directory traversal
+    if not file_path.resolve().is_relative_to(UPLOAD_DIR.resolve()):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    
+    # Determine content type
+    ext = file_path.suffix.lower()
+    content_type_map = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+    }
+    content_type = content_type_map.get(ext, "application/octet-stream")
+    
+    return FileResponse(file_path, media_type=content_type)
+

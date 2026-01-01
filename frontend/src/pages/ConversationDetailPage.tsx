@@ -493,6 +493,30 @@ export default function ConversationDetailPage() {
             )}
           </div>
           {conversation.description && <p className="description">{conversation.description}</p>}
+          {conversation.header_image_url && (
+            <div style={{ 
+              marginTop: '1rem',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              maxHeight: '400px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f7fafc'
+            }}>
+              <img 
+                src={conversation.header_image_url} 
+                alt="Conversation header" 
+                style={{ 
+                  width: '100%', 
+                  height: 'auto',
+                  maxHeight: '400px',
+                  objectFit: 'cover',
+                  display: 'block'
+                }} 
+              />
+            </div>
+          )}
         </div>
         <div className="header-actions">
           <div className="conversation-actions-top">

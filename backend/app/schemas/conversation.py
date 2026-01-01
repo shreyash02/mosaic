@@ -85,6 +85,7 @@ class ConversationBase(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = None
+    header_image_url: Optional[str] = Field(None, max_length=500, description="Optional header image URL displayed when users are responding")
     anonymity_level: AnonymityLevel
     results_access: ResultsAccess
     show_verbatim_responses: bool = False
@@ -130,6 +131,7 @@ class ConversationUpdate(BaseModel):
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
+    header_image_url: Optional[str] = Field(None, max_length=500, description="Optional header image URL displayed when users are responding")
     anonymity_level: Optional[AnonymityLevel] = None
     results_access: Optional[ResultsAccess] = None
     show_verbatim_responses: Optional[bool] = None

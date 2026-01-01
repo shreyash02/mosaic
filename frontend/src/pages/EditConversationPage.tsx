@@ -13,6 +13,8 @@ export default function EditConversationPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [headerImageUrl, setHeaderImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [anonymityLevel, setAnonymityLevel] = useState<AnonymityLevel>(
     AnonymityLevel.PLATFORM_TRACKED
   );
@@ -66,6 +68,7 @@ export default function EditConversationPage() {
       // Populate form with existing data
       setTitle(conv.title);
       setDescription(conv.description || '');
+      setHeaderImageUrl(conv.header_image_url || '');
       setAnonymityLevel(conv.anonymity_level);
       setResultsAccess(conv.results_access);
       setInviteOnly(conv.invite_only || false);
@@ -254,6 +257,7 @@ export default function EditConversationPage() {
       await api.updateConversation(id!, {
         title,
         description,
+        ...(headerImageUrl && { header_image_url: headerImageUrl }),
         anonymity_level: anonymityLevel,
         results_access: resultsAccess,
         show_verbatim_responses: showVerbatimResponses,
@@ -337,6 +341,115 @@ export default function EditConversationPage() {
               placeholder="Provide context for participants..."
               rows={3}
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="headerImage">Header Image (optional)</label>
+            <p className="form-help-text" style={{ marginBottom: '0.5rem' }}>
+              Upload an image that will be displayed at the top when users are responding to this conversation.
+            </p>
+            
+            {headerImageUrl ? (
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{ 
+                  position: 'relative', 
+                  display: 'inline-block',
+                  marginBottom: '0.5rem'
+                }}>
+                  <img 
+                    src={headerImageUrl} 
+                    alt="Header preview" 
+                    style={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '200px', 
+                      borderRadius: '6px',
+                      border: '1px solid #e2e8f0'
+                    }} 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setHeaderImageUrl('')}
+                    className="btn btn-secondary btn-small"
+                    style={{ 
+                      position: 'absolute', 
+                      top: '0.5rem', 
+                      right: '0.5rem',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={headerImageUrl}
+                  onChange={(e) => setHeaderImageUrl(e.target.value)}
+                  placeholder="Or paste an image URL"
+                  style={{ width: '100%', marginTop: '0.5rem' }}
+                />
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  id="headerImage"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                    if (!validTypes.includes(file.type)) {
+                      setError('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+                      return;
+                    }
+
+                    if (file.size > 5 * 1024 * 1024) {
+                      setError('Image file size must be less than 5MB');
+                      return;
+                    }
+
+                    setUploadingImage(true);
+                    setError('');
+
+                    try {
+                      const result = await api.uploadImage(file);
+                      // Get full URL - if result.url is relative, construct full URL
+                      let fullUrl = result.url;
+                      if (!fullUrl.startsWith('http')) {
+                        // If relative URL, construct full URL from current origin
+                        const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+                        const baseUrl = apiBase.replace('/api', '');
+                        fullUrl = `${baseUrl}${result.url}`;
+                      }
+                      setHeaderImageUrl(fullUrl);
+                    } catch (err: any) {
+                      setError(err.response?.data?.detail || 'Failed to upload image');
+                    } finally {
+                      setUploadingImage(false);
+                      e.target.value = '';
+                    }
+                  }}
+                  disabled={uploadingImage}
+                  style={{ marginBottom: '0.5rem' }}
+                />
+                <p className="form-help-text" style={{ marginTop: '0.5rem' }}>
+                  Or paste an image URL:
+                </p>
+                <input
+                  type="url"
+                  value={headerImageUrl}
+                  onChange={(e) => setHeaderImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  style={{ width: '100%', marginTop: '0.5rem' }}
+                />
+              </div>
+            )}
+            {uploadingImage && (
+              <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                Uploading image...
+              </p>
+            )}
           </div>
         </div>
 
@@ -693,6 +806,7 @@ export default function EditConversationPage() {
         <ConversationPreview
           title={title}
           description={description}
+          headerImageUrl={headerImageUrl}
           anonymityLevel={anonymityLevel}
           questions={questions}
           maxResponseLength={10000}

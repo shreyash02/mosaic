@@ -103,6 +103,7 @@ export interface Conversation {
   parent_conversation_id?: string;
   title: string;
   description?: string;
+  header_image_url?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
   show_verbatim_responses: boolean;
@@ -138,6 +139,7 @@ export interface Conversation {
 export interface ConversationCreate {
   title: string;
   description?: string;
+  header_image_url?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
   show_verbatim_responses?: boolean;

@@ -28,3 +28,7 @@ primary_region = 'bom'
   memory = '1gb'
   cpus = 1
   memory_mb = 1024
+
+[mounts]
+  source = "mosaic_uploads"
+  destination = "/data"
