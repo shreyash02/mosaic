@@ -167,6 +167,11 @@ class ApiService {
     return response.data;
   }
 
+  async duplicateConversation(id: string): Promise<Conversation> {
+    const response = await this.client.post<Conversation>(`/conversations/${id}/duplicate`);
+    return response.data;
+  }
+
   async activateConversation(id: string, autoCloseAt?: string, scheduledActivateAt?: string): Promise<Conversation> {
     const response = await this.client.post<Conversation>(`/conversations/${id}/activate`, {
       auto_close_at: autoCloseAt,

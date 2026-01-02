@@ -24,6 +24,10 @@ export default function DashboardPage() {
   const [showStateDropdown, setShowStateDropdown] = useState(false);
   const [showAnonymityDropdown, setShowAnonymityDropdown] = useState(false);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -33,22 +37,43 @@ export default function DashboardPage() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       const clickedDropdown = target.closest('.filter-dropdown-container');
+      const clickedMenu = target.closest('.conversation-card-menu');
 
       if (!clickedDropdown) {
         setShowStateDropdown(false);
         setShowAnonymityDropdown(false);
         setShowDateDropdown(false);
       }
+      if (!clickedMenu) {
+        setOpenMenuId(null);
+      }
     };
 
-    if (showStateDropdown || showAnonymityDropdown || showDateDropdown) {
+    if (showStateDropdown || showAnonymityDropdown || showDateDropdown || openMenuId) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [showStateDropdown, showAnonymityDropdown, showDateDropdown]);
+  }, [showStateDropdown, showAnonymityDropdown, showDateDropdown, openMenuId]);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showDeleteModal && !actionLoading) {
+        setShowDeleteModal(false);
+        setDeleteConversationId(null);
+      }
+    };
+
+    if (showDeleteModal) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showDeleteModal, actionLoading]);
 
   const loadConversations = async () => {
     try {
@@ -145,41 +170,123 @@ export default function DashboardPage() {
     return classes[state];
   };
 
-  const renderConversationCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => (
-    <Link
-      key={conversation.id}
-      to={`/conversations/${conversation.id}`}
-      className={`conversation-card ${isFollowUp ? 'follow-up-card' : ''}`}
-    >
-      <div className="card-header">
-        <h3>
-          {isFollowUp && (
-            conversation.is_recurring_instance ? (
-              <span className="recurring-arrow" title="Recurring instance">↻ </span>
-            ) : (
-              <span className="follow-up-arrow" title="Follow-up">↳ </span>
-            )
+  const handleDuplicate = async (e: React.MouseEvent, conversationId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenMenuId(null);
+    
+    try {
+      await api.duplicateConversation(conversationId);
+      await loadConversations();
+    } catch (err) {
+      console.error('Failed to duplicate conversation:', err);
+      setError('Failed to duplicate conversation');
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenMenuId(null);
+    setDeleteConversationId(conversationId);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConversationId) return;
+    
+    try {
+      setActionLoading(true);
+      await api.deleteConversation(deleteConversationId);
+      setShowDeleteModal(false);
+      setDeleteConversationId(null);
+      await loadConversations();
+    } catch (err) {
+      console.error('Failed to delete conversation:', err);
+      setError('Failed to delete conversation');
+      setShowDeleteModal(false);
+      setDeleteConversationId(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const renderConversationCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => {
+    const isMenuOpen = openMenuId === conversation.id;
+    
+    return (
+      <div
+        key={conversation.id}
+        className={`conversation-card-wrapper ${isFollowUp ? 'follow-up-card' : ''}`}
+      >
+        <Link
+          to={`/conversations/${conversation.id}`}
+          className={`conversation-card ${isFollowUp ? 'follow-up-card' : ''}`}
+        >
+          <div className="card-header">
+            <h3>
+              {isFollowUp && (
+                conversation.is_recurring_instance ? (
+                  <span className="recurring-arrow" title="Recurring instance">↻ </span>
+                ) : (
+                  <span className="follow-up-arrow" title="Follow-up">↳ </span>
+                )
+              )}
+              {conversation.title}
+            </h3>
+            <span className={`status-badge ${getStateClass(conversation.state)}`}>
+              {getStateLabel(conversation.state)}
+            </span>
+          </div>
+          <div className="card-body">
+            <div className="conversation-meta">
+              <span>Access Code: <strong>{conversation.access_code}</strong></span>
+              <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
+            </div>
+            <div className="conversation-meta">
+              <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
+              {conversation.activated_at && (
+                <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
+              )}
+            </div>
+          </div>
+        </Link>
+        <div className="conversation-card-menu">
+          <button
+            className="card-menu-button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpenMenuId(isMenuOpen ? null : conversation.id);
+            }}
+            aria-label="More options"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="3" r="1.5"/>
+              <circle cx="8" cy="8" r="1.5"/>
+              <circle cx="8" cy="13" r="1.5"/>
+            </svg>
+          </button>
+          {isMenuOpen && (
+            <div className="card-menu-dropdown">
+              <button
+                className="card-menu-item"
+                onClick={(e) => handleDuplicate(e, conversation.id)}
+              >
+                Duplicate
+              </button>
+              <button
+                className="card-menu-item card-menu-item-danger"
+                onClick={(e) => handleDeleteClick(e, conversation.id)}
+              >
+                Delete
+              </button>
+            </div>
           )}
-          {conversation.title}
-        </h3>
-        <span className={`status-badge ${getStateClass(conversation.state)}`}>
-          {getStateLabel(conversation.state)}
-        </span>
-      </div>
-      <div className="card-body">
-        <div className="conversation-meta">
-          <span>Access Code: <strong>{conversation.access_code}</strong></span>
-          <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
-        </div>
-        <div className="conversation-meta">
-          <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-          {conversation.activated_at && (
-            <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
-          )}
         </div>
       </div>
-    </Link>
-  );
+    );
+  };
 
   const renderParticipatedConversationCard = (conversation: ConversationListItem) => {
     // For participated conversations, link to analysis if analyzed, otherwise show status
@@ -636,52 +743,7 @@ export default function DashboardPage() {
           <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
           <div className="conversation-grid">
             {activeTab === 'owned' ? (
-              filteredConversations.map((conversation) => (
-                <Link
-                  key={conversation.id}
-                  to={`/conversations/${conversation.id}`}
-                  className="conversation-card"
-                >
-                  <div className="card-header">
-                    <h3>
-                      {conversation.title}
-                      {conversation.is_follow_up && (
-                        conversation.is_recurring_instance ? (
-                          <span className="recurring-badge" title="Recurring instance">
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
-                              <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                              <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                            </svg>
-                            Recurring
-                          </span>
-                        ) : (
-                          <span className="follow-up-badge" title="Follow-up conversation">
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
-                              <path d="M8 2a.5.5 0 0 1 .5.5v10.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V2.5A.5.5 0 0 1 8 2z"/>
-                            </svg>
-                            Follow-up
-                          </span>
-                        )
-                      )}
-                    </h3>
-                    <span className={`status-badge ${getStateClass(conversation.state)}`}>
-                      {getStateLabel(conversation.state)}
-                    </span>
-                  </div>
-                  <div className="card-body">
-                    <div className="conversation-meta">
-                      <span>Access Code: <strong>{conversation.access_code}</strong></span>
-                      <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
-                    </div>
-                    <div className="conversation-meta">
-                      <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-                      {conversation.activated_at && (
-                        <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))
+              filteredConversations.map((conversation) => renderConversationCard(conversation, conversation.is_follow_up || false))
             ) : (
               filteredConversations.map((conversation) => renderParticipatedConversationCard(conversation))
             )}
@@ -763,6 +825,32 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => !actionLoading && setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Conversation</h2>
+            <p>Are you sure you want to delete this conversation? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="btn btn-secondary"
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="btn btn-danger"
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

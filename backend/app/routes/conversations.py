@@ -654,6 +654,107 @@ async def delete_conversation(
     )
 
 
+@router.post("/{conversation_id}/duplicate", response_model=ConversationWithQuestions, status_code=status.HTTP_201_CREATED)
+async def duplicate_conversation(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Duplicate a conversation with all its questions.
+    
+    Creates a new conversation in draft state with "- Copy" appended to the title.
+    Copies all conversation settings and questions, but does NOT copy invitations.
+
+    Args:
+        conversation_id: Conversation ID to duplicate
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Duplicated conversation with questions
+
+    Raises:
+        HTTPException: If conversation not found or user is not the owner
+    """
+    # Get the original conversation with questions
+    original_conversation = db.query(Conversation).options(
+        joinedload(Conversation.questions)
+    ).filter(
+        Conversation.id == conversation_id,
+        Conversation.creator_id == current_user.id,
+        Conversation.state != ConversationState.DELETED
+    ).first()
+
+    if not original_conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Generate unique access code
+    access_code = generate_access_code()
+    while db.query(Conversation).filter(Conversation.access_code == access_code).first():
+        access_code = generate_access_code()
+
+    # Create duplicate conversation with "- Copy" appended to title
+    duplicate_title = f"{original_conversation.title} - Copy"
+    
+    duplicate_conversation = Conversation(
+        creator_id=current_user.id,
+        organization_id=original_conversation.organization_id,
+        # Don't copy parent_conversation_id - this is a standalone duplicate
+        parent_conversation_id=None,
+        title=duplicate_title,
+        participant_title=original_conversation.participant_title,
+        description=original_conversation.description,
+        header_image_url=original_conversation.header_image_url,
+        access_code=access_code,
+        anonymity_level=original_conversation.anonymity_level,
+        results_access=original_conversation.results_access,
+        show_verbatim_responses=original_conversation.show_verbatim_responses,
+        invite_only=original_conversation.invite_only,
+        auto_analyze=original_conversation.auto_analyze,
+        max_response_length=original_conversation.max_response_length,
+        duration_minutes=original_conversation.duration_minutes,
+        # Don't copy scheduled_activate_at - new conversation starts fresh
+        scheduled_activate_at=None,
+        # Don't copy auto_close_at - new conversation starts fresh
+        auto_close_at=None,
+        manual_close_enabled=original_conversation.manual_close_enabled,
+        time_extension_enabled=original_conversation.time_extension_enabled,
+        timezone=original_conversation.timezone or "UTC",
+        state=ConversationState.DRAFT.value,
+        # Don't copy recurring fields - duplicate is standalone
+        series_id=None,
+        is_recurring_instance=False,
+        recurrence_pattern=None,
+        next_instance_date=None,
+        recurrence_end_date=None,
+    )
+
+    db.add(duplicate_conversation)
+    db.flush()  # Get duplicate conversation ID
+
+    # Copy all questions
+    for original_question in original_conversation.questions:
+        duplicate_question = Question(
+            conversation_id=duplicate_conversation.id,
+            question_text=original_question.question_text,
+            question_type=original_question.question_type,
+            question_order=original_question.question_order,
+            options=original_question.options,
+        )
+        db.add(duplicate_question)
+
+    # Note: We intentionally do NOT copy invitations as per requirements
+
+    db.commit()
+    db.refresh(duplicate_conversation)
+
+    return duplicate_conversation
+
+
 @router.post("/{conversation_id}/activate", response_model=ConversationWithQuestions)
 async def activate_conversation(
     conversation_id: UUID,
