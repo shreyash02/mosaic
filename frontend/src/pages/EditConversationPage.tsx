@@ -258,7 +258,7 @@ export default function EditConversationPage() {
       
       await api.updateConversation(id!, {
         title,
-        participant_title: participantTitle.trim() || null,
+        participant_title: participantTitle.trim() || undefined,
         description,
         ...(headerImageUrl && { header_image_url: headerImageUrl }),
         anonymity_level: anonymityLevel,
