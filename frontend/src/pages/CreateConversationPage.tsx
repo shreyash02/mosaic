@@ -346,8 +346,8 @@ export default function CreateConversationPage() {
       }
     }
 
-    // Validate recurring schedule if enabled
-    if (enableRecurring) {
+    // Validate recurring schedule if enabled (only for templates)
+    if (followUpState?.createTemplate && enableRecurring) {
       if (!nextInstanceDate) {
         setError('First instance date is required when recurring schedule is enabled');
         return;
@@ -412,8 +412,8 @@ export default function CreateConversationPage() {
         ...(currentOrgId && {
           organization_id: currentOrgId
         }),
-        // Add recurring fields if enabled (for templates only, not instances)
-        ...(enableRecurring && {
+        // Add recurring fields if enabled (for templates only)
+        ...(followUpState?.createTemplate && enableRecurring && {
           recurrence_pattern: recurrencePattern,
           ...(nextInstanceDate && { next_instance_date: nextInstanceDate + ':00' }),
           ...(recurrenceEndDate && { recurrence_end_date: recurrenceEndDate + ':00' }),
@@ -825,24 +825,23 @@ export default function CreateConversationPage() {
             </p>
           </div>
 
-          {/* Recurring Schedule */}
-          <div className="form-group">
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-              <input
-                type="checkbox"
-                checked={enableRecurring}
-                onChange={(e) => setEnableRecurring(e.target.checked)}
-                style={{ marginRight: '0.5rem' }}
-              />
-              <span style={{ fontWeight: 600 }}>
-                Enable Recurring Schedule
-              </span>
-            </label>
-            <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-              {followUpState?.createTemplate
-                ? 'Optional: Set a schedule to automatically create conversation instances from this template (e.g., weekly team pulse).'
-                : 'Enable this to create a template that automatically generates new conversation instances on a schedule (e.g., weekly team pulse).'}
-            </p>
+          {/* Recurring Schedule - Only for templates */}
+          {followUpState?.createTemplate && (
+            <div className="form-group">
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={enableRecurring}
+                  onChange={(e) => setEnableRecurring(e.target.checked)}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span style={{ fontWeight: 600 }}>
+                  Enable Recurring Schedule
+                </span>
+              </label>
+              <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                Optional: Set a schedule to automatically create conversation instances from this template (e.g., weekly team pulse).
+              </p>
 
             {enableRecurring && (
               <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
@@ -905,7 +904,8 @@ export default function CreateConversationPage() {
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Series Selection */}
           {!followUpState?.isRecurring && (
