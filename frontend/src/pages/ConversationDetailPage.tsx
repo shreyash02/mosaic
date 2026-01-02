@@ -882,9 +882,12 @@ export default function ConversationDetailPage() {
                 <Link to={`/conversations/${conversation.parent_conversation.id}`}>
                   ← {conversation.parent_conversation.title}
                 </Link>
-                <span className={`status-badge status-${conversation.parent_conversation.state}`}>
-                  {conversation.parent_conversation.state}
-                </span>
+                {!conversation.is_recurring_instance && (
+                  // Don't show status for templates - they're not active/closed
+                  <span className={`status-badge status-${conversation.parent_conversation.state}`}>
+                    {conversation.parent_conversation.state}
+                  </span>
+                )}
               </div>
             </div>
           )}
