@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
@@ -516,6 +516,21 @@ async def submit_response(
     if used_participant_code:
         used_participant_code.is_used = True
         used_participant_code.used_at = datetime.utcnow()
+
+    # Mark invitation as accepted when response is submitted (for platform_tracked/revealable)
+    if current_user and conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
+        # Find invitation for this user
+        invitation = db.query(ConversationInvitation).filter(
+            ConversationInvitation.conversation_id == conversation.id,
+            or_(
+                ConversationInvitation.invited_user_id == current_user.id,
+                ConversationInvitation.email == current_user.email.lower()
+            )
+        ).first()
+        
+        if invitation and not invitation.is_accepted:
+            invitation.is_accepted = True
+            invitation.accepted_at = datetime.utcnow()
 
     db.commit()
 

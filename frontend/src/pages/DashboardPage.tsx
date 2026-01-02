@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { ConversationListItem } from '../types';
+import type { ConversationListItem, ConversationInvitationWithConversation } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -14,7 +14,9 @@ export default function DashboardPage() {
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [participatedConversations, setParticipatedConversations] = useState<ConversationListItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'owned' | 'participated'>('owned');
+  const [invitations, setInvitations] = useState<ConversationInvitationWithConversation[]>([]);
+  const [invitationsLoading, setInvitationsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'owned' | 'participated' | 'invitations'>('owned');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [groupRelated, setGroupRelated] = useState(false);
@@ -29,9 +31,43 @@ export default function DashboardPage() {
   const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const loadInvitations = useCallback(async () => {
+    try {
+      setInvitationsLoading(true);
+      console.log('Loading invitations...');
+      const data = await api.getMyInvitations();
+      console.log('Received invitations:', data);
+      // Filter to only pending invitations
+      const pending = data.filter(inv => !inv.is_accepted);
+      console.log('Pending invitations:', pending);
+      setInvitations(pending);
+    } catch (err: any) {
+      console.error('Failed to load invitations:', err);
+      console.error('Error details:', err.response?.data || err.message);
+      setInvitations([]);
+    } finally {
+      setInvitationsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadConversations();
-  }, [currentOrgId]);
+    
+    // Also load invitations count if in personal workspace
+    if (isPersonalWorkspace) {
+      loadInvitations();
+    } else {
+      // Clear invitations when switching away from personal workspace
+      setInvitations([]);
+    }
+  }, [currentOrgId, isPersonalWorkspace, loadInvitations]);
+
+  useEffect(() => {
+    // Reload invitations if tab is clicked and we don't have data yet
+    if (activeTab === 'invitations' && invitations.length === 0 && !invitationsLoading && isPersonalWorkspace) {
+      loadInvitations();
+    }
+  }, [activeTab, loadInvitations, invitations.length, invitationsLoading, isPersonalWorkspace]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -331,6 +367,47 @@ export default function DashboardPage() {
     ) : card;
   };
 
+  const renderInvitationCard = (invitation: ConversationInvitationWithConversation) => {
+    const { conversation } = invitation;
+    const linkTo = conversation.state === ConversationState.ACTIVE || conversation.state === ConversationState.DRAFT
+      ? `/conversations/${conversation.access_code}`
+      : null;
+
+    const card = (
+      <div
+        key={invitation.id}
+        className={`conversation-card ${!linkTo ? 'conversation-card-disabled' : ''}`}
+      >
+        <div className="card-header">
+          <h3>{conversation.title}</h3>
+          <span className={`status-badge ${getStateClass(conversation.state)}`}>
+            {getStateLabel(conversation.state)}
+          </span>
+        </div>
+        <div className="card-body">
+          <div className="conversation-meta">
+            <span>Invited: {formatDateShort(invitation.created_at, conversation.timezone)}</span>
+            {conversation.state === ConversationState.ACTIVE && (
+              <span style={{ color: '#4299e1', fontWeight: 500 }}>Click to participate →</span>
+            )}
+            {conversation.state === ConversationState.DRAFT && (
+              <span style={{ color: '#718096' }}>Not yet active</span>
+            )}
+            {(conversation.state === ConversationState.CLOSED || conversation.state === ConversationState.ANALYZED) && (
+              <span style={{ color: '#718096' }}>Conversation ended</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+
+    return linkTo ? (
+      <Link key={invitation.id} to={linkTo} style={{ textDecoration: 'none' }}>
+        {card}
+      </Link>
+    ) : card;
+  };
+
   // Recursively render a conversation and all its descendants
   const renderConversationWithFollowUps = (conversation: ConversationListItem, childrenMap: Map<string, ConversationListItem[]>, isFollowUp: boolean = false): JSX.Element => {
     const children = childrenMap.get(conversation.id) || [];
@@ -500,10 +577,20 @@ export default function DashboardPage() {
             Participated
             {participatedConversations.length > 0 && <span className="tab-count">{participatedConversations.length}</span>}
           </button>
+          <button
+            className={`tab-button ${activeTab === 'invitations' ? 'active' : ''}`}
+            onClick={() => {
+              console.log('Invitations tab clicked');
+              setActiveTab('invitations');
+            }}
+          >
+            Pending invitations
+            {invitations.length > 0 && <span className="tab-count">{invitations.length}</span>}
+          </button>
         </div>
       )}
 
-      {actualConversations.length > 0 && (
+      {actualConversations.length > 0 && activeTab === 'owned' && (
         <div className="filter-bar">
           <div className="filter-label">Filters:</div>
 
@@ -681,8 +768,24 @@ export default function DashboardPage() {
 
       {error && <div className="error-message">{error}</div>}
 
-      {loading ? (
+      {loading && activeTab !== 'invitations' ? (
         <div className="loading">Loading conversations...</div>
+      ) : activeTab === 'invitations' ? (
+        invitationsLoading ? (
+          <div className="loading">Loading invitations...</div>
+        ) : invitations.length === 0 ? (
+          <div className="empty-state">
+            <h3>No pending invitations</h3>
+            <p>You don't have any pending conversation invitations at the moment.</p>
+          </div>
+        ) : (
+          <div className="conversations-list">
+            <h2>Pending invitations</h2>
+            <div className="conversation-grid">
+              {invitations.map((invitation) => renderInvitationCard(invitation))}
+            </div>
+          </div>
+        )
       ) : actualConversations.length === 0 ? (
         <div className="empty-state">
           {activeTab === 'owned' ? (

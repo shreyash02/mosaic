@@ -18,6 +18,7 @@ import type {
   CodeValidation,
   InviteUsersResponse,
   InvitationListResponse,
+  ConversationInvitationWithConversation,
   AdminLoginRequest,
   AdminToken,
   AdminUserInfo,
@@ -304,6 +305,13 @@ class ApiService {
   async listInvitations(conversationId: string): Promise<InvitationListResponse> {
     const response = await this.client.get<InvitationListResponse>(
       `/conversations/${conversationId}/invitations`
+    );
+    return response.data;
+  }
+
+  async getMyInvitations(): Promise<ConversationInvitationWithConversation[]> {
+    const response = await this.client.get<ConversationInvitationWithConversation[]>(
+      '/conversations/invitations'
     );
     return response.data;
   }

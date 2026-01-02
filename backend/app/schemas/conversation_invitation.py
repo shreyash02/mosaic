@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr
 
 from app.schemas.user import User as UserSchema
+from app.schemas.conversation import ConversationListItem
 
 
 class ConversationInvitationBase(BaseModel):
@@ -65,4 +66,10 @@ class InvitationListResponse(BaseModel):
     accepted_invitations: int
     pending_invitations: int
     invitations: List[ConversationInvitationWithUser]
+
+
+class ConversationInvitationWithConversation(ConversationInvitation):
+    """Invitation schema with conversation details."""
+
+    conversation: ConversationListItem
 

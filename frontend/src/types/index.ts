@@ -361,6 +361,10 @@ export interface InvitationListResponse {
   invitations: ConversationInvitation[];
 }
 
+export interface ConversationInvitationWithConversation extends ConversationInvitation {
+  conversation: ConversationListItem;
+}
+
 // Admin types
 export interface AdminLoginRequest {
   username: string;

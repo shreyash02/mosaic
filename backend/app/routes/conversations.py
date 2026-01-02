@@ -47,6 +47,7 @@ from app.schemas.conversation_invitation import (
     InvitationListResponse,
     ConversationInvitation as ConversationInvitationSchema,
     ConversationInvitationWithUser,
+    ConversationInvitationWithConversation,
 )
 from app.schemas.common import DeleteResponse
 from app.services.email_service import email_service
@@ -405,6 +406,88 @@ async def list_participated_conversations(
     return conversations
 
 
+@router.get("/invitations", response_model=List[ConversationInvitationWithConversation])
+async def get_my_invitations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all invitations for the current user.
+    
+    Returns invitations where:
+    - email matches user's email OR
+    - invited_user_id matches user's id
+    - conversation state is ACTIVE
+    
+    Args:
+        current_user: Current authenticated user
+        db: Database session
+        
+    Returns:
+        List of invitations with conversation details
+    """
+    # First get all invitations for the user
+    invitations = db.query(ConversationInvitation).options(
+        joinedload(ConversationInvitation.conversation)
+    ).filter(
+        or_(
+            ConversationInvitation.email == current_user.email.lower(),
+            ConversationInvitation.invited_user_id == current_user.id
+        ),
+        ConversationInvitation.is_accepted == False
+    ).order_by(ConversationInvitation.created_at.desc()).all()
+    
+    # Filter to only include invitations for active conversations
+    invitations = [inv for inv in invitations if inv.conversation.state == ConversationState.ACTIVE.value]
+    
+    # Convert to schema with conversation details
+    result = []
+    for inv in invitations:
+        # Build conversation dict
+        conv = inv.conversation
+        response_count = db.query(func.count(Response.id)).filter(
+            Response.conversation_id == conv.id
+        ).scalar()
+        
+        conv_dict = {
+            "id": conv.id,
+            "title": conv.title,
+            "state": conv.state,
+            "anonymity_level": conv.anonymity_level,
+            "access_code": conv.access_code,
+            "created_at": conv.created_at,
+            "activated_at": conv.activated_at,
+            "closed_at": conv.closed_at,
+            "response_count": response_count,
+            "timezone": conv.timezone or "UTC",
+            "is_follow_up": conv.parent_conversation_id is not None,
+            "parent_conversation_id": conv.parent_conversation_id,
+            "organization_id": conv.organization_id,
+            "series_id": conv.series_id,
+            "is_recurring_instance": conv.is_recurring_instance or False,
+            "recurrence_pattern": conv.recurrence_pattern,
+        }
+        
+        # Build invitation dict
+        inv_dict = {
+            "id": inv.id,
+            "conversation_id": inv.conversation_id,
+            "email": inv.email,
+            "invited_by_id": inv.invited_by_id,
+            "invited_user_id": inv.invited_user_id,
+            "invitation_token": inv.invitation_token,
+            "is_accepted": inv.is_accepted,
+            "accepted_at": inv.accepted_at,
+            "created_at": inv.created_at,
+            "expires_at": inv.expires_at,
+            "conversation": ConversationListItem(**conv_dict)
+        }
+        
+        result.append(ConversationInvitationWithConversation(**inv_dict))
+    
+    return result
+
+
 @router.get("/by-code/{access_code}", response_model=ConversationWithQuestions)
 async def get_conversation_by_code(
     access_code: str,
@@ -519,23 +602,6 @@ async def get_conversation_by_code(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This conversation is invite-only. You must be invited by the conversation creator to access it. Please contact the organizer if you believe you should have access."
                 )
-
-            # Mark invitation as accepted if not already
-            if not invitation.is_accepted:
-                invitation.is_accepted = True
-                invitation.accepted_at = datetime.utcnow()
-                db.commit()
-        else:
-            # If not invite_only, still track invitation acceptance if user was invited
-            invitation = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id,
-                ConversationInvitation.invited_user_id == current_user.id
-            ).first()
-
-            if invitation and not invitation.is_accepted:
-                invitation.is_accepted = True
-                invitation.accepted_at = datetime.utcnow()
-                db.commit()
 
     return conversation
 
