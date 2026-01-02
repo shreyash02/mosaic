@@ -224,7 +224,7 @@ export default function DashboardPage() {
           className={`conversation-card ${isFollowUp ? 'follow-up-card' : ''}`}
         >
           <div className="card-header">
-            <h3>
+            <h3 title={conversation.title}>
               {isFollowUp && (
                 conversation.is_recurring_instance ? (
                   <span className="recurring-arrow" title="Recurring instance">↻ </span>
@@ -245,8 +245,10 @@ export default function DashboardPage() {
             </div>
             <div className="conversation-meta">
               <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-              {conversation.activated_at && (
+              {conversation.activated_at ? (
                 <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
+              ) : (
+                <span></span>
               )}
             </div>
           </div>
@@ -818,6 +820,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="conversation-meta">
                     <span>Created: {formatDateShort(template.created_at, template.timezone)}</span>
+                    <span></span>
                   </div>
                 </div>
               </Link>
