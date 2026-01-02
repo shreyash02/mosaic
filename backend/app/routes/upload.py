@@ -19,8 +19,34 @@ router = APIRouter()
 # Use volume mount path in production, local path in development
 # Fly.io volumes are mounted at /data
 # Can be overridden with UPLOAD_DIR environment variable for local development
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/data/uploads"))
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+def get_upload_dir() -> Path:
+    """Get the upload directory path, with fallback for local development."""
+    upload_dir_env = os.getenv("UPLOAD_DIR")
+
+    if upload_dir_env:
+        # If explicitly set, resolve it (handles both absolute and relative paths)
+        upload_dir = Path(upload_dir_env)
+        if not upload_dir.is_absolute():
+            # If relative, resolve relative to backend directory
+            backend_dir = Path(__file__).parent.parent.parent
+            upload_dir = (backend_dir / upload_dir).resolve()
+    else:
+        # Default: try /data/uploads first (for Fly.io production)
+        # If that fails, fall back to relative path for local development
+        upload_dir = Path("/data/uploads")
+        try:
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            return upload_dir
+        except (FileNotFoundError, PermissionError, OSError):
+            # Fall back to relative path for local development
+            backend_dir = Path(__file__).parent.parent.parent
+            upload_dir = backend_dir / "uploads"
+
+    # Create the directory (will create parent directories if needed)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    return upload_dir
+
+UPLOAD_DIR = get_upload_dir()
 
 # Allowed image extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -35,7 +61,7 @@ def generate_filename(original_filename: str) -> str:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
-    
+
     # Generate random string
     alphabet = string.ascii_letters + string.digits
     random_str = ''.join(secrets.choice(alphabet) for _ in range(16))
@@ -49,7 +75,7 @@ async def upload_image(
 ):
     """
     Upload an image file.
-    
+
     Returns the URL path to access the uploaded image.
     """
     # Check file size
@@ -59,15 +85,15 @@ async def upload_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
         )
-    
+
     # Generate filename
     filename = generate_filename(file.filename or "image.jpg")
     file_path = UPLOAD_DIR / filename
-    
+
     # Save file
     with open(file_path, "wb") as f:
         f.write(contents)
-    
+
     # Return URL path (relative to API base)
     return {"url": f"/api/uploads/{filename}"}
 
@@ -76,14 +102,14 @@ async def upload_image(
 async def get_uploaded_file(filename: str):
     """Serve uploaded files."""
     file_path = UPLOAD_DIR / filename
-    
+
     # Security: prevent directory traversal
     if not file_path.resolve().is_relative_to(UPLOAD_DIR.resolve()):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-    
+
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-    
+
     # Determine content type
     ext = file_path.suffix.lower()
     content_type_map = {
@@ -94,6 +120,6 @@ async def get_uploaded_file(filename: str):
         ".webp": "image/webp",
     }
     content_type = content_type_map.get(ext, "application/octet-stream")
-    
+
     return FileResponse(file_path, media_type=content_type)
 
