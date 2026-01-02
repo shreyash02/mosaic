@@ -84,6 +84,7 @@ class ConversationBase(BaseModel):
     """Base conversation schema."""
 
     title: str = Field(..., min_length=1, max_length=500)
+    participant_title: Optional[str] = Field(None, max_length=500, description="Optional participant-facing title. If not set, title will be used when participants view the conversation")
     description: Optional[str] = None
     header_image_url: Optional[str] = Field(None, max_length=500, description="Optional header image URL displayed when users are responding")
     anonymity_level: AnonymityLevel
@@ -130,6 +131,7 @@ class ConversationUpdate(BaseModel):
     """Schema for updating a conversation (draft state only)."""
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
+    participant_title: Optional[str] = Field(None, max_length=500, description="Optional participant-facing title. If not set, title will be used when participants view the conversation")
     description: Optional[str] = None
     header_image_url: Optional[str] = Field(None, max_length=500, description="Optional header image URL displayed when users are responding")
     anonymity_level: Optional[AnonymityLevel] = None

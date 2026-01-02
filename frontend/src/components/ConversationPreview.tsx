@@ -6,6 +6,7 @@ interface ConversationPreviewProps {
   conversation?: Conversation;
   // Alternative props for use during creation (before conversation exists)
   title?: string;
+  participantTitle?: string;
   description?: string;
   headerImageUrl?: string;
   anonymityLevel?: AnonymityLevel;
@@ -17,6 +18,7 @@ interface ConversationPreviewProps {
 export default function ConversationPreview({
   conversation,
   title: titleProp,
+  participantTitle: participantTitleProp,
   description: descriptionProp,
   headerImageUrl: headerImageUrlProp,
   anonymityLevel: anonymityLevelProp,
@@ -25,7 +27,8 @@ export default function ConversationPreview({
   onClose,
 }: ConversationPreviewProps) {
   // Use conversation object if provided, otherwise use individual props
-  const title = conversation?.title || titleProp || 'Untitled Conversation';
+  // For preview, show participant-facing title if available, otherwise use regular title
+  const title = conversation?.participant_title || participantTitleProp || conversation?.title || titleProp || 'Untitled Conversation';
   const description = conversation?.description || descriptionProp;
   const headerImageUrl = conversation?.header_image_url || headerImageUrlProp;
   const anonymityLevel = conversation?.anonymity_level || anonymityLevelProp || AnonymityLevel.PLATFORM_TRACKED;

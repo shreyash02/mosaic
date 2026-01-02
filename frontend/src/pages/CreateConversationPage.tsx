@@ -26,6 +26,7 @@ export default function CreateConversationPage() {
   const { currentOrgId, currentWorkspaceName } = useOrganization();
 
   const [title, setTitle] = useState('');
+  const [participantTitle, setParticipantTitle] = useState('');
   const [description, setDescription] = useState('');
   const [headerImageUrl, setHeaderImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -82,6 +83,7 @@ export default function CreateConversationPage() {
 
         if (followUpState.copySettings) {
           setDescription(parent.description || '');
+          setParticipantTitle(parent.participant_title || '');
           setHeaderImageUrl(parent.header_image_url || '');
           setAnonymityLevel(parent.anonymity_level);
           setResultsAccess(parent.results_access);
@@ -321,6 +323,7 @@ export default function CreateConversationPage() {
 
       const conversation = await api.createConversation({
         title,
+        ...(participantTitle.trim() && { participant_title: participantTitle.trim() }),
         description,
         ...(headerImageUrl && { header_image_url: headerImageUrl }),
         anonymity_level: anonymityLevel,
@@ -466,6 +469,23 @@ export default function CreateConversationPage() {
               required
               placeholder="e.g., Team retrospective: what's working & what's not"
             />
+            <small className="form-help-text">
+              This is the title you'll see in your dashboard and conversation list.
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="participantTitle">Participant-Facing Title (optional)</label>
+            <input
+              id="participantTitle"
+              type="text"
+              value={participantTitle}
+              onChange={(e) => setParticipantTitle(e.target.value)}
+              placeholder="e.g., Student feedback or Feedback for [Teacher Name]"
+            />
+            <small className="form-help-text">
+              Optional title shown to participants when they respond. If not set, the conversation title above will be used.
+            </small>
           </div>
 
           <div className="form-group">
@@ -974,6 +994,7 @@ export default function CreateConversationPage() {
       {showPreview && (
         <ConversationPreview
           title={title}
+          participantTitle={participantTitle}
           description={description}
           headerImageUrl={headerImageUrl}
           anonymityLevel={anonymityLevel}

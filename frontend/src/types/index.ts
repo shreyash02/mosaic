@@ -102,6 +102,7 @@ export interface Conversation {
   organization_id?: string;
   parent_conversation_id?: string;
   title: string;
+  participant_title?: string;
   description?: string;
   header_image_url?: string;
   anonymity_level: AnonymityLevel;
@@ -138,6 +139,7 @@ export interface Conversation {
 
 export interface ConversationCreate {
   title: string;
+  participant_title?: string;
   description?: string;
   header_image_url?: string;
   anonymity_level: AnonymityLevel;

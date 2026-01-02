@@ -901,7 +901,7 @@ export default function JoinPage() {
                 />
               </div>
             )}
-            <h1>{conversation.title}</h1>
+            <h1>{conversation.participant_title || conversation.title}</h1>
             {conversation.description && <p className="description">{conversation.description}</p>}
           </header>
           <div className="success-state">
@@ -1057,7 +1057,7 @@ export default function JoinPage() {
               />
             </div>
           )}
-          <h1>{conversation.title}</h1>
+          <h1>{conversation.participant_title || conversation.title}</h1>
           {conversation.description && <p className="description">{conversation.description}</p>}
         </header>
 

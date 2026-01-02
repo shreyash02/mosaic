@@ -160,7 +160,9 @@ async def create_conversation(
         organization_id=conversation_data.organization_id,
         parent_conversation_id=conversation_data.parent_conversation_id,
         title=conversation_data.title,
+        participant_title=conversation_data.participant_title,
         description=conversation_data.description,
+        header_image_url=conversation_data.header_image_url,
         access_code=access_code,
         anonymity_level=conversation_data.anonymity_level.value,
         results_access=conversation_data.results_access.value,
@@ -1186,6 +1188,8 @@ async def create_follow_up_conversation(
 
     # Inherit settings if requested
     if request.copy_settings:
+        follow_up.participant_title = parent_conversation.participant_title
+        follow_up.header_image_url = parent_conversation.header_image_url
         follow_up.anonymity_level = parent_conversation.anonymity_level
         follow_up.results_access = parent_conversation.results_access
         follow_up.max_response_length = parent_conversation.max_response_length

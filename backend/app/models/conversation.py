@@ -37,6 +37,8 @@ class Conversation(Base):
 
     # Basic info
     title = Column(String(500), nullable=False)
+    participant_title = Column(String(500), nullable=True)
+    # Optional participant-facing title. If not set, title will be used when participants view the conversation
     description = Column(Text, nullable=True)
     header_image_url = Column(String(500), nullable=True)
     # Optional header image URL displayed when users are responding
