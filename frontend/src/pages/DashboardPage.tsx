@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [participatedConversations, setParticipatedConversations] = useState<ConversationListItem[]>([]);
   const [invitations, setInvitations] = useState<ConversationInvitationWithConversation[]>([]);
   const [invitationsLoading, setInvitationsLoading] = useState(false);
+  const [invitationsLoaded, setInvitationsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'owned' | 'participated' | 'invitations'>('owned');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,10 +42,12 @@ export default function DashboardPage() {
       const pending = data.filter(inv => !inv.is_accepted);
       console.log('Pending invitations:', pending);
       setInvitations(pending);
+      setInvitationsLoaded(true);
     } catch (err: any) {
       console.error('Failed to load invitations:', err);
       console.error('Error details:', err.response?.data || err.message);
       setInvitations([]);
+      setInvitationsLoaded(true);
     } finally {
       setInvitationsLoading(false);
     }
@@ -59,15 +62,16 @@ export default function DashboardPage() {
     } else {
       // Clear invitations when switching away from personal workspace
       setInvitations([]);
+      setInvitationsLoaded(false);
     }
   }, [currentOrgId, isPersonalWorkspace, loadInvitations]);
 
   useEffect(() => {
-    // Reload invitations if tab is clicked and we don't have data yet
-    if (activeTab === 'invitations' && invitations.length === 0 && !invitationsLoading && isPersonalWorkspace) {
+    // Reload invitations if tab is clicked and we haven't loaded yet
+    if (activeTab === 'invitations' && !invitationsLoaded && !invitationsLoading && isPersonalWorkspace) {
       loadInvitations();
     }
-  }, [activeTab, loadInvitations, invitations.length, invitationsLoading, isPersonalWorkspace]);
+  }, [activeTab, loadInvitations, invitationsLoaded, invitationsLoading, isPersonalWorkspace]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
