@@ -5,6 +5,22 @@
   box-sizing: border-box;
 }
 
+/* Prevent horizontal overflow for media elements */
+img,
+video,
+iframe,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure tables don't overflow */
+table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: auto;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -14,6 +30,9 @@ body {
   background-color: #f5f7fa;
   color: #2d3748;
   font-size: 0.9rem;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 h1 {
@@ -30,6 +49,9 @@ h3 {
 
 .App {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Loading & Error States */
@@ -581,6 +603,9 @@ h3 {
   margin: 0 auto;
   padding: 2rem;
   padding-top: calc(2rem + 80px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .dashboard-header {
@@ -663,6 +688,9 @@ h3 {
   border: 1px solid #e2e8f0;
   margin-bottom: 2rem;
   flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .filter-bar .btn {
@@ -1235,6 +1263,9 @@ h3 {
   margin: 0 auto;
   padding: 2rem;
   padding-top: calc(2rem + 80px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .conversation-detail-page {
@@ -1242,6 +1273,9 @@ h3 {
   margin: 0 auto;
   padding: 2rem;
   padding-top: calc(2rem + 80px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .page-header {
@@ -1303,6 +1337,10 @@ h3 {
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .form-section {
@@ -2181,6 +2219,12 @@ h3 {
   .filter-dropdown-container {
     width: 100%;
     min-width: 0;
+    max-width: 100%;
+  }
+
+  .filter-dropdown-toggle {
+    width: 100%;
+    max-width: 100%;
   }
 
   .filter-label {
@@ -2245,6 +2289,130 @@ h3 {
 
   .legal-content h2 {
     font-size: 1.2rem;
+  }
+
+  /* Create Conversation Page Mobile Styles */
+  .create-conversation-page {
+    max-width: 100%;
+    padding: 1rem;
+    padding-top: calc(1rem + 80px);
+  }
+
+  .conversation-form {
+    padding: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0;
+  }
+
+  .page-header .btn {
+    width: 100%;
+  }
+
+  .form-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .form-section h2 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .section-header .btn {
+    width: 100%;
+  }
+
+  /* Duration inputs - stack vertically on mobile */
+  .duration-inputs {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .duration-input-group {
+    width: 100%;
+  }
+
+  /* Form actions - stack buttons */
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  /* Question items */
+  .question-item {
+    padding: 0.75rem;
+  }
+
+  .question-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Poll options */
+  .poll-option-item {
+    flex-wrap: wrap;
+  }
+
+  .poll-option-item input {
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* Recurring schedule config */
+  .recurring-schedule-config {
+    padding-left: 1rem;
+  }
+
+  /* Info banner */
+  .info-banner {
+    padding: 0.75rem !important;
+    font-size: 0.85rem;
+  }
+
+  /* Form inputs and selects */
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Checkbox and radio groups */
+  .checkbox-group label,
+  .radio-group label {
+    font-size: 0.9rem;
+  }
+
+  /* Code generation form */
+  .code-generation-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .code-count-input {
+    width: 100%;
+  }
+
+  /* Series selection */
+  .form-group > div[style*="padding-left"] {
+    padding-left: 0.75rem !important;
+  }
+
+  /* Duration label adjustments */
+  .duration-label {
+    font-size: 0.8rem;
   }
 }
 
@@ -2348,7 +2516,7 @@ h3 {
 
 @media (max-width: 768px) {
   .preview-overlay {
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .preview-modal {
@@ -2356,11 +2524,18 @@ h3 {
   }
 
   .preview-header {
-    padding: 1rem 1.5rem;
+    padding: 1rem;
   }
 
   .preview-content {
+    padding: 1rem;
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    width: 95%;
     padding: 1.5rem;
+    max-height: 85vh;
   }
 }
 
