@@ -29,8 +29,8 @@ export default function TemplateDetailPage() {
       const data = await api.getConversation(id!);
 
       // Verify this is actually a template
-      if (data.series_id !== null || !data.recurrence_pattern) {
-        setError('This is not a recurring template');
+      if (!data.is_template) {
+        setError('This is not a template');
         setLoading(false);
         return;
       }
@@ -47,10 +47,13 @@ export default function TemplateDetailPage() {
   const loadInstances = async () => {
     try {
       // Get all conversations and filter for instances of this template
+      // Instances belong to the template's series (template_series_id)
       const allConversations = await api.getConversations();
-      const templateInstances = allConversations.filter(
-        (conv: ConversationListItem) => conv.series_id === id
-      );
+      const templateInstances = template?.template_series_id
+        ? allConversations.filter(
+            (conv: ConversationListItem) => conv.series_id === template.template_series_id
+          )
+        : [];
       setInstances(templateInstances);
     } catch (err: any) {
       console.error('Failed to load instances:', err);
@@ -66,7 +69,7 @@ export default function TemplateDetailPage() {
         isFollowUp: true,
         isRecurring: true,
         parentConversationId: id,
-        seriesId: id,  // Pass template ID as series_id
+        templateSeriesId: template.template_series_id,  // Pass template's series_id
         copySettings: true,
         copyInvitations: true,
         copyQuestions: true,

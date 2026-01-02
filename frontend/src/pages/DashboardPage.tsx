@@ -467,11 +467,11 @@ export default function DashboardPage() {
 
   // Separate templates from actual conversations (only in owned tab)
   const templates = activeTab === 'owned' ? conversations.filter(c =>
-    c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null
+    c.is_template === true
   ) : [];
 
   const actualConversations = currentConversations.filter(c =>
-    !(c.series_id === null && c.recurrence_pattern !== undefined && c.recurrence_pattern !== null)
+    !(c.is_template === true)
   );
 
   const filteredConversations = actualConversations.filter(c => {
@@ -860,11 +860,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recurring Templates Section */}
+      {/* Templates Section */}
       <div className="conversations-list" style={{ marginTop: '3rem' }}>
         <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>Recurring Templates</h2>
+            <h2 style={{ margin: 0 }}>Templates</h2>
             <span style={{
               marginLeft: '1rem',
               padding: '0.25rem 0.75rem',
@@ -885,7 +885,7 @@ export default function DashboardPage() {
           </button>
         </div>
         <p style={{ color: '#718096', marginBottom: '1.5rem' }}>
-          Templates are used to automatically create recurring conversation instances. They cannot receive responses directly.
+          Templates are reusable conversation configurations. They can be used to create independent conversations or recurring series instances. Templates cannot receive responses directly.
         </p>
 
         {templates.length > 0 && (
@@ -916,14 +916,20 @@ export default function DashboardPage() {
                       TEMPLATE
                     </span>
                   </h3>
-                  <span className={`status-badge ${getStateClass(template.state)}`}>
+                  <span className={`status-badge ${template.state === ConversationState.DRAFT ? 'status-draft' : 'status-template-published'}`}>
                     {template.state === ConversationState.DRAFT ? 'Unpublished' : 'Published'}
                   </span>
                 </div>
                 <div className="card-body">
                   <div className="conversation-meta">
-                    <span>Pattern: <strong>{template.recurrence_pattern}</strong></span>
-                    <span>Conversations: <strong>{conversations.filter(c => c.series_id === template.id).length}</strong></span>
+                    {template.recurrence_pattern && (
+                      <span>Pattern: <strong>{template.recurrence_pattern}</strong></span>
+                    )}
+                    {template.template_series_id ? (
+                      <span>Conversations: <strong>{conversations.filter(c => c.series_id === template.template_series_id).length}</strong></span>
+                    ) : (
+                      <span>No series</span>
+                    )}
                   </div>
                   <div className="conversation-meta">
                     <span>Created: {formatDateShort(template.created_at, template.timezone)}</span>

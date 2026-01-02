@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation, type Series } from '../types';
 import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -10,7 +10,7 @@ interface LocationState {
   isFollowUp?: boolean;
   isRecurring?: boolean;
   parentConversationId?: string;
-  seriesId?: string;  // Template ID when creating an instance
+  templateSeriesId?: string;  // Template's series_id when creating an instance
   copySettings?: boolean;
   copyInvitations?: boolean;
   copyQuestions?: boolean;
@@ -53,13 +53,15 @@ export default function CreateConversationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
+  const [addToSeries, setAddToSeries] = useState(false);
+  const [showCreateSeriesModal, setShowCreateSeriesModal] = useState(false);
+  const [newSeriesName, setNewSeriesName] = useState('');
+  const [newSeriesDescription, setNewSeriesDescription] = useState('');
+  const [creatingSeries, setCreatingSeries] = useState(false);
 
-  // Auto-enable recurring if creating a template
-  useEffect(() => {
-    if (followUpState?.createTemplate) {
-      setEnableRecurring(true);
-    }
-  }, [followUpState?.createTemplate]);
+  // Don't auto-enable recurring - templates can exist without recurrence
 
   // Prefill form if this is a follow-up conversation
   useEffect(() => {
@@ -119,6 +121,59 @@ export default function CreateConversationPage() {
 
     loadParentData();
   }, [followUpState]);
+
+  // Load series list for series selection
+  useEffect(() => {
+    const loadSeries = async () => {
+      try {
+        const series = await api.listSeries(currentOrgId || undefined);
+        setSeriesList(series);
+        // If creating from template with template_series_id, pre-select that series
+        if (followUpState?.templateSeriesId) {
+          setSelectedSeriesId(followUpState.templateSeriesId);
+          setAddToSeries(true);
+        }
+      } catch (err) {
+        console.error('Failed to load series:', err);
+      }
+    };
+    loadSeries();
+  }, [currentOrgId, followUpState?.templateSeriesId]);
+
+  // Handler to create a new series
+  const handleCreateSeries = async () => {
+    if (!newSeriesName.trim()) {
+      setError('Series name is required');
+      return;
+    }
+
+    setCreatingSeries(true);
+    setError('');
+    try {
+      const newSeries = await api.createSeries({
+        name: newSeriesName.trim(),
+        description: newSeriesDescription.trim() || undefined,
+        organization_id: currentOrgId || undefined,
+      });
+
+      // Refresh series list
+      const updatedSeries = await api.listSeries(currentOrgId || undefined);
+      setSeriesList(updatedSeries);
+
+      // Select the newly created series
+      setSelectedSeriesId(newSeries.id);
+      setAddToSeries(true);
+
+      // Close modal and reset form
+      setShowCreateSeriesModal(false);
+      setNewSeriesName('');
+      setNewSeriesDescription('');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create series');
+    } finally {
+      setCreatingSeries(false);
+    }
+  };
 
   const addQuestion = () => {
     setQuestions([
@@ -291,10 +346,10 @@ export default function CreateConversationPage() {
       }
     }
 
-    // Validate recurring schedule for templates
-    if (followUpState?.createTemplate || enableRecurring) {
+    // Validate recurring schedule if enabled
+    if (enableRecurring) {
       if (!nextInstanceDate) {
-        setError('First instance date is required for recurring templates');
+        setError('First instance date is required when recurring schedule is enabled');
         return;
       }
       const firstInstanceDate = new Date(nextInstanceDate);
@@ -342,9 +397,16 @@ export default function CreateConversationPage() {
         ...(followUpState?.isFollowUp && followUpState.parentConversationId && {
           parent_conversation_id: followUpState.parentConversationId
         }),
-        // Add series_id if creating an instance from a template
-        ...(followUpState?.seriesId && {
-          series_id: followUpState.seriesId
+        // Template fields
+        is_template: followUpState?.createTemplate || false,
+        template_series_id: followUpState?.createTemplate && addToSeries && selectedSeriesId ? selectedSeriesId : undefined,
+        // Series relationship - DON'T set series_id for templates (templates don't belong to series)
+        ...(addToSeries && selectedSeriesId && !followUpState?.createTemplate && {
+          series_id: selectedSeriesId
+        }),
+        // If creating from template with template_series_id, use that
+        ...(followUpState?.templateSeriesId && followUpState.isRecurring && {
+          series_id: followUpState.templateSeriesId
         }),
         // Add organization_id from current workspace context
         ...(currentOrgId && {
@@ -408,7 +470,7 @@ export default function CreateConversationPage() {
       <div className="page-header">
         <h1>
           {followUpState?.createTemplate
-            ? 'Create Recurring Template'
+            ? 'Create Template'
             : followUpState?.isFollowUp
               ? 'Create Follow-up Conversation'
               : 'Create New Conversation'}
@@ -430,10 +492,10 @@ export default function CreateConversationPage() {
             marginBottom: '1.5rem',
             color: '#2C5282'
           }}>
-            <strong>Creating a Recurring Template</strong>
+            <strong>Creating a Template</strong>
             <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
-              This template will be used to automatically create conversation instances based on your schedule.
-              The template itself won't accept responses - only the instances created from it will.
+              Templates are reusable conversation configurations. You can use them to create independent conversations or set up recurring series.
+              The template itself won't accept responses - only conversations created from it will.
             </p>
           </div>
         )}
@@ -771,15 +833,14 @@ export default function CreateConversationPage() {
                 checked={enableRecurring}
                 onChange={(e) => setEnableRecurring(e.target.checked)}
                 style={{ marginRight: '0.5rem' }}
-                disabled={followUpState?.createTemplate}
               />
               <span style={{ fontWeight: 600 }}>
-                {followUpState?.createTemplate ? 'Recurring Schedule (Required for Templates)' : 'Enable Recurring Schedule'}
+                Enable Recurring Schedule
               </span>
             </label>
             <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
               {followUpState?.createTemplate
-                ? 'Set the schedule for automatically creating conversation instances from this template.'
+                ? 'Optional: Set a schedule to automatically create conversation instances from this template (e.g., weekly team pulse).'
                 : 'Enable this to create a template that automatically generates new conversation instances on a schedule (e.g., weekly team pulse).'}
             </p>
 
@@ -838,13 +899,100 @@ export default function CreateConversationPage() {
                   marginTop: '1rem'
                 }}>
                   <p style={{ margin: 0, fontSize: '0.9rem', color: '#2C5282' }}>
-                    <strong>Note:</strong> This conversation will serve as a template. New instances will be created automatically
+                    <strong>Note:</strong> When recurring schedule is enabled, new instances will be created automatically
                     with the same questions, settings, and invitations based on your schedule.
                   </p>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Series Selection */}
+          {!followUpState?.isRecurring && (
+            <div className="form-group">
+              {followUpState?.createTemplate ? (
+                // For templates: "Set Series for Instances"
+                <>
+                  <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={addToSeries}
+                      onChange={(e) => {
+                        setAddToSeries(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedSeriesId('');
+                        }
+                      }}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    <span style={{ fontWeight: 600 }}>Set Series for Instances</span>
+                  </label>
+                  <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                    Instances created from this template will automatically join the selected series.
+                  </p>
+                </>
+              ) : (
+                // For regular conversations: "Add to Series"
+                <>
+                  <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={addToSeries}
+                      onChange={(e) => {
+                        setAddToSeries(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedSeriesId('');
+                        }
+                      }}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    <span style={{ fontWeight: 600 }}>Add to Series</span>
+                  </label>
+                  <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                    Group this conversation with related conversations in a series.
+                  </p>
+                </>
+              )}
+
+              {addToSeries && (
+                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label htmlFor="seriesSelect">Select Series</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateSeriesModal(true)}
+                        className="btn btn-secondary btn-small"
+                        style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                      >
+                        + Create New
+                      </button>
+                    </div>
+                    <select
+                      id="seriesSelect"
+                      value={selectedSeriesId}
+                      onChange={(e) => setSelectedSeriesId(e.target.value)}
+                      required={addToSeries}
+                    >
+                      <option value="">-- Select a series --</option>
+                      {seriesList.map((series) => (
+                        <option key={series.id} value={series.id}>
+                          {series.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="form-help-text">
+                      {seriesList.length === 0
+                        ? 'No series available. Click "Create New" to create a series or create this conversation independently.'
+                        : followUpState?.createTemplate
+                          ? 'Instances created from this template will join this series.'
+                          : 'Select an existing series to add this conversation to.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="form-section">
@@ -1002,6 +1150,82 @@ export default function CreateConversationPage() {
           maxResponseLength={10000}
           onClose={() => setShowPreview(false)}
         />
+      )}
+
+      {/* Create Series Modal */}
+      {showCreateSeriesModal && (
+        <div className="modal-overlay" onClick={() => {
+          if (!creatingSeries) {
+            setShowCreateSeriesModal(false);
+            setNewSeriesName('');
+            setNewSeriesDescription('');
+            setError('');
+          }
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <h2>Create New Series</h2>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+              Create a new series to group related conversations together.
+            </p>
+
+            <div className="form-group">
+              <label htmlFor="newSeriesName">Series Name *</label>
+              <input
+                id="newSeriesName"
+                type="text"
+                value={newSeriesName}
+                onChange={(e) => setNewSeriesName(e.target.value)}
+                placeholder="e.g., Q1 2025 Retros"
+                required
+                disabled={creatingSeries}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newSeriesName.trim() && !creatingSeries) {
+                    e.preventDefault();
+                    handleCreateSeries();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="newSeriesDescription">Description (optional)</label>
+              <textarea
+                id="newSeriesDescription"
+                value={newSeriesDescription}
+                onChange={(e) => setNewSeriesDescription(e.target.value)}
+                placeholder="Describe what this series is for..."
+                rows={3}
+                disabled={creatingSeries}
+              />
+            </div>
+
+            {error && <div className="error-message" style={{ marginTop: '1rem' }}>{error}</div>}
+
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button
+                onClick={() => {
+                  if (!creatingSeries) {
+                    setShowCreateSeriesModal(false);
+                    setNewSeriesName('');
+                    setNewSeriesDescription('');
+                    setError('');
+                  }
+                }}
+                className="btn btn-secondary"
+                disabled={creatingSeries}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateSeries}
+                className="btn btn-primary"
+                disabled={creatingSeries || !newSeriesName.trim()}
+              >
+                {creatingSeries ? 'Creating...' : 'Create Series'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

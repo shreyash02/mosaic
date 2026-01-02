@@ -997,6 +997,11 @@ h3 {
   color: #22543d;
 }
 
+.status-template-published {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
 .status-closed {
   background-color: #fed7d7;
   color: #742a2a;

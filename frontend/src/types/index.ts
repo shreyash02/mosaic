@@ -129,8 +129,12 @@ export interface Conversation {
   parent_conversation?: ConversationSummary;
   follow_up_conversations?: ConversationSummary[];
   is_follow_up?: boolean;
-  // Recurring conversation fields
+  // Template fields
+  is_template?: boolean;
+  template_series_id?: string;
+  // Series relationship
   series_id?: string;
+  // Recurring conversation fields
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
   next_instance_date?: string;
@@ -157,7 +161,11 @@ export interface ConversationCreate {
   timezone?: string;
   organization_id?: string;
   parent_conversation_id?: string;
-  series_id?: string;  // Set when creating an instance from a template
+  // Template fields
+  is_template?: boolean;
+  template_series_id?: string;
+  // Series relationship
+  series_id?: string;
   recurrence_pattern?: RecurrencePattern;
   next_instance_date?: string;
   recurrence_end_date?: string;
@@ -177,6 +185,8 @@ export interface ConversationListItem {
   organization_id?: string;
   is_follow_up?: boolean;
   parent_conversation_id?: string;
+  is_template?: boolean;
+  template_series_id?: string;
   series_id?: string;
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
@@ -186,6 +196,7 @@ export interface CreateFollowUpRequest {
   copy_invitations: boolean;
   copy_settings: boolean;
   copy_questions: boolean;
+  add_to_series?: boolean;  // If True, add follow-up to parent's series (or create new series)
 }
 
 export interface ConversationLineage {
@@ -486,4 +497,30 @@ export interface OrganizationInvitationListResponse {
   accepted_invitations: number;
   pending_invitations: number;
   invitations: OrganizationInvitation[];
+}
+
+// Series types
+export interface Series {
+  id: string;
+  name: string;
+  description?: string;
+  creator_id: string;
+  organization_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SeriesWithConversations extends Series {
+  conversations: ConversationListItem[];
+}
+
+export interface SeriesCreate {
+  name: string;
+  description?: string;
+  organization_id?: string;
+}
+
+export interface SeriesUpdate {
+  name?: string;
+  description?: string;
 }

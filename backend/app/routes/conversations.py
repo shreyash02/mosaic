@@ -207,6 +207,60 @@ async def create_conversation(
                 detail="You must be a member of this organization to create conversations in it"
             )
 
+    # If series_id is provided, verify series exists and user has access
+    if conversation_data.series_id:
+        from app.models.series import Series
+        from app.services.organization_service import check_organization_membership
+        series = db.query(Series).filter(Series.id == conversation_data.series_id).first()
+        if not series:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Series not found"
+            )
+        # Check access: creator or org member
+        if series.creator_id != current_user.id:
+            if series.organization_id:
+                membership = check_organization_membership(
+                    db, series.organization_id, current_user.id
+                )
+                if not membership:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You don't have access to this series"
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You don't have access to this series"
+                )
+
+    # If template_series_id is provided (for templates), verify series exists and user has access
+    if conversation_data.template_series_id:
+        from app.models.series import Series
+        from app.services.organization_service import check_organization_membership
+        series = db.query(Series).filter(Series.id == conversation_data.template_series_id).first()
+        if not series:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template series not found"
+            )
+        # Check access: creator or org member
+        if series.creator_id != current_user.id:
+            if series.organization_id:
+                membership = check_organization_membership(
+                    db, series.organization_id, current_user.id
+                )
+                if not membership:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You don't have access to this series"
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You don't have access to this series"
+                )
+
     # Create conversation
     conversation = Conversation(
         creator_id=current_user.id,
@@ -229,9 +283,13 @@ async def create_conversation(
         time_extension_enabled=conversation_data.time_extension_enabled,
         timezone=conversation_timezone,
         state=ConversationState.DRAFT.value,
+        # Template fields
+        is_template=conversation_data.is_template or False,
+        template_series_id=conversation_data.template_series_id,
+        # Series relationship
+        series_id=conversation_data.series_id,
         # Recurring conversation fields
-        series_id=conversation_data.series_id,  # Set when creating an instance from a template
-        is_recurring_instance=conversation_data.series_id is not None,  # Auto-set based on series_id
+        is_recurring_instance=False,  # Will be set by scheduler for auto-created instances
         recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
@@ -323,8 +381,12 @@ async def list_conversations(
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
             "organization_id": conv.organization_id,
-            # Recurring conversation fields
+            # Template fields
+            "is_template": conv.is_template or False,
+            "template_series_id": conv.template_series_id,
+            # Series relationship
             "series_id": conv.series_id,
+            # Recurring conversation fields
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
         }
@@ -396,8 +458,12 @@ async def list_participated_conversations(
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
             "organization_id": conv.organization_id,
-            # Recurring conversation fields
+            # Template fields
+            "is_template": conv.is_template or False,
+            "template_series_id": conv.template_series_id,
+            # Series relationship
             "series_id": conv.series_id,
+            # Recurring conversation fields
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
         }
@@ -463,7 +529,12 @@ async def get_my_invitations(
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
             "organization_id": conv.organization_id,
+            # Template fields
+            "is_template": conv.is_template or False,
+            "template_series_id": conv.template_series_id,
+            # Series relationship
             "series_id": conv.series_id,
+            # Recurring conversation fields
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
         }
@@ -1386,11 +1457,34 @@ async def create_follow_up_conversation(
     while db.query(Conversation).filter(Conversation.access_code == access_code).first():
         access_code = generate_access_code()
 
+    # Handle series assignment if requested
+    series_id_to_assign = None
+    if request.add_to_series:
+        # Check if parent already has a series
+        if parent_conversation.series_id:
+            # Add follow-up to parent's existing series
+            series_id_to_assign = parent_conversation.series_id
+        else:
+            # Create new series with parent's title
+            from app.models.series import Series
+            series = Series(
+                name=parent_conversation.title,
+                description=f"Series for {parent_conversation.title} and its follow-ups",
+                creator_id=current_user.id,
+                organization_id=parent_conversation.organization_id,
+            )
+            db.add(series)
+            db.flush()  # Get series ID
+            # Add both parent and follow-up to series
+            parent_conversation.series_id = series.id
+            series_id_to_assign = series.id
+
     # Create follow-up conversation
     follow_up = Conversation(
         creator_id=current_user.id,
         organization_id=parent_conversation.organization_id,
         parent_conversation_id=parent_conversation.id,
+        series_id=series_id_to_assign,
         title=f"{parent_conversation.title} (Follow-up)",
         description=parent_conversation.description,
         access_code=access_code,

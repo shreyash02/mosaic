@@ -203,9 +203,9 @@ async def create_recurring_instances():
         now = datetime.utcnow()
 
         # Find templates that need new instances
-        # Templates are conversations with series_id = NULL and recurrence_pattern set
+        # Templates are conversations with is_template = True and recurrence_pattern set
         templates = db.query(Conversation).filter(
-            Conversation.series_id.is_(None),
+            Conversation.is_template == True,
             Conversation.recurrence_pattern.isnot(None),
             Conversation.next_instance_date <= now,
             Conversation.next_instance_date.isnot(None),
@@ -221,9 +221,16 @@ async def create_recurring_instances():
                 logger.info(f"Creating recurring instance for template {template.id} ({template.title})")
 
                 # Calculate instance number for title
-                existing_instances = db.query(Conversation).filter(
-                    Conversation.series_id == template.id
-                ).count()
+                # Count instances that belong to template's series (if any)
+                if template.template_series_id:
+                    existing_instances = db.query(Conversation).filter(
+                        Conversation.series_id == template.template_series_id
+                    ).count()
+                else:
+                    # Count instances with this template as parent (fallback)
+                    existing_instances = db.query(Conversation).filter(
+                        Conversation.parent_conversation_id == template.id
+                    ).count()
                 instance_number = existing_instances + 1
 
                 # Determine title for new instance
@@ -242,18 +249,27 @@ async def create_recurring_instances():
                     access_code = generate_access_code()
 
                 # Find the latest instance to use as parent
-                latest_instance = db.query(Conversation).filter(
-                    Conversation.series_id == template.id
-                ).order_by(Conversation.created_at.desc()).first()
+                if template.template_series_id:
+                    latest_instance = db.query(Conversation).filter(
+                        Conversation.series_id == template.template_series_id
+                    ).order_by(Conversation.created_at.desc()).first()
+                else:
+                    latest_instance = db.query(Conversation).filter(
+                        Conversation.parent_conversation_id == template.id
+                    ).order_by(Conversation.created_at.desc()).first()
 
                 parent_id = latest_instance.id if latest_instance else template.id
+
+                # Determine series_id for new instance
+                # If template has template_series_id, instances join that series
+                instance_series_id = template.template_series_id
 
                 # Create new instance
                 new_instance = Conversation(
                     creator_id=template.creator_id,
                     organization_id=template.organization_id,
                     parent_conversation_id=parent_id,
-                    series_id=template.id,
+                    series_id=instance_series_id,
                     is_recurring_instance=True,
                     title=new_title,
                     description=template.description,

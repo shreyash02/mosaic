@@ -23,13 +23,23 @@ class Conversation(Base):
     # Follow-up relationship
     parent_conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True, index=True)
 
+    # Template flag
+    is_template = Column(Boolean, default=False, nullable=False)
+    # True if this conversation is a template (can be used to create other conversations)
+
+    # Series relationship (points to Series entity)
+    series_id = Column(UUID(as_uuid=True), ForeignKey("series.id", ondelete="SET NULL"), nullable=True, index=True)
+    # If set, this conversation belongs to a series
+
+    # Template series relationship (only set on templates)
+    template_series_id = Column(UUID(as_uuid=True), ForeignKey("series.id", ondelete="SET NULL"), nullable=True)
+    # If set on a template, instances created from this template will join this series
+
     # Recurring conversation fields
-    series_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True)
-    # If set, this conversation is part of a recurring series (points to the template)
     is_recurring_instance = Column(Boolean, default=False, nullable=False)
     # True if this was auto-created as part of a recurring series
     recurrence_pattern = Column(String(50), nullable=True)
-    # 'weekly', 'biweekly', 'monthly', 'quarterly' - only set on template (where series_id is NULL)
+    # 'weekly', 'biweekly', 'monthly', 'quarterly' - only set on template
     next_instance_date = Column(DateTime, nullable=True)
     # When to create the next instance - only set on template
     recurrence_end_date = Column(DateTime, nullable=True)
@@ -101,9 +111,9 @@ class Conversation(Base):
     parent_conversation = relationship("Conversation", remote_side=[id], back_populates="follow_up_conversations", foreign_keys=[parent_conversation_id])
     follow_up_conversations = relationship("Conversation", back_populates="parent_conversation", cascade="all, delete-orphan", foreign_keys="Conversation.parent_conversation_id")
 
-    # Recurring series relationships
-    series_template = relationship("Conversation", remote_side=[id], back_populates="series_instances", foreign_keys=[series_id])
-    series_instances = relationship("Conversation", back_populates="series_template", cascade="all, delete-orphan", foreign_keys="Conversation.series_id")
+    # Series relationships
+    series = relationship("Series", back_populates="conversations", foreign_keys=[series_id])
+    series_template_rel = relationship("Series", back_populates="templates", foreign_keys=[template_series_id])
 
     def __repr__(self):
         return f"<Conversation(id={self.id}, title={self.title}, state={self.state})>"

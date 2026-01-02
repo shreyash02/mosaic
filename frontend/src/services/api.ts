@@ -32,6 +32,10 @@ import type {
   InviteToOrganizationRequest,
   InviteToOrganizationResponse,
   OrganizationInvitationListResponse,
+  Series,
+  SeriesCreate,
+  SeriesUpdate,
+  SeriesWithConversations,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -438,6 +442,32 @@ class ApiService {
       {}
     );
     return response.data;
+  }
+
+  // Series endpoints
+  async createSeries(data: SeriesCreate): Promise<Series> {
+    const response = await this.client.post<Series>('/series', data);
+    return response.data;
+  }
+
+  async listSeries(organizationId?: string): Promise<Series[]> {
+    const params = organizationId ? `?organization_id=${organizationId}` : '';
+    const response = await this.client.get<Series[]>(`/series${params}`);
+    return response.data;
+  }
+
+  async getSeries(id: string): Promise<SeriesWithConversations> {
+    const response = await this.client.get<SeriesWithConversations>(`/series/${id}`);
+    return response.data;
+  }
+
+  async updateSeries(id: string, data: SeriesUpdate): Promise<Series> {
+    const response = await this.client.patch<Series>(`/series/${id}`, data);
+    return response.data;
+  }
+
+  async deleteSeries(id: string): Promise<void> {
+    await this.client.delete(`/series/${id}`);
   }
 
   // Upload endpoints

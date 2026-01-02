@@ -101,6 +101,13 @@ class ConversationBase(BaseModel):
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Kolkata')")
     parent_conversation_id: Optional[UUID] = None
 
+    # Template fields
+    is_template: Optional[bool] = Field(False, description="True if this conversation is a template")
+    template_series_id: Optional[UUID] = Field(None, description="Series ID for template (instances created from this template will join this series)")
+
+    # Series relationship
+    series_id: Optional[UUID] = Field(None, description="Series ID this conversation belongs to")
+
     # Recurring conversation fields
     recurrence_pattern: Optional[RecurrencePattern] = Field(None, description="Pattern for recurring conversations (only set on template)")
     next_instance_date: Optional[datetime] = Field(None, description="When to create the next instance (only set on template)")
@@ -240,6 +247,7 @@ class CreateFollowUpRequest(BaseModel):
     copy_invitations: bool = False
     copy_settings: bool = True
     copy_questions: bool = False
+    add_to_series: bool = False  # If True, add follow-up to parent's series (or create new series)
 
 
 class ConversationLineage(BaseModel):
@@ -268,8 +276,14 @@ class ConversationListItem(BaseModel):
     parent_conversation_id: Optional[UUID] = None
     organization_id: Optional[UUID] = None
 
-    # Recurring conversation fields
+    # Template fields
+    is_template: bool = False
+    template_series_id: Optional[UUID] = None
+
+    # Series relationship
     series_id: Optional[UUID] = None
+
+    # Recurring conversation fields
     is_recurring_instance: bool = False
     recurrence_pattern: Optional[RecurrencePattern] = None
 

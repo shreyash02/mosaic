@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question, type Conversation } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question, type Conversation, type Series } from '../types';
 import { convertUTCToLocalDateTimeString } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -40,12 +40,34 @@ export default function EditConversationPage() {
   const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(RecurrencePattern.WEEKLY);
   const [nextInstanceDate, setNextInstanceDate] = useState('');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  // Series fields for templates
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [selectedTemplateSeriesId, setSelectedTemplateSeriesId] = useState<string>('');
+  const [showCreateSeriesModal, setShowCreateSeriesModal] = useState(false);
+  const [newSeriesName, setNewSeriesName] = useState('');
+  const [newSeriesDescription, setNewSeriesDescription] = useState('');
+  const [creatingSeries, setCreatingSeries] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadConversation();
     }
   }, [id]);
+
+  // Load series list for templates
+  useEffect(() => {
+    const loadSeries = async () => {
+      if (isTemplate) {
+        try {
+          const series = await api.listSeries(currentOrgId || undefined);
+          setSeriesList(series);
+        } catch (err) {
+          console.error('Failed to load series:', err);
+        }
+      }
+    };
+    loadSeries();
+  }, [isTemplate, currentOrgId]);
 
   const loadConversation = async () => {
     try {
@@ -56,7 +78,7 @@ export default function EditConversationPage() {
       setConversation(conv);
 
       // Check if this is a template
-      const isTemp = conv.series_id === null && conv.recurrence_pattern !== undefined && conv.recurrence_pattern !== null;
+      const isTemp = conv.is_template === true;
       setIsTemplate(isTemp);
 
       // Only enforce draft state for regular conversations (not templates)
@@ -120,6 +142,11 @@ export default function EditConversationPage() {
             setRecurrenceEndDate(conv.recurrence_end_date.substring(0, 16));
           }
         }
+      }
+
+      // Load template series configuration
+      if (isTemp && conv.template_series_id) {
+        setSelectedTemplateSeriesId(conv.template_series_id);
       }
 
       // Convert Question[] to QuestionCreate[]
@@ -240,6 +267,39 @@ export default function EditConversationPage() {
     setQuestions(newQuestions);
   };
 
+  const handleCreateSeries = async () => {
+    if (!newSeriesName.trim()) {
+      setError('Series name is required');
+      return;
+    }
+
+    setCreatingSeries(true);
+    setError('');
+    try {
+      const newSeries = await api.createSeries({
+        name: newSeriesName.trim(),
+        description: newSeriesDescription.trim() || undefined,
+        organization_id: currentOrgId || undefined,
+      });
+
+      // Refresh series list
+      const updatedSeries = await api.listSeries(currentOrgId || undefined);
+      setSeriesList(updatedSeries);
+
+      // Select the newly created series
+      setSelectedTemplateSeriesId(newSeries.id);
+
+      // Close modal and reset form
+      setShowCreateSeriesModal(false);
+      setNewSeriesName('');
+      setNewSeriesDescription('');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create series');
+    } finally {
+      setCreatingSeries(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -270,8 +330,9 @@ export default function EditConversationPage() {
         ...(scheduleActivation && scheduledActivateAt && {
           scheduled_activate_at: scheduledActivateAt + ':00'
         }),
-        // Include recurring fields if this is a template
+        // Include template fields if this is a template
         ...(isTemplate && {
+          template_series_id: selectedTemplateSeriesId || undefined,
           recurrence_pattern: recurrencePattern,
           ...(nextInstanceDate && { next_instance_date: nextInstanceDate + ':00' }),
           ...(recurrenceEndDate && { recurrence_end_date: recurrenceEndDate + ':00' }),
@@ -682,6 +743,85 @@ export default function EditConversationPage() {
           </div>
         )}
 
+        {/* Series Configuration Section - Only for templates */}
+        {isTemplate && (
+          <div className="form-section">
+            <h2>Series Configuration</h2>
+            <p className="form-help-text">Configure which series instances created from this template will join.</p>
+
+            <div className="form-group">
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={!!selectedTemplateSeriesId}
+                  onChange={(e) => {
+                    if (!e.target.checked) {
+                      setSelectedTemplateSeriesId('');
+                    } else if (seriesList.length > 0) {
+                      setSelectedTemplateSeriesId(seriesList[0].id);
+                    } else {
+                      setShowCreateSeriesModal(true);
+                    }
+                  }}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span style={{ fontWeight: 600 }}>Set Series for Instances</span>
+              </label>
+              <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                Instances created from this template will automatically join the selected series.
+              </p>
+
+              {selectedTemplateSeriesId && (
+                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label htmlFor="templateSeriesSelect">Select Series</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateSeriesModal(true)}
+                        className="btn btn-secondary btn-small"
+                        style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                      >
+                        + Create New
+                      </button>
+                    </div>
+                    <select
+                      id="templateSeriesSelect"
+                      value={selectedTemplateSeriesId}
+                      onChange={(e) => setSelectedTemplateSeriesId(e.target.value)}
+                    >
+                      <option value="">-- Select a series --</option>
+                      {seriesList.map((series) => (
+                        <option key={series.id} value={series.id}>
+                          {series.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="form-help-text">
+                      {seriesList.length === 0
+                        ? 'No series available. Click "Create New" to create a series.'
+                        : 'Instances created from this template will join this series.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!selectedTemplateSeriesId && (
+                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateSeriesModal(true)}
+                    className="btn btn-secondary"
+                    style={{ marginTop: '0.5rem' }}
+                  >
+                    + Create New Series
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="form-section">
           <div className="section-header">
             <h2>Questions</h2>
@@ -833,6 +973,82 @@ export default function EditConversationPage() {
           maxResponseLength={10000}
           onClose={() => setShowPreview(false)}
         />
+      )}
+
+      {/* Create Series Modal */}
+      {showCreateSeriesModal && (
+        <div className="modal-overlay" onClick={() => {
+          if (!creatingSeries) {
+            setShowCreateSeriesModal(false);
+            setNewSeriesName('');
+            setNewSeriesDescription('');
+            setError('');
+          }
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <h2>Create New Series</h2>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+              Create a new series to group related conversations together.
+            </p>
+
+            <div className="form-group">
+              <label htmlFor="newSeriesName">Series Name *</label>
+              <input
+                id="newSeriesName"
+                type="text"
+                value={newSeriesName}
+                onChange={(e) => setNewSeriesName(e.target.value)}
+                placeholder="e.g., Q1 2025 Retros"
+                required
+                disabled={creatingSeries}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newSeriesName.trim() && !creatingSeries) {
+                    e.preventDefault();
+                    handleCreateSeries();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="newSeriesDescription">Description (optional)</label>
+              <textarea
+                id="newSeriesDescription"
+                value={newSeriesDescription}
+                onChange={(e) => setNewSeriesDescription(e.target.value)}
+                placeholder="Describe what this series is for..."
+                rows={3}
+                disabled={creatingSeries}
+              />
+            </div>
+
+            {error && <div className="error-message" style={{ marginTop: '1rem' }}>{error}</div>}
+
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button
+                onClick={() => {
+                  if (!creatingSeries) {
+                    setShowCreateSeriesModal(false);
+                    setNewSeriesName('');
+                    setNewSeriesDescription('');
+                    setError('');
+                  }
+                }}
+                className="btn btn-secondary"
+                disabled={creatingSeries}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateSeries}
+                className="btn btn-primary"
+                disabled={creatingSeries || !newSeriesName.trim()}
+              >
+                {creatingSeries ? 'Creating...' : 'Create Series'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

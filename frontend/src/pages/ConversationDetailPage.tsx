@@ -41,6 +41,7 @@ export default function ConversationDetailPage() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [copyInvitations, setCopyInvitations] = useState(false);
   const [copySettings, setCopySettings] = useState(true);
+  const [addToSeries, setAddToSeries] = useState(false);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [generatingQRCode, setGeneratingQRCode] = useState(false);
@@ -173,17 +174,20 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const handleCreateFollowUp = () => {
-    // Navigate to create page with follow-up state
-    navigate('/conversations/new', {
-      state: {
-        isFollowUp: true,
-        parentConversationId: id,
-        copySettings: copySettings,
-        copyInvitations: copyInvitations,
-        parentConversation: conversation,
-      }
-    });
+  const handleCreateFollowUp = async () => {
+    try {
+      // Create follow-up via API
+      const followUp = await api.createFollowUp(id!, {
+        copy_settings: copySettings,
+        copy_invitations: copyInvitations,
+        copy_questions: false,
+        add_to_series: addToSeries,
+      });
+      setShowFollowUpModal(false);
+      navigate(`/conversations/${followUp.id}`);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create follow-up');
+    }
   };
 
   const copyInviteLink = async () => {
@@ -1087,6 +1091,21 @@ export default function ConversationDetailPage() {
                   </label>
                 </div>
               )}
+              <div className="checkbox-option">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={addToSeries}
+                    onChange={(e) => setAddToSeries(e.target.checked)}
+                  />
+                  <span>Add to series</span>
+                </label>
+                <p style={{ marginLeft: '1.5rem', fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                  {conversation.series_id
+                    ? 'Add this follow-up to the same series as the parent conversation.'
+                    : 'Create a new series or add to parent\'s series if it exists.'}
+                </p>
+              </div>
             </div>
 
             <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#666', lineHeight: '1.6' }}>
