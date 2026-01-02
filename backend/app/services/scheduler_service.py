@@ -11,9 +11,12 @@ from app.models.conversation import Conversation
 from app.models.response import Response
 from app.models.question import Question
 from app.models.conversation_invitation import ConversationInvitation
+from app.models.user import User
 from app.schemas.conversation import ConversationState
 from app.routes.analysis import run_analysis_task
 from app.utils.access_code import generate_access_code
+from app.services.email_service import email_service
+from typing import Optional
 import logging
 import asyncio
 
@@ -23,10 +26,57 @@ logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
 
 
+async def send_pending_invitation_emails(
+    conversation: Conversation,
+    db: Session
+) -> None:
+    """
+    Send invitation emails to all pending invitations for a conversation.
+
+    Args:
+        conversation: The conversation to send invitations for
+        db: Database session
+    """
+    if not conversation.invite_only:
+        return
+
+    # Get all pending invitations for this conversation
+    pending_invitations = db.query(ConversationInvitation).filter(
+        ConversationInvitation.conversation_id == conversation.id
+    ).all()
+
+    if not pending_invitations:
+        return
+
+    # Get inviter name from the first invitation
+    inviter_name = None
+    if pending_invitations and pending_invitations[0].invited_by_id:
+        inviter = db.query(User).filter(User.id == pending_invitations[0].invited_by_id).first()
+        if inviter:
+            inviter_name = inviter.full_name or inviter.email
+
+    # Send invitation emails asynchronously
+    # Don't block if email sending fails
+    for invitation in pending_invitations:
+        try:
+            await email_service.send_invitation_email(
+                to_email=invitation.email,
+                conversation_title=conversation.title,
+                conversation_description=conversation.description,
+                access_code=conversation.access_code,
+                invitation_token=invitation.invitation_token,
+                inviter_name=inviter_name,
+            )
+        except Exception as e:
+            # Log error but don't fail the request
+            # Email sending failures shouldn't prevent activation
+            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+
+
 async def check_scheduled_activations():
     """
     Check for conversations that should be activated.
-    
+
     Note: scheduled_activate_at is stored in UTC in the database.
     The comparison is done in UTC, so this works correctly regardless of server timezone.
     """
@@ -39,23 +89,31 @@ async def check_scheduled_activations():
             Conversation.scheduled_activate_at <= now,
             Conversation.scheduled_activate_at.isnot(None)
         ).all()
-        
+
         if conversations:
             logger.info(f"Found {len(conversations)} conversation(s) to activate")
-        
+
         for conv in conversations:
             logger.info(f"Activating conversation {conv.id} (scheduled for {conv.scheduled_activate_at})")
             conv.state = ConversationState.ACTIVE.value
             conv.activated_at = datetime.utcnow()
             conv.scheduled_activate_at = None  # Clear scheduled time after activation
-            
+
             # Calculate auto_close_at from duration_minutes if set
             if conv.duration_minutes:
                 conv.auto_close_at = conv.activated_at + timedelta(minutes=conv.duration_minutes)
-        
+
         if conversations:
             db.commit()
             logger.info(f"Successfully activated {len(conversations)} conversation(s)")
+
+            # Send invitation emails for all activated conversations
+            for conv in conversations:
+                try:
+                    await send_pending_invitation_emails(conv, db)
+                except Exception as e:
+                    # Log error but don't fail - emails are sent asynchronously
+                    logger.error(f"Failed to send invitation emails for conversation {conv.id}: {str(e)}", exc_info=True)
     except Exception as e:
         logger.error(f"Error checking scheduled activations: {e}", exc_info=True)
         db.rollback()
@@ -66,7 +124,7 @@ async def check_scheduled_activations():
 async def check_scheduled_closures():
     """
     Check for conversations that should be closed.
-    
+
     Note: auto_close_at is stored in UTC in the database.
     The comparison is done in UTC, so this works correctly regardless of server timezone.
     """
@@ -79,31 +137,31 @@ async def check_scheduled_closures():
             Conversation.auto_close_at <= now,
             Conversation.auto_close_at.isnot(None)
         ).all()
-        
+
         if conversations:
             logger.info(f"Found {len(conversations)} conversation(s) to close")
-        
+
         conversations_to_analyze = []
-        
+
         for conv in conversations:
             logger.info(f"Closing conversation {conv.id} (auto_close_at: {conv.auto_close_at})")
             conv.state = ConversationState.CLOSED.value
             conv.closed_at = datetime.utcnow()
-            
+
             # Collect conversations that need auto-analysis
             if conv.auto_analyze:
                 # Check if there are responses to analyze
                 response_count = db.query(Response).filter(
                     Response.conversation_id == conv.id
                 ).count()
-                
+
                 if response_count > 0:
                     conversations_to_analyze.append(conv.id)
-        
+
         if conversations:
             db.commit()
             logger.info(f"Successfully closed {len(conversations)} conversation(s)")
-        
+
         # Trigger auto-analysis for conversations that have it enabled
         # Do this after committing the close, and run in background
         for conv_id in conversations_to_analyze:
@@ -302,7 +360,7 @@ def start_scheduler():
     if scheduler.running:
         logger.warning("Scheduler is already running")
         return
-    
+
     # Add job to check for scheduled activations every minute
     scheduler.add_job(
         check_scheduled_activations,
@@ -311,7 +369,7 @@ def start_scheduler():
         replace_existing=True,
         max_instances=1
     )
-    
+
     # Add job to check for scheduled closures every minute
     scheduler.add_job(
         check_scheduled_closures,

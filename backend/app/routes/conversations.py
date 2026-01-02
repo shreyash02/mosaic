@@ -63,6 +63,58 @@ def generate_access_code(length: int = 12) -> str:
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
+async def send_pending_invitation_emails(
+    conversation: Conversation,
+    db: Session,
+    inviter_user: Optional[User] = None
+) -> None:
+    """
+    Send invitation emails to all pending invitations for a conversation.
+
+    Args:
+        conversation: The conversation to send invitations for
+        db: Database session
+        inviter_user: Optional user who invited (for inviter name in email)
+    """
+    if not conversation.invite_only:
+        return
+
+    # Get all pending invitations for this conversation
+    pending_invitations = db.query(ConversationInvitation).filter(
+        ConversationInvitation.conversation_id == conversation.id
+    ).all()
+
+    if not pending_invitations:
+        return
+
+    # Get inviter name
+    inviter_name = None
+    if inviter_user:
+        inviter_name = inviter_user.full_name or inviter_user.email
+    elif pending_invitations and pending_invitations[0].invited_by_id:
+        inviter = db.query(User).filter(User.id == pending_invitations[0].invited_by_id).first()
+        if inviter:
+            inviter_name = inviter.full_name or inviter.email
+
+    # Send invitation emails asynchronously
+    # Don't block if email sending fails
+    logger = logging.getLogger(__name__)
+    for invitation in pending_invitations:
+        try:
+            await email_service.send_invitation_email(
+                to_email=invitation.email,
+                conversation_title=conversation.title,
+                conversation_description=conversation.description,
+                access_code=conversation.access_code,
+                invitation_token=invitation.invitation_token,
+                inviter_name=inviter_name,
+            )
+        except Exception as e:
+            # Log error but don't fail the request
+            # Email sending failures shouldn't prevent activation
+            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+
+
 def get_conversation_or_404(
     conversation_id: UUID,
     db: Session,
@@ -362,19 +414,19 @@ async def get_conversation_by_code(
 ):
     """
     Get conversation details by access code (public endpoint).
-    
+
     For fully_anonymous conversations: Requires valid participant session token.
     For other conversations: Requires authentication.
-    
+
     Args:
         access_code: Conversation access code
         participant_session: Optional participant session (for fully_anonymous)
         current_user: Optional authenticated user (for platform_tracked/revealable)
         db: Database session
-    
+
     Returns:
         Conversation with questions
-    
+
     Raises:
         HTTPException: If conversation not found, not active, or access denied
     """
@@ -384,13 +436,13 @@ async def get_conversation_by_code(
     ).filter(
         Conversation.access_code == access_code
     ).first()
-    
+
     if not conversation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found. Please check the access code and try again."
         )
-    
+
     # Check if conversation is active
     if conversation.state != ConversationState.ACTIVE.value:
         if conversation.state == ConversationState.CLOSED.value:
@@ -408,7 +460,7 @@ async def get_conversation_by_code(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This conversation is not currently available."
             )
-    
+
     # Check access based on anonymity level
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
         # For fully_anonymous, require participant session
@@ -417,14 +469,14 @@ async def get_conversation_by_code(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Valid participant session required for fully anonymous conversations"
             )
-        
+
         # Verify session matches this conversation
         if participant_session["access_code"] != access_code:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Session token does not match conversation"
             )
-        
+
         # If invite_only is enabled, verify that invitations exist
         # For fully_anonymous, we trust that participant codes are distributed only to invited users
         if conversation.invite_only:
@@ -432,7 +484,7 @@ async def get_conversation_by_code(
             has_invitations = db.query(ConversationInvitation).filter(
                 ConversationInvitation.conversation_id == conversation.id
             ).first()
-            
+
             if not has_invitations:
                 # If invite_only is enabled but no invitations exist, this is a configuration error
                 # But we'll still allow access to prevent breaking existing conversations
@@ -447,27 +499,27 @@ async def get_conversation_by_code(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required for this conversation type"
             )
-        
+
         # If invite_only is enabled, check if user was invited
         if conversation.invite_only:
             invitation = db.query(ConversationInvitation).filter(
                 ConversationInvitation.conversation_id == conversation.id,
                 ConversationInvitation.invited_user_id == current_user.id
             ).first()
-            
+
             # Also check by email in case user doesn't have an account yet
             if not invitation:
                 invitation = db.query(ConversationInvitation).filter(
                     ConversationInvitation.conversation_id == conversation.id,
                     ConversationInvitation.email == current_user.email.lower()
                 ).first()
-            
+
             if not invitation:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This conversation is invite-only. You must be invited by the conversation creator to access it. Please contact the organizer if you believe you should have access."
                 )
-            
+
             # Mark invitation as accepted if not already
             if not invitation.is_accepted:
                 invitation.is_accepted = True
@@ -479,12 +531,12 @@ async def get_conversation_by_code(
                 ConversationInvitation.conversation_id == conversation.id,
                 ConversationInvitation.invited_user_id == current_user.id
             ).first()
-            
+
             if invitation and not invitation.is_accepted:
                 invitation.is_accepted = True
                 invitation.accepted_at = datetime.utcnow()
                 db.commit()
-    
+
     return conversation
 
 
@@ -598,10 +650,10 @@ async def update_conversation(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="At least one question is required"
             )
-        
+
         # Delete existing questions
         db.query(Question).filter(Question.conversation_id == conversation.id).delete()
-        
+
         # Create new questions
         for question_data in questions_to_update:
             question = Question(
@@ -615,7 +667,7 @@ async def update_conversation(
 
     db.commit()
     db.refresh(conversation)
-    
+
     # Reload with questions
     conversation = db.query(Conversation).options(
         joinedload(Conversation.questions)
@@ -662,7 +714,7 @@ async def duplicate_conversation(
 ):
     """
     Duplicate a conversation with all its questions.
-    
+
     Creates a new conversation in draft state with "- Copy" appended to the title.
     Copies all conversation settings and questions, but does NOT copy invitations.
 
@@ -699,7 +751,7 @@ async def duplicate_conversation(
 
     # Create duplicate conversation with "- Copy" appended to title
     duplicate_title = f"{original_conversation.title} - Copy"
-    
+
     duplicate_conversation = Conversation(
         creator_id=current_user.id,
         organization_id=original_conversation.organization_id,
@@ -764,7 +816,7 @@ async def activate_conversation(
 ):
     """
     Activate a conversation (move from draft to active).
-    
+
     Can activate immediately or schedule activation for a future time.
 
     Args:
@@ -795,17 +847,17 @@ async def activate_conversation(
             activate_data.scheduled_activate_at.isoformat() if isinstance(activate_data.scheduled_activate_at, datetime) else str(activate_data.scheduled_activate_at),
             conversation_timezone
         )
-        
+
         # Validate scheduled time is in the future
         if scheduled_utc <= datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Scheduled activation time must be in the future"
             )
-        
+
         # Schedule activation (store in UTC)
         conversation.scheduled_activate_at = scheduled_utc
-        
+
         # If duration_minutes is set, calculate auto_close_at based on scheduled time
         if conversation.duration_minutes:
             conversation.auto_close_at = scheduled_utc + timedelta(minutes=conversation.duration_minutes)
@@ -831,6 +883,11 @@ async def activate_conversation(
 
     db.commit()
     db.refresh(conversation)
+
+    # Send invitation emails when activating immediately
+    # (For scheduled activations, emails are sent by the scheduler)
+    if conversation.state == ConversationState.ACTIVE.value and not activate_data.scheduled_activate_at:
+        await send_pending_invitation_emails(conversation, db, current_user)
 
     return conversation
 
@@ -1098,23 +1155,10 @@ async def invite_users(
     for inv in created_invitations:
         db.refresh(inv)
 
-    # Send invitation emails asynchronously
-    # Don't block the response if email sending fails
-    for invitation in created_invitations:
-        try:
-            await email_service.send_invitation_email(
-                to_email=invitation.email,
-                conversation_title=conversation.title,
-                conversation_description=conversation.description,
-                access_code=conversation.access_code,
-                invitation_token=invitation.invitation_token,
-                inviter_name=current_user.full_name or current_user.email,
-            )
-        except Exception as e:
-            # Log error but don't fail the request
-            # Email sending failures shouldn't prevent invitation creation
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+    # Note: Emails are NOT sent here. They will be sent when the conversation is activated.
+    # If conversation is already active, send emails immediately
+    if conversation.state == ConversationState.ACTIVE.value:
+        await send_pending_invitation_emails(conversation, db, current_user)
 
     return InviteUsersResponse(
         conversation_id=conversation.id,
@@ -1168,7 +1212,7 @@ async def list_invitations(
                 Response.participant_id == inv.invited_user_id
             ).first()
             has_submitted = response is not None
-        
+
         # Create invitation schema with response status
         inv_schema = ConversationInvitationWithUser.model_validate(inv)
         # Create a copy with the response submission status
