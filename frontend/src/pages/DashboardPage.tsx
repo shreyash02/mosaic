@@ -363,6 +363,48 @@ export default function DashboardPage() {
     }
   };
 
+  const renderTemplateCard = (template: ConversationListItem) => {
+    return (
+      <div
+        key={template.id}
+        className="conversation-card-wrapper"
+      >
+        <Link
+          to={`/templates/${template.id}`}
+          className="conversation-card template-card"
+          style={{ 
+            borderColor: '#90CDF4', 
+            background: '#F7FAFC',
+            height: 'auto',
+            minHeight: 'auto',
+            padding: '1rem 1.5rem'
+          }}
+        >
+          <div className="card-header" style={{ marginBottom: 0, paddingRight: 0, height: 'auto' }}>
+            <h3 title={template.title} style={{ margin: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+              </svg>
+              {template.title}
+              <span className="template-badge" style={{
+                fontSize: '0.7rem',
+                color: '#2C5282',
+                background: '#BEE3F8',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '12px',
+                marginLeft: '0.5rem',
+                fontWeight: 600
+              }}>
+                TEMPLATE
+              </span>
+            </h3>
+          </div>
+        </Link>
+      </div>
+    );
+  };
+
   const renderConversationCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => {
     const isMenuOpen = openMenuId === conversation.id;
     
@@ -1116,7 +1158,7 @@ export default function DashboardPage() {
                 const instances = templateInstancesMap.get(template.id) || [];
                 return (
                   <div key={template.id} className={`conversation-group ${instances.length > 0 ? 'has-instances' : ''}`}>
-                    {renderConversationCard(template, false)}
+                    {renderTemplateCard(template)}
                     {instances.length > 0 && (
                       <div className="template-instances-container" style={{ paddingLeft: '2rem', marginTop: '0.5rem' }}>
                         <div style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -1166,7 +1208,7 @@ export default function DashboardPage() {
           <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
           <div className="conversation-grid">
             {activeTab === 'owned' ? (
-              filteredConversations.map((conversation) => renderConversationCard(conversation, conversation.is_follow_up || false))
+              filteredConversations.map((conversation) => renderConversationCard(conversation, false))
             ) : (
               filteredConversations.map((conversation) => renderParticipatedConversationCard(conversation))
             )}

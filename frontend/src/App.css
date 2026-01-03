@@ -884,29 +884,9 @@ h3 {
   position: relative;
 }
 
-.follow-ups-container::before {
-  content: '';
-  position: absolute;
-  left: 1rem;
-  top: 0;
-  bottom: 0.75rem;
-  width: 2px;
-  background: linear-gradient(to bottom, #cbd5e0 0%, transparent 100%);
-}
-
 .follow-up-card {
   position: relative;
   opacity: 0.95;
-}
-
-.follow-up-card::before {
-  content: '';
-  position: absolute;
-  left: -1.5rem;
-  top: 50%;
-  width: 1.5rem;
-  height: 2px;
-  background: #cbd5e0;
 }
 
 .follow-up-arrow {
