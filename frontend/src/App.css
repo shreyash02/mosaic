@@ -602,7 +602,7 @@ h3 {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  padding-top: calc(2rem + 80px);
+  padding-top: calc(0.5rem + 80px);
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -612,7 +612,7 @@ h3 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -730,6 +730,12 @@ h3 {
   border-color: #a0aec0;
 }
 
+.filter-dropdown-toggle.active {
+  background: #4299e1;
+  border-color: #4299e1;
+  color: white;
+}
+
 .dropdown-arrow {
   font-size: 0.7rem;
   color: #718096;
@@ -749,7 +755,7 @@ h3 {
   border: 1px solid #cbd5e0;
   border-radius: 8px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  z-index: 1000;
   overflow: hidden;
 }
 

@@ -718,82 +718,6 @@ export default function DashboardPage() {
           <h1>Dashboard</h1>
         </div>
         <div className="header-actions">
-          {conversations.length > 0 && activeTab === 'owned' && (
-            <div className="filter-dropdown-container" style={{ position: 'relative' }}>
-              <button
-                onClick={() => {
-                  setShowGroupingDropdown(!showGroupingDropdown);
-                  setShowStateDropdown(false);
-                  setShowAnonymityDropdown(false);
-                  setShowDateDropdown(false);
-                }}
-                className={`btn ${groupingMode !== 'none' ? 'btn-secondary' : 'btn-outline-secondary'}`}
-              >
-                {groupingMode === 'none' && 'Group by'}
-                {groupingMode === 'parent-child' && '✓ By Follow-up'}
-                {groupingMode === 'series' && '✓ By Collection'}
-                {groupingMode === 'template' && '✓ From Templates'}
-                <span className={`dropdown-arrow ${showGroupingDropdown ? 'open' : ''}`} style={{ marginLeft: '0.5rem' }}>▼</span>
-              </button>
-              {showGroupingDropdown && (
-                <div className="filter-dropdown-menu" style={{ minWidth: '200px' }}>
-                  <div className="filter-dropdown-header">
-                    <span className="filter-dropdown-title">Group conversations</span>
-                  </div>
-                  <div className="filter-dropdown-items">
-                    <label className="filter-dropdown-item">
-                      <input
-                        type="radio"
-                        name="groupingMode"
-                        checked={groupingMode === 'none'}
-                        onChange={() => {
-                          setGroupingMode('none');
-                          setShowGroupingDropdown(false);
-                        }}
-                      />
-                      <span className="filter-item-label">No grouping</span>
-                    </label>
-                    <label className="filter-dropdown-item">
-                      <input
-                        type="radio"
-                        name="groupingMode"
-                        checked={groupingMode === 'parent-child'}
-                        onChange={() => {
-                          setGroupingMode('parent-child');
-                          setShowGroupingDropdown(false);
-                        }}
-                      />
-                      <span className="filter-item-label">By Follow-up</span>
-                    </label>
-                    <label className="filter-dropdown-item">
-                      <input
-                        type="radio"
-                        name="groupingMode"
-                        checked={groupingMode === 'series'}
-                        onChange={() => {
-                          setGroupingMode('series');
-                          setShowGroupingDropdown(false);
-                        }}
-                      />
-                      <span className="filter-item-label">By Collection</span>
-                    </label>
-                    <label className="filter-dropdown-item">
-                      <input
-                        type="radio"
-                        name="groupingMode"
-                        checked={groupingMode === 'template'}
-                        onChange={() => {
-                          setGroupingMode('template');
-                          setShowGroupingDropdown(false);
-                        }}
-                      />
-                      <span className="filter-item-label">From Templates</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
           {activeTab === 'owned' && (
             <Link to="/conversations/new" className="btn btn-primary">
               + New Conversation
@@ -1008,6 +932,91 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Group by dropdown - outside filter bar */}
+      {conversations.length > 0 && activeTab === 'owned' && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'flex-end', 
+          marginBottom: '1rem',
+          marginTop: '-1rem'
+        }}>
+          <div className="filter-dropdown-container" style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                setShowGroupingDropdown(!showGroupingDropdown);
+                setShowStateDropdown(false);
+                setShowAnonymityDropdown(false);
+                setShowDateDropdown(false);
+              }}
+              className="filter-dropdown-toggle"
+            >
+              {groupingMode === 'none' && 'Group by'}
+              {groupingMode === 'parent-child' && '✓ By Follow-up'}
+              {groupingMode === 'series' && '✓ By Collection'}
+              {groupingMode === 'template' && '✓ From Templates'}
+              <span className={`dropdown-arrow ${showGroupingDropdown ? 'open' : ''}`}>▼</span>
+            </button>
+            {showGroupingDropdown && (
+              <div className="filter-dropdown-menu" style={{ minWidth: '200px' }}>
+                <div className="filter-dropdown-header">
+                  <span className="filter-dropdown-title">Group conversations</span>
+                </div>
+                <div className="filter-dropdown-items">
+                  <label className="filter-dropdown-item">
+                    <input
+                      type="radio"
+                      name="groupingMode"
+                      checked={groupingMode === 'none'}
+                      onChange={() => {
+                        setGroupingMode('none');
+                        setShowGroupingDropdown(false);
+                      }}
+                    />
+                    <span className="filter-item-label">No grouping</span>
+                  </label>
+                  <label className="filter-dropdown-item">
+                    <input
+                      type="radio"
+                      name="groupingMode"
+                      checked={groupingMode === 'parent-child'}
+                      onChange={() => {
+                        setGroupingMode('parent-child');
+                        setShowGroupingDropdown(false);
+                      }}
+                    />
+                    <span className="filter-item-label">By Follow-up</span>
+                  </label>
+                  <label className="filter-dropdown-item">
+                    <input
+                      type="radio"
+                      name="groupingMode"
+                      checked={groupingMode === 'series'}
+                      onChange={() => {
+                        setGroupingMode('series');
+                        setShowGroupingDropdown(false);
+                      }}
+                    />
+                    <span className="filter-item-label">By Collection</span>
+                  </label>
+                  <label className="filter-dropdown-item">
+                    <input
+                      type="radio"
+                      name="groupingMode"
+                      checked={groupingMode === 'template'}
+                      onChange={() => {
+                        setGroupingMode('template');
+                        setShowGroupingDropdown(false);
+                      }}
+                    />
+                    <span className="filter-item-label">From Templates</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && <div className="error-message">{error}</div>}
 
       {loading && activeTab !== 'invitations' ? (
@@ -1059,7 +1068,6 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="conversations-list">
-            <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
             <div className="conversation-groups">
               {rootConversations.map((conversation) => {
                 const children = childrenMap.get(conversation.id) || [];
@@ -1088,7 +1096,6 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="conversations-list">
-            <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
             <div className="conversation-groups">
               {Array.from(seriesMap.entries())
                 .sort(([seriesIdA], [seriesIdB]) => {
@@ -1152,7 +1159,6 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="conversations-list">
-            <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
             <div className="conversation-groups">
               {groupedTemplates.map((template) => {
                 const instances = templateInstancesMap.get(template.id) || [];
@@ -1205,7 +1211,6 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="conversations-list">
-          <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
           <div className="conversation-grid">
             {activeTab === 'owned' ? (
               filteredConversations.map((conversation) => renderConversationCard(conversation, false))
