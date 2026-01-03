@@ -365,7 +365,7 @@ export default function CreateConversationPage() {
     try {
       // Calculate total minutes from hours and minutes
       const totalMinutes = durationHours * 60 + durationMinutes;
-      
+
       // Get user's timezone from browser
       let userTimezone = 'UTC';
       try {
@@ -404,9 +404,13 @@ export default function CreateConversationPage() {
         ...(addToSeries && selectedSeriesId && !followUpState?.createTemplate && {
           series_id: selectedSeriesId
         }),
-        // If creating from template with template_series_id, use that
-        ...(followUpState?.templateSeriesId && followUpState.isRecurring && {
-          series_id: followUpState.templateSeriesId
+        // If creating from template: use user-selected series if provided, otherwise use template's series if available
+        ...(followUpState?.parentConversation?.is_template && {
+          series_id: (addToSeries && selectedSeriesId)
+            ? selectedSeriesId
+            : (followUpState?.templateSeriesId && followUpState.isRecurring && !addToSeries)
+              ? followUpState.templateSeriesId
+              : undefined
         }),
         // Add organization_id from current workspace context
         ...(currentOrgId && {
@@ -456,7 +460,7 @@ export default function CreateConversationPage() {
           console.error('Failed to copy invitations from parent:', inviteErr);
         }
       }
-      
+
       // Navigate to template page if this is a template, otherwise conversation page
       if (conversation.is_template) {
         navigate(`/templates/${conversation.id}`);
@@ -573,31 +577,31 @@ export default function CreateConversationPage() {
             <p className="form-help-text" style={{ marginBottom: '0.5rem' }}>
               Upload an image that will be displayed at the top when users are responding to this conversation.
             </p>
-            
+
             {headerImageUrl ? (
               <div style={{ marginTop: '0.5rem' }}>
-                <div style={{ 
-                  position: 'relative', 
+                <div style={{
+                  position: 'relative',
                   display: 'inline-block',
                   marginBottom: '0.5rem'
                 }}>
-                  <img 
-                    src={headerImageUrl} 
-                    alt="Header preview" 
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '200px', 
+                  <img
+                    src={headerImageUrl}
+                    alt="Header preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '200px',
                       borderRadius: '6px',
                       border: '1px solid #e2e8f0'
-                    }} 
+                    }}
                   />
                   <button
                     type="button"
                     onClick={removeImage}
                     className="btn btn-secondary btn-small"
-                    style={{ 
-                      position: 'absolute', 
-                      top: '0.5rem', 
+                    style={{
+                      position: 'absolute',
+                      top: '0.5rem',
                       right: '0.5rem',
                       backgroundColor: 'rgba(255, 255, 255, 0.9)'
                     }}
@@ -915,7 +919,7 @@ export default function CreateConversationPage() {
           )}
 
           {/* Series Selection */}
-          {!followUpState?.isRecurring && (
+          {(!followUpState?.isRecurring || followUpState?.parentConversation?.is_template) && (
             <div className="form-group">
               {followUpState?.createTemplate ? (
                 // For templates: "Set Series for Instances"
@@ -939,16 +943,19 @@ export default function CreateConversationPage() {
                   </p>
                 </>
               ) : (
-                // For regular conversations: "Add to Series"
+                // For regular conversations and conversations from templates: "Add to Series"
                 <>
                   <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                     <input
                       type="checkbox"
-                      checked={addToSeries}
+                      checked={addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)}
                       onChange={(e) => {
                         setAddToSeries(e.target.checked);
                         if (!e.target.checked) {
                           setSelectedSeriesId('');
+                        } else if (followUpState?.templateSeriesId && followUpState?.isRecurring) {
+                          // Pre-select template's series if available
+                          setSelectedSeriesId(followUpState.templateSeriesId);
                         }
                       }}
                       style={{ marginRight: '0.5rem' }}
@@ -956,12 +963,14 @@ export default function CreateConversationPage() {
                     <span style={{ fontWeight: 600 }}>Add to Series</span>
                   </label>
                   <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                    Group this conversation with related conversations in a series.
+                    {followUpState?.parentConversation?.is_template
+                      ? 'Group this conversation with related conversations in a series. If the template has a series configured, it will be pre-selected.'
+                      : 'Group this conversation with related conversations in a series.'}
                   </p>
                 </>
               )}
 
-              {addToSeries && (
+              {(addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)) && (
                 <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -977,9 +986,9 @@ export default function CreateConversationPage() {
                     </div>
                     <select
                       id="seriesSelect"
-                      value={selectedSeriesId}
+                      value={selectedSeriesId || (followUpState?.templateSeriesId && followUpState?.isRecurring ? followUpState.templateSeriesId : '')}
                       onChange={(e) => setSelectedSeriesId(e.target.value)}
-                      required={addToSeries}
+                      required={addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)}
                     >
                       <option value="">-- Select a series --</option>
                       {seriesList.map((series) => (
@@ -1237,4 +1246,3 @@ export default function CreateConversationPage() {
     </div>
   );
 }
-
