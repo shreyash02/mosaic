@@ -179,6 +179,7 @@ class ConversationSummary(BaseModel):
     title: str
     state: ConversationState
     created_at: datetime
+    is_template: bool = False
 
     model_config = {"from_attributes": True}
 

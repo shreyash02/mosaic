@@ -457,7 +457,12 @@ export default function CreateConversationPage() {
         }
       }
       
-      navigate(`/conversations/${conversation.id}`);
+      // Navigate to template page if this is a template, otherwise conversation page
+      if (conversation.is_template) {
+        navigate(`/templates/${conversation.id}`);
+      } else {
+        navigate(`/conversations/${conversation.id}`);
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create conversation');
     } finally {

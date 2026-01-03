@@ -20,9 +20,14 @@ export default function TemplateDetailPage() {
   useEffect(() => {
     if (id) {
       loadTemplate();
-      loadInstances();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (template && id) {
+      loadInstances();
+    }
+  }, [template, id]);
 
   const loadTemplate = async () => {
     try {
@@ -45,15 +50,19 @@ export default function TemplateDetailPage() {
   };
 
   const loadInstances = async () => {
+    if (!template || !id) return;
+    
     try {
       // Get all conversations and filter for instances of this template
-      // Instances belong to the template's series (template_series_id)
+      // Instances can be identified by:
+      // 1. parent_conversation_id pointing to this template
+      // 2. OR series_id matching template's template_series_id (for recurring instances)
       const allConversations = await api.getConversations();
-      const templateInstances = template?.template_series_id
-        ? allConversations.filter(
-            (conv: ConversationListItem) => conv.series_id === template.template_series_id
-          )
-        : [];
+      const templateInstances = allConversations.filter(
+        (conv: ConversationListItem) => 
+          conv.parent_conversation_id === id ||
+          (template.template_series_id && conv.series_id === template.template_series_id)
+      );
       setInstances(templateInstances);
     } catch (err: any) {
       console.error('Failed to load instances:', err);
@@ -166,7 +175,7 @@ export default function TemplateDetailPage() {
             <h1>
               {template.title}
             </h1>
-            <span className={`status-badge-inline status-${template.state}`}>
+            <span className={`status-badge-inline ${template.state === ConversationState.DRAFT ? 'status-draft' : 'status-template-published'}`}>
               {template.state === ConversationState.DRAFT ? 'Unpublished' : 'Published'}
             </span>
             <span className="badge recurring-badge" title="Recurring Template">
@@ -350,7 +359,7 @@ export default function TemplateDetailPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>Delete Template?</h2>
             <p>
               Are you sure you want to delete this template? This will also delete all instances created from this template.

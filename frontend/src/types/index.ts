@@ -94,6 +94,7 @@ export interface ConversationSummary {
   title: string;
   state: ConversationState;
   created_at: string;
+  is_template?: boolean;
 }
 
 export interface Conversation {

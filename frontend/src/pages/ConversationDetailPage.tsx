@@ -57,7 +57,7 @@ export default function ConversationDetailPage() {
 
   // Redirect to template page if this is a template
   useEffect(() => {
-    if (conversation && conversation.series_id === null && conversation.recurrence_pattern) {
+    if (conversation && conversation.is_template) {
       navigate(`/templates/${id}`, { replace: true });
     }
   }, [conversation, id, navigate]);
@@ -876,17 +876,19 @@ export default function ConversationDetailPage() {
           {conversation.parent_conversation && (
             <div className="info-item parent-conversation-section">
               <label>
-                {conversation.is_recurring_instance
-                  ? 'Created from template:'
+                {conversation.parent_conversation.is_template || conversation.is_recurring_instance
+                  ? 'Created with template:'
                   : conversation.is_follow_up
                     ? 'Followed up from:'
                     : 'Parent Conversation:'}
               </label>
               <div className="parent-conversation-link">
-                <Link to={`/conversations/${conversation.parent_conversation.id}`}>
+                <Link to={conversation.parent_conversation.is_template 
+                  ? `/templates/${conversation.parent_conversation.id}`
+                  : `/conversations/${conversation.parent_conversation.id}`}>
                   ← {conversation.parent_conversation.title}
                 </Link>
-                {!conversation.is_recurring_instance && (
+                {!conversation.is_recurring_instance && !conversation.parent_conversation.is_template && (
                   // Don't show status for templates - they're not active/closed
                   <span className={`status-badge status-${conversation.parent_conversation.state}`}>
                     {conversation.parent_conversation.state}
