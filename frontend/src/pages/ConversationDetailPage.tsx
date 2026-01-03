@@ -1164,7 +1164,7 @@ export default function ConversationDetailPage() {
                     checked={addToSeries}
                     onChange={(e) => setAddToSeries(e.target.checked)}
                   />
-                  <span>Add to series</span>
+                  <span>Add to collection</span>
                 </label>
                 <p style={{ marginLeft: '1.5rem', fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
                   {conversation.series_id

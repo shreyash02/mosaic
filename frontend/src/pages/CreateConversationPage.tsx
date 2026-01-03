@@ -943,7 +943,7 @@ export default function CreateConversationPage() {
                   </p>
                 </>
               ) : (
-                // For regular conversations and conversations from templates: "Add to Series"
+                // For regular conversations and conversations from templates: "Add to Collection"
                 <>
                   <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                     <input
@@ -960,7 +960,7 @@ export default function CreateConversationPage() {
                       }}
                       style={{ marginRight: '0.5rem' }}
                     />
-                    <span style={{ fontWeight: 600 }}>Add to Series</span>
+                    <span style={{ fontWeight: 600 }}>Add to Collection</span>
                   </label>
                   <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
                     {followUpState?.parentConversation?.is_template
