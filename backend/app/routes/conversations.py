@@ -747,17 +747,25 @@ async def update_conversation(
     is_template = (conversation.series_id is None and
                    conversation.recurrence_pattern is not None)
 
+    # Handle questions update separately (if provided)
+    questions_to_update = update_data.questions
+    update_dict = update_data.model_dump(exclude_unset=True, exclude={'questions'})
+    
+    # Check if only series_id is being updated (allowed at any stage)
+    only_series_update = (
+        len(update_dict) == 1 and 
+        'series_id' in update_dict and
+        questions_to_update is None
+    )
+
     # Only allow updates in draft state for regular conversations
     # Templates can be updated at any time
-    if not is_template and conversation.state != ConversationState.DRAFT.value:
+    # series_id can be updated at any stage
+    if not is_template and not only_series_update and conversation.state != ConversationState.DRAFT.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Can only update conversations in draft state"
         )
-
-    # Handle questions update separately (if provided)
-    questions_to_update = update_data.questions
-    update_dict = update_data.model_dump(exclude_unset=True, exclude={'questions'})
 
     # Get conversation timezone for datetime conversions
     conversation_timezone = conversation.timezone or "UTC"

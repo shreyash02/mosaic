@@ -43,6 +43,8 @@ export default function EditConversationPage() {
   // Series fields for templates
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [selectedTemplateSeriesId, setSelectedTemplateSeriesId] = useState<string>('');
+  // Series fields for regular conversations
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
   const [showCreateSeriesModal, setShowCreateSeriesModal] = useState(false);
   const [newSeriesName, setNewSeriesName] = useState('');
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
@@ -54,20 +56,18 @@ export default function EditConversationPage() {
     }
   }, [id]);
 
-  // Load series list for templates
+  // Load series list for templates and regular conversations
   useEffect(() => {
     const loadSeries = async () => {
-      if (isTemplate) {
-        try {
-          const series = await api.listSeries(currentOrgId || undefined);
-          setSeriesList(series);
-        } catch (err) {
-          console.error('Failed to load series:', err);
-        }
+      try {
+        const series = await api.listSeries(currentOrgId || undefined);
+        setSeriesList(series);
+      } catch (err) {
+        console.error('Failed to load series:', err);
       }
     };
     loadSeries();
-  }, [isTemplate, currentOrgId]);
+  }, [currentOrgId]);
 
   const loadConversation = async () => {
     try {
@@ -147,6 +147,10 @@ export default function EditConversationPage() {
       // Load template series configuration
       if (isTemp && conv.template_series_id) {
         setSelectedTemplateSeriesId(conv.template_series_id);
+      }
+      // Load series for regular conversations
+      if (!isTemp && conv.series_id) {
+        setSelectedSeriesId(conv.series_id);
       }
 
       // Convert Question[] to QuestionCreate[]
@@ -336,6 +340,10 @@ export default function EditConversationPage() {
           recurrence_pattern: recurrencePattern,
           ...(nextInstanceDate && { next_instance_date: nextInstanceDate + ':00' }),
           ...(recurrenceEndDate && { recurrence_end_date: recurrenceEndDate + ':00' }),
+        }),
+        // Include series_id for regular conversations
+        ...(!isTemplate && {
+          series_id: selectedSeriesId || undefined,
         }),
       });
       navigate(isTemplate ? `/templates/${id}` : `/conversations/${id}`);
@@ -818,6 +826,45 @@ export default function EditConversationPage() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Series Configuration Section - For regular conversations */}
+        {!isTemplate && (
+          <div className="form-section">
+            <h2>Series</h2>
+            <p className="form-help-text">Add this conversation to a series to group it with related conversations.</p>
+
+            <div className="form-group">
+              <label htmlFor="seriesSelect">Select Series</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  id="seriesSelect"
+                  value={selectedSeriesId}
+                  onChange={(e) => setSelectedSeriesId(e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">No series</option>
+                  {seriesList.map((series) => (
+                    <option key={series.id} value={series.id}>
+                      {series.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateSeriesModal(true)}
+                  className="btn btn-secondary btn-small"
+                >
+                  + Create New
+                </button>
+              </div>
+              <p className="form-help-text">
+                {seriesList.length === 0
+                  ? 'No series available. Click "Create New" to create a series.'
+                  : 'Group this conversation with related conversations in a series.'}
+              </p>
             </div>
           </div>
         )}

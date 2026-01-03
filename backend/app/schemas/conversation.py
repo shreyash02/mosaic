@@ -154,6 +154,8 @@ class ConversationUpdate(BaseModel):
     time_extension_enabled: Optional[bool] = None
     timezone: Optional[str] = Field(None, description="IANA timezone name (e.g., 'UTC', 'America/New_York', 'Asia/Kolkata')")
     questions: Optional[List[QuestionCreate]] = None
+    # Series relationship
+    series_id: Optional[UUID] = Field(None, description="Series ID to add this conversation to. Set to None to remove from series.")
     # Recurring template fields
     recurrence_pattern: Optional[RecurrencePattern] = None
     next_instance_date: Optional[datetime] = None

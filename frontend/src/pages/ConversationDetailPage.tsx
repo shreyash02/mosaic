@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Conversation, ResponseStats, Analysis, InvitationListResponse } from '../types';
+import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Series } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
@@ -45,6 +45,10 @@ export default function ConversationDetailPage() {
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [generatingQRCode, setGeneratingQRCode] = useState(false);
+  const [showSeriesModal, setShowSeriesModal] = useState(false);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
+  const [updatingSeries, setUpdatingSeries] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -54,6 +58,18 @@ export default function ConversationDetailPage() {
       setQrCodeDataUrl(null);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (currentOrgId !== undefined) {
+      loadSeriesList();
+    }
+  }, [currentOrgId]);
+
+  useEffect(() => {
+    if (conversation) {
+      setSelectedSeriesId(conversation.series_id || '');
+    }
+  }, [conversation]);
 
   // Redirect to template page if this is a template
   useEffect(() => {
@@ -326,6 +342,31 @@ export default function ConversationDetailPage() {
     } catch (err) {
       // Silently fail - invitations are optional
       console.error('Failed to load invitations', err);
+    }
+  };
+
+  const loadSeriesList = async () => {
+    try {
+      const series = await api.listSeries(currentOrgId || undefined);
+      setSeriesList(series);
+    } catch (err) {
+      console.error('Failed to load series', err);
+    }
+  };
+
+  const handleUpdateSeries = async () => {
+    if (!id) return;
+    setUpdatingSeries(true);
+    try {
+      const updated = await api.updateConversation(id, {
+        series_id: selectedSeriesId || undefined,
+      });
+      setConversation(updated);
+      setShowSeriesModal(false);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update series');
+    } finally {
+      setUpdatingSeries(false);
     }
   };
 
@@ -737,6 +778,29 @@ export default function ConversationDetailPage() {
               <span>{formatDate(conversation.closed_at, conversation.timezone)}</span>
             </div>
           )}
+
+          <div className="info-item">
+            <label>Series:</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {conversation.series_id ? (
+                <span>
+                  {seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown Series'}
+                </span>
+              ) : (
+                <span style={{ color: '#718096' }}>Not in a series</span>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedSeriesId(conversation.series_id || '');
+                  setShowSeriesModal(true);
+                }}
+                className="btn btn-small btn-secondary"
+                style={{ marginLeft: '0.5rem' }}
+              >
+                {conversation.series_id ? 'Change' : 'Add to Series'}
+              </button>
+            </div>
+          </div>
 
           {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && (
             <div className="info-item participant-codes-section">
@@ -1247,6 +1311,61 @@ export default function ConversationDetailPage() {
                 className="btn btn-secondary"
               >
                 Copy Link Instead
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Series Selection Modal */}
+      {showSeriesModal && (
+        <div className="modal-overlay" onClick={() => setShowSeriesModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Manage Series</h2>
+            <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+              Add this conversation to a series or remove it from its current series.
+            </p>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                Select Series:
+              </label>
+              <select
+                value={selectedSeriesId}
+                onChange={(e) => setSelectedSeriesId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #cbd5e0',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem',
+                }}
+              >
+                <option value="">No series (remove from series)</option>
+                {seriesList.map((series) => (
+                  <option key={series.id} value={series.id}>
+                    {series.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
+            <div className="modal-actions">
+              <button
+                onClick={() => {
+                  setShowSeriesModal(false);
+                  setError('');
+                }}
+                className="btn btn-secondary"
+                disabled={updatingSeries}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateSeries}
+                className="btn btn-primary"
+                disabled={updatingSeries}
+              >
+                {updatingSeries ? 'Updating...' : 'Save'}
               </button>
             </div>
           </div>
