@@ -31,6 +31,7 @@ class Series(Base):
     organization = relationship("Organization", back_populates="series")
     conversations = relationship("Conversation", back_populates="series", foreign_keys="Conversation.series_id")
     templates = relationship("Conversation", back_populates="series_template_rel", foreign_keys="Conversation.template_series_id")
+    analysis = relationship("CollectionAnalysis", back_populates="series", uselist=False)
 
     def __repr__(self):
         return f"<Series(id={self.id}, name={self.name})>"

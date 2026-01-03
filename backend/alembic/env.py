@@ -21,6 +21,8 @@ from app.models import (
     ParticipantCode,
     ConversationInvitation,
     Admin,
+    Series,
+    CollectionAnalysis,
 )
 
 # this is the Alembic Config object

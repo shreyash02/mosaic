@@ -36,6 +36,7 @@ import type {
   SeriesCreate,
   SeriesUpdate,
   SeriesWithConversations,
+  CollectionAnalysis,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -468,6 +469,21 @@ class ApiService {
 
   async deleteSeries(id: string): Promise<void> {
     await this.client.delete(`/series/${id}`);
+  }
+
+  // Collection analysis endpoints
+  async getCollectionAnalysis(id: string): Promise<CollectionAnalysis | null> {
+    const response = await this.client.get<CollectionAnalysis | null>(`/series/${id}/analysis`);
+    return response.data;
+  }
+
+  async computeCollectionAnalysis(id: string, force: boolean = false): Promise<CollectionAnalysis> {
+    const params = new URLSearchParams();
+    params.append('force', force.toString());
+    const response = await this.client.post<CollectionAnalysis>(
+      `/series/${id}/analyze?${params.toString()}`
+    );
+    return response.data;
   }
 
   // Upload endpoints

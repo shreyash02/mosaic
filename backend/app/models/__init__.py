@@ -10,6 +10,7 @@ from app.models.participant_code import ParticipantCode
 from app.models.conversation_invitation import ConversationInvitation
 from app.models.admin import Admin
 from app.models.series import Series
+from app.models.collection_analysis import CollectionAnalysis
 
 __all__ = [
     "User",
@@ -23,4 +24,5 @@ __all__ = [
     "ConversationInvitation",
     "Admin",
     "Series",
+    "CollectionAnalysis",
 ]

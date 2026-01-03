@@ -525,3 +525,66 @@ export interface SeriesUpdate {
   name?: string;
   description?: string;
 }
+
+// Collection Analysis types
+export interface ThemeDataPoint {
+  period: string;
+  period_start: string;
+  period_end: string;
+  normalized_score: number;
+  frequency: number;
+  conversation_count: number;
+}
+
+export interface ThemeTrend {
+  theme_id: string;
+  theme_name: string;
+  question_text: string;
+  data_points: ThemeDataPoint[];
+}
+
+export interface TrendsData {
+  period: string;  // 'daily', 'weekly', 'monthly'
+  themes: ThemeTrend[];
+}
+
+export interface QuestionInsight {
+  question_text: string;
+  question_type: string;
+  total_responses: number;
+  conversation_count: number;
+  themes?: Array<{
+    theme: string;
+    frequency: number;
+    conversation_count: number;
+  }>;
+  rating_stats?: {
+    average: number;
+    min_value: number;
+    max_value: number;
+    total_responses: number;
+  };
+  poll_stats?: {
+    total_responses: number;
+    choices: Array<{
+      label: string;
+      count: number;
+      percentage: number;
+    }>;
+  };
+}
+
+export interface CollectionAnalysis {
+  id: string;
+  series_id: string;
+  overall_summary?: string;
+  surprising_insights?: SurprisingInsight[];
+  question_insights?: QuestionInsight[];
+  trends?: TrendsData;
+  total_conversations: number;
+  total_responses: number;
+  conversations_analyzed: number;
+  conversation_ids: string[];
+  computed_at: string;
+  computation_duration_ms?: number;
+}

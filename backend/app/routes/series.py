@@ -12,6 +12,8 @@ from app.models.user import User
 from app.models.series import Series
 from app.models.organization import OrganizationMember
 from app.models.conversation import Conversation
+from app.models.analysis import Analysis
+from app.models.collection_analysis import CollectionAnalysis
 from app.schemas.series import (
     SeriesCreate,
     SeriesUpdate,
@@ -19,7 +21,10 @@ from app.schemas.series import (
     SeriesWithConversations,
 )
 from app.schemas.conversation import ConversationListItem, ConversationState
+from app.schemas.collection_analysis import CollectionAnalysis as CollectionAnalysisSchema
 from app.services.organization_service import check_organization_membership
+from app.services.collection_analysis_service import CollectionAnalysisService
+from datetime import datetime
 
 router = APIRouter()
 
@@ -289,4 +294,113 @@ async def delete_series(
     db.commit()
 
     return None
+
+
+@router.get("/{series_id}/analysis", response_model=Optional[CollectionAnalysisSchema])
+async def get_collection_analysis(
+    series_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get collection analysis (summary, insights, trends).
+    
+    Returns cached analysis if available, otherwise returns None.
+    
+    Args:
+        series_id: Series ID
+        current_user: Current authenticated user
+        db: Database session
+    
+    Returns:
+        Collection analysis if exists, None otherwise
+    
+    Raises:
+        HTTPException: If series not found or user doesn't have access
+    """
+    # Check access
+    series = require_series_access(db, series_id, current_user)
+    
+    # Get existing analysis
+    analysis = db.query(CollectionAnalysis).filter(
+        CollectionAnalysis.series_id == series_id
+    ).first()
+    
+    if analysis:
+        return analysis
+    
+    return None  # No analysis computed yet
+
+
+@router.post("/{series_id}/analyze", response_model=CollectionAnalysisSchema)
+async def compute_collection_analysis(
+    series_id: UUID,
+    force: bool = Query(False, description="Force recomputation even if exists"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Compute collection analysis (summary, insights, trends).
+    
+    If analysis already exists and force=False, returns existing.
+    Otherwise computes new analysis and persists to DB.
+    
+    Args:
+        series_id: Series ID
+        force: Force recomputation even if analysis exists
+        current_user: Current authenticated user
+        db: Database session
+    
+    Returns:
+        Collection analysis
+    
+    Raises:
+        HTTPException: If series not found or user doesn't have access
+    """
+    # Check access
+    series = require_series_access(db, series_id, current_user)
+    
+    # Check if analysis exists
+    existing = db.query(CollectionAnalysis).filter(
+        CollectionAnalysis.series_id == series_id
+    ).first()
+    
+    if existing and not force:
+        return existing
+    
+    # Get all conversations in collection
+    conversations = db.query(Conversation).filter(
+        Conversation.series_id == series_id,
+        Conversation.state != ConversationState.DELETED.value
+    ).all()
+    
+    # Get all analyses for these conversations
+    conversation_ids = [c.id for c in conversations]
+    analyses = db.query(Analysis).filter(
+        Analysis.conversation_id.in_(conversation_ids)
+    ).all()
+    
+    # Generate analysis
+    service = CollectionAnalysisService()
+    analysis_data = service.generate_collection_analysis(conversations, analyses)
+    
+    # Save to database
+    if existing:
+        # Update existing
+        for key, value in analysis_data.items():
+            setattr(existing, key, value)
+        existing.computed_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
+        return existing
+    else:
+        # Create new
+        collection_analysis = CollectionAnalysis(
+            series_id=series_id,
+            **analysis_data
+        )
+        db.add(collection_analysis)
+        db.commit()
+        db.refresh(collection_analysis)
+        return collection_analysis
 
