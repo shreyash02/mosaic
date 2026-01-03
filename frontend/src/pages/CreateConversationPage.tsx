@@ -476,9 +476,11 @@ export default function CreateConversationPage() {
         <h1>
           {followUpState?.createTemplate
             ? 'Create Template'
-            : followUpState?.isFollowUp
-              ? 'Create Follow-up Conversation'
-              : 'Create New Conversation'}
+            : followUpState?.parentConversation?.is_template
+              ? 'Create Conversation from Template'
+              : followUpState?.isFollowUp
+                ? 'Create Follow-up Conversation'
+                : 'Create New Conversation'}
         </h1>
         <button onClick={() => navigate(followUpState?.parentConversationId ? `/conversations/${followUpState.parentConversationId}` : '/dashboard')} className="btn btn-secondary">
           Cancel
