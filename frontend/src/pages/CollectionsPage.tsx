@@ -27,7 +27,7 @@ export default function CollectionsPage() {
       const collectionsWithCounts = await Promise.all(
         data.map(async (collection) => {
           try {
-            const details = await api.getSeries(collection.id);
+            const details: SeriesWithConversations = await api.getSeries(collection.id);
             return {
               ...collection,
               conversationCount: details.conversations.length

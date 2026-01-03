@@ -60,7 +60,7 @@ export default function TrendChart({ trends }: TrendChartProps) {
           tick={{ fontSize: 12 }}
         />
         <Tooltip 
-          formatter={(value: number) => value !== null ? value.toFixed(3) : 'N/A'}
+          formatter={(value: number | undefined) => value !== null && value !== undefined ? value.toFixed(3) : 'N/A'}
           labelStyle={{ marginBottom: '0.5rem' }}
         />
         <Legend />
