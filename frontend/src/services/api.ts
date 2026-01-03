@@ -366,6 +366,30 @@ class ApiService {
     return response.data;
   }
 
+  async adminUpdateConversation(id: string, data: Partial<ConversationCreate>): Promise<AdminConversationInfo> {
+    // Use admin token for this request
+    const adminToken = localStorage.getItem('admin_token');
+    if (!adminToken) {
+      throw new Error('Admin token not found');
+    }
+    
+    const axios = (await import('axios')).default;
+    const API_BASE_URL = import.meta.env.VITE_API_URL ||
+      (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+    
+    const response = await axios.patch<AdminConversationInfo>(
+      `${API_BASE_URL}/admin/conversations/${id}`,
+      data,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      }
+    );
+    return response.data;
+  }
+
   // Organization endpoints
   async createOrganization(data: OrganizationCreate): Promise<OrganizationWithMembers> {
     const response = await this.client.post<OrganizationWithMembers>('/organizations', data);

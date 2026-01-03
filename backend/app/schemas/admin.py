@@ -43,6 +43,14 @@ class AdminConversationInfo(BaseModel):
     access_code: str
     created_at: datetime
     updated_at: datetime
+    # Configuration fields for editing
+    show_verbatim_responses: Optional[bool] = None
+    results_access: Optional[str] = None
+    anonymity_level: Optional[str] = None
+    invite_only: Optional[bool] = None
+    auto_analyze: Optional[bool] = None
+    max_response_length: Optional[int] = None
+    duration_minutes: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

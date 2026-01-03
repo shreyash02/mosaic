@@ -25,7 +25,7 @@ from app.schemas.admin import (
 )
 from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
-from app.schemas.conversation import ConversationState
+from app.schemas.conversation import ConversationState, ConversationUpdate, ConversationWithQuestions
 
 router = APIRouter()
 security = HTTPBasic(auto_error=False)
@@ -279,6 +279,93 @@ async def get_conversation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found"
         )
+    return conversation
+
+
+@router.patch("/conversations/{conversation_id}", response_model=AdminConversationInfo)
+async def update_conversation(
+    conversation_id: UUID,
+    update_data: ConversationUpdate,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Update conversation (admin only - can update regardless of state).
+
+    Args:
+        conversation_id: Conversation ID
+        update_data: Update data
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        Updated conversation information
+
+    Raises:
+        HTTPException: If conversation not found
+    """
+    from sqlalchemy.orm import joinedload
+    from app.models.question import Question
+    from datetime import datetime
+    from app.utils.timezone_utils import parse_datetime_with_timezone
+
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Handle questions update separately (if provided)
+    questions_to_update = update_data.questions
+    update_dict = update_data.model_dump(exclude_unset=True, exclude={'questions'})
+    
+    # Get conversation timezone for datetime conversions
+    conversation_timezone = conversation.timezone or "UTC"
+
+    # Update conversation fields
+    for field, value in update_dict.items():
+        if field == 'anonymity_level' and value:
+            setattr(conversation, field, value.value)
+        elif field == 'results_access' and value:
+            setattr(conversation, field, value.value)
+        elif field == 'recurrence_pattern' and value:
+            setattr(conversation, field, value.value)
+        elif field in ['next_instance_date', 'recurrence_end_date', 'scheduled_activate_at', 'auto_close_at'] and value:
+            # Convert from conversation timezone to UTC
+            value_utc = parse_datetime_with_timezone(
+                value.isoformat() if isinstance(value, datetime) else str(value),
+                conversation_timezone
+            )
+            setattr(conversation, field, value_utc)
+        else:
+            setattr(conversation, field, value)
+
+    # Update questions if provided
+    if questions_to_update is not None:
+        if len(questions_to_update) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one question is required"
+            )
+
+        # Delete existing questions
+        db.query(Question).filter(Question.conversation_id == conversation.id).delete()
+
+        # Create new questions
+        for question_data in questions_to_update:
+            question = Question(
+                conversation_id=conversation.id,
+                question_text=question_data.question_text,
+                question_type=question_data.question_type,
+                question_order=question_data.question_order,
+                options=question_data.options,
+            )
+            db.add(question)
+
+    db.commit()
+    db.refresh(conversation)
+
     return conversation
 
 

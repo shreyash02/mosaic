@@ -405,6 +405,14 @@ export interface AdminConversationInfo {
   access_code: string;
   created_at: string;
   updated_at: string;
+  // Configuration fields for editing
+  show_verbatim_responses?: boolean | null;
+  results_access?: string | null;
+  anonymity_level?: string | null;
+  invite_only?: boolean | null;
+  auto_analyze?: boolean | null;
+  max_response_length?: number | null;
+  duration_minutes?: number | null;
 }
 
 export interface AdminResponseInfo {
