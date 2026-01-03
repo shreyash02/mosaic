@@ -1,9 +1,9 @@
 """Analysis schemas."""
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # Perspective within a theme
@@ -32,6 +32,60 @@ class Theme(BaseModel):
     frequency: int = Field(..., ge=0)
     perspectives: List[Perspective] = []
     key_points: Optional[List[str]] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_theme_data(cls, data: Any) -> Dict[str, Any]:
+        """Normalize theme data to handle old formats and missing fields."""
+        if not isinstance(data, dict):
+            return data
+
+        result = dict(data)
+
+        # Convert old clusters format to perspectives
+        if 'clusters' in result and 'perspectives' not in result:
+            clusters = result.get('clusters', [])
+            if isinstance(clusters, list):
+                perspectives = []
+                for cluster in clusters:
+                    if isinstance(cluster, dict):
+                        perspective = {
+                            "name": cluster.get('sentiment', 'General').title(),
+                            "summary": cluster.get('summary', ''),
+                            "count": cluster.get('count', 0)
+                        }
+                        if perspective['summary']:  # Only add if has summary
+                            perspectives.append(perspective)
+                if perspectives:
+                    result['perspectives'] = perspectives
+
+        # Generate summary if missing
+        if 'summary' not in result or not result.get('summary'):
+            # Try to get summary from clusters
+            if 'clusters' in result and isinstance(result['clusters'], list):
+                clusters = result['clusters']
+                if clusters:
+                    first_cluster = clusters[0]
+                    if isinstance(first_cluster, dict) and 'summary' in first_cluster:
+                        result['summary'] = first_cluster['summary']
+
+            # Try to get summary from perspectives
+            if 'summary' not in result and 'perspectives' in result:
+                perspectives = result['perspectives']
+                if isinstance(perspectives, list) and perspectives:
+                    summaries = []
+                    for p in perspectives:
+                        if isinstance(p, dict) and 'summary' in p:
+                            summaries.append(p['summary'])
+                    if summaries:
+                        result['summary'] = " ".join(summaries[:2])  # Use first 2
+
+            # Fallback summary
+            if 'summary' not in result or not result.get('summary'):
+                theme_name = result.get('theme', 'Unknown Theme')
+                result['summary'] = f"Responses related to {theme_name}"
+
+        return result
 
 
 # Request to trigger analysis
@@ -82,12 +136,12 @@ class Analysis(BaseModel):
     def ensure_list(cls, v):
         """Convert None to empty list."""
         return v if v is not None else []
-    
+
     @field_validator('surprising_insights', mode='before')
     @classmethod
     def validate_surprising_insights(cls, v):
         """Validate and convert surprising_insights field.
-        
+
         Handles:
         - None -> None (keep as None since it's Optional)
         - String (JSON string from DB) -> Parse and validate
@@ -96,10 +150,10 @@ class Analysis(BaseModel):
         - Invalid data -> None
         """
         import json
-        
+
         if v is None:
             return None
-        
+
         # If it's a string, try to parse it as JSON first
         # (JSONB from PostgreSQL might be serialized as a string)
         if isinstance(v, str):
@@ -110,7 +164,7 @@ class Analysis(BaseModel):
             except (json.JSONDecodeError, ValueError):
                 # Not valid JSON - likely old markdown format, discard it
                 return None
-        
+
         # If it's already a list, validate each item
         if isinstance(v, list):
             validated = []
@@ -119,21 +173,21 @@ class Analysis(BaseModel):
                     # Validate required fields - be lenient with types
                     title = item.get("title")
                     description = item.get("description")
-                    
+
                     if title and description:
                         # Convert to string if needed and strip
                         title_str = str(title).strip() if title else ""
                         desc_str = str(description).strip() if description else ""
-                        
+
                         if title_str and desc_str:
                             validated.append({
                                 "title": title_str,
                                 "description": desc_str
                             })
-            
+
             # Return validated list if we have items, otherwise None
             return validated if validated else None
-        
+
         # Invalid format, return None
         return None
 
