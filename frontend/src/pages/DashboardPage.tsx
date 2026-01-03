@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { ConversationListItem, ConversationInvitationWithConversation } from '../types';
+import type { ConversationListItem, ConversationInvitationWithConversation, Series } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import axios from 'axios';
 
 type DateRange = 'all' | '7' | '30' | '90';
+type GroupingMode = 'none' | 'parent-child' | 'series' | 'template';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -20,13 +21,15 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'owned' | 'participated' | 'invitations'>('owned');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [groupRelated, setGroupRelated] = useState(false);
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('none');
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [selectedStates, setSelectedStates] = useState<ConversationState[]>([]);
   const [selectedAnonymityLevels, setSelectedAnonymityLevels] = useState<AnonymityLevel[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [showStateDropdown, setShowStateDropdown] = useState(false);
   const [showAnonymityDropdown, setShowAnonymityDropdown] = useState(false);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
+  const [showGroupingDropdown, setShowGroupingDropdown] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
@@ -83,20 +86,21 @@ export default function DashboardPage() {
         setShowStateDropdown(false);
         setShowAnonymityDropdown(false);
         setShowDateDropdown(false);
+        setShowGroupingDropdown(false);
       }
       if (!clickedMenu) {
         setOpenMenuId(null);
       }
     };
 
-    if (showStateDropdown || showAnonymityDropdown || showDateDropdown || openMenuId) {
+    if (showStateDropdown || showAnonymityDropdown || showDateDropdown || showGroupingDropdown || openMenuId) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [showStateDropdown, showAnonymityDropdown, showDateDropdown, openMenuId]);
+  }, [showStateDropdown, showAnonymityDropdown, showDateDropdown, showGroupingDropdown, openMenuId]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -160,7 +164,23 @@ export default function DashboardPage() {
     }
   };
 
-  const groupConversations = (conversations: ConversationListItem[]) => {
+  const loadSeries = async () => {
+    try {
+      const series = await api.listSeries(currentOrgId || undefined);
+      setSeriesList(series);
+    } catch (err) {
+      console.error('Failed to load series:', err);
+      setSeriesList([]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'owned') {
+      loadSeries();
+    }
+  }, [currentOrgId, activeTab]);
+
+  const groupConversationsByParentChild = (conversations: ConversationListItem[]) => {
     // Build a map of parent ID to children
     const childrenMap = new Map<string, ConversationListItem[]>();
     const rootConversations: ConversationListItem[] = [];
@@ -183,6 +203,98 @@ export default function DashboardPage() {
     });
 
     return { rootConversations, childrenMap };
+  };
+
+  const groupConversationsBySeries = (conversations: ConversationListItem[]) => {
+    // Build a map of series ID to conversations
+    const seriesMap = new Map<string, ConversationListItem[]>();
+    const standaloneConversations: ConversationListItem[] = [];
+
+    conversations.forEach(conv => {
+      if (conv.series_id) {
+        const existing = seriesMap.get(conv.series_id) || [];
+        existing.push(conv);
+        seriesMap.set(conv.series_id, existing);
+      } else {
+        standaloneConversations.push(conv);
+      }
+    });
+
+    // Sort conversations in each series by created_at (oldest first)
+    seriesMap.forEach(convs => {
+      convs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
+
+    // Sort standalone conversations by created_at (newest first)
+    standaloneConversations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return { seriesMap, standaloneConversations };
+  };
+
+  const groupConversationsByTemplate = (conversations: ConversationListItem[]) => {
+    // Separate templates from instances
+    const templates = conversations.filter(c => c.is_template === true);
+    const instances = conversations.filter(c => c.is_template !== true);
+    
+    // Build a map of template ID to instances
+    const templateInstancesMap = new Map<string, ConversationListItem[]>();
+    
+    // Initialize map with all templates
+    templates.forEach(template => {
+      templateInstancesMap.set(template.id, []);
+    });
+    
+    // Group instances by template
+    instances.forEach(instance => {
+      // Check if parent is a template
+      if (instance.parent_conversation_id) {
+        const parentTemplate = templates.find(t => t.id === instance.parent_conversation_id);
+        if (parentTemplate) {
+          const existing = templateInstancesMap.get(parentTemplate.id) || [];
+          existing.push(instance);
+          templateInstancesMap.set(parentTemplate.id, existing);
+          return;
+        }
+      }
+      
+      // Check if instance is in a template's series
+      if (instance.series_id) {
+        const matchingTemplate = templates.find(t => t.template_series_id === instance.series_id);
+        if (matchingTemplate) {
+          const existing = templateInstancesMap.get(matchingTemplate.id) || [];
+          existing.push(instance);
+          templateInstancesMap.set(matchingTemplate.id, existing);
+          return;
+        }
+      }
+    });
+    
+    // Sort instances by created_at (oldest first)
+    templateInstancesMap.forEach(instances => {
+      instances.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
+    
+    // Separate conversations that aren't templates or template instances
+    const standaloneConversations = instances.filter(instance => {
+      // Not a template instance if:
+      // - parent_conversation_id doesn't point to a template
+      // - series_id doesn't match any template's template_series_id
+      if (instance.parent_conversation_id) {
+        const parentIsTemplate = templates.some(t => t.id === instance.parent_conversation_id);
+        if (parentIsTemplate) return false;
+      }
+      if (instance.series_id) {
+        const inTemplateSeries = templates.some(t => t.template_series_id === instance.series_id);
+        if (inTemplateSeries) return false;
+      }
+      return true;
+    });
+
+    // Sort templates and standalone by created_at (newest first)
+    templates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    standaloneConversations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    return { templates, templateInstancesMap, standaloneConversations };
   };
 
 
@@ -474,7 +586,12 @@ export default function DashboardPage() {
     !(c.is_template === true)
   );
 
-  const filteredConversations = actualConversations.filter(c => {
+  // For template grouping, include templates in the filtered list
+  const conversationsToFilter = groupingMode === 'template' && activeTab === 'owned' 
+    ? currentConversations 
+    : actualConversations;
+
+  const filteredConversations = conversationsToFilter.filter(c => {
     // State filter
     if (selectedStates.length > 0 && !selectedStates.includes(c.state)) {
       return false;
@@ -493,7 +610,18 @@ export default function DashboardPage() {
     return true;
   });
 
-  const { rootConversations, childrenMap } = groupConversations(filteredConversations);
+  // Apply grouping based on selected mode
+  const { rootConversations, childrenMap } = groupingMode === 'parent-child' 
+    ? groupConversationsByParentChild(filteredConversations)
+    : { rootConversations: [], childrenMap: new Map() };
+  
+  const { seriesMap, standaloneConversations: standaloneBySeries } = groupingMode === 'series'
+    ? groupConversationsBySeries(filteredConversations)
+    : { seriesMap: new Map(), standaloneConversations: [] };
+  
+  const { templates: groupedTemplates, templateInstancesMap, standaloneConversations: standaloneByTemplate } = groupingMode === 'template'
+    ? groupConversationsByTemplate(filteredConversations)
+    : { templates: [], templateInstancesMap: new Map(), standaloneConversations: [] };
 
   const getStateCount = (state: ConversationState) => {
     return actualConversations.filter(c => c.state === state).length;
@@ -549,12 +677,80 @@ export default function DashboardPage() {
         </div>
         <div className="header-actions">
           {conversations.length > 0 && activeTab === 'owned' && (
-            <button
-              onClick={() => setGroupRelated(!groupRelated)}
-              className={`btn ${groupRelated ? 'btn-secondary' : 'btn-outline-secondary'}`}
-            >
-              {groupRelated ? '✓ Grouped' : 'Group Related'}
-            </button>
+            <div className="filter-dropdown-container" style={{ position: 'relative' }}>
+              <button
+                onClick={() => {
+                  setShowGroupingDropdown(!showGroupingDropdown);
+                  setShowStateDropdown(false);
+                  setShowAnonymityDropdown(false);
+                  setShowDateDropdown(false);
+                }}
+                className={`btn ${groupingMode !== 'none' ? 'btn-secondary' : 'btn-outline-secondary'}`}
+              >
+                {groupingMode === 'none' && 'Group by'}
+                {groupingMode === 'parent-child' && '✓ By Follow-up'}
+                {groupingMode === 'series' && '✓ By Collection'}
+                {groupingMode === 'template' && '✓ From Templates'}
+                <span className={`dropdown-arrow ${showGroupingDropdown ? 'open' : ''}`} style={{ marginLeft: '0.5rem' }}>▼</span>
+              </button>
+              {showGroupingDropdown && (
+                <div className="filter-dropdown-menu" style={{ minWidth: '200px' }}>
+                  <div className="filter-dropdown-header">
+                    <span className="filter-dropdown-title">Group conversations</span>
+                  </div>
+                  <div className="filter-dropdown-items">
+                    <label className="filter-dropdown-item">
+                      <input
+                        type="radio"
+                        name="groupingMode"
+                        checked={groupingMode === 'none'}
+                        onChange={() => {
+                          setGroupingMode('none');
+                          setShowGroupingDropdown(false);
+                        }}
+                      />
+                      <span className="filter-item-label">No grouping</span>
+                    </label>
+                    <label className="filter-dropdown-item">
+                      <input
+                        type="radio"
+                        name="groupingMode"
+                        checked={groupingMode === 'parent-child'}
+                        onChange={() => {
+                          setGroupingMode('parent-child');
+                          setShowGroupingDropdown(false);
+                        }}
+                      />
+                      <span className="filter-item-label">By Follow-up</span>
+                    </label>
+                    <label className="filter-dropdown-item">
+                      <input
+                        type="radio"
+                        name="groupingMode"
+                        checked={groupingMode === 'series'}
+                        onChange={() => {
+                          setGroupingMode('series');
+                          setShowGroupingDropdown(false);
+                        }}
+                      />
+                      <span className="filter-item-label">By Collection</span>
+                    </label>
+                    <label className="filter-dropdown-item">
+                      <input
+                        type="radio"
+                        name="groupingMode"
+                        checked={groupingMode === 'template'}
+                        onChange={() => {
+                          setGroupingMode('template');
+                          setShowGroupingDropdown(false);
+                        }}
+                      />
+                      <span className="filter-item-label">From Templates</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {activeTab === 'owned' && (
             <Link to="/conversations/new" className="btn btn-primary">
@@ -807,7 +1003,7 @@ export default function DashboardPage() {
             </>
           )}
         </div>
-      ) : groupRelated && activeTab === 'owned' ? (
+      ) : groupingMode === 'parent-child' && activeTab === 'owned' ? (
         rootConversations.length === 0 ? (
           <div className="empty-state">
             <h3>No conversations found</h3>
@@ -833,6 +1029,124 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )
+      ) : groupingMode === 'series' && activeTab === 'owned' ? (
+        seriesMap.size === 0 && standaloneBySeries.length === 0 ? (
+          <div className="empty-state">
+            <h3>No conversations found</h3>
+            <p>No conversations match the selected filter</p>
+            <button
+              onClick={clearFilters}
+              className="btn btn-secondary"
+            >
+              Clear Filter
+            </button>
+          </div>
+        ) : (
+          <div className="conversations-list">
+            <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
+            <div className="conversation-groups">
+              {Array.from(seriesMap.entries())
+                .sort(([seriesIdA], [seriesIdB]) => {
+                  const seriesA = seriesList.find(s => s.id === seriesIdA);
+                  const seriesB = seriesList.find(s => s.id === seriesIdB);
+                  const nameA = seriesA?.name || '';
+                  const nameB = seriesB?.name || '';
+                  return nameA.localeCompare(nameB);
+                })
+                .map(([seriesId, convs]) => {
+                  const series = seriesList.find(s => s.id === seriesId);
+                  return (
+                    <div key={seriesId} className="conversation-group has-series">
+                      <div style={{ 
+                        fontSize: '0.9rem', 
+                        fontWeight: 600, 
+                        color: '#4299e1', 
+                        marginBottom: '0.75rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: '2px solid #4299e1'
+                      }}>
+                        Collection: {series?.name || `Collection ${seriesId.slice(0, 8)}...`} ({convs.length})
+                      </div>
+                      <div className="conversation-grid">
+                        {convs.map((conv: ConversationListItem) => renderConversationCard(conv, false))}
+                      </div>
+                    </div>
+                  );
+                })}
+              {standaloneBySeries.length > 0 && (
+                <div className="conversation-group">
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: 600, 
+                    color: '#718096', 
+                    marginBottom: '0.75rem',
+                    paddingBottom: '0.5rem',
+                    borderBottom: '1px solid #e2e8f0'
+                  }}>
+                    Not in a series ({standaloneBySeries.length})
+                  </div>
+                  <div className="conversation-grid">
+                    {standaloneBySeries.map((conv) => renderConversationCard(conv, false))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      ) : groupingMode === 'template' && activeTab === 'owned' ? (
+        groupedTemplates.length === 0 && standaloneByTemplate.length === 0 ? (
+          <div className="empty-state">
+            <h3>No conversations found</h3>
+            <p>No conversations match the selected filter</p>
+            <button
+              onClick={clearFilters}
+              className="btn btn-secondary"
+            >
+              Clear Filter
+            </button>
+          </div>
+        ) : (
+          <div className="conversations-list">
+            <h2>{activeTab === 'owned' ? 'Your Conversations' : 'Participated Conversations'}</h2>
+            <div className="conversation-groups">
+              {groupedTemplates.map((template) => {
+                const instances = templateInstancesMap.get(template.id) || [];
+                return (
+                  <div key={template.id} className={`conversation-group ${instances.length > 0 ? 'has-instances' : ''}`}>
+                    {renderConversationCard(template, false)}
+                    {instances.length > 0 && (
+                      <div className="template-instances-container" style={{ paddingLeft: '2rem', marginTop: '0.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '0.5rem', fontWeight: 600 }}>
+                          Instances ({instances.length}):
+                        </div>
+                        <div className="conversation-grid">
+                          {instances.map((instance: ConversationListItem) => renderConversationCard(instance, true))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {standaloneByTemplate.length > 0 && (
+                <div className="conversation-group">
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: 600, 
+                    color: '#718096', 
+                    marginBottom: '0.75rem',
+                    paddingBottom: '0.5rem',
+                    borderBottom: '1px solid #e2e8f0'
+                  }}>
+                    Not from a template ({standaloneByTemplate.length})
+                  </div>
+                  <div className="conversation-grid">
+                    {standaloneByTemplate.map((conv) => renderConversationCard(conv, false))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )
