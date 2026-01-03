@@ -28,6 +28,8 @@ import OrganizationDetailPage from './pages/OrganizationDetailPage';
 import OrganizationSettingsPage from './pages/OrganizationSettingsPage';
 import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
+import CollectionsPage from './pages/CollectionsPage';
+import CollectionDetailPage from './pages/CollectionDetailPage';
 import HelpPage from './pages/HelpPage';
 import CreatingConversationsHelp from './pages/help/CreatingConversationsHelp';
 import InvitingParticipantsHelp from './pages/help/InvitingParticipantsHelp';
@@ -178,6 +180,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AcceptOrganizationInvitePage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/collections"
+              element={
+                <ProtectedRoute>
+                  <CollectionsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/collections/:id"
+              element={
+                <ProtectedRoute>
+                  <CollectionDetailPage />
                 </ProtectedRoute>
               }
             />

@@ -140,6 +140,9 @@ export default function Header() {
               <Link to="/dashboard" className="nav-link">
                 Dashboard
               </Link>
+              <Link to="/collections" className="nav-link">
+                Collections
+              </Link>
               <Link to="/organizations" className="nav-link">
                 Organizations
               </Link>

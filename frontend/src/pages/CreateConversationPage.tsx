@@ -974,7 +974,7 @@ export default function CreateConversationPage() {
                 <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label htmlFor="seriesSelect">Select Series</label>
+                      <label htmlFor="seriesSelect">Select Collection</label>
                       <button
                         type="button"
                         onClick={() => setShowCreateSeriesModal(true)}
@@ -990,7 +990,7 @@ export default function CreateConversationPage() {
                       onChange={(e) => setSelectedSeriesId(e.target.value)}
                       required={addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)}
                     >
-                      <option value="">-- Select a series --</option>
+                      <option value="">-- Select a collection --</option>
                       {seriesList.map((series) => (
                         <option key={series.id} value={series.id}>
                           {series.name}
@@ -999,10 +999,10 @@ export default function CreateConversationPage() {
                     </select>
                     <p className="form-help-text">
                       {seriesList.length === 0
-                        ? 'No series available. Click "Create New" to create a series or create this conversation independently.'
+                        ? 'No collections available. Click "Create New" to create a collection or create this conversation independently.'
                         : followUpState?.createTemplate
-                          ? 'Instances created from this template will join this series.'
-                          : 'Select an existing series to add this conversation to.'}
+                          ? 'Instances created from this template will join this collection.'
+                          : 'Select an existing collection to add this conversation to.'}
                     </p>
                   </div>
                 </div>

@@ -273,7 +273,7 @@ export default function EditConversationPage() {
 
   const handleCreateSeries = async () => {
     if (!newSeriesName.trim()) {
-      setError('Series name is required');
+      setError('Collection name is required');
       return;
     }
 
@@ -298,7 +298,7 @@ export default function EditConversationPage() {
       setNewSeriesName('');
       setNewSeriesDescription('');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create series');
+      setError(err.response?.data?.detail || 'Failed to create collection');
     } finally {
       setCreatingSeries(false);
     }
@@ -754,8 +754,8 @@ export default function EditConversationPage() {
         {/* Series Configuration Section - Only for templates */}
         {isTemplate && (
           <div className="form-section">
-            <h2>Series Configuration</h2>
-            <p className="form-help-text">Configure which series instances created from this template will join.</p>
+            <h2>Collection Configuration</h2>
+            <p className="form-help-text">Configure which collection instances created from this template will join.</p>
 
             <div className="form-group">
               <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
@@ -773,17 +773,17 @@ export default function EditConversationPage() {
                   }}
                   style={{ marginRight: '0.5rem' }}
                 />
-                <span style={{ fontWeight: 600 }}>Set Series for Instances</span>
+                <span style={{ fontWeight: 600 }}>Set Collection for Instances</span>
               </label>
               <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                Instances created from this template will automatically join the selected series.
+                Instances created from this template will automatically join the selected collection.
               </p>
 
               {selectedTemplateSeriesId && (
                 <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label htmlFor="templateSeriesSelect">Select Series</label>
+                      <label htmlFor="templateSeriesSelect">Select Collection</label>
                       <button
                         type="button"
                         onClick={() => setShowCreateSeriesModal(true)}
@@ -798,7 +798,7 @@ export default function EditConversationPage() {
                       value={selectedTemplateSeriesId}
                       onChange={(e) => setSelectedTemplateSeriesId(e.target.value)}
                     >
-                      <option value="">-- Select a series --</option>
+                      <option value="">-- Select a collection --</option>
                       {seriesList.map((series) => (
                         <option key={series.id} value={series.id}>
                           {series.name}
@@ -807,8 +807,8 @@ export default function EditConversationPage() {
                     </select>
                     <p className="form-help-text">
                       {seriesList.length === 0
-                        ? 'No series available. Click "Create New" to create a series.'
-                        : 'Instances created from this template will join this series.'}
+                        ? 'No collections available. Click "Create New" to create a collection.'
+                        : 'Instances created from this template will join this collection.'}
                     </p>
                   </div>
                 </div>
@@ -822,7 +822,7 @@ export default function EditConversationPage() {
                     className="btn btn-secondary"
                     style={{ marginTop: '0.5rem' }}
                   >
-                    + Create New Series
+                    + Create New Collection
                   </button>
                 </div>
               )}
@@ -833,11 +833,11 @@ export default function EditConversationPage() {
         {/* Series Configuration Section - For regular conversations */}
         {!isTemplate && (
           <div className="form-section">
-            <h2>Series</h2>
-            <p className="form-help-text">Add this conversation to a series to group it with related conversations.</p>
+            <h2>Collection</h2>
+            <p className="form-help-text">Add this conversation to a collection to group it with related conversations.</p>
 
             <div className="form-group">
-              <label htmlFor="seriesSelect">Select Series</label>
+              <label htmlFor="seriesSelect">Select Collection</label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <select
                   id="seriesSelect"
@@ -845,7 +845,7 @@ export default function EditConversationPage() {
                   onChange={(e) => setSelectedSeriesId(e.target.value)}
                   style={{ flex: 1 }}
                 >
-                  <option value="">No series</option>
+                  <option value="">No collection</option>
                   {seriesList.map((series) => (
                     <option key={series.id} value={series.id}>
                       {series.name}
@@ -862,8 +862,8 @@ export default function EditConversationPage() {
               </div>
               <p className="form-help-text">
                 {seriesList.length === 0
-                  ? 'No series available. Click "Create New" to create a series.'
-                  : 'Group this conversation with related conversations in a series.'}
+                  ? 'No collections available. Click "Create New" to create a collection.'
+                  : 'Group this conversation with related conversations in a collection.'}
               </p>
             </div>
           </div>
@@ -1033,13 +1033,13 @@ export default function EditConversationPage() {
           }
         }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <h2>Create New Series</h2>
+            <h2>Create New Collection</h2>
             <p style={{ color: '#666', marginBottom: '1.5rem' }}>
-              Create a new series to group related conversations together.
+              Create a new collection to group related conversations together.
             </p>
 
             <div className="form-group">
-              <label htmlFor="newSeriesName">Series Name *</label>
+              <label htmlFor="newSeriesName">Collection Name *</label>
               <input
                 id="newSeriesName"
                 type="text"
@@ -1091,7 +1091,7 @@ export default function EditConversationPage() {
                 className="btn btn-primary"
                 disabled={creatingSeries || !newSeriesName.trim()}
               >
-                {creatingSeries ? 'Creating...' : 'Create Series'}
+                {creatingSeries ? 'Creating...' : 'Create Collection'}
               </button>
             </div>
           </div>

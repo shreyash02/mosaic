@@ -1117,7 +1117,7 @@ export default function DashboardPage() {
                         paddingBottom: '0.5rem',
                         borderBottom: '2px solid #4299e1'
                       }}>
-                        Collection: {series?.name || `Collection ${seriesId.slice(0, 8)}...`} ({convs.length})
+                        Collection: <Link to={`/collections/${seriesId}`} style={{ color: '#4299e1', textDecoration: 'none' }} onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}>{series?.name || `Collection ${seriesId.slice(0, 8)}...`}</Link>
                       </div>
                       <div className="conversation-grid">
                         {convs.map((conv: ConversationListItem) => renderConversationCard(conv, false))}
@@ -1135,7 +1135,7 @@ export default function DashboardPage() {
                     paddingBottom: '0.5rem',
                     borderBottom: '1px solid #e2e8f0'
                   }}>
-                    Not in a series ({standaloneBySeries.length})
+                    Not in a collection ({standaloneBySeries.length})
                   </div>
                   <div className="conversation-grid">
                     {standaloneBySeries.map((conv) => renderConversationCard(conv, false))}
@@ -1246,7 +1246,7 @@ export default function DashboardPage() {
           </button>
         </div>
         <p style={{ color: '#718096', marginBottom: '1.5rem' }}>
-          Templates are reusable conversation configurations. They can be used to create independent conversations or recurring series instances. Templates cannot receive responses directly.
+          Templates are reusable conversation configurations. They can be used to create independent conversations or recurring collection instances. Templates cannot receive responses directly.
         </p>
 
         {templates.length > 0 && (
@@ -1289,7 +1289,7 @@ export default function DashboardPage() {
                     {template.template_series_id ? (
                       <span>Conversations: <strong>{conversations.filter(c => c.series_id === template.template_series_id).length}</strong></span>
                     ) : (
-                      <span>No series</span>
+                      <span>No collection</span>
                     )}
                   </div>
                   <div className="conversation-meta">

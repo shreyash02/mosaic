@@ -780,14 +780,14 @@ export default function ConversationDetailPage() {
           )}
 
           <div className="info-item">
-            <label>Series:</label>
+            <label>Collection:</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {conversation.series_id ? (
                 <span>
-                  {seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown Series'}
+                  {seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown Collection'}
                 </span>
               ) : (
-                <span style={{ color: '#718096' }}>Not in a series</span>
+                <span style={{ color: '#718096' }}>Not in a collection</span>
               )}
               <button
                 onClick={() => {
@@ -797,7 +797,7 @@ export default function ConversationDetailPage() {
                 className="btn btn-small btn-secondary"
                 style={{ marginLeft: '0.5rem' }}
               >
-                {conversation.series_id ? 'Change' : 'Add to Series'}
+                {conversation.series_id ? 'Change' : 'Add to Collection'}
               </button>
             </div>
           </div>
@@ -1321,13 +1321,13 @@ export default function ConversationDetailPage() {
       {showSeriesModal && (
         <div className="modal-overlay" onClick={() => setShowSeriesModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Manage Series</h2>
+            <h2>Manage Collection</h2>
             <p style={{ marginBottom: '1.5rem', color: '#666' }}>
-              Add this conversation to a series or remove it from its current series.
+              Add this conversation to a collection or remove it from its current collection.
             </p>
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                Select Series:
+                Select Collection:
               </label>
               <select
                 value={selectedSeriesId}
@@ -1340,7 +1340,7 @@ export default function ConversationDetailPage() {
                   fontSize: '0.9rem',
                 }}
               >
-                <option value="">No series (remove from series)</option>
+                <option value="">No collection (remove from collection)</option>
                 {seriesList.map((series) => (
                   <option key={series.id} value={series.id}>
                     {series.name}
