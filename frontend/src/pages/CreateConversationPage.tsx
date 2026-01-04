@@ -5,6 +5,120 @@ import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, 
 import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface SortablePollOptionProps {
+  choice: { id: string; label: string; order: number };
+  choiceIndex: number;
+  questionIndex: number;
+  onLabelChange: (questionIndex: number, choiceId: string, label: string) => void;
+  onRemove: (questionIndex: number, choiceId: string) => void;
+  canRemove: boolean;
+}
+
+function SortablePollOption({
+  choice,
+  choiceIndex,
+  questionIndex,
+  onLabelChange,
+  onRemove,
+  canRemove,
+}: SortablePollOptionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: choice.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="poll-option-item">
+      <button
+        type="button"
+        className="drag-handle"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z"
+            fill="currentColor"
+          />
+          <path
+            d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z"
+            fill="currentColor"
+          />
+          <path
+            d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z"
+            fill="currentColor"
+          />
+          <path
+            d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z"
+            fill="currentColor"
+          />
+          <path
+            d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z"
+            fill="currentColor"
+          />
+          <path
+            d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <span className="option-number">{choiceIndex + 1}.</span>
+      <input
+        type="text"
+        value={choice.label}
+        onChange={(e) => onLabelChange(questionIndex, choice.id, e.target.value)}
+        placeholder={`Option ${choiceIndex + 1}`}
+        required
+        style={{ flex: '1 1 auto', minWidth: 0 }}
+      />
+      {canRemove && (
+        <button
+          type="button"
+          onClick={() => onRemove(questionIndex, choice.id)}
+          className="btn-remove"
+          style={{ flexShrink: 0 }}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
 
 interface LocationState {
   isFollowUp?: boolean;
@@ -272,6 +386,36 @@ export default function CreateConversationPage() {
     }
     setQuestions(newQuestions);
   };
+
+  const reorderPollOptions = (questionIndex: number, activeId: string, overId: string | null) => {
+    if (!overId || activeId === overId) return;
+    
+    const newQuestions = [...questions];
+    const choices = [...(newQuestions[questionIndex].options?.choices || [])];
+    
+    const oldIndex = choices.findIndex(c => c.id === activeId);
+    const newIndex = choices.findIndex(c => c.id === overId);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(choices, oldIndex, newIndex);
+      // Update order property
+      reordered.forEach((choice, index) => {
+        choice.order = index;
+      });
+      
+      if (newQuestions[questionIndex].options) {
+        newQuestions[questionIndex].options!.choices = reordered;
+      }
+      setQuestions(newQuestions);
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1097,29 +1241,35 @@ export default function CreateConversationPage() {
                       </button>
                     </div>
 
-                    {question.options?.choices?.map((choice, choiceIndex) => (
-                      <div key={choice.id} className="poll-option-item">
-                        <span className="option-number">{choiceIndex + 1}.</span>
-                        <input
-                          type="text"
-                          value={choice.label}
-                          onChange={(e) => updatePollOptionLabel(index, choice.id, e.target.value)}
-                          placeholder={`Option ${choiceIndex + 1}`}
-                          required
-                          style={{ flex: '1 1 auto', minWidth: 0 }}
-                        />
-                        {(question.options?.choices?.length || 0) > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removePollOption(index, choice.id)}
-                            className="btn-remove"
-                            style={{ flexShrink: 0 }}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event: DragEndEvent) => {
+                        const { active, over } = event;
+                        if (over && active.id !== over.id) {
+                          reorderPollOptions(index, active.id as string, over.id as string);
+                        }
+                      }}
+                    >
+                      <SortableContext
+                        items={question.options?.choices?.map(c => c.id) || []}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {[...(question.options?.choices || [])]
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                          .map((choice, choiceIndex) => (
+                            <SortablePollOption
+                              key={choice.id}
+                              choice={choice}
+                              choiceIndex={choiceIndex}
+                              questionIndex={index}
+                              onLabelChange={updatePollOptionLabel}
+                              onRemove={removePollOption}
+                              canRemove={(question.options?.choices?.length || 0) > 1}
+                            />
+                          ))}
+                      </SortableContext>
+                    </DndContext>
                   </div>
 
                   {question.question_type === 'multiple_choice' && (

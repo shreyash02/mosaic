@@ -2566,6 +2566,26 @@ h3 {
   margin-bottom: 0.5rem;
 }
 
+.poll-option-item .drag-handle {
+  cursor: grab;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  color: #718096;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.poll-option-item .drag-handle:hover {
+  color: #4299e1;
+}
+
+.poll-option-item .drag-handle:active {
+  cursor: grabbing;
+}
+
 .poll-option-item .option-number {
   color: #718096;
   font-size: 0.85rem;
