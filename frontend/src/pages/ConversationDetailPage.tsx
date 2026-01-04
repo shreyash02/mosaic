@@ -743,11 +743,7 @@ export default function ConversationDetailPage() {
           {stats && (
             <>
               <div className="info-item">
-                <label>Total Responses:</label>
-                <span>{stats.total_responses}</span>
-              </div>
-              <div className="info-item">
-                <label>Unique Participants:</label>
+                <label>Number of responses:</label>
                 <span>{stats.unique_participants}</span>
               </div>
             </>
