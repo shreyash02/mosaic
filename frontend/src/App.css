@@ -931,9 +931,11 @@ h3 {
   transition: all 0.2s;
   text-decoration: none;
   color: inherit;
-  height: 180px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  position: relative;
 }
 
 .conversation-card:hover {

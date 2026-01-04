@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type {
   OrganizationWithMembers,
   ConversationListItem,
+  Series,
 } from '../types';
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
@@ -14,6 +15,7 @@ export default function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('conversations');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,8 +27,19 @@ export default function OrganizationDetailPage() {
     if (id) {
       loadOrganization();
       loadConversations();
+      loadSeries();
     }
   }, [id]);
+
+  const loadSeries = async () => {
+    try {
+      const series = await api.listSeries(id);
+      setSeriesList(series);
+    } catch (err) {
+      console.error('Failed to load series:', err);
+      setSeriesList([]);
+    }
+  };
 
   const loadOrganization = async () => {
     try {
@@ -216,35 +229,56 @@ export default function OrganizationDetailPage() {
               </div>
             ) : (
               <div className="conversation-grid">
-                {conversations.map((conversation) => (
-                  <Link
-                    key={conversation.id}
-                    to={`/conversations/${conversation.id}`}
-                    className="conversation-card"
-                  >
-                    <div className="card-header">
-                      <h3>{conversation.title}</h3>
-                      <span className={`status-badge ${getStateClass(conversation.state)}`}>
-                        {getStateLabel(conversation.state)}
-                      </span>
-                    </div>
-                    <div className="conversation-meta">
-                      <div>
-                        <strong>Code:</strong> {conversation.access_code}
+                {conversations.map((conversation) => {
+                  const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
+                  return (
+                    <Link
+                      key={conversation.id}
+                      to={`/conversations/${conversation.id}`}
+                      className="conversation-card"
+                    >
+                      <div className="card-header">
+                        <h3>{conversation.title}</h3>
+                        <span className={`status-badge ${getStateClass(conversation.state)}`}>
+                          {getStateLabel(conversation.state)}
+                        </span>
                       </div>
-                      <div>
-                        <strong>Created:</strong> {formatDateShort(conversation.created_at)}
-                      </div>
-                    </div>
-                    {conversation.response_count !== undefined && (
-                      <div className="conversation-meta">
-                        <div>
-                          <strong>{conversation.response_count}</strong> {conversation.response_count === 1 ? 'response' : 'responses'}
+                      <div className="card-body">
+                        {collection && (
+                          <div style={{ marginBottom: '0.5rem' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              color: '#718096',
+                              backgroundColor: '#f7fafc',
+                              borderRadius: '4px',
+                              fontWeight: 500
+                            }}>
+                              {collection.name}
+                            </span>
+                          </div>
+                        )}
+                        <div className="conversation-meta">
+                          <span>
+                            {conversation.unique_participants !== undefined && conversation.unique_participants > 0 ? (
+                              <>
+                                <strong>{conversation.unique_participants}</strong> {conversation.unique_participants === 1 ? 'person has' : 'people have'} responded
+                              </>
+                            ) : (
+                              <span style={{ color: '#a0aec0' }}>No responses yet</span>
+                            )}
+                          </span>
+                          <span></span>
+                        </div>
+                        <div className="conversation-meta">
+                          <span>Created: {formatDateShort(conversation.created_at)}</span>
+                          <span></span>
                         </div>
                       </div>
-                    )}
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

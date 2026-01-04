@@ -407,6 +407,7 @@ export default function DashboardPage() {
 
   const renderConversationCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => {
     const isMenuOpen = openMenuId === conversation.id;
+    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
     
     return (
       <div
@@ -433,9 +434,32 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="card-body">
+            {collection && (
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{
+                  display: 'inline-block',
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#718096',
+                  backgroundColor: '#f7fafc',
+                  borderRadius: '4px',
+                  fontWeight: 500
+                }}>
+                  {collection.name}
+                </span>
+              </div>
+            )}
             <div className="conversation-meta">
-              <span>Access Code: <strong>{conversation.access_code}</strong></span>
-              <span>Responses: <strong>{conversation.response_count || 0}</strong></span>
+              <span>
+                {conversation.unique_participants !== undefined && conversation.unique_participants > 0 ? (
+                  <>
+                    <strong>{conversation.unique_participants}</strong> {conversation.unique_participants === 1 ? 'person has' : 'people have'} responded
+                  </>
+                ) : (
+                  <span style={{ color: '#a0aec0' }}>No responses yet</span>
+                )}
+              </span>
+              <span></span>
             </div>
             <div className="conversation-meta">
               <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
@@ -489,6 +513,7 @@ export default function DashboardPage() {
     const linkTo = conversation.state === ConversationState.ANALYZED
       ? `/conversations/${conversation.id}/analysis`
       : null;
+    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
 
     const card = (
       <div
@@ -502,6 +527,21 @@ export default function DashboardPage() {
           </span>
         </div>
         <div className="card-body">
+          {collection && (
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{
+                display: 'inline-block',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.75rem',
+                color: '#718096',
+                backgroundColor: '#f7fafc',
+                borderRadius: '4px',
+                fontWeight: 500
+              }}>
+                {collection.name}
+              </span>
+            </div>
+          )}
           <div className="conversation-meta">
             <span>Responded: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
             {conversation.state === ConversationState.ANALYZED && (
