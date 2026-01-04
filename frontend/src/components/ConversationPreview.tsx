@@ -94,6 +94,7 @@ export default function ConversationPreview({
                   <div key={questionId} className="form-group">
                     <label htmlFor={`preview-question-${questionId}`}>
                       {index + 1}. {question.question_text || 'Untitled Question'}
+                      {question.is_required && <span style={{ color: 'red', marginLeft: '4px' }}>*</span>}
                     </label>
 
                     {/* Text Response Preview */}

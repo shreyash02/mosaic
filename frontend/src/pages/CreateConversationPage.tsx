@@ -1021,18 +1021,32 @@ export default function CreateConversationPage() {
           </div>
 
           {questions.map((question, index) => (
-            <div key={index} className="question-item">
-              <div className="question-header">
-                <span className="question-number">Question {index + 1}</span>
-                {questions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(index)}
-                    className="btn-remove"
-                  >
-                    Remove
-                  </button>
-                )}
+            <div key={index} className="question-item" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="question-header" style={{ width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span className="question-number">Question {index + 1}</span>
+                  {questions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeQuestion(index)}
+                      className="btn-remove"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none', marginLeft: 'auto' }}>
+                  <input
+                    type="checkbox"
+                    checked={question.is_required || false}
+                    onChange={(e) => {
+                      const newQuestions = [...questions];
+                      newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
+                      setQuestions(newQuestions);
+                    }}
+                  />
+                  <span>Required</span>
+                </label>
               </div>
 
               <div className="form-group">
@@ -1040,6 +1054,7 @@ export default function CreateConversationPage() {
                 <select
                   value={question.question_type || 'text'}
                   onChange={(e) => updateQuestionType(index, e.target.value)}
+                  style={{ width: '240px', paddingRight: '2.5rem' }}
                 >
                   <option value="text">Text Response</option>
                   <option value="rating">Rating (0-10)</option>
@@ -1050,28 +1065,14 @@ export default function CreateConversationPage() {
 
               <div className="form-group">
                 <label>Question Text</label>
-                <input
-                  type="text"
+                <textarea
                   value={question.question_text}
                   onChange={(e) => updateQuestion(index, e.target.value)}
                   placeholder="Enter your question..."
                   required
+                  rows={3}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={question.is_required || false}
-                    onChange={(e) => {
-                      const newQuestions = [...questions];
-                      newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
-                      setQuestions(newQuestions);
-                    }}
-                  />
-                  <span>Required question</span>
-                </label>
               </div>
 
               {question.question_type === 'rating' && (
@@ -1105,12 +1106,14 @@ export default function CreateConversationPage() {
                           onChange={(e) => updatePollOptionLabel(index, choice.id, e.target.value)}
                           placeholder={`Option ${choiceIndex + 1}`}
                           required
+                          style={{ flex: '1 1 auto', minWidth: 0 }}
                         />
                         {(question.options?.choices?.length || 0) > 1 && (
                           <button
                             type="button"
                             onClick={() => removePollOption(index, choice.id)}
                             className="btn-remove"
+                            style={{ flexShrink: 0 }}
                           >
                             ×
                           </button>
