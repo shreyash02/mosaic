@@ -156,6 +156,7 @@ export default function CreateConversationPage() {
   const [questions, setQuestions] = useState<QuestionCreate[]>([
     { question_text: '', question_type: 'text', question_order: 0, is_required: false },
   ]);
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set([0]));
   const [durationHours, setDurationHours] = useState<number>(48);
   const [durationMinutes, setDurationMinutes] = useState<number>(0);
   const [scheduleActivation, setScheduleActivation] = useState(false);
@@ -226,6 +227,8 @@ export default function CreateConversationPage() {
                 is_required: q.is_required || false
               }));
               setQuestions(copiedQuestions);
+              // Expand all copied questions by default
+              setExpandedQuestions(new Set(copiedQuestions.map((_, i) => i)));
             }
           } catch (err) {
             console.error('Failed to copy questions:', err);
@@ -290,11 +293,39 @@ export default function CreateConversationPage() {
     }
   };
 
+  const getQuestionTypeLabel = (type: string | undefined): string => {
+    switch (type) {
+      case 'text':
+        return 'Text Response';
+      case 'rating':
+        return 'Rating';
+      case 'single_choice':
+        return 'Poll (Single)';
+      case 'multiple_choice':
+        return 'Poll (Multiple)';
+      default:
+        return 'Text Response';
+    }
+  };
+
+  const toggleQuestion = (index: number) => {
+    const newExpanded = new Set(expandedQuestions);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedQuestions(newExpanded);
+  };
+
   const addQuestion = () => {
+    const newIndex = questions.length;
     setQuestions([
       ...questions,
-      { question_text: '', question_type: 'text', question_order: questions.length, is_required: false },
+      { question_text: '', question_type: 'text', question_order: newIndex, is_required: false },
     ]);
+    // Expand the new question
+    setExpandedQuestions(new Set([...expandedQuestions, newIndex]));
   };
 
   const removeQuestion = (index: number) => {
@@ -305,6 +336,16 @@ export default function CreateConversationPage() {
         q.question_order = i;
       });
       setQuestions(newQuestions);
+      // Update expanded state
+      const newExpanded = new Set<number>();
+      expandedQuestions.forEach(i => {
+        if (i < index) {
+          newExpanded.add(i);
+        } else if (i > index) {
+          newExpanded.add(i - 1);
+        }
+      });
+      setExpandedQuestions(newExpanded);
     }
   };
 
@@ -1164,131 +1205,261 @@ export default function CreateConversationPage() {
             </button>
           </div>
 
-          {questions.map((question, index) => (
-            <div key={index} className="question-item" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="question-header" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span className="question-number">Question {index + 1}</span>
-                  {questions.length > 1 && (
+          {questions.map((question, index) => {
+            const isExpanded = expandedQuestions.has(index);
+            const questionText = question.question_text || 'Untitled question';
+            const questionType = getQuestionTypeLabel(question.question_type);
+            
+            return (
+              <div key={index} className={isExpanded ? "question-item" : ""} style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Collapsed Header */}
+                {!isExpanded && (
+                  <div 
+                    className="question-collapsed-header"
+                    onClick={() => toggleQuestion(index)}
+                  >
                     <button
                       type="button"
-                      onClick={() => removeQuestion(index)}
-                      className="btn-remove"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none', marginLeft: 'auto' }}>
-                  <input
-                    type="checkbox"
-                    checked={question.is_required || false}
-                    onChange={(e) => {
-                      const newQuestions = [...questions];
-                      newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
-                      setQuestions(newQuestions);
-                    }}
-                  />
-                  <span>Required</span>
-                </label>
-              </div>
-
-              <div className="form-group">
-                <label>Question Type</label>
-                <select
-                  value={question.question_type || 'text'}
-                  onChange={(e) => updateQuestionType(index, e.target.value)}
-                  style={{ width: '240px', paddingRight: '2.5rem' }}
-                >
-                  <option value="text">Text Response</option>
-                  <option value="rating">Rating (0-10)</option>
-                  <option value="single_choice">Poll (Single Choice)</option>
-                  <option value="multiple_choice">Poll (Multiple Choice)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Question Text</label>
-                <textarea
-                  value={question.question_text}
-                  onChange={(e) => updateQuestion(index, e.target.value)}
-                  placeholder="Enter your question..."
-                  required
-                  rows={3}
-                  style={{ width: '100%', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              {question.question_type === 'rating' && (
-                <div className="question-config">
-                  <p className="config-info">
-                    Participants will rate on a scale from 0 to 10 using a slider.
-                  </p>
-                </div>
-              )}
-
-              {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
-                <div className="question-config">
-                  <div className="poll-options">
-                    <div className="config-header">
-                      <label>Answer Options</label>
-                      <button
-                        type="button"
-                        onClick={() => addPollOption(index)}
-                        className="btn btn-secondary btn-small"
-                      >
-                        + Add Option
-                      </button>
-                    </div>
-
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={(event: DragEndEvent) => {
-                        const { active, over } = event;
-                        if (over && active.id !== over.id) {
-                          reorderPollOptions(index, active.id as string, over.id as string);
-                        }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleQuestion(index);
                       }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '0.25rem',
+                        cursor: 'pointer',
+                        color: '#718096',
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginRight: '0.5rem',
+                      }}
+                      aria-label="Expand question"
                     >
-                      <SortableContext
-                        items={question.options?.choices?.map(c => c.id) || []}
-                        strategy={verticalListSortingStrategy}
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
                       >
-                        {[...(question.options?.choices || [])]
-                          .sort((a, b) => (a.order || 0) - (b.order || 0))
-                          .map((choice, choiceIndex) => (
-                            <SortablePollOption
-                              key={choice.id}
-                              choice={choice}
-                              choiceIndex={choiceIndex}
-                              questionIndex={index}
-                              onLabelChange={updatePollOptionLabel}
-                              onRemove={removePollOption}
-                              canRemove={(question.options?.choices?.length || 0) > 1}
-                            />
-                          ))}
-                      </SortableContext>
-                    </DndContext>
-                  </div>
-
-                  {question.question_type === 'multiple_choice' && (
-                    <div className="form-group">
-                      <label>Maximum Selections Allowed</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max={question.options?.choices?.length || 1}
-                        value={question.options?.max_selections || 1}
-                        onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
-                      />
-                      <small>Participants can select up to this many options</small>
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                      <span style={{ color: '#718096', fontWeight: 500 }}>Question {index + 1}</span>
+                      <span style={{ color: '#a0aec0' }}>·</span>
+                      <span style={{ color: '#4299e1', fontSize: '0.9rem' }}>{questionType}</span>
+                      <span style={{ color: '#a0aec0' }}>·</span>
+                      <span style={{ color: '#2d3748', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {questionText}
+                      </span>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeQuestion(index);
+                      }}
+                      className="btn-delete-question"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '0.25rem',
+                        cursor: 'pointer',
+                        color: '#e53e3e',
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginLeft: '0.5rem',
+                      }}
+                      aria-label="Delete question"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <>
+                    <div className="question-header" style={{ width: '100%', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleQuestion(index)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '0.25rem',
+                              cursor: 'pointer',
+                              color: '#718096',
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            aria-label="Collapse question"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M18 15l-6-6-6 6"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <span className="question-number">Question {index + 1}</span>
+                          {questions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeQuestion(index)}
+                              className="btn-remove"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none' }}>
+                          <input
+                            type="checkbox"
+                            checked={question.is_required || false}
+                            onChange={(e) => {
+                              const newQuestions = [...questions];
+                              newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
+                              setQuestions(newQuestions);
+                            }}
+                          />
+                          <span>Required</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Question Type</label>
+                      <select
+                        value={question.question_type || 'text'}
+                        onChange={(e) => updateQuestionType(index, e.target.value)}
+                        style={{ width: '240px', paddingRight: '2.5rem' }}
+                      >
+                        <option value="text">Text Response</option>
+                        <option value="rating">Rating (0-10)</option>
+                        <option value="single_choice">Poll (Single Choice)</option>
+                        <option value="multiple_choice">Poll (Multiple Choice)</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Question Text</label>
+                      <textarea
+                        value={question.question_text}
+                        onChange={(e) => updateQuestion(index, e.target.value)}
+                        placeholder="Enter your question..."
+                        required
+                        rows={3}
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    {question.question_type === 'rating' && (
+                      <div className="question-config">
+                        <p className="config-info">
+                          Participants will rate on a scale from 0 to 10 using a slider.
+                        </p>
+                      </div>
+                    )}
+
+                    {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
+                      <div className="question-config">
+                        <div className="poll-options">
+                          <div className="config-header">
+                            <label>Answer Options</label>
+                            <button
+                              type="button"
+                              onClick={() => addPollOption(index)}
+                              className="btn btn-secondary btn-small"
+                            >
+                              + Add Option
+                            </button>
+                          </div>
+
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event: DragEndEvent) => {
+                              const { active, over } = event;
+                              if (over && active.id !== over.id) {
+                                reorderPollOptions(index, active.id as string, over.id as string);
+                              }
+                            }}
+                          >
+                            <SortableContext
+                              items={question.options?.choices?.map(c => c.id) || []}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {[...(question.options?.choices || [])]
+                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                .map((choice, choiceIndex) => (
+                                  <SortablePollOption
+                                    key={choice.id}
+                                    choice={choice}
+                                    choiceIndex={choiceIndex}
+                                    questionIndex={index}
+                                    onLabelChange={updatePollOptionLabel}
+                                    onRemove={removePollOption}
+                                    canRemove={(question.options?.choices?.length || 0) > 1}
+                                  />
+                                ))}
+                            </SortableContext>
+                          </DndContext>
+                        </div>
+
+                        {question.question_type === 'multiple_choice' && (
+                          <div className="form-group">
+                            <label>Maximum Selections Allowed</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={question.options?.choices?.length || 1}
+                              value={question.options?.max_selections || 1}
+                              onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
+                            />
+                            <small>Participants can select up to this many options</small>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="form-actions">
