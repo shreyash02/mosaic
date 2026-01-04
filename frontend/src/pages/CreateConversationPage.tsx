@@ -40,7 +40,7 @@ export default function CreateConversationPage() {
   const [inviteOnly, setInviteOnly] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [questions, setQuestions] = useState<QuestionCreate[]>([
-    { question_text: '', question_type: 'text', question_order: 0 },
+    { question_text: '', question_type: 'text', question_order: 0, is_required: false },
   ]);
   const [durationHours, setDurationHours] = useState<number>(48);
   const [durationMinutes, setDurationMinutes] = useState<number>(0);
@@ -108,7 +108,8 @@ export default function CreateConversationPage() {
                 question_text: q.question_text,
                 question_type: q.question_type,
                 question_order: index,
-                options: q.options
+                options: q.options,
+                is_required: q.is_required || false
               }));
               setQuestions(copiedQuestions);
             }
@@ -178,7 +179,7 @@ export default function CreateConversationPage() {
   const addQuestion = () => {
     setQuestions([
       ...questions,
-      { question_text: '', question_type: 'text', question_order: questions.length },
+      { question_text: '', question_type: 'text', question_order: questions.length, is_required: false },
     ]);
   };
 
@@ -1056,6 +1057,21 @@ export default function CreateConversationPage() {
                   placeholder="Enter your question..."
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={question.is_required || false}
+                    onChange={(e) => {
+                      const newQuestions = [...questions];
+                      newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
+                      setQuestions(newQuestions);
+                    }}
+                  />
+                  <span>Required question</span>
+                </label>
               </div>
 
               {question.question_type === 'rating' && (

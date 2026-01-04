@@ -360,6 +360,7 @@ async def update_conversation(
                 question_type=question_data.question_type,
                 question_order=question_data.question_order,
                 options=question_data.options,
+                is_required=question_data.is_required if hasattr(question_data, 'is_required') else False,
             )
             db.add(question)
 

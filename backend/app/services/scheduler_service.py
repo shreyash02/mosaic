@@ -300,7 +300,8 @@ async def create_recurring_instances():
                         question_text=q.question_text,
                         question_type=q.question_type,
                         question_order=q.question_order,
-                        options=q.options
+                        options=q.options,
+                        is_required=q.is_required
                     )
                     db.add(new_question)
 

@@ -79,6 +79,7 @@ export interface Question {
   question_type: QuestionType;
   question_order: number;
   options?: QuestionOptions;
+  is_required?: boolean;
   created_at: string;
 }
 
@@ -87,6 +88,7 @@ export interface QuestionCreate {
   question_type?: QuestionType;
   question_order: number;
   options?: QuestionOptions;
+  is_required?: boolean;
 }
 
 export interface ConversationSummary {

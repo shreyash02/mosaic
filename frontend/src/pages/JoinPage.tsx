@@ -400,6 +400,32 @@ export default function JoinPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Validate required questions
+    if (conversation?.questions) {
+      const requiredQuestions = conversation.questions.filter(q => q.is_required);
+      const missingRequired = requiredQuestions.filter(reqQ => {
+        const response = responses.find(r => r.question_id === reqQ.id);
+        if (!response) return true;
+        
+        if (reqQ.question_type === 'text') {
+          return !response.response_text || !response.response_text.trim();
+        } else if (reqQ.question_type === 'rating') {
+          return response.response_data?.rating === undefined || response.response_data?.rating === null;
+        } else if (reqQ.question_type === 'single_choice') {
+          return !response.response_data?.selected;
+        } else if (reqQ.question_type === 'multiple_choice') {
+          return !response.response_data?.selected || (Array.isArray(response.response_data.selected) && response.response_data.selected.length === 0);
+        }
+        return true;
+      });
+      
+      if (missingRequired.length > 0) {
+        setError(`Please answer all required questions. Missing: ${missingRequired.map(q => q.question_text).join(', ')}`);
+        return;
+      }
+    }
+    
     setSubmitting(true);
 
     try {
@@ -1127,6 +1153,7 @@ export default function JoinPage() {
               <div key={question.id} className="form-group">
                 <label htmlFor={`question-${question.id}`}>
                   {index + 1}. {question.question_text}
+                  {question.is_required && <span style={{ color: 'red', marginLeft: '4px' }}>*</span>}
                 </label>
 
                 {/* Text Response */}

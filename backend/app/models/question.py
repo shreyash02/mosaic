@@ -1,7 +1,7 @@
 """Question model."""
 
 from datetime import datetime
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import uuid
@@ -26,6 +26,8 @@ class Question(Base):
     # For future rating/poll support
     options = Column(JSONB, nullable=True)
     # e.g., [{"label": "Option 1", "value": 1}, ...]
+
+    is_required = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

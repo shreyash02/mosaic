@@ -497,6 +497,38 @@ async def submit_response(
                         detail=f"Maximum {max_selections} selections allowed"
                     )
 
+    # Validate required questions
+    for question in conversation.questions:
+        if question.is_required:
+            response_item = next((r for r in response_data.responses if r.question_id == question.id), None)
+            
+            if not response_item:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Required question '{question.question_text}' must be answered"
+                )
+            
+            # Check if response is actually provided based on question type
+            if question.question_type == 'text':
+                if not response_item.response_text or not response_item.response_text.strip():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Required question '{question.question_text}' must be answered"
+                    )
+            elif question.question_type == 'rating':
+                if response_item.response_data is None or response_item.response_data.get('rating') is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Required question '{question.question_text}' must be answered"
+                    )
+            elif question.question_type in ['single_choice', 'multiple_choice']:
+                selected = response_item.response_data.get('selected') if response_item.response_data else None
+                if not selected or (isinstance(selected, list) and len(selected) == 0):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Required question '{question.question_text}' must be answered"
+                    )
+
     # Create responses
     for response_item in response_data.responses:
         response = Response(
