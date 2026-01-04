@@ -272,6 +272,11 @@ async def delete_series(
 ):
     """
     Delete a series.
+    
+    When a series is deleted:
+    - All conversations in the series will have their series_id set to NULL (they won't be deleted)
+    - Collection analyses for this series will be deleted
+    - The series itself will be deleted
 
     Args:
         series_id: Series ID
@@ -290,6 +295,17 @@ async def delete_series(
             detail="Only the creator can delete a series"
         )
 
+    # Set all conversations' series_id to NULL (conversations are not deleted)
+    db.query(Conversation).filter(
+        Conversation.series_id == series_id
+    ).update({Conversation.series_id: None}, synchronize_session=False)
+
+    # Delete collection analyses for this series
+    db.query(CollectionAnalysis).filter(
+        CollectionAnalysis.series_id == series_id
+    ).delete(synchronize_session=False)
+
+    # Delete the series
     db.delete(series)
     db.commit()
 

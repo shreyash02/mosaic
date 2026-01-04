@@ -15,6 +15,8 @@ export default function CollectionDetailPage() {
   const [analysis, setAnalysis] = useState<CollectionAnalysis | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [computing, setComputing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -69,6 +71,22 @@ export default function CollectionDetailPage() {
       setError('Failed to compute analysis');
     } finally {
       setComputing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    
+    setDeleting(true);
+    try {
+      await api.deleteSeries(id);
+      navigate('/collections');
+    } catch (err: any) {
+      console.error('Failed to delete collection:', err);
+      setError(err.response?.data?.detail || 'Failed to delete collection');
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -137,27 +155,26 @@ export default function CollectionDetailPage() {
             <p className="description">{collection.description}</p>
           )}
         </div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button
+            onClick={() => handleComputeAnalysis(true)}
+            disabled={computing}
+            className={analysis ? "btn btn-secondary" : "btn btn-primary"}
+          >
+            {computing ? (analysis ? 'Re-running analysis...' : 'Running analysis...') : (analysis ? 'Re-run analysis' : 'Run Analysis')}
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Delete Collection
+          </button>
+        </div>
       </header>
 
       {/* Analysis Section */}
       <div style={{ marginTop: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2>Collection Insights</h2>
-          {analysis && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span style={{ fontSize: '0.9rem', color: '#718096' }}>
-                Computed {formatDateShort(analysis.computed_at)}
-              </span>
-              <button 
-                onClick={() => handleComputeAnalysis(true)} 
-                disabled={computing}
-                className="btn btn-secondary btn-small"
-              >
-                {computing ? 'Recomputing...' : 'Recompute'}
-              </button>
-            </div>
-          )}
-        </div>
+        <h2 style={{ marginBottom: '1.5rem' }}>Collection Insights</h2>
 
         {loadingAnalysis || computing ? (
           <div className="loading">Loading analysis...</div>
@@ -270,7 +287,7 @@ export default function CollectionDetailPage() {
               disabled={computing}
               className="btn btn-primary"
             >
-              {computing ? 'Computing...' : 'Compute Analysis'}
+              {computing ? 'Running analysis...' : 'Run Analysis'}
             </button>
           </div>
         )}
@@ -316,6 +333,40 @@ export default function CollectionDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginBottom: '1rem', color: '#9b2c2c' }}>Delete Collection</h2>
+            <p style={{ marginBottom: '1rem', color: '#718096' }}>
+              Are you sure you want to delete the collection <strong>{collection.name}</strong>?
+            </p>
+            <p style={{ marginBottom: '1.5rem', color: '#718096' }}>
+              This action cannot be undone. The collection will be deleted, but all conversations in it will remain and will no longer be part of any collection.
+            </p>
+            <div className="modal-actions" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setError('');
+                }}
+                className="btn btn-secondary"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="btn btn-danger"
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Collection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
