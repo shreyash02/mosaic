@@ -1103,13 +1103,17 @@ export default function CreateConversationPage() {
             )}
             </div>
           )}
+        </div>
 
-          {/* Series Selection */}
-          {(!followUpState?.isRecurring || followUpState?.parentConversation?.is_template) && (
-            <div className="form-group">
-              {followUpState?.createTemplate ? (
-                // For templates: "Set Series for Instances"
-                <>
+        {/* Series Selection */}
+        {(!followUpState?.isRecurring || followUpState?.parentConversation?.is_template) && (
+          <div className="form-section">
+            {followUpState?.createTemplate ? (
+              // For templates: "Collection Configuration"
+              <>
+                <h2>Collection Configuration</h2>
+                <p className="form-help-text">Configure which collection instances created from this template will join.</p>
+                <div className="form-group">
                   <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                     <input
                       type="checkbox"
@@ -1122,15 +1126,68 @@ export default function CreateConversationPage() {
                       }}
                       style={{ marginRight: '0.5rem' }}
                     />
-                    <span style={{ fontWeight: 600 }}>Set Series for Instances</span>
+                    <span style={{ fontWeight: 600 }}>Set Collection for Instances</span>
                   </label>
                   <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                    Instances created from this template will automatically join the selected series.
+                    Instances created from this template will automatically join the selected collection.
                   </p>
-                </>
-              ) : (
-                // For regular conversations and conversations from templates: "Add to Collection"
-                <>
+
+                  {addToSeries && (
+                    <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                      <div className="form-group">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <label htmlFor="seriesSelect">Select Collection</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowCreateSeriesModal(true)}
+                            className="btn btn-secondary btn-small"
+                            style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                          >
+                            + Create New
+                          </button>
+                        </div>
+                        <select
+                          id="seriesSelect"
+                          value={selectedSeriesId}
+                          onChange={(e) => setSelectedSeriesId(e.target.value)}
+                          required={addToSeries}
+                        >
+                          <option value="">-- Select a collection --</option>
+                          {seriesList.map((series) => (
+                            <option key={series.id} value={series.id}>
+                              {series.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="form-help-text">
+                          {seriesList.length === 0
+                            ? 'No collections available. Click "Create New" to create a collection.'
+                            : 'Instances created from this template will join this collection.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!addToSeries && (
+                    <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateSeriesModal(true)}
+                        className="btn btn-secondary"
+                        style={{ marginTop: '0.5rem' }}
+                      >
+                        + Create New Collection
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              // For regular conversations and conversations from templates: "Collection"
+              <>
+                <h2>Collection</h2>
+                <p className="form-help-text">Add this conversation to a collection to group it with related conversations.</p>
+                <div className="form-group">
                   <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                     <input
                       type="checkbox"
@@ -1153,49 +1210,47 @@ export default function CreateConversationPage() {
                       ? 'Group this conversation with related conversations in a series. If the template has a series configured, it will be pre-selected.'
                       : 'Group this conversation with related conversations in a series.'}
                   </p>
-                </>
-              )}
 
-              {(addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)) && (
-                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
-                  <div className="form-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label htmlFor="seriesSelect">Select Collection</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowCreateSeriesModal(true)}
-                        className="btn btn-secondary btn-small"
-                        style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
-                      >
-                        + Create New
-                      </button>
+                  {(addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)) && (
+                    <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                      <div className="form-group">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <label htmlFor="seriesSelect">Select Collection</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowCreateSeriesModal(true)}
+                            className="btn btn-secondary btn-small"
+                            style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                          >
+                            + Create New
+                          </button>
+                        </div>
+                        <select
+                          id="seriesSelect"
+                          value={selectedSeriesId || (followUpState?.templateSeriesId && followUpState?.isRecurring ? followUpState.templateSeriesId : '')}
+                          onChange={(e) => setSelectedSeriesId(e.target.value)}
+                          required={addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)}
+                        >
+                          <option value="">-- Select a collection --</option>
+                          {seriesList.map((series) => (
+                            <option key={series.id} value={series.id}>
+                              {series.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="form-help-text">
+                          {seriesList.length === 0
+                            ? 'No collections available. Click "Create New" to create a collection or create this conversation independently.'
+                            : 'Select an existing collection to add this conversation to.'}
+                        </p>
+                      </div>
                     </div>
-                    <select
-                      id="seriesSelect"
-                      value={selectedSeriesId || (followUpState?.templateSeriesId && followUpState?.isRecurring ? followUpState.templateSeriesId : '')}
-                      onChange={(e) => setSelectedSeriesId(e.target.value)}
-                      required={addToSeries || !!(followUpState?.templateSeriesId && followUpState?.isRecurring)}
-                    >
-                      <option value="">-- Select a collection --</option>
-                      {seriesList.map((series) => (
-                        <option key={series.id} value={series.id}>
-                          {series.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="form-help-text">
-                      {seriesList.length === 0
-                        ? 'No collections available. Click "Create New" to create a collection or create this conversation independently.'
-                        : followUpState?.createTemplate
-                          ? 'Instances created from this template will join this collection.'
-                          : 'Select an existing collection to add this conversation to.'}
-                    </p>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="form-section">
           <div className="section-header">

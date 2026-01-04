@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Question, type Conversation, type Series } from '../types';
-import { convertUTCToLocalDateTimeString } from '../utils/formatting';
+import { convertUTCToLocalDateTimeString, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
 import {
@@ -134,9 +134,10 @@ export default function EditConversationPage() {
     AnonymityLevel.PLATFORM_TRACKED
   );
   const [resultsAccess, setResultsAccess] = useState<ResultsAccess>(
-    ResultsAccess.PUBLIC_LINK
+    ResultsAccess.PARTICIPANTS
   );
   const [inviteOnly, setInviteOnly] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState('');
   const [showVerbatimResponses, setShowVerbatimResponses] = useState(false);
   const [scheduleActivation, setScheduleActivation] = useState(false);
   const [scheduledActivateAt, setScheduledActivateAt] = useState('');
@@ -160,6 +161,7 @@ export default function EditConversationPage() {
   const [selectedTemplateSeriesId, setSelectedTemplateSeriesId] = useState<string>('');
   // Series fields for regular conversations
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
+  const [addToSeries, setAddToSeries] = useState(false);
   const [showCreateSeriesModal, setShowCreateSeriesModal] = useState(false);
   const [newSeriesName, setNewSeriesName] = useState('');
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
@@ -266,6 +268,7 @@ export default function EditConversationPage() {
       // Load series for regular conversations
       if (!isTemp && conv.series_id) {
         setSelectedSeriesId(conv.series_id);
+        setAddToSeries(true);
       }
 
       // Convert Question[] to QuestionCreate[]
@@ -478,7 +481,12 @@ export default function EditConversationPage() {
       setSeriesList(updatedSeries);
 
       // Select the newly created series
-      setSelectedTemplateSeriesId(newSeries.id);
+      if (isTemplate) {
+        setSelectedTemplateSeriesId(newSeries.id);
+      } else {
+        setSelectedSeriesId(newSeries.id);
+        setAddToSeries(true);
+      }
 
       // Close modal and reset form
       setShowCreateSeriesModal(false);
@@ -501,11 +509,35 @@ export default function EditConversationPage() {
       return;
     }
 
+    // Validate that emails are not provided if invite-only is disabled
+    if (!inviteOnly && inviteEmails.trim()) {
+      setError('Email addresses can only be provided when invite-only mode is enabled');
+      return;
+    }
+
+    // Validate scheduled activation time if provided
+    if (scheduleActivation && scheduledActivateAt) {
+      const scheduledDate = new Date(scheduledActivateAt);
+      const now = new Date();
+      if (scheduledDate <= now) {
+        setError('Scheduled activation time must be in the future');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       // Calculate total minutes from hours and minutes
       const totalMinutes = durationHours * 60 + durationMinutes;
+
+      // Get user's timezone from browser
+      let userTimezone = 'UTC';
+      try {
+        userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (err) {
+        console.warn('Failed to detect timezone, using UTC:', err);
+      }
       
       await api.updateConversation(id!, {
         title,
@@ -516,6 +548,7 @@ export default function EditConversationPage() {
         results_access: resultsAccess,
         show_verbatim_responses: showVerbatimResponses,
         invite_only: inviteOnly,
+        timezone: userTimezone,
         questions,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
         ...(scheduleActivation && scheduledActivateAt && {
@@ -530,9 +563,27 @@ export default function EditConversationPage() {
         }),
         // Include series_id for regular conversations
         ...(!isTemplate && {
-          series_id: selectedSeriesId || undefined,
+          series_id: (addToSeries && selectedSeriesId) ? selectedSeriesId : undefined,
         }),
       });
+
+      // If invite-only is enabled and emails are provided, invite those users
+      if (inviteOnly && inviteEmails.trim()) {
+        const emails = inviteEmails
+          .split(',')
+          .map(e => e.trim())
+          .filter(e => e.length > 0 && e.includes('@'));
+
+        if (emails.length > 0) {
+          try {
+            await api.inviteUsers(id!, emails);
+          } catch (inviteErr: any) {
+            // Log error but don't block navigation - invitations can be added later
+            console.error('Failed to invite users during update:', inviteErr);
+          }
+        }
+      }
+
       navigate(isTemplate ? `/templates/${id}` : `/conversations/${id}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update conversation');
@@ -808,16 +859,76 @@ export default function EditConversationPage() {
               For fully anonymous conversations, participant codes must be distributed only to invited users.
             </p>
           </div>
+
+          {inviteOnly && (
+            <div className="form-group">
+              <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
+              <textarea
+                id="invite-emails"
+                value={inviteEmails}
+                onChange={(e) => setInviteEmails(e.target.value)}
+                placeholder="user1@example.com, user2@example.com"
+                rows={3}
+                disabled={loading}
+              />
+              <p className="form-help-text">
+                Enter email addresses separated by commas. These users will be invited to the conversation.
+                You can also add more invitations after updating the conversation, even after it's activated.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="form-section">
-          <h2>Duration Settings</h2>
-          <p className="form-help-text">
-            How long should this conversation remain open for responses after activation?
-          </p>
+          <h2>Timing Settings</h2>
+
+          <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
+            <label htmlFor="scheduleActivation">
+              <input
+                id="scheduleActivation"
+                type="checkbox"
+                checked={scheduleActivation}
+                onChange={(e) => {
+                  setScheduleActivation(e.target.checked);
+                  if (e.target.checked) {
+                    // Set default to current time in local timezone
+                    const defaultTime = new Date();
+                    setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
+                  } else {
+                    setScheduledActivateAt('');
+                  }
+                }}
+              />
+              <span>Schedule activation for a future date and time</span>
+            </label>
+            <p className="form-help-text">
+              If enabled, the conversation will be automatically activated at the specified time.
+              Otherwise, you can activate it manually after creation.
+            </p>
+          </div>
+
+          {scheduleActivation && (
+            <div className="form-group">
+              <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
+              <input
+                id="scheduledActivateAt"
+                type="datetime-local"
+                value={scheduledActivateAt}
+                onChange={(e) => setScheduledActivateAt(e.target.value)}
+                min={formatDateForDateTimeLocal(new Date())}
+                required={scheduleActivation}
+              />
+              <p className="form-help-text">
+                The conversation will be automatically activated at this time. Make sure the time is in the future.
+              </p>
+            </div>
+          )}
 
           <div className="form-group">
-            <label htmlFor="durationHours">Duration</label>
+            <label htmlFor="durationHours">Duration After Activation</label>
+            <p className="form-help-text" style={{ marginBottom: '10px' }}>
+              How long should this conversation remain open for responses after activation?
+            </p>
             <div className="duration-inputs">
               <div className="duration-input-group">
                 <input
@@ -851,41 +962,9 @@ export default function EditConversationPage() {
               </div>
             </div>
             <p className="form-help-text">
-              Maximum duration is 48 hours.
+              Maximum duration is 48 hours. The conversation will automatically close after this duration.
             </p>
           </div>
-        </div>
-
-        <div className="form-section">
-          <h2>Timing Settings</h2>
-
-          <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
-            <label htmlFor="scheduleActivation">
-              <input
-                id="scheduleActivation"
-                type="checkbox"
-                checked={scheduleActivation}
-                onChange={(e) => setScheduleActivation(e.target.checked)}
-              />
-              <span>Schedule activation for later</span>
-            </label>
-          </div>
-
-          {scheduleActivation && (
-            <div className="form-group">
-              <label htmlFor="scheduledActivateAt">Activate at *</label>
-              <input
-                id="scheduledActivateAt"
-                type="datetime-local"
-                value={scheduledActivateAt}
-                onChange={(e) => setScheduledActivateAt(e.target.value)}
-                required={scheduleActivation}
-              />
-              <p className="form-help-text">
-                The conversation will be automatically activated at this time.
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Recurring Schedule Section - Only for templates */}
@@ -1024,34 +1103,59 @@ export default function EditConversationPage() {
             <p className="form-help-text">Add this conversation to a collection to group it with related conversations.</p>
 
             <div className="form-group">
-              <label htmlFor="seriesSelect">Select Collection</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <select
-                  id="seriesSelect"
-                  value={selectedSeriesId}
-                  onChange={(e) => setSelectedSeriesId(e.target.value)}
-                  style={{ flex: 1 }}
-                >
-                  <option value="">No collection</option>
-                  {seriesList.map((series) => (
-                    <option key={series.id} value={series.id}>
-                      {series.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateSeriesModal(true)}
-                  className="btn btn-secondary btn-small"
-                >
-                  + Create New
-                </button>
-              </div>
-              <p className="form-help-text">
-                {seriesList.length === 0
-                  ? 'No collections available. Click "Create New" to create a collection.'
-                  : 'Group this conversation with related conversations in a collection.'}
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={addToSeries || !!selectedSeriesId}
+                  onChange={(e) => {
+                    setAddToSeries(e.target.checked);
+                    if (!e.target.checked) {
+                      setSelectedSeriesId('');
+                    }
+                  }}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span style={{ fontWeight: 600 }}>Add to Collection</span>
+              </label>
+              <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                Group this conversation with related conversations in a series.
               </p>
+
+              {(addToSeries || selectedSeriesId) && (
+                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label htmlFor="seriesSelect">Select Collection</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateSeriesModal(true)}
+                        className="btn btn-secondary btn-small"
+                        style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                      >
+                        + Create New
+                      </button>
+                    </div>
+                    <select
+                      id="seriesSelect"
+                      value={selectedSeriesId}
+                      onChange={(e) => setSelectedSeriesId(e.target.value)}
+                      required={addToSeries || !!selectedSeriesId}
+                    >
+                      <option value="">-- Select a collection --</option>
+                      {seriesList.map((series) => (
+                        <option key={series.id} value={series.id}>
+                          {series.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="form-help-text">
+                      {seriesList.length === 0
+                        ? 'No collections available. Click "Create New" to create a collection or create this conversation independently.'
+                        : 'Select an existing collection to add this conversation to.'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
