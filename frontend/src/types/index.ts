@@ -184,6 +184,7 @@ export interface ConversationListItem {
   activated_at?: string;
   closed_at?: string;
   response_count?: number;
+  unique_participants?: number;
   timezone?: string;
   organization_id?: string;
   is_follow_up?: boolean;

@@ -365,9 +365,25 @@ async def list_conversations(
 
     results = query.all()
 
-    # Build response with response count
+    # Build response with response count and unique participants
     conversations = []
     for conv, response_count in results:
+        # Calculate unique participants based on anonymity level
+        if conv.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+            unique_participants = db.query(
+                func.count(func.distinct(Response.participant_code_used))
+            ).filter(
+                Response.conversation_id == conv.id,
+                Response.participant_code_used.isnot(None)
+            ).scalar() or 0
+        else:
+            unique_participants = db.query(
+                func.count(func.distinct(Response.participant_id))
+            ).filter(
+                Response.conversation_id == conv.id,
+                Response.participant_id.isnot(None)
+            ).scalar() or 0
+
         conv_dict = {
             "id": conv.id,
             "title": conv.title,
@@ -378,6 +394,7 @@ async def list_conversations(
             "activated_at": conv.activated_at,
             "closed_at": conv.closed_at,
             "response_count": response_count,
+            "unique_participants": unique_participants,
             "timezone": conv.timezone or "UTC",
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
@@ -442,9 +459,25 @@ async def list_participated_conversations(
 
     results = query.all()
 
-    # Build response with response count
+    # Build response with response count and unique participants
     conversations = []
     for conv, response_count in results:
+        # Calculate unique participants based on anonymity level
+        if conv.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+            unique_participants = db.query(
+                func.count(func.distinct(Response.participant_code_used))
+            ).filter(
+                Response.conversation_id == conv.id,
+                Response.participant_code_used.isnot(None)
+            ).scalar() or 0
+        else:
+            unique_participants = db.query(
+                func.count(func.distinct(Response.participant_id))
+            ).filter(
+                Response.conversation_id == conv.id,
+                Response.participant_id.isnot(None)
+            ).scalar() or 0
+
         conv_dict = {
             "id": conv.id,
             "title": conv.title,
@@ -455,6 +488,7 @@ async def list_participated_conversations(
             "activated_at": conv.activated_at,
             "closed_at": conv.closed_at,
             "response_count": response_count,
+            "unique_participants": unique_participants,
             "timezone": conv.timezone or "UTC",
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,

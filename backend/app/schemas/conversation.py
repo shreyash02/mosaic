@@ -276,6 +276,7 @@ class ConversationListItem(BaseModel):
     activated_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
     response_count: Optional[int] = 0
+    unique_participants: Optional[int] = 0
     timezone: Optional[str] = Field(default="UTC", description="IANA timezone name for datetime fields")
     is_follow_up: bool = False
     parent_conversation_id: Optional[UUID] = None

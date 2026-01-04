@@ -339,9 +339,26 @@ async def list_org_conversations(
     for conv in conversations:
         # Count responses
         from app.models.response import Response
+        from app.schemas.conversation import AnonymityLevel
         response_count = db.query(func.count(Response.id)).filter(
             Response.conversation_id == conv.id
         ).scalar()
+
+        # Calculate unique participants based on anonymity level
+        if conv.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+            unique_participants = db.query(
+                func.count(func.distinct(Response.participant_code_used))
+            ).filter(
+                Response.conversation_id == conv.id,
+                Response.participant_code_used.isnot(None)
+            ).scalar() or 0
+        else:
+            unique_participants = db.query(
+                func.count(func.distinct(Response.participant_id))
+            ).filter(
+                Response.conversation_id == conv.id,
+                Response.participant_id.isnot(None)
+            ).scalar() or 0
 
         result.append(ConversationListItem(
             id=conv.id,
@@ -353,6 +370,7 @@ async def list_org_conversations(
             activated_at=conv.activated_at,
             closed_at=conv.closed_at,
             response_count=response_count,
+            unique_participants=unique_participants,
             timezone=conv.timezone,
             is_follow_up=conv.parent_conversation_id is not None,
             parent_conversation_id=str(conv.parent_conversation_id) if conv.parent_conversation_id else None,
