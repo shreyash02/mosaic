@@ -210,7 +210,6 @@ async def create_conversation(
     # If series_id is provided, verify series exists and user has access
     if conversation_data.series_id:
         from app.models.series import Series
-        from app.services.organization_service import check_organization_membership
         series = db.query(Series).filter(Series.id == conversation_data.series_id).first()
         if not series:
             raise HTTPException(
@@ -237,7 +236,6 @@ async def create_conversation(
     # If template_series_id is provided (for templates), verify series exists and user has access
     if conversation_data.template_series_id:
         from app.models.series import Series
-        from app.services.organization_service import check_organization_membership
         series = db.query(Series).filter(Series.id == conversation_data.template_series_id).first()
         if not series:
             raise HTTPException(
