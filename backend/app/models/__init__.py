@@ -11,6 +11,8 @@ from app.models.conversation_invitation import ConversationInvitation
 from app.models.admin import Admin
 from app.models.series import Series
 from app.models.collection_analysis import CollectionAnalysis
+from app.models.periodic_analysis import PeriodicAnalysis
+from app.models.continuous_trends import ContinuousTrends
 
 __all__ = [
     "User",
@@ -25,4 +27,6 @@ __all__ = [
     "Admin",
     "Series",
     "CollectionAnalysis",
+    "PeriodicAnalysis",
+    "ContinuousTrends",
 ]

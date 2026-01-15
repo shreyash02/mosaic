@@ -12,6 +12,8 @@ from app.models.response import Response
 from app.models.question import Question
 from app.models.conversation_invitation import ConversationInvitation
 from app.models.user import User
+from app.models.periodic_analysis import PeriodicAnalysis
+from app.models.continuous_trends import ContinuousTrends
 from app.schemas.conversation import ConversationState
 from app.routes.analysis import run_analysis_task
 from app.utils.access_code import generate_access_code
@@ -19,6 +21,7 @@ from app.services.email_service import email_service
 from typing import Optional
 import logging
 import asyncio
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -372,6 +375,309 @@ def calculate_next_instance_date(current_date: datetime, pattern: str) -> dateti
         return current_date + timedelta(weeks=1)
 
 
+def calculate_period_start(period_end: datetime, interval: str) -> datetime:
+    """
+    Calculate the start of the analysis period based on interval.
+
+    Args:
+        period_end: End of the analysis period
+        interval: Analysis interval (daily, weekly, biweekly, monthly)
+
+    Returns:
+        Start datetime of the period
+    """
+    if interval == "daily":
+        return period_end - timedelta(days=1)
+    elif interval == "weekly":
+        return period_end - timedelta(weeks=1)
+    elif interval == "biweekly":
+        return period_end - timedelta(weeks=2)
+    elif interval == "monthly":
+        return period_end - timedelta(days=30)
+    else:
+        return period_end - timedelta(weeks=1)
+
+
+def calculate_next_analysis_time(current: datetime, interval: str) -> datetime:
+    """
+    Calculate when the next periodic analysis should run.
+
+    Args:
+        current: Current analysis time
+        interval: Analysis interval (daily, weekly, biweekly, monthly)
+
+    Returns:
+        Next analysis datetime
+    """
+    if interval == "daily":
+        return current + timedelta(days=1)
+    elif interval == "weekly":
+        return current + timedelta(weeks=1)
+    elif interval == "biweekly":
+        return current + timedelta(weeks=2)
+    elif interval == "monthly":
+        return current + timedelta(days=30)
+    else:
+        return current + timedelta(weeks=1)
+
+
+def generate_period_label(period_start: datetime, period_end: datetime, interval: str) -> str:
+    """
+    Generate a human-readable label for the analysis period.
+
+    Args:
+        period_start: Start of the period
+        period_end: End of the period
+        interval: Analysis interval
+
+    Returns:
+        Period label string (e.g., "2024-W01", "2024-01", "2024-01-15")
+    """
+    if interval == "daily":
+        return period_start.strftime("%Y-%m-%d")
+    elif interval in ["weekly", "biweekly"]:
+        year, week, _ = period_start.isocalendar()
+        return f"{year}-W{week:02d}"
+    elif interval == "monthly":
+        return period_start.strftime("%Y-%m")
+    else:
+        return period_start.strftime("%Y-%m-%d")
+
+
+def run_periodic_analysis_task(
+    conversation_id: UUID,
+    period_start: datetime,
+    period_end: datetime,
+    period_type: str,
+    db_url: str
+) -> None:
+    """
+    Run periodic analysis for a continuous conversation.
+
+    This function runs in a background thread and analyzes responses
+    within the specified time window.
+
+    Args:
+        conversation_id: ID of the conversation to analyze
+        period_start: Start of analysis window (UTC)
+        period_end: End of analysis window (UTC)
+        period_type: Type of period (daily, weekly, biweekly, monthly)
+        db_url: Database connection URL
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.analysis_service import AnalysisService
+    from app.services.continuous_trends_service import ContinuousTrendsService
+
+    logger.info(f"Starting periodic analysis for conversation {conversation_id}, period {period_start} to {period_end}")
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        # Get conversation and validate
+        conversation = db.query(Conversation).filter(
+            Conversation.id == conversation_id
+        ).first()
+
+        if not conversation:
+            logger.error(f"Conversation {conversation_id} not found for periodic analysis")
+            return
+
+        if not conversation.is_continuous:
+            logger.warning(f"Conversation {conversation_id} is not continuous, skipping periodic analysis")
+            return
+
+        # Get questions
+        questions = db.query(Question).filter(
+            Question.conversation_id == conversation_id
+        ).order_by(Question.question_order).all()
+
+        # Get all responses (we'll filter in the service)
+        responses = db.query(Response).filter(
+            Response.conversation_id == conversation_id
+        ).all()
+
+        # Run windowed analysis
+        analysis_service = AnalysisService()
+        analysis_result = analysis_service.analyze_conversation_windowed(
+            questions=questions,
+            responses=responses,
+            start_time=period_start,
+            end_time=period_end,
+            min_cluster_size=2
+        )
+
+        # Generate period label
+        period_label = generate_period_label(period_start, period_end, period_type)
+
+        # Check if analysis for this period already exists (shouldn't happen, but be safe)
+        existing = db.query(PeriodicAnalysis).filter(
+            PeriodicAnalysis.conversation_id == conversation_id,
+            PeriodicAnalysis.period_label == period_label
+        ).first()
+
+        if existing:
+            logger.warning(f"Periodic analysis for {period_label} already exists, updating")
+            existing.overall_summary = analysis_result.get("overall_summary")
+            existing.question_analyses = analysis_result.get("question_analyses")
+            existing.surprising_insights = analysis_result.get("surprising_insights")
+            existing.total_responses_analyzed = analysis_result.get("total_responses_analyzed")
+            existing.num_clusters_found = analysis_result.get("num_clusters_found")
+            existing.analysis_duration_ms = analysis_result.get("analysis_duration_ms")
+            existing.embedding_provider = analysis_result.get("embedding_provider")
+            existing.embedding_model = analysis_result.get("embedding_model")
+            existing.clustering_algorithm = analysis_result.get("clustering_algorithm")
+            existing.llm_provider = analysis_result.get("llm_provider")
+            existing.llm_model = analysis_result.get("llm_model")
+        else:
+            # Create new periodic analysis
+            periodic_analysis = PeriodicAnalysis(
+                id=uuid.uuid4(),
+                conversation_id=conversation_id,
+                period_start=period_start,
+                period_end=period_end,
+                period_label=period_label,
+                period_type=period_type,
+                overall_summary=analysis_result.get("overall_summary"),
+                question_analyses=analysis_result.get("question_analyses"),
+                surprising_insights=analysis_result.get("surprising_insights"),
+                total_responses_analyzed=analysis_result.get("total_responses_analyzed"),
+                num_clusters_found=analysis_result.get("num_clusters_found"),
+                analysis_duration_ms=analysis_result.get("analysis_duration_ms"),
+                embedding_provider=analysis_result.get("embedding_provider"),
+                embedding_model=analysis_result.get("embedding_model"),
+                clustering_algorithm=analysis_result.get("clustering_algorithm"),
+                llm_provider=analysis_result.get("llm_provider"),
+                llm_model=analysis_result.get("llm_model"),
+            )
+            db.add(periodic_analysis)
+
+        db.commit()
+
+        logger.info(f"Periodic analysis completed for conversation {conversation_id}, period {period_label}")
+        logger.info(f"Analyzed {analysis_result.get('total_responses_analyzed', 0)} responses in {analysis_result.get('analysis_duration_ms', 0)}ms")
+
+        # Update trends if we have at least 2 analyses
+        analyses_count = db.query(PeriodicAnalysis).filter(
+            PeriodicAnalysis.conversation_id == conversation_id
+        ).count()
+
+        if analyses_count >= 2:
+            logger.info(f"Recomputing trends for conversation {conversation_id} ({analyses_count} analyses)")
+
+            all_analyses = db.query(PeriodicAnalysis).filter(
+                PeriodicAnalysis.conversation_id == conversation_id
+            ).order_by(PeriodicAnalysis.period_start).all()
+
+            trends_service = ContinuousTrendsService()
+            trends_data = trends_service.compute_trends(all_analyses, period_type)
+
+            # Update or create trends record
+            trends = db.query(ContinuousTrends).filter(
+                ContinuousTrends.conversation_id == conversation_id
+            ).first()
+
+            if trends:
+                trends.trends = trends_data
+                trends.periods_analyzed = analyses_count
+                trends.last_computed_at = datetime.utcnow()
+                trends.computation_duration_ms = trends_data.get("computation_duration_ms")
+            else:
+                trends = ContinuousTrends(
+                    id=uuid.uuid4(),
+                    conversation_id=conversation_id,
+                    trends=trends_data,
+                    periods_analyzed=analyses_count,
+                    computation_duration_ms=trends_data.get("computation_duration_ms")
+                )
+                db.add(trends)
+
+            db.commit()
+            logger.info(f"Trends updated for conversation {conversation_id}")
+
+    except Exception as e:
+        logger.error(f"Error running periodic analysis for conversation {conversation_id}: {e}", exc_info=True)
+        db.rollback()
+    finally:
+        db.close()
+        engine.dispose()
+
+
+async def check_periodic_analyses():
+    """
+    Check for continuous conversations that need periodic analysis.
+
+    Runs periodically and triggers analysis for conversations where:
+    - is_continuous = True
+    - analysis_interval is set
+    - next_analysis_at <= now
+    - state is ACTIVE
+    """
+    db: Session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+
+        # Find continuous conversations needing analysis
+        conversations = db.query(Conversation).filter(
+            Conversation.is_continuous == True,
+            Conversation.state == ConversationState.ACTIVE.value,
+            Conversation.analysis_interval.isnot(None),
+            Conversation.next_analysis_at <= now,
+            Conversation.next_analysis_at.isnot(None)
+        ).all()
+
+        if conversations:
+            logger.info(f"Found {len(conversations)} continuous conversation(s) needing periodic analysis")
+
+        for conv in conversations:
+            try:
+                logger.info(f"Triggering periodic analysis for conversation {conv.id}")
+
+                # Calculate analysis window
+                period_end = conv.next_analysis_at
+                period_start = calculate_period_start(period_end, conv.analysis_interval)
+
+                # Check if there are responses in this window
+                response_count = db.query(Response).filter(
+                    Response.conversation_id == conv.id,
+                    Response.submitted_at >= period_start,
+                    Response.submitted_at < period_end
+                ).count()
+
+                if response_count > 0:
+                    # Trigger analysis in background
+                    task = asyncio.create_task(
+                        asyncio.to_thread(
+                            run_periodic_analysis_task,
+                            conv.id,
+                            period_start,
+                            period_end,
+                            conv.analysis_interval,
+                            settings.DATABASE_URL
+                        )
+                    )
+                    # Don't await - let it run in background
+                else:
+                    logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
+
+                # Update next_analysis_at regardless (even if no responses, move to next period)
+                conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
+
+            except Exception as e:
+                logger.error(f"Error processing periodic analysis for {conv.id}: {e}", exc_info=True)
+
+        if conversations:
+            db.commit()
+
+    except Exception as e:
+        logger.error(f"Error in check_periodic_analyses: {e}", exc_info=True)
+        db.rollback()
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler."""
     if scheduler.running:
@@ -405,8 +711,17 @@ def start_scheduler():
         max_instances=1
     )
 
+    # Add job to check for periodic analyses every 15 minutes
+    scheduler.add_job(
+        check_periodic_analyses,
+        trigger=IntervalTrigger(minutes=15),
+        id='check_periodic_analyses',
+        replace_existing=True,
+        max_instances=1
+    )
+
     scheduler.start()
-    logger.info("Scheduler started with activation, closure, and recurring instance check jobs")
+    logger.info("Scheduler started with activation, closure, recurring instance, and periodic analysis check jobs")
 
 
 def shutdown_scheduler():
