@@ -117,10 +117,26 @@ class AnalysisService:
         Returns:
             Analysis results dict with per-question analysis
         """
+        # Ensure start_time and end_time are naive (UTC) for comparison
+        # Database stores naive UTC datetimes
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
+        if end_time.tzinfo is not None:
+            end_time = end_time.replace(tzinfo=None)
+
         # Filter responses by time window
+        # Need to handle timezone-aware submitted_at from response objects
+        def normalize_datetime(dt):
+            """Convert timezone-aware datetime to naive UTC."""
+            if dt is None:
+                return None
+            if dt.tzinfo is not None:
+                return dt.replace(tzinfo=None)
+            return dt
+
         windowed_responses = [
             r for r in responses
-            if r.submitted_at and start_time <= r.submitted_at <= end_time
+            if r.submitted_at and start_time <= normalize_datetime(r.submitted_at) <= end_time
         ]
 
         # Use existing analyze_conversation method with filtered responses

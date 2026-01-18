@@ -1,6 +1,6 @@
 """Periodic analysis routes for continuous conversations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -162,6 +162,13 @@ async def trigger_periodic_analysis(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot determine analysis window. Please specify period_start."
             )
+
+    # Ensure both datetimes are naive (UTC) for comparison
+    # Remove timezone info if present (assume UTC)
+    if period_start.tzinfo is not None:
+        period_start = period_start.replace(tzinfo=None)
+    if period_end.tzinfo is not None:
+        period_end = period_end.replace(tzinfo=None)
 
     # Validate period
     if period_start >= period_end:

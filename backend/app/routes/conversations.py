@@ -293,6 +293,10 @@ async def create_conversation(
         recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
+        # Continuous conversation fields
+        is_continuous=conversation_data.is_continuous or False,
+        analysis_interval=conversation_data.analysis_interval.value if conversation_data.analysis_interval else None,
+        analysis_timezone=conversation_data.analysis_timezone,
     )
 
     db.add(conversation)
@@ -1056,8 +1060,17 @@ async def activate_conversation(
         conversation.activated_at = datetime.utcnow()
         conversation.scheduled_activate_at = None  # Clear any previously scheduled time
 
-        # Calculate auto_close_at from duration_minutes if set
-        if conversation.duration_minutes:
+        # Calculate auto_close_at from duration_minutes if set (unless continuous)
+        if conversation.is_continuous:
+            # Continuous conversations don't auto-close
+            conversation.auto_close_at = None
+            # Set next_analysis_at based on analysis_interval if configured
+            if conversation.analysis_interval and not conversation.next_analysis_at:
+                conversation.next_analysis_at = calculate_next_analysis_time(
+                    conversation.activated_at,
+                    conversation.analysis_interval
+                )
+        elif conversation.duration_minutes:
             conversation.auto_close_at = conversation.activated_at + timedelta(minutes=conversation.duration_minutes)
         elif activate_data.auto_close_at:
             # Allow override via activation endpoint if duration_minutes is not set
