@@ -311,6 +311,7 @@ async def create_conversation(
             question_order=question_data.question_order,
             options=question_data.options,
             is_required=question_data.is_required if hasattr(question_data, 'is_required') else False,
+            question_image_url=question_data.question_image_url if hasattr(question_data, 'question_image_url') else None,
         )
         db.add(question)
 
@@ -847,6 +848,7 @@ async def update_conversation(
                 question_order=question_data.question_order,
                 options=question_data.options,
                 is_required=question_data.is_required if hasattr(question_data, 'is_required') else False,
+                question_image_url=question_data.question_image_url if hasattr(question_data, 'question_image_url') else None,
             )
             db.add(question)
 
@@ -982,6 +984,7 @@ async def duplicate_conversation(
             question_order=original_question.question_order,
             options=original_question.options,
             is_required=original_question.is_required,
+            question_image_url=original_question.question_image_url,
         )
         db.add(duplicate_question)
 
@@ -1697,7 +1700,8 @@ async def create_follow_up_conversation(
                 question_type=parent_q.question_type,
                 question_order=parent_q.question_order,
                 options=parent_q.options,
-                is_required=parent_q.is_required
+                is_required=parent_q.is_required,
+                question_image_url=parent_q.question_image_url,
             )
             db.add(new_question)
 

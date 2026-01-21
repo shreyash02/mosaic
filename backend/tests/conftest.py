@@ -59,6 +59,16 @@ class APIClient:
                 **kwargs
             )
 
+    def patch(self, path: str, json: Dict = None, **kwargs) -> httpx.Response:
+        """Make a PATCH request."""
+        with httpx.Client() as client:
+            return client.patch(
+                f"{self.base_url}{path}",
+                headers=self._get_headers(),
+                json=json,
+                **kwargs
+            )
+
     def delete(self, path: str, **kwargs) -> httpx.Response:
         """Make a DELETE request."""
         with httpx.Client() as client:

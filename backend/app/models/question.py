@@ -21,6 +21,9 @@ class Question(Base):
     question_type = Column(String(50), default="text", nullable=False)
     # 'text', 'rating', 'single_choice', 'multiple_choice' (future)
 
+    # Optional image displayed with the question
+    question_image_url = Column(String(500), nullable=True)
+
     question_order = Column(Integer, nullable=False)
 
     # For future rating/poll support

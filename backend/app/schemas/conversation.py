@@ -62,6 +62,7 @@ class QuestionBase(BaseModel):
     question_order: int = Field(..., ge=0)
     options: Optional[dict] = None
     is_required: bool = Field(default=False)
+    question_image_url: Optional[str] = Field(None, max_length=500, description="Optional image URL displayed with the question")
 
 
 class QuestionCreate(QuestionBase):
@@ -78,6 +79,7 @@ class QuestionUpdate(BaseModel):
     question_order: Optional[int] = Field(None, ge=0)
     options: Optional[dict] = None
     is_required: Optional[bool] = None
+    question_image_url: Optional[str] = Field(None, max_length=500, description="Optional image URL displayed with the question")
 
 
 class Question(QuestionBase):
