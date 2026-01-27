@@ -938,46 +938,51 @@ export default function CreateConversationPage() {
         <div className="form-section">
           <h2>Timing Settings</h2>
 
-          <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
-            <label htmlFor="scheduleActivation">
-              <input
-                id="scheduleActivation"
-                type="checkbox"
-                checked={scheduleActivation}
-                onChange={(e) => {
-                  setScheduleActivation(e.target.checked);
-                  if (e.target.checked) {
-                    // Set default to current time in local timezone
-                    const defaultTime = new Date();
-                    setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
-                  } else {
-                    setScheduledActivateAt('');
-                  }
-                }}
-              />
-              <span>Schedule activation for a future date and time</span>
-            </label>
-            <p className="form-help-text">
-              If enabled, the conversation will be automatically activated at the specified time.
-              Otherwise, you can activate it manually after creation.
-            </p>
-          </div>
+          {/* Schedule activation only applies to conversations, not templates */}
+          {!followUpState?.createTemplate && (
+            <>
+              <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
+                <label htmlFor="scheduleActivation">
+                  <input
+                    id="scheduleActivation"
+                    type="checkbox"
+                    checked={scheduleActivation}
+                    onChange={(e) => {
+                      setScheduleActivation(e.target.checked);
+                      if (e.target.checked) {
+                        // Set default to current time in local timezone
+                        const defaultTime = new Date();
+                        setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
+                      } else {
+                        setScheduledActivateAt('');
+                      }
+                    }}
+                  />
+                  <span>Schedule activation for a future date and time</span>
+                </label>
+                <p className="form-help-text">
+                  If enabled, the conversation will be automatically activated at the specified time.
+                  Otherwise, you can activate it manually after creation.
+                </p>
+              </div>
 
-          {scheduleActivation && (
-            <div className="form-group">
-              <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
-              <input
-                id="scheduledActivateAt"
-                type="datetime-local"
-                value={scheduledActivateAt}
-                onChange={(e) => setScheduledActivateAt(e.target.value)}
-                min={formatDateForDateTimeLocal(new Date())}
-                required={scheduleActivation}
-              />
-              <p className="form-help-text">
-                The conversation will be automatically activated at this time. Make sure the time is in the future.
-              </p>
-            </div>
+              {scheduleActivation && (
+                <div className="form-group">
+                  <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
+                  <input
+                    id="scheduledActivateAt"
+                    type="datetime-local"
+                    value={scheduledActivateAt}
+                    onChange={(e) => setScheduledActivateAt(e.target.value)}
+                    min={formatDateForDateTimeLocal(new Date())}
+                    required={scheduleActivation}
+                  />
+                  <p className="form-help-text">
+                    The conversation will be automatically activated at this time. Make sure the time is in the future.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <div className="form-group">

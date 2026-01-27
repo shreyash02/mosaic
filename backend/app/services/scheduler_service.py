@@ -87,7 +87,8 @@ async def check_scheduled_activations():
         conversations = db.query(Conversation).filter(
             Conversation.state == ConversationState.DRAFT.value,
             Conversation.scheduled_activate_at <= now,
-            Conversation.scheduled_activate_at.isnot(None)
+            Conversation.scheduled_activate_at.isnot(None),
+            Conversation.is_template == False  # Templates are never activated
         ).all()
 
         if conversations:
