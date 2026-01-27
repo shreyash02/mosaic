@@ -130,6 +130,7 @@ export default function EditConversationPage() {
   const [description, setDescription] = useState('');
   const [headerImageUrl, setHeaderImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingQuestionImage, setUploadingQuestionImage] = useState<Record<number, boolean>>({});
   const [anonymityLevel, setAnonymityLevel] = useState<AnonymityLevel>(
     AnonymityLevel.PLATFORM_TRACKED
   );
@@ -280,6 +281,7 @@ export default function EditConversationPage() {
             question_order: q.question_order,
             options: q.options,
             is_required: q.is_required || false,
+            question_image_url: q.question_image_url,
           }))
         );
         // Expand all questions by default when loading
@@ -460,6 +462,49 @@ export default function EditConversationPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const handleQuestionImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image file size must be less than 5MB');
+      return;
+    }
+
+    setUploadingQuestionImage(prev => ({ ...prev, [questionIndex]: true }));
+    setError('');
+
+    try {
+      const result = await api.uploadImage(file);
+      let fullUrl = result.url;
+      if (!fullUrl.startsWith('http')) {
+        const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+        const baseUrl = apiBase.replace('/api', '');
+        fullUrl = `${baseUrl}${result.url}`;
+      }
+      const newQuestions = [...questions];
+      newQuestions[questionIndex] = { ...newQuestions[questionIndex], question_image_url: fullUrl };
+      setQuestions(newQuestions);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to upload question image');
+    } finally {
+      setUploadingQuestionImage(prev => ({ ...prev, [questionIndex]: false }));
+      e.target.value = '';
+    }
+  };
+
+  const removeQuestionImage = (questionIndex: number) => {
+    const newQuestions = [...questions];
+    newQuestions[questionIndex] = { ...newQuestions[questionIndex], question_image_url: undefined };
+    setQuestions(newQuestions);
+  };
 
   const handleCreateSeries = async () => {
     if (!newSeriesName.trim()) {
@@ -1348,6 +1393,58 @@ export default function EditConversationPage() {
                         rows={3}
                         style={{ width: '100%', boxSizing: 'border-box' }}
                       />
+                    </div>
+
+                    {/* Question Image */}
+                    <div className="form-group">
+                      <label>Question Image (optional)</label>
+                      {question.question_image_url ? (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <div style={{
+                            position: 'relative',
+                            display: 'inline-block',
+                            marginBottom: '0.5rem'
+                          }}>
+                            <img
+                              src={question.question_image_url}
+                              alt="Question image"
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '200px',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0'
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeQuestionImage(index)}
+                              className="btn btn-secondary btn-small"
+                              style={{
+                                position: 'absolute',
+                                top: '0.5rem',
+                                right: '0.5rem',
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                            onChange={(e) => handleQuestionImageUpload(e, index)}
+                            disabled={uploadingQuestionImage[index]}
+                          />
+                          {uploadingQuestionImage[index] && (
+                            <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                              Uploading image...
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {question.question_type === 'rating' && (

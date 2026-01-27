@@ -1156,6 +1156,32 @@ export default function JoinPage() {
                   {question.is_required && <span style={{ color: 'red', marginLeft: '4px' }}>*</span>}
                 </label>
 
+                {question.question_image_url && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    marginBottom: '0.75rem',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    maxHeight: '300px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#f7fafc'
+                  }}>
+                    <img
+                      src={question.question_image_url}
+                      alt={`Image for question ${index + 1}`}
+                      style={{
+                        maxWidth: '100%',
+                        height: 'auto',
+                        maxHeight: '300px',
+                        objectFit: 'contain',
+                        display: 'block'
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* Text Response */}
                 {(!question.question_type || question.question_type === 'text') && (
                   <>

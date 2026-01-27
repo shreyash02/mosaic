@@ -80,6 +80,7 @@ export interface Question {
   question_order: number;
   options?: QuestionOptions;
   is_required?: boolean;
+  question_image_url?: string;
   created_at: string;
 }
 
@@ -89,6 +90,7 @@ export interface QuestionCreate {
   question_order: number;
   options?: QuestionOptions;
   is_required?: boolean;
+  question_image_url?: string;
 }
 
 export interface ConversationSummary {
