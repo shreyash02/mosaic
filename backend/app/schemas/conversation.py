@@ -44,6 +44,15 @@ class RecurrencePattern(str, Enum):
     QUARTERLY = "quarterly"
 
 
+class AnalysisInterval(str, Enum):
+    """Analysis interval options for continuous conversations."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
 # Question schemas (nested within conversation)
 class QuestionBase(BaseModel):
     """Base question schema."""
@@ -115,6 +124,11 @@ class ConversationBase(BaseModel):
     next_instance_date: Optional[datetime] = Field(None, description="When to create the next instance (only set on template)")
     recurrence_end_date: Optional[datetime] = Field(None, description="When to stop creating instances (only set on template)")
 
+    # Continuous conversation fields
+    is_continuous: bool = Field(False, description="True if this conversation stays open indefinitely for ongoing feedback collection")
+    analysis_interval: Optional[AnalysisInterval] = Field(None, description="How often to run periodic analysis (daily, weekly, biweekly, monthly)")
+    analysis_timezone: Optional[str] = Field(None, description="Timezone for analysis window boundaries")
+
     @field_validator('timezone')
     @classmethod
     def normalize_timezone(cls, v: Optional[str]) -> Optional[str]:
@@ -162,6 +176,11 @@ class ConversationUpdate(BaseModel):
     recurrence_pattern: Optional[RecurrencePattern] = None
     next_instance_date: Optional[datetime] = None
     recurrence_end_date: Optional[datetime] = None
+
+    # Continuous conversation fields
+    is_continuous: Optional[bool] = None
+    analysis_interval: Optional[AnalysisInterval] = None
+    analysis_timezone: Optional[str] = None
 
     @field_validator('timezone')
     @classmethod
@@ -214,6 +233,12 @@ class Conversation(ConversationBase):
     recurrence_pattern: Optional[RecurrencePattern] = None
     next_instance_date: Optional[datetime] = None
     recurrence_end_date: Optional[datetime] = None
+
+    # Continuous conversation fields
+    is_continuous: bool = False
+    analysis_interval: Optional[AnalysisInterval] = None
+    next_analysis_at: Optional[datetime] = None
+    analysis_timezone: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -292,5 +317,8 @@ class ConversationListItem(BaseModel):
     # Recurring conversation fields
     is_recurring_instance: bool = False
     recurrence_pattern: Optional[RecurrencePattern] = None
+
+    # Continuous conversation fields
+    is_continuous: bool = False
 
     model_config = {"from_attributes": True}

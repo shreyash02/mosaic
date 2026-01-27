@@ -50,8 +50,10 @@ from app.schemas.conversation_invitation import (
     ConversationInvitationWithConversation,
 )
 from app.schemas.common import DeleteResponse
+from app.schemas.periodic_analysis import EnableContinuousRequest
 from app.services.email_service import email_service
 from app.services.organization_service import check_organization_membership
+from app.services.scheduler_service import calculate_next_analysis_time
 
 router = APIRouter()
 
@@ -291,6 +293,10 @@ async def create_conversation(
         recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
+        # Continuous conversation fields
+        is_continuous=conversation_data.is_continuous or False,
+        analysis_interval=conversation_data.analysis_interval.value if conversation_data.analysis_interval else None,
+        analysis_timezone=conversation_data.analysis_timezone,
     )
 
     db.add(conversation)
@@ -1054,8 +1060,17 @@ async def activate_conversation(
         conversation.activated_at = datetime.utcnow()
         conversation.scheduled_activate_at = None  # Clear any previously scheduled time
 
-        # Calculate auto_close_at from duration_minutes if set
-        if conversation.duration_minutes:
+        # Calculate auto_close_at from duration_minutes if set (unless continuous)
+        if conversation.is_continuous:
+            # Continuous conversations don't auto-close
+            conversation.auto_close_at = None
+            # Set next_analysis_at based on analysis_interval if configured
+            if conversation.analysis_interval and not conversation.next_analysis_at:
+                conversation.next_analysis_at = calculate_next_analysis_time(
+                    conversation.activated_at,
+                    conversation.analysis_interval
+                )
+        elif conversation.duration_minutes:
             conversation.auto_close_at = conversation.activated_at + timedelta(minutes=conversation.duration_minutes)
         elif activate_data.auto_close_at:
             # Allow override via activation endpoint if duration_minutes is not set
@@ -1159,6 +1174,98 @@ async def extend_conversation(
 
     # Extend the auto_close_at time
     conversation.auto_close_at = conversation.auto_close_at + timedelta(hours=extend_data.additional_hours)
+
+    db.commit()
+    db.refresh(conversation)
+
+    return conversation
+
+
+@router.post("/{conversation_id}/enable-continuous", response_model=ConversationWithQuestions)
+async def enable_continuous_mode(
+    conversation_id: UUID,
+    request: EnableContinuousRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Enable continuous mode for a conversation.
+
+    The conversation will:
+    - Never auto-close (auto_close_at is cleared)
+    - Run periodic analysis at the specified interval
+
+    Args:
+        conversation_id: Conversation ID
+        request: EnableContinuousRequest with analysis_interval and optional start_analysis_at
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Updated conversation with continuous mode enabled
+
+    Raises:
+        HTTPException: If conversation is not in draft or active state
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    if conversation.state not in [ConversationState.DRAFT.value, ConversationState.ACTIVE.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only enable continuous mode on draft or active conversations"
+        )
+
+    # Enable continuous mode
+    conversation.is_continuous = True
+    conversation.analysis_interval = request.analysis_interval
+    conversation.auto_close_at = None  # Clear any auto-close time
+
+    # Set next analysis time
+    if request.start_analysis_at:
+        conversation.next_analysis_at = request.start_analysis_at
+    elif conversation.activated_at:
+        # Schedule first analysis based on interval from activation
+        conversation.next_analysis_at = calculate_next_analysis_time(
+            conversation.activated_at,
+            request.analysis_interval
+        )
+    # If conversation is still draft, next_analysis_at will be set when activated
+
+    db.commit()
+    db.refresh(conversation)
+
+    return conversation
+
+
+@router.post("/{conversation_id}/disable-continuous", response_model=ConversationWithQuestions)
+async def disable_continuous_mode(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Disable continuous mode for a conversation.
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Updated conversation with continuous mode disabled
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    if not conversation.is_continuous:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation is not in continuous mode"
+        )
+
+    # Disable continuous mode
+    conversation.is_continuous = False
+    conversation.analysis_interval = None
+    conversation.next_analysis_at = None
 
     db.commit()
     db.refresh(conversation)

@@ -74,6 +74,21 @@ class Conversation(Base):
     auto_analyze = Column(Boolean, default=False, nullable=False)
     # if true, trigger analysis automatically when conversation closes
 
+    # Continuous conversation mode
+    is_continuous = Column(Boolean, default=False, nullable=False)
+    # True if this conversation stays open indefinitely for ongoing feedback collection
+
+    # Periodic analysis configuration (only for continuous conversations)
+    analysis_interval = Column(String(50), nullable=True)
+    # 'daily', 'weekly', 'biweekly', 'monthly' - how often to run periodic analysis
+
+    next_analysis_at = Column(DateTime, nullable=True)
+    # When to run the next periodic analysis (stored in UTC)
+
+    analysis_timezone = Column(String(100), nullable=True)
+    # Timezone for analysis window boundaries (e.g., "America/New_York")
+    # If not set, falls back to conversation.timezone
+
     # Timing
     duration_minutes = Column(Integer, nullable=True)
     # Duration in minutes for which the conversation should remain open after activation
@@ -114,6 +129,10 @@ class Conversation(Base):
     # Series relationships
     series = relationship("Series", back_populates="conversations", foreign_keys=[series_id])
     series_template_rel = relationship("Series", back_populates="templates", foreign_keys=[template_series_id])
+
+    # Continuous conversation relationships
+    periodic_analyses = relationship("PeriodicAnalysis", back_populates="conversation", cascade="all, delete-orphan", order_by="PeriodicAnalysis.period_start.desc()")
+    continuous_trends = relationship("ContinuousTrends", back_populates="conversation", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Conversation(id={self.id}, title={self.title}, state={self.state})>"

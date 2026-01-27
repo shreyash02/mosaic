@@ -1,6 +1,7 @@
 """Analysis service for LLM-powered response analysis."""
 
 import time
+from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from sklearn.cluster import DBSCAN
@@ -90,6 +91,56 @@ class AnalysisService:
             "num_clusters_found": sum(len(qa.get("themes", [])) for qa in question_analyses),
             "analysis_duration_ms": duration_ms
         }
+
+    def analyze_conversation_windowed(
+        self,
+        questions: List[Question],
+        responses: List[Response],
+        start_time: datetime,
+        end_time: datetime,
+        min_cluster_size: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Analyze responses within a specific time window.
+
+        This method filters responses by their submitted_at timestamp before
+        running the standard analysis. Used for periodic analysis of continuous
+        conversations.
+
+        Args:
+            questions: List of Question objects
+            responses: List of all Response objects for the conversation
+            start_time: Start of analysis window (UTC)
+            end_time: End of analysis window (UTC)
+            min_cluster_size: Minimum number of responses to form a cluster
+
+        Returns:
+            Analysis results dict with per-question analysis
+        """
+        # Ensure start_time and end_time are naive (UTC) for comparison
+        # Database stores naive UTC datetimes
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
+        if end_time.tzinfo is not None:
+            end_time = end_time.replace(tzinfo=None)
+
+        # Filter responses by time window
+        # Need to handle timezone-aware submitted_at from response objects
+        def normalize_datetime(dt):
+            """Convert timezone-aware datetime to naive UTC."""
+            if dt is None:
+                return None
+            if dt.tzinfo is not None:
+                return dt.replace(tzinfo=None)
+            return dt
+
+        windowed_responses = [
+            r for r in responses
+            if r.submitted_at and start_time <= normalize_datetime(r.submitted_at) <= end_time
+        ]
+
+        # Use existing analyze_conversation method with filtered responses
+        return self.analyze_conversation(questions, windowed_responses, min_cluster_size)
 
     def _analyze_text_question(
         self,

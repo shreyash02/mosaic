@@ -13,7 +13,7 @@ from datetime import datetime
 import os
 
 from app.core.config import settings
-from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series
+from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis
 from app.services.scheduler_service import start_scheduler, shutdown_scheduler
 
 
@@ -52,6 +52,7 @@ app.include_router(organizations.router, prefix="/api/organizations", tags=["org
 app.include_router(series.router, prefix="/api/series", tags=["series"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])
+app.include_router(periodic_analysis.router, prefix="/api", tags=["periodic-analysis"])
 
 
 @app.get("/health")
