@@ -1,5 +1,6 @@
 """File upload routes."""
 
+import logging
 import os
 import secrets
 import string
@@ -13,6 +14,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -51,6 +54,27 @@ UPLOAD_DIR = get_upload_dir()
 # Allowed image extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def delete_image_file(image_url: str) -> None:
+    """Delete an uploaded image file given its URL path.
+
+    Safely extracts the filename from a URL like "/api/uploads/abc123.png",
+    validates the resolved path stays within UPLOAD_DIR, and deletes the file.
+    Logs a warning and does NOT raise if the file is missing or deletion fails.
+    """
+    if not image_url:
+        return
+    # Extract filename from URL like "/api/uploads/abc123.png"
+    filename = image_url.rsplit("/", 1)[-1]
+    file_path = UPLOAD_DIR / filename
+    if not file_path.resolve().is_relative_to(UPLOAD_DIR.resolve()):
+        logger.warning("Skipping deletion, path outside upload dir: %s", image_url)
+        return
+    try:
+        file_path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("Failed to delete image file: %s", file_path)
 
 
 def generate_filename(original_filename: str) -> str:

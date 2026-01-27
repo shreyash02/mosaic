@@ -51,6 +51,7 @@ from app.schemas.conversation_invitation import (
 )
 from app.schemas.common import DeleteResponse
 from app.schemas.periodic_analysis import EnableContinuousRequest
+from app.routes.upload import delete_image_file
 from app.services.email_service import email_service
 from app.services.organization_service import check_organization_membership
 from app.services.scheduler_service import calculate_next_analysis_time
@@ -836,6 +837,16 @@ async def update_conversation(
                 detail="At least one question is required"
             )
 
+        # Collect old image URLs before deleting questions
+        old_questions = db.query(Question).filter(Question.conversation_id == conversation.id).all()
+        old_image_urls = {q.question_image_url for q in old_questions if q.question_image_url}
+
+        # Collect new image URLs from update payload
+        new_image_urls = {
+            q.question_image_url for q in questions_to_update
+            if hasattr(q, 'question_image_url') and q.question_image_url
+        }
+
         # Delete existing questions
         db.query(Question).filter(Question.conversation_id == conversation.id).delete()
 
@@ -851,6 +862,10 @@ async def update_conversation(
                 question_image_url=question_data.question_image_url if hasattr(question_data, 'question_image_url') else None,
             )
             db.add(question)
+
+        # Delete orphaned image files
+        for url in old_image_urls - new_image_urls:
+            delete_image_file(url)
 
     db.commit()
     db.refresh(conversation)
@@ -881,6 +896,14 @@ async def delete_conversation(
         Delete confirmation
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    # Clean up image files before soft-deleting
+    questions = db.query(Question).filter(Question.conversation_id == conversation.id).all()
+    for question in questions:
+        if question.question_image_url:
+            delete_image_file(question.question_image_url)
+    if conversation.header_image_url:
+        delete_image_file(conversation.header_image_url)
 
     # Soft delete
     conversation.state = ConversationState.DELETED.value
