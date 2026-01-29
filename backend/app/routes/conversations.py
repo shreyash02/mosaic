@@ -725,7 +725,7 @@ async def get_conversation(
     db: Session = Depends(get_db)
 ):
     """
-    Get conversation details with questions (owner only).
+    Get conversation details with questions (creator only).
 
     Args:
         conversation_id: Conversation ID

@@ -853,7 +853,7 @@ export default function JoinPage() {
     // Generate view results link
     const viewResultsLink = conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
       ? `/join/${accessCode}?participant_code=${participantCode}`
-      : `/conversations/${conversation?.id}`;
+      : `/conversations/${conversation?.id}/analysis`;
 
     return (
       <div className="join-page">
