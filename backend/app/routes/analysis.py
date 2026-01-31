@@ -296,5 +296,38 @@ async def get_analysis(
     analysis.conversation_timezone = conversation.timezone
     analysis.show_verbatim_responses = conversation.show_verbatim_responses
     analysis.organization_id = conversation.organization_id
+    analysis.conversation_activated_at = conversation.activated_at
+    analysis.conversation_closed_at = conversation.closed_at
+
+    # Get unique participant count - count by participant_id or participant_code_used
+    from sqlalchemy import func, case
+
+    # Count unique participants (those with participant_id)
+    unique_by_id = db.query(func.count(func.distinct(Response.participant_id))).filter(
+        Response.conversation_id == conversation_id,
+        Response.participant_id.isnot(None)
+    ).scalar() or 0
+
+    # If no participants with IDs, count by participant_code_used or unique response submissions
+    if unique_by_id == 0:
+        # Count unique participant codes
+        unique_by_code = db.query(func.count(func.distinct(Response.participant_code_used))).filter(
+            Response.conversation_id == conversation_id,
+            Response.participant_code_used.isnot(None)
+        ).scalar() or 0
+
+        if unique_by_code > 0:
+            unique_participants = unique_by_code
+        else:
+            # Fallback: count unique submitted_at timestamps (approximate unique submissions)
+            # Group responses by submitted_at to approximate unique respondents
+            unique_submissions = db.query(func.count(func.distinct(Response.submitted_at))).filter(
+                Response.conversation_id == conversation_id
+            ).scalar() or 0
+            unique_participants = unique_submissions
+    else:
+        unique_participants = unique_by_id
+
+    analysis.unique_participants = unique_participants
 
     return analysis

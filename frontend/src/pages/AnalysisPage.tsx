@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { Analysis, Conversation, ResponseWithQuestion } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export default function AnalysisPage() {
   const [error, setError] = useState('');
   const [groupBy, setGroupBy] = useState<'question' | 'responder'>('question');
   const [canAccessConversation, setCanAccessConversation] = useState<boolean | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -103,6 +105,38 @@ export default function AnalysisPage() {
     return grouped;
   };
 
+  const handleExportPDF = async () => {
+    if (!analysis || !conversation || isExporting) return;
+
+    setIsExporting(true);
+    try {
+      const blob = await generateAnalysisPDF({
+        analysis,
+        conversation,
+        responses: conversation.show_verbatim_responses ? responses : undefined,
+        options: {
+          includeSurprisingInsights: true,
+          includeVerbatim: conversation.show_verbatim_responses && responses.length > 0,
+          fontFamily: 'lora',
+        },
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      link.download = `${sanitizeFilename(conversation.title)}-analysis-${date}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading analysis...</div>;
   }
@@ -168,6 +202,11 @@ export default function AnalysisPage() {
           </button>
           <h1>Analysis Results</h1>
           {conversation && <p className="subtitle">{conversation.title}</p>}
+        </div>
+        <div className="header-actions">
+          <button onClick={handleExportPDF} className="btn btn-secondary" disabled={isExporting}>
+            {isExporting ? 'Exporting...' : 'Export PDF'}
+          </button>
         </div>
       </div>
 

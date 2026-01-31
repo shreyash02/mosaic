@@ -128,6 +128,10 @@ class Analysis(BaseModel):
     conversation_timezone: Optional[str] = None
     show_verbatim_responses: Optional[bool] = None
     organization_id: Optional[UUID] = None
+    # Additional conversation metadata for PDF export
+    unique_participants: Optional[int] = None
+    conversation_activated_at: Optional[datetime] = None
+    conversation_closed_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -229,6 +233,7 @@ class QuestionAnalysis(BaseModel):
     question_text: str
     question_type: str
     response_count: int
+    question_image_url: Optional[str] = None  # Image attached to the question
 
     # For text questions
     themes: List[Theme] = []

@@ -169,6 +169,7 @@ class AnalysisService:
             "question_id": str(question.id),
             "question_text": question.question_text,
             "question_type": question.question_type,
+            "question_image_url": question.question_image_url,
             "response_count": len(response_texts),
             "themes": [],
             "summary": None
@@ -224,6 +225,7 @@ class AnalysisService:
                 "question_id": str(question.id),
                 "question_text": question.question_text,
                 "question_type": question.question_type,
+                "question_image_url": question.question_image_url,
                 "response_count": 0,
                 "rating_stats": None
             }
@@ -246,6 +248,7 @@ class AnalysisService:
             "question_id": str(question.id),
             "question_text": question.question_text,
             "question_type": question.question_type,
+            "question_image_url": question.question_image_url,
             "response_count": len(ratings),
             "rating_stats": {
                 "average": round(average, 2),
@@ -307,6 +310,7 @@ class AnalysisService:
             "question_id": str(question.id),
             "question_text": question.question_text,
             "question_type": question.question_type,
+            "question_image_url": question.question_image_url,
             "response_count": total_responses,
             "poll_stats": {
                 "total_responses": total_responses,

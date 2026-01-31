@@ -253,6 +253,35 @@ export interface ResponseCheck {
   message?: string;
 }
 
+// Draft types
+export interface DraftSaveRequest {
+  responses: ResponseItem[];
+  participant_code?: string;
+  reveal_consent?: boolean;
+}
+
+export interface DraftSaveResponse {
+  success: boolean;
+  last_saved_at: string;
+  message: string;
+}
+
+export interface DraftLoadResponse {
+  has_draft: boolean;
+  last_saved_at?: string;
+  responses: ResponseItem[];
+  reveal_consent: boolean;
+}
+
+export interface LocalStorageDraft {
+  accessCode: string;
+  participantCode?: string;
+  responses: ResponseItem[];
+  revealConsent: boolean;
+  lastSavedAt: string;
+  version: number;
+}
+
 // Analysis types
 export interface Perspective {
   name: string;
@@ -292,6 +321,7 @@ export interface QuestionAnalysis {
   question_id: string;
   question_text: string;
   question_type: QuestionType;
+  question_image_url?: string;  // Image attached to the question
   response_count: number;
   themes?: Theme[];
   summary?: string;  // Summary when themes aren't available or as additional context
@@ -325,6 +355,10 @@ export interface Analysis {
   conversation_timezone?: string;
   show_verbatim_responses?: boolean;
   organization_id?: string;
+  // Additional metadata for PDF export
+  unique_participants?: number;
+  conversation_activated_at?: string;
+  conversation_closed_at?: string;
 }
 
 // API Response types
