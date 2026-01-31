@@ -120,6 +120,103 @@ function SortablePollOption({
   );
 }
 
+interface SortableQuestionProps {
+  id: string;
+  isDraft: boolean;
+  questionsCount: number;
+  isExpanded: boolean;
+  children: React.ReactNode;
+}
+
+function SortableQuestion({
+  id,
+  isDraft,
+  questionsCount,
+  isExpanded,
+  children,
+}: SortableQuestionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: id,
+    disabled: !isDraft,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const showDragHandle = isDraft && questionsCount > 1;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ ...style, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}
+    >
+      {showDragHandle && (
+        <div
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder question"
+          style={{
+            cursor: 'grab',
+            padding: '0.25rem',
+            color: '#718096',
+            flexShrink: 0,
+            marginTop: isExpanded ? '0.75rem' : '0.5rem',
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z"
+              fill="currentColor"
+            />
+            <path
+              d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z"
+              fill="currentColor"
+            />
+            <path
+              d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z"
+              fill="currentColor"
+            />
+            <path
+              d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z"
+              fill="currentColor"
+            />
+            <path
+              d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z"
+              fill="currentColor"
+            />
+            <path
+              d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z"
+              fill="currentColor"
+            />
+          </svg>
+        </div>
+      )}
+      <div
+        style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}
+        className={isExpanded ? "question-item" : ""}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 interface LocationState {
   isFollowUp?: boolean;
   isRecurring?: boolean;
@@ -154,8 +251,8 @@ export default function CreateConversationPage() {
   const [showVerbatimResponses, setShowVerbatimResponses] = useState(false);
   const [inviteOnly, setInviteOnly] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
-  const [questions, setQuestions] = useState<QuestionCreate[]>([
-    { question_text: '', question_type: 'text', question_order: 0, is_required: false },
+  const [questions, setQuestions] = useState<(QuestionCreate & { id: string })[]>([
+    { id: crypto.randomUUID(), question_text: '', question_type: 'text', question_order: 0, is_required: false },
   ]);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set([0]));
   const [durationHours, setDurationHours] = useState<number>(48);
@@ -221,6 +318,7 @@ export default function CreateConversationPage() {
             const fullParent = await api.getConversation(followUpState.parentConversationId);
             if (fullParent.questions && fullParent.questions.length > 0) {
               const copiedQuestions = fullParent.questions.map((q, index) => ({
+                id: crypto.randomUUID(),
                 question_text: q.question_text,
                 question_type: q.question_type,
                 question_order: index,
@@ -324,7 +422,7 @@ export default function CreateConversationPage() {
     const newIndex = questions.length;
     setQuestions([
       ...questions,
-      { question_text: '', question_type: 'text', question_order: newIndex, is_required: false },
+      { id: crypto.randomUUID(), question_text: '', question_type: 'text', question_order: newIndex, is_required: false },
     ]);
     // Expand the new question
     setExpandedQuestions(new Set([...expandedQuestions, newIndex]));
@@ -432,24 +530,60 @@ export default function CreateConversationPage() {
 
   const reorderPollOptions = (questionIndex: number, activeId: string, overId: string | null) => {
     if (!overId || activeId === overId) return;
-    
+
     const newQuestions = [...questions];
     const choices = [...(newQuestions[questionIndex].options?.choices || [])];
-    
+
     const oldIndex = choices.findIndex(c => c.id === activeId);
     const newIndex = choices.findIndex(c => c.id === overId);
-    
+
     if (oldIndex !== -1 && newIndex !== -1) {
       const reordered = arrayMove(choices, oldIndex, newIndex);
       // Update order property
       reordered.forEach((choice, index) => {
         choice.order = index;
       });
-      
+
       if (newQuestions[questionIndex].options) {
         newQuestions[questionIndex].options!.choices = reordered;
       }
       setQuestions(newQuestions);
+    }
+  };
+
+  const reorderQuestions = (activeId: string, overId: string | null) => {
+    if (!overId || activeId === overId) return;
+
+    const oldIndex = questions.findIndex(q => q.id === activeId);
+    const newIndex = questions.findIndex(q => q.id === overId);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove([...questions], oldIndex, newIndex);
+      // Update question_order property
+      reordered.forEach((question, index) => {
+        question.question_order = index;
+      });
+      setQuestions(reordered);
+
+      // Update expandedQuestions indices to follow the moved questions
+      const newExpanded = new Set<number>();
+      expandedQuestions.forEach(expandedIdx => {
+        const question = questions[expandedIdx];
+        if (question) {
+          const newIdx = reordered.findIndex(q => q.id === question.id);
+          if (newIdx !== -1) {
+            newExpanded.add(newIdx);
+          }
+        }
+      });
+      setExpandedQuestions(newExpanded);
+    }
+  };
+
+  const handleQuestionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      reorderQuestions(active.id as string, over.id as string);
     }
   };
 
@@ -1310,13 +1444,30 @@ export default function CreateConversationPage() {
             </button>
           </div>
 
-          {questions.map((question, index) => {
-            const isExpanded = expandedQuestions.has(index);
-            const questionText = question.question_text || 'Untitled question';
-            const questionType = getQuestionTypeLabel(question.question_type);
-            
-            return (
-              <div key={index} className={isExpanded ? "question-item" : ""} style={{ display: 'flex', flexDirection: 'column' }}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleQuestionDragEnd}
+          >
+            <SortableContext
+              items={questions.map(q => q.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {questions.map((question, index) => {
+                const isExpanded = expandedQuestions.has(index);
+                const questionText = question.question_text || 'Untitled question';
+                const questionType = getQuestionTypeLabel(question.question_type);
+                // CreateConversationPage is always in draft mode (creating new conversation)
+                const isDraft = true;
+
+                return (
+                  <SortableQuestion
+                    key={question.id}
+                    id={question.id}
+                    isDraft={isDraft}
+                    questionsCount={questions.length}
+                    isExpanded={isExpanded}
+                  >
                 {/* Collapsed Header */}
                 {!isExpanded && (
                   <div 
@@ -1614,9 +1765,11 @@ export default function CreateConversationPage() {
                     )}
                   </>
                 )}
-              </div>
-            );
-          })}
+                  </SortableQuestion>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         </div>
 
         <div className="form-actions">
