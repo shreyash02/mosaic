@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { CodeValidation, Conversation, ResponseItem } from '../types';
 import { LockIcon } from '../components/icons';
-import { formatDate } from '../utils/formatting';
+import { formatDate, formatRelativeTime } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useDraftResponses } from '../hooks/useDraftResponses';
 
 export default function JoinPage() {
   const { accessCode: accessCodeFromPath } = useParams<{ accessCode: string }>();
@@ -42,6 +43,60 @@ export default function JoinPage() {
   const [showIncognitoModal, setShowIncognitoModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+  const [showDraftRestoredNotice, setShowDraftRestoredNotice] = useState(false);
+  const [draftSaveError, setDraftSaveError] = useState<string | null>(null);
+
+  // Draft responses hook - handles localStorage and server persistence
+  const handleDraftLoaded = useCallback((draftResponses: ResponseItem[], revealConsentValue: boolean) => {
+    setResponses(prev => {
+      // Merge draft responses with current (draft takes precedence)
+      const draftMap = new Map(draftResponses.map(r => [r.question_id, r]));
+      return prev.map(r => draftMap.get(r.question_id) || r);
+    });
+    setRevealConsent(revealConsentValue);
+    setShowDraftRestoredNotice(true);
+  }, []);
+
+  const handleDraftSaveError = useCallback((_error: Error) => {
+    setDraftSaveError('Failed to save draft to server');
+    // Auto-clear after 3 seconds
+    setTimeout(() => setDraftSaveError(null), 3000);
+  }, []);
+
+  const {
+    isDraftLoaded,
+    isSaving: isDraftSaving,
+    lastSavedAt: draftLastSavedAt,
+    hasUnsavedChanges,
+    saveDraftToServer,
+    loadDraft,
+    clearDraft,
+    setCurrentResponses,
+    setCurrentRevealConsent,
+  } = useDraftResponses({
+    accessCode: accessCode || '',
+    participantCode: participantCode || undefined,
+    sessionToken: sessionToken || undefined,
+    anonymityLevel: conversation?.anonymity_level || AnonymityLevel.FULLY_ANONYMOUS,
+    enabled: !!conversation && trustScreenAcknowledged && !hasAlreadySubmitted && !success,
+    onDraftLoaded: handleDraftLoaded,
+    onSaveError: handleDraftSaveError,
+  });
+
+  // Sync responses to draft hook when they change
+  useEffect(() => {
+    if (conversation && trustScreenAcknowledged && !hasAlreadySubmitted) {
+      setCurrentResponses(responses);
+      setCurrentRevealConsent(revealConsent);
+    }
+  }, [responses, revealConsent, conversation, trustScreenAcknowledged, hasAlreadySubmitted, setCurrentResponses, setCurrentRevealConsent]);
+
+  // Load draft when trust screen is acknowledged
+  useEffect(() => {
+    if (conversation && trustScreenAcknowledged && !hasAlreadySubmitted && !isDraftLoaded) {
+      loadDraft();
+    }
+  }, [conversation, trustScreenAcknowledged, hasAlreadySubmitted, isDraftLoaded, loadDraft]);
 
   // Step 1: Validate access code when available
   useEffect(() => {
@@ -452,6 +507,8 @@ export default function JoinPage() {
       }
 
       await api.submitResponse(accessCode!, submitData);
+      // Clear draft after successful submission
+      await clearDraft();
       setSuccess(true);
     } catch (err: any) {
       if (err.response?.status === 403) {
@@ -1158,6 +1215,39 @@ export default function JoinPage() {
         <form onSubmit={handleSubmit} className="response-form">
           {error && <div className="error-message">{error}</div>}
 
+          {/* Draft restored notice */}
+          {showDraftRestoredNotice && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.75rem 1rem',
+              backgroundColor: '#ebf8ff',
+              border: '1px solid #90cdf4',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+              color: '#2b6cb0'
+            }}>
+              <span>Your previous draft has been restored.</span>
+              <button
+                type="button"
+                onClick={() => setShowDraftRestoredNotice(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#2b6cb0',
+                  fontSize: '1.25rem',
+                  padding: '0 0.25rem',
+                  lineHeight: 1
+                }}
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {conversation.questions?.map((question, index) => {
             const response = responses.find((r) => r.question_id === question.id);
 
@@ -1307,13 +1397,83 @@ export default function JoinPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            className="btn btn-primary btn-large"
-            disabled={submitting}
-          >
-            {submitting ? 'Submitting...' : 'Submit Response'}
-          </button>
+          {/* Draft status indicator */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '1rem',
+            padding: '0.75rem 1rem',
+            backgroundColor: '#f7fafc',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            color: '#4a5568'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {isDraftSaving && (
+                <>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#f6ad55',
+                    animation: 'pulse 1s infinite'
+                  }} />
+                  <span>Saving draft...</span>
+                </>
+              )}
+              {!isDraftSaving && draftLastSavedAt && (
+                <>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#48bb78'
+                  }} />
+                  <span>Draft saved {formatRelativeTime(draftLastSavedAt.toISOString())}</span>
+                </>
+              )}
+              {!isDraftSaving && !draftLastSavedAt && hasUnsavedChanges && (
+                <>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ed8936'
+                  }} />
+                  <span>Unsaved changes</span>
+                </>
+              )}
+              {!isDraftSaving && !draftLastSavedAt && !hasUnsavedChanges && (
+                <span style={{ color: '#a0aec0' }}>Your progress will be saved automatically</span>
+              )}
+            </div>
+            {draftSaveError && (
+              <span style={{ color: '#e53e3e', fontSize: '0.75rem' }}>{draftSaveError}</span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => saveDraftToServer(responses, revealConsent)}
+              disabled={isDraftSaving || !hasUnsavedChanges || submitting}
+              style={{ minWidth: '120px' }}
+            >
+              {isDraftSaving ? 'Saving...' : 'Save Draft'}
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary btn-large"
+              disabled={submitting}
+            >
+              {submitting ? 'Submitting...' : 'Submit Response'}
+            </button>
+          </div>
         </form>
       </div>
 

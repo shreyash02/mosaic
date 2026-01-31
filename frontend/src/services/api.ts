@@ -13,6 +13,9 @@ import type {
   ResponseWithQuestion,
   ResponseStats,
   ResponseCheck,
+  DraftSaveRequest,
+  DraftSaveResponse,
+  DraftLoadResponse,
   Analysis,
   SuccessResponse,
   CodeValidation,
@@ -266,6 +269,45 @@ class ApiService {
     const response = await this.client.post<SuccessResponse>(
       `/conversations/${accessCode}/responses`,
       data
+    );
+    return response.data;
+  }
+
+  async saveDraft(accessCode: string, data: DraftSaveRequest, sessionToken?: string): Promise<DraftSaveResponse> {
+    const config: any = {};
+    if (sessionToken) {
+      config.headers = { Authorization: `Bearer ${sessionToken}` };
+    }
+    const response = await this.client.post<DraftSaveResponse>(
+      `/conversations/${accessCode}/responses/draft`,
+      data,
+      config
+    );
+    return response.data;
+  }
+
+  async loadDraft(accessCode: string, participantCode?: string, sessionToken?: string): Promise<DraftLoadResponse> {
+    const config: any = {};
+    if (sessionToken) {
+      config.headers = { Authorization: `Bearer ${sessionToken}` };
+    }
+    const params = participantCode ? `?participant_code=${encodeURIComponent(participantCode)}` : '';
+    const response = await this.client.get<DraftLoadResponse>(
+      `/conversations/${accessCode}/responses/draft${params}`,
+      config
+    );
+    return response.data;
+  }
+
+  async deleteDraft(accessCode: string, participantCode?: string, sessionToken?: string): Promise<SuccessResponse> {
+    const config: any = {};
+    if (sessionToken) {
+      config.headers = { Authorization: `Bearer ${sessionToken}` };
+    }
+    const params = participantCode ? `?participant_code=${encodeURIComponent(participantCode)}` : '';
+    const response = await this.client.delete<SuccessResponse>(
+      `/conversations/${accessCode}/responses/draft${params}`,
+      config
     );
     return response.data;
   }

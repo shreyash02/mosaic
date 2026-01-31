@@ -24,6 +24,34 @@ class ResponseSubmit(BaseModel):
     participant_code: Optional[str] = None  # For fully_anonymous mode
 
 
+# Draft save request
+class DraftSaveRequest(BaseModel):
+    """Schema for saving draft responses."""
+
+    responses: List[ResponseItemCreate]
+    reveal_consent: bool = False
+    participant_code: Optional[str] = None  # For fully_anonymous mode
+
+
+# Draft save response
+class DraftSaveResponse(BaseModel):
+    """Response from saving a draft."""
+
+    success: bool
+    last_saved_at: datetime
+    message: str
+
+
+# Draft load response
+class DraftLoadResponse(BaseModel):
+    """Response containing draft data."""
+
+    has_draft: bool
+    last_saved_at: Optional[datetime] = None
+    responses: List[ResponseItemCreate] = []
+    reveal_consent: bool = False
+
+
 # Response in database
 class Response(BaseModel):
     """Response schema returned in responses."""
@@ -35,7 +63,9 @@ class Response(BaseModel):
     response_data: Optional[dict] = None
     anonymity_level: str
     reveal_consent: bool
-    submitted_at: datetime
+    status: str = "submitted"  # 'draft' or 'submitted'
+    last_saved_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None  # Nullable for drafts
 
     # Only included for owner viewing revealed responses
     participant_id: Optional[UUID] = None

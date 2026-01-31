@@ -23,6 +23,10 @@ from app.schemas.response import (
     ResponseList,
     ResponseStats,
     ResponseCheck,
+    DraftSaveRequest,
+    DraftSaveResponse,
+    DraftLoadResponse,
+    ResponseItemCreate,
 )
 from app.schemas.participant_code import CodeValidation
 from app.schemas.common import SuccessResponse
@@ -215,21 +219,331 @@ async def check_user_response(
             message="Authentication required"
         )
     
-    # Check if user already responded
+    # Check if user already submitted (not drafts)
     existing_response = db.query(Response).filter(
         Response.conversation_id == conversation.id,
-        Response.participant_id == current_user.id
+        Response.participant_id == current_user.id,
+        Response.status == "submitted"
     ).first()
-    
+
     if existing_response:
         return ResponseCheck(
             has_submitted=True,
             message="Your responses have been recorded. You can only submit once"
         )
-    
+
     return ResponseCheck(
         has_submitted=False,
         message=None
+    )
+
+
+@router.post("/conversations/{access_code}/responses/draft", response_model=DraftSaveResponse)
+async def save_draft(
+    access_code: str,
+    draft_data: DraftSaveRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Save draft responses for a conversation.
+
+    - For fully_anonymous: requires participant_code in request
+    - For platform_tracked/revealable: requires authentication
+
+    Creates new draft responses or updates existing ones.
+    Validation is relaxed (partial responses allowed).
+
+    Args:
+        access_code: Conversation access code
+        draft_data: Draft response data
+        db: Database session
+        current_user: Optional authenticated user
+
+    Returns:
+        DraftSaveResponse with save timestamp
+    """
+    # Find conversation by access code
+    conversation = db.query(Conversation).options(
+        joinedload(Conversation.questions)
+    ).filter(
+        Conversation.access_code == access_code
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Check if conversation is active
+    if conversation.state != ConversationState.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation is not active"
+        )
+
+    # Determine participant identifier based on anonymity level
+    used_participant_code = None
+    participant_id = None
+
+    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        # Require participant code
+        if not draft_data.participant_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Fully anonymous conversations require a participant code"
+            )
+
+        # Validate participant code
+        participant_code_obj = db.query(ParticipantCode).filter(
+            ParticipantCode.participant_code == draft_data.participant_code,
+            ParticipantCode.conversation_id == conversation.id
+        ).first()
+
+        if not participant_code_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid participant code"
+            )
+
+        # Check if already submitted (not just used - check for submitted responses)
+        existing_submitted = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used == draft_data.participant_code,
+            Response.status == "submitted"
+        ).first()
+
+        if existing_submitted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot save draft - response already submitted"
+            )
+
+        used_participant_code = draft_data.participant_code
+
+    else:
+        # Platform tracked or revealable - require authentication
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required for this conversation type"
+            )
+
+        # Check if already submitted
+        existing_submitted = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id == current_user.id,
+            Response.status == "submitted"
+        ).first()
+
+        if existing_submitted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot save draft - response already submitted"
+            )
+
+        participant_id = current_user.id
+
+    # Validate question IDs (but allow partial responses)
+    conversation_question_ids = {q.id for q in conversation.questions}
+    for response_item in draft_data.responses:
+        if response_item.question_id not in conversation_question_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid question ID: {response_item.question_id}"
+            )
+
+    # Delete existing draft responses for this participant
+    if used_participant_code:
+        db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used == used_participant_code,
+            Response.status == "draft"
+        ).delete()
+    else:
+        db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id == participant_id,
+            Response.status == "draft"
+        ).delete()
+
+    # Create new draft responses
+    now = datetime.utcnow()
+    for response_item in draft_data.responses:
+        response = Response(
+            conversation_id=conversation.id,
+            question_id=response_item.question_id,
+            response_text=response_item.response_text,
+            response_data=response_item.response_data,
+            anonymity_level=conversation.anonymity_level,
+            participant_id=participant_id,
+            participant_code_used=used_participant_code,
+            reveal_consent=draft_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
+            status="draft",
+            last_saved_at=now,
+            submitted_at=None
+        )
+        db.add(response)
+
+    db.commit()
+
+    return DraftSaveResponse(
+        success=True,
+        last_saved_at=now,
+        message="Draft saved successfully"
+    )
+
+
+@router.get("/conversations/{access_code}/responses/draft", response_model=DraftLoadResponse)
+async def load_draft(
+    access_code: str,
+    participant_code: Optional[str] = Query(None, description="Participant code for fully anonymous conversations"),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Load existing draft responses for a conversation.
+
+    Returns draft data if exists, or empty response if no draft found.
+
+    Args:
+        access_code: Conversation access code
+        participant_code: Optional participant code for fully anonymous
+        db: Database session
+        current_user: Optional authenticated user
+
+    Returns:
+        DraftLoadResponse with draft data
+    """
+    # Find conversation by access code
+    conversation = db.query(Conversation).filter(
+        Conversation.access_code == access_code
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Build query based on anonymity level
+    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        if not participant_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Participant code required for fully anonymous conversations"
+            )
+
+        drafts = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used == participant_code,
+            Response.status == "draft"
+        ).all()
+    else:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+
+        drafts = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id == current_user.id,
+            Response.status == "draft"
+        ).all()
+
+    if not drafts:
+        return DraftLoadResponse(
+            has_draft=False,
+            last_saved_at=None,
+            responses=[],
+            reveal_consent=False
+        )
+
+    # Build response items from drafts
+    responses = [
+        ResponseItemCreate(
+            question_id=draft.question_id,
+            response_text=draft.response_text,
+            response_data=draft.response_data
+        )
+        for draft in drafts
+    ]
+
+    # Get the most recent save time and reveal_consent from any draft
+    last_saved_at = max(d.last_saved_at for d in drafts if d.last_saved_at)
+    reveal_consent = any(d.reveal_consent for d in drafts)
+
+    return DraftLoadResponse(
+        has_draft=True,
+        last_saved_at=last_saved_at,
+        responses=responses,
+        reveal_consent=reveal_consent
+    )
+
+
+@router.delete("/conversations/{access_code}/responses/draft", response_model=SuccessResponse)
+async def delete_draft(
+    access_code: str,
+    participant_code: Optional[str] = Query(None, description="Participant code for fully anonymous conversations"),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Delete draft responses (called after successful submission or explicit discard).
+
+    Args:
+        access_code: Conversation access code
+        participant_code: Optional participant code for fully anonymous
+        db: Database session
+        current_user: Optional authenticated user
+
+    Returns:
+        Success response
+    """
+    # Find conversation by access code
+    conversation = db.query(Conversation).filter(
+        Conversation.access_code == access_code
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Delete drafts based on anonymity level
+    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        if not participant_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Participant code required for fully anonymous conversations"
+            )
+
+        deleted = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used == participant_code,
+            Response.status == "draft"
+        ).delete()
+    else:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+
+        deleted = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id == current_user.id,
+            Response.status == "draft"
+        ).delete()
+
+    db.commit()
+
+    return SuccessResponse(
+        success=True,
+        message=f"Deleted {deleted} draft response(s)"
     )
 
 
@@ -529,7 +843,22 @@ async def submit_response(
                         detail=f"Required question '{question.question_text}' must be answered"
                     )
 
-    # Create responses
+    # Delete any existing draft responses for this participant before creating submitted ones
+    if used_participant_code:
+        db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used == used_participant_code.participant_code,
+            Response.status == "draft"
+        ).delete()
+    elif current_user:
+        db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id == current_user.id,
+            Response.status == "draft"
+        ).delete()
+
+    # Create responses with status='submitted'
+    now = datetime.utcnow()
     for response_item in response_data.responses:
         response = Response(
             conversation_id=conversation.id,
@@ -540,7 +869,8 @@ async def submit_response(
             participant_id=current_user.id if current_user else None,
             participant_code_used=used_participant_code.participant_code if used_participant_code else None,
             reveal_consent=response_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
-            submitted_at=datetime.utcnow()
+            status="submitted",
+            submitted_at=now
         )
         db.add(response)
 
@@ -629,10 +959,11 @@ async def get_responses(
                 detail="Conversation not found"
             )
         elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
-            # Check if user has submitted a response
+            # Check if user has submitted a response (only count submitted, not drafts)
             has_responded = db.query(Response).filter(
                 Response.conversation_id == conversation_id,
-                Response.participant_id == current_user.id
+                Response.participant_id == current_user.id,
+                Response.status == "submitted"
             ).first() is not None
 
             if not has_responded:
@@ -642,14 +973,15 @@ async def get_responses(
                 )
         # PUBLIC_LINK allows anyone authenticated to view (no additional check needed)
 
-    # Get all responses with question text
+    # Get all submitted responses with question text (exclude drafts)
     responses = db.query(
         Response,
         Question.question_text
     ).join(
         Question, Response.question_id == Question.id
     ).filter(
-        Response.conversation_id == conversation_id
+        Response.conversation_id == conversation_id,
+        Response.status == "submitted"
     ).order_by(
         Response.submitted_at.desc()
     ).all()
@@ -665,6 +997,8 @@ async def get_responses(
             "response_data": response.response_data,
             "anonymity_level": response.anonymity_level,
             "reveal_consent": response.reveal_consent,
+            "status": response.status,
+            "last_saved_at": response.last_saved_at,
             "submitted_at": response.submitted_at,
             "participant_id": response.participant_id if response.reveal_consent else None,
             "participant_code_used": response.participant_code_used,
@@ -711,33 +1045,37 @@ async def get_response_stats(
             detail="Conversation not found"
         )
 
-    # Get total responses
+    # Get total responses (only count submitted, not drafts)
     total_responses = db.query(func.count(Response.id)).filter(
-        Response.conversation_id == conversation_id
+        Response.conversation_id == conversation_id,
+        Response.status == "submitted"
     ).scalar()
 
-    # Get unique participants
+    # Get unique participants (only count submitted responses)
     # For fully_anonymous, count unique participant codes used
     # For others, count unique participant_ids
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
         unique_participants = db.query(
             func.count(func.distinct(Response.participant_code_used))
         ).filter(
-            Response.conversation_id == conversation_id
+            Response.conversation_id == conversation_id,
+            Response.status == "submitted"
         ).scalar()
     else:
         unique_participants = db.query(
             func.count(func.distinct(Response.participant_id))
         ).filter(
-            Response.conversation_id == conversation_id
+            Response.conversation_id == conversation_id,
+            Response.status == "submitted"
         ).scalar()
 
-    # Get responses by question
+    # Get responses by question (only count submitted)
     responses_by_question_raw = db.query(
         Response.question_id,
         func.count(Response.id).label('count')
     ).filter(
-        Response.conversation_id == conversation_id
+        Response.conversation_id == conversation_id,
+        Response.status == "submitted"
     ).group_by(
         Response.question_id
     ).all()

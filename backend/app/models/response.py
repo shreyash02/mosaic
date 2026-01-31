@@ -37,7 +37,14 @@ class Response(Base):
     # Consent for revealing (only for 'revealable' anonymity_level)
     reveal_consent = Column(Boolean, default=False, nullable=False)
 
-    submitted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Draft status: 'draft' or 'submitted'
+    status = Column(String(20), default="draft", nullable=False)
+
+    # When the draft was last saved (for drafts)
+    last_saved_at = Column(DateTime, nullable=True)
+
+    # When response was submitted (null for drafts)
+    submitted_at = Column(DateTime, nullable=True)
 
     # Relationships
     conversation = relationship("Conversation", back_populates="responses")
@@ -52,3 +59,6 @@ class Response(Base):
 Index("idx_responses_conversation", Response.conversation_id)
 Index("idx_responses_participant", Response.participant_id)
 Index("idx_responses_participant_code", Response.participant_code_used)
+Index("idx_responses_status", Response.status)
+Index("idx_responses_draft_lookup", Response.conversation_id, Response.participant_code_used, Response.status)
+Index("idx_responses_draft_lookup_user", Response.conversation_id, Response.participant_id, Response.status)
