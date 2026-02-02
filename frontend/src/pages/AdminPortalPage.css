@@ -302,3 +302,24 @@
   border: 1px solid #f5c6cb;
 }
 
+.section-divider {
+  border: none;
+  border-top: 1px solid #dee2e6;
+  margin: 2.5rem 0;
+}
+
+.admin-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
