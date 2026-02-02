@@ -8,7 +8,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
@@ -355,7 +355,13 @@ async def list_conversations(
     query = db.query(
         Conversation,
         func.count(Response.id).label('response_count')
-    ).outerjoin(Response).filter(
+    ).outerjoin(
+        Response,
+        and_(
+            Response.conversation_id == Conversation.id,
+            Response.status == "submitted"
+        )
+    ).filter(
         or_(
             Conversation.creator_id == current_user.id,
             Conversation.organization_id.in_(user_org_ids)
@@ -374,20 +380,22 @@ async def list_conversations(
     # Build response with response count and unique participants
     conversations = []
     for conv, response_count in results:
-        # Calculate unique participants based on anonymity level
+        # Calculate unique participants based on anonymity level (only count submitted responses)
         if conv.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
             unique_participants = db.query(
                 func.count(func.distinct(Response.participant_code_used))
             ).filter(
                 Response.conversation_id == conv.id,
-                Response.participant_code_used.isnot(None)
+                Response.participant_code_used.isnot(None),
+                Response.status == "submitted"
             ).scalar() or 0
         else:
             unique_participants = db.query(
                 func.count(func.distinct(Response.participant_id))
             ).filter(
                 Response.conversation_id == conv.id,
-                Response.participant_id.isnot(None)
+                Response.participant_id.isnot(None),
+                Response.status == "submitted"
             ).scalar() or 0
 
         conv_dict = {
@@ -451,7 +459,13 @@ async def list_participated_conversations(
     query = db.query(
         Conversation,
         func.count(Response.id).label('response_count')
-    ).outerjoin(Response).filter(
+    ).outerjoin(
+        Response,
+        and_(
+            Response.conversation_id == Conversation.id,
+            Response.status == "submitted"
+        )
+    ).filter(
         Conversation.id.in_(participated_conv_ids),
         Conversation.creator_id != current_user.id,  # Exclude conversations user created
         Conversation.state != ConversationState.DELETED
@@ -468,20 +482,22 @@ async def list_participated_conversations(
     # Build response with response count and unique participants
     conversations = []
     for conv, response_count in results:
-        # Calculate unique participants based on anonymity level
+        # Calculate unique participants based on anonymity level (only count submitted responses)
         if conv.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
             unique_participants = db.query(
                 func.count(func.distinct(Response.participant_code_used))
             ).filter(
                 Response.conversation_id == conv.id,
-                Response.participant_code_used.isnot(None)
+                Response.participant_code_used.isnot(None),
+                Response.status == "submitted"
             ).scalar() or 0
         else:
             unique_participants = db.query(
                 func.count(func.distinct(Response.participant_id))
             ).filter(
                 Response.conversation_id == conv.id,
-                Response.participant_id.isnot(None)
+                Response.participant_id.isnot(None),
+                Response.status == "submitted"
             ).scalar() or 0
 
         conv_dict = {
@@ -553,7 +569,8 @@ async def get_my_invitations(
         # Build conversation dict
         conv = inv.conversation
         response_count = db.query(func.count(Response.id)).filter(
-            Response.conversation_id == conv.id
+            Response.conversation_id == conv.id,
+            Response.status == "submitted"
         ).scalar()
         
         conv_dict = {
