@@ -46,6 +46,9 @@ class Response(Base):
     # When response was submitted (null for drafts)
     submitted_at = Column(DateTime, nullable=True)
 
+    # Flag for test/generated data (for cleanup purposes)
+    is_test_data = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     conversation = relationship("Conversation", back_populates="responses")
     question = relationship("Question", back_populates="responses")
@@ -62,3 +65,4 @@ Index("idx_responses_participant_code", Response.participant_code_used)
 Index("idx_responses_status", Response.status)
 Index("idx_responses_draft_lookup", Response.conversation_id, Response.participant_code_used, Response.status)
 Index("idx_responses_draft_lookup_user", Response.conversation_id, Response.participant_id, Response.status)
+Index("idx_responses_is_test_data", Response.is_test_data)

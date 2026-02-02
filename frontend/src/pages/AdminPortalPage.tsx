@@ -56,6 +56,11 @@ export default function AdminPortalPage() {
   const [testToolsLoading, setTestToolsLoading] = useState(false);
   const [testToolsResult, setTestToolsResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Cleanup state
+  const [cleanupConversationId, setCleanupConversationId] = useState('');
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{ success: boolean; message: string } | null>(null);
+
   useEffect(() => {
     // Check if admin token exists
     const adminToken = localStorage.getItem('admin_token');
@@ -231,6 +236,54 @@ export default function AdminPortalPage() {
       });
     } finally {
       setTestToolsLoading(false);
+    }
+  };
+
+  const handleCleanupTestData = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCleanupLoading(true);
+    setCleanupResult(null);
+    setError('');
+
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) {
+        handleLogout();
+        return;
+      }
+
+      const axios = (await import('axios')).default;
+      const API_BASE_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+
+      const adminClient = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      const params = new URLSearchParams();
+      if (cleanupConversationId) {
+        params.append('conversation_id', cleanupConversationId);
+      }
+
+      const response = await adminClient.delete(
+        `/admin/test-tools/cleanup-test-data${params.toString() ? `?${params.toString()}` : ''}`
+      );
+
+      setCleanupResult({
+        success: true,
+        message: response.data.message,
+      });
+    } catch (err: any) {
+      setCleanupResult({
+        success: false,
+        message: err.response?.data?.detail || 'Failed to cleanup test data',
+      });
+    } finally {
+      setCleanupLoading(false);
     }
   };
 
@@ -699,6 +752,41 @@ export default function AdminPortalPage() {
             {testToolsResult && (
               <div className={`result-message ${testToolsResult.success ? 'success' : 'error'}`}>
                 {testToolsResult.message}
+              </div>
+            )}
+
+            <hr className="section-divider" />
+
+            <h3>Cleanup Test Data</h3>
+            <p className="section-description">
+              Delete all test responses (responses generated with the tool above). You can optionally filter by conversation ID.
+            </p>
+
+            <form onSubmit={handleCleanupTestData} className="test-tools-form">
+              <div className="form-group">
+                <label htmlFor="cleanup-conversation-id">Conversation ID (optional):</label>
+                <input
+                  id="cleanup-conversation-id"
+                  type="text"
+                  value={cleanupConversationId}
+                  onChange={(e) => setCleanupConversationId(e.target.value)}
+                  placeholder="Leave empty to delete all test data"
+                />
+                <small className="form-help">Leave empty to delete test data from all conversations</small>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-danger"
+                disabled={cleanupLoading}
+              >
+                {cleanupLoading ? 'Deleting...' : 'Delete Test Data'}
+              </button>
+            </form>
+
+            {cleanupResult && (
+              <div className={`result-message ${cleanupResult.success ? 'success' : 'error'}`}>
+                {cleanupResult.message}
               </div>
             )}
           </div>

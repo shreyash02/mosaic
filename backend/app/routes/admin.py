@@ -725,6 +725,7 @@ async def generate_test_responses(
                 reveal_consent=response_dict["reveal_consent"],
                 status=response_dict["status"],
                 submitted_at=response_dict["submitted_at"],
+                is_test_data=response_dict.get("is_test_data", False),
             )
             db.add(response)
 
@@ -744,5 +745,56 @@ async def generate_test_responses(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate test data: {str(e)}"
+        )
+
+
+@router.delete("/test-tools/cleanup-test-data", response_model=SuccessResponse)
+async def cleanup_test_data(
+    conversation_id: Optional[UUID] = None,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete all test data (responses marked as is_test_data=True).
+
+    Args:
+        conversation_id: Optional - only delete test data for a specific conversation
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        Success response with count of deleted responses
+    """
+    try:
+        query = db.query(Response).filter(Response.is_test_data == True)
+
+        if conversation_id:
+            query = query.filter(Response.conversation_id == conversation_id)
+
+        # Get count before deleting
+        count = query.count()
+
+        if count == 0:
+            return SuccessResponse(
+                success=True,
+                message="No test data found to delete"
+            )
+
+        # Delete the test responses
+        query.delete(synchronize_session=False)
+        db.commit()
+
+        return SuccessResponse(
+            success=True,
+            message=f"Successfully deleted {count} test responses"
+        )
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to cleanup test data: {str(e)}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cleanup test data: {str(e)}"
         )
 

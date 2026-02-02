@@ -91,6 +91,7 @@ class TestDataService:
                     "reveal_consent": False,
                     "status": "submitted",
                     "submitted_at": submitted_at,
+                    "is_test_data": True,
                 })
 
         return responses
