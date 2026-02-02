@@ -11,6 +11,9 @@ import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Generator, Dict, Any, Optional
 
+# Import integration test fixtures
+from tests.fixtures.conversation_fixtures import *  # noqa: F401, F403
+
 # Base URL for the running server (e2e tests require server to be running)
 BASE_URL = os.environ.get("TEST_BASE_URL", "http://localhost:8000")
 
