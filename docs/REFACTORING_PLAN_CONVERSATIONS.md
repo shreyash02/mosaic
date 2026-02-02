@@ -241,14 +241,26 @@ __all__ = ["router"]
 - Extract shared utilities first
 - Create comprehensive test coverage for current endpoints
 
+**Detailed Plan:** See `/docs/REFACTORING_PHASE1_DETAILED.md`
+
 **Tasks:**
-1. Create `backend/app/routes/conversations/` directory
-2. Create `utils.py` with shared functions
-3. Write integration tests for ALL current endpoints (baseline)
-4. Document any discovered edge cases
+1. Day 1-2: Set up test infrastructure and document endpoint behaviors
+2. Day 2-3: Write comprehensive tests for all 21 endpoints
+3. Day 3-4: Extract utilities to `utils.py` with unit tests
+4. Day 4-5: Establish performance baseline and final validation
+
+**Key Deliverables:**
+- Test fixtures and helpers in `tests/fixtures/` and `tests/helpers/`
+- Integration tests for all endpoints (100% coverage)
+- `backend/app/routes/conversations/utils.py` with 11+ utility functions
+- Unit tests for all utilities
+- Performance baseline metrics
+- PHASE1_VALIDATION.md checklist (must be 100% complete)
 
 **Validation:**
 - All tests pass
+- Test coverage > 90%
+- Performance baselines recorded
 - No functionality changes yet
 
 ---
