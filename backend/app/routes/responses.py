@@ -1,10 +1,13 @@
 """Response submission routes."""
 
+import logging
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -1045,15 +1048,25 @@ async def get_response_stats(
             detail="Conversation not found"
         )
 
+    # Debug: count all responses for this conversation
+    all_responses = db.query(Response).filter(
+        Response.conversation_id == conversation_id
+    ).all()
+    logger.info(f"[STATS DEBUG] Conversation {conversation_id}: found {len(all_responses)} total responses in DB")
+    for r in all_responses[:5]:  # Log first 5
+        logger.info(f"[STATS DEBUG]   Response: id={r.id}, status={r.status}, participant_code={r.participant_code_used}")
+
     # Get total responses (only count submitted, not drafts)
     total_responses = db.query(func.count(Response.id)).filter(
         Response.conversation_id == conversation_id,
         Response.status == "submitted"
     ).scalar()
+    logger.info(f"[STATS DEBUG] Total submitted responses: {total_responses}")
 
     # Get unique participants (only count submitted responses)
     # For fully_anonymous, count unique participant codes used
     # For others, count unique participant_ids
+    logger.info(f"[STATS DEBUG] Conversation anonymity_level: {conversation.anonymity_level}")
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
         unique_participants = db.query(
             func.count(func.distinct(Response.participant_code_used))
@@ -1068,6 +1081,7 @@ async def get_response_stats(
             Response.conversation_id == conversation_id,
             Response.status == "submitted"
         ).scalar()
+    logger.info(f"[STATS DEBUG] Unique participants: {unique_participants}")
 
     # Get responses by question (only count submitted)
     responses_by_question_raw = db.query(
@@ -1084,6 +1098,7 @@ async def get_response_stats(
         str(question_id): count
         for question_id, count in responses_by_question_raw
     }
+    logger.info(f"[STATS DEBUG] Responses by question: {responses_by_question}")
 
     return ResponseStats(
         total_responses=total_responses or 0,
