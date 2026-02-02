@@ -68,3 +68,21 @@ class AdminResponseInfo(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class GenerateTestDataRequest(BaseModel):
+    """Request to generate test data for a conversation."""
+
+    conversation_id: UUID
+    num_respondents: int = Field(..., ge=1, le=100, description="Number of respondents to generate (1-100)")
+    start_time: datetime = Field(..., description="Start of time range for responses")
+    end_time: datetime = Field(..., description="End of time range for responses")
+
+
+class GenerateTestDataResponse(BaseModel):
+    """Response from test data generation."""
+
+    success: bool
+    message: str
+    responses_created: int
+    respondents_created: int
+

@@ -1,7 +1,12 @@
 """Admin portal routes."""
 
+import logging
+import traceback
+import uuid
 from typing import Optional, List
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
@@ -22,6 +27,8 @@ from app.schemas.admin import (
     AdminUserInfo,
     AdminConversationInfo,
     AdminResponseInfo,
+    GenerateTestDataRequest,
+    GenerateTestDataResponse,
 )
 from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
@@ -627,8 +634,115 @@ async def reanalyze_conversation(
             message="Analysis completed successfully"
         )
     except Exception as e:
+        logger.error(f"Analysis failed for conversation {conversation_id}: {str(e)}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Analysis failed: {str(e)}"
+        )
+
+
+@router.post("/test-tools/generate-responses", response_model=GenerateTestDataResponse)
+async def generate_test_responses(
+    request: GenerateTestDataRequest,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate test responses for a conversation (admin only).
+
+    This creates realistic test data including:
+    - LLM-generated text responses for text questions
+    - Random ratings for rating questions
+    - Random selections for poll questions
+    - Timestamps spread across the specified time range
+
+    Args:
+        request: Test data generation request with conversation_id, num_respondents, and time range
+        admin: Current authenticated admin
+        db: Database session
+
+    Returns:
+        Success response with counts of created responses
+
+    Raises:
+        HTTPException: If conversation not found or validation fails
+    """
+    from app.models.question import Question
+    from app.services.test_data_service import TestDataService
+
+    # Verify conversation exists
+    conversation = db.query(Conversation).filter(
+        Conversation.id == request.conversation_id
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Validate time range
+    if request.start_time >= request.end_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_time must be before end_time"
+        )
+
+    # Get questions for this conversation
+    questions = db.query(Question).filter(
+        Question.conversation_id == request.conversation_id
+    ).order_by(Question.question_order).all()
+
+    if not questions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation has no questions"
+        )
+
+    # Generate test responses
+    try:
+        service = TestDataService()
+        responses_data = service.generate_test_responses(
+            questions=questions,
+            num_respondents=request.num_respondents,
+            start_time=request.start_time,
+            end_time=request.end_time,
+            conversation_title=conversation.title,
+            conversation_description=conversation.description
+        )
+
+        # Insert responses into database
+        for response_dict in responses_data:
+            response = Response(
+                id=uuid.uuid4(),
+                conversation_id=uuid.UUID(response_dict["conversation_id"]),
+                question_id=uuid.UUID(response_dict["question_id"]),
+                response_text=response_dict.get("response_text"),
+                response_data=response_dict.get("response_data"),
+                participant_code_used=response_dict["participant_code_used"],
+                anonymity_level=response_dict["anonymity_level"],
+                reveal_consent=response_dict["reveal_consent"],
+                status=response_dict["status"],
+                submitted_at=response_dict["submitted_at"],
+            )
+            db.add(response)
+
+        db.commit()
+
+        return GenerateTestDataResponse(
+            success=True,
+            message=f"Successfully generated {len(responses_data)} test responses from {request.num_respondents} respondents",
+            responses_created=len(responses_data),
+            respondents_created=request.num_respondents
+        )
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to generate test data: {str(e)}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate test data: {str(e)}"
         )
 

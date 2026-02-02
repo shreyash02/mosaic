@@ -481,6 +481,20 @@ export interface AdminOrganizationInfo {
   created_at: string;
 }
 
+export interface GenerateTestDataRequest {
+  conversation_id: string;
+  num_respondents: number;
+  start_time: string;
+  end_time: string;
+}
+
+export interface GenerateTestDataResponse {
+  success: boolean;
+  message: string;
+  responses_created: number;
+  respondents_created: number;
+}
+
 // Organization types
 export interface Organization {
   id: string;

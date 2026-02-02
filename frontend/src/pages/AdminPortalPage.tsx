@@ -10,7 +10,7 @@ import type {
 } from '../types';
 import './AdminPortalPage.css';
 
-type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations';
+type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'test-tools';
 
 export default function AdminPortalPage() {
   const navigate = useNavigate();
@@ -22,8 +22,8 @@ export default function AdminPortalPage() {
   const [loading, setLoading] = useState(false);
 
   // Get active tab from URL, default to 'users'
-  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations'].includes(tab)) 
-    ? tab as TabType 
+  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations', 'test-tools'].includes(tab))
+    ? tab as TabType
     : 'users';
   
   // Users state
@@ -47,6 +47,14 @@ export default function AdminPortalPage() {
   // Organizations state
   const [organizations, setOrganizations] = useState<AdminOrganizationInfo[]>([]);
   const [organizationNameFilter, setOrganizationNameFilter] = useState('');
+
+  // Test Tools state
+  const [testToolsConversationId, setTestToolsConversationId] = useState('');
+  const [testToolsNumRespondents, setTestToolsNumRespondents] = useState(10);
+  const [testToolsStartTime, setTestToolsStartTime] = useState('');
+  const [testToolsEndTime, setTestToolsEndTime] = useState('');
+  const [testToolsLoading, setTestToolsLoading] = useState(false);
+  const [testToolsResult, setTestToolsResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     // Check if admin token exists
@@ -180,6 +188,52 @@ export default function AdminPortalPage() {
     loadData();
   };
 
+  const handleGenerateTestData = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestToolsLoading(true);
+    setTestToolsResult(null);
+    setError('');
+
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) {
+        handleLogout();
+        return;
+      }
+
+      const axios = (await import('axios')).default;
+      const API_BASE_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+
+      const adminClient = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      const response = await adminClient.post('/admin/test-tools/generate-responses', {
+        conversation_id: testToolsConversationId,
+        num_respondents: testToolsNumRespondents,
+        start_time: new Date(testToolsStartTime).toISOString(),
+        end_time: new Date(testToolsEndTime).toISOString(),
+      });
+
+      setTestToolsResult({
+        success: true,
+        message: response.data.message,
+      });
+    } catch (err: any) {
+      setTestToolsResult({
+        success: false,
+        message: err.response?.data?.detail || 'Failed to generate test data',
+      });
+    } finally {
+      setTestToolsLoading(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="admin-portal">
@@ -259,6 +313,12 @@ export default function AdminPortalPage() {
           className={`tab ${activeTab === 'organizations' ? 'active' : ''}`}
         >
           Organizations
+        </Link>
+        <Link
+          to="/adminportal/test-tools"
+          className={`tab ${activeTab === 'test-tools' ? 'active' : ''}`}
+        >
+          Test Tools
         </Link>
       </div>
 
@@ -565,6 +625,82 @@ export default function AdminPortalPage() {
               </table>
               {organizations.length === 0 && <p className="no-data">No organizations found</p>}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'test-tools' && (
+          <div className="admin-section">
+            <h2>Test Tools</h2>
+            <p className="section-description">
+              Generate test responses for a conversation. Text responses will be generated using AI to be relevant to the questions.
+              Rating and poll responses will be randomly generated.
+            </p>
+
+            <form onSubmit={handleGenerateTestData} className="test-tools-form">
+              <div className="form-group">
+                <label htmlFor="conversation-id">Conversation ID:</label>
+                <input
+                  id="conversation-id"
+                  type="text"
+                  value={testToolsConversationId}
+                  onChange={(e) => setTestToolsConversationId(e.target.value)}
+                  placeholder="Enter conversation UUID"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="num-respondents">Number of Respondents:</label>
+                <input
+                  id="num-respondents"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={testToolsNumRespondents}
+                  onChange={(e) => setTestToolsNumRespondents(parseInt(e.target.value) || 1)}
+                  required
+                />
+                <small className="form-help">Between 1 and 100 respondents</small>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="start-time">Start Time:</label>
+                  <input
+                    id="start-time"
+                    type="datetime-local"
+                    value={testToolsStartTime}
+                    onChange={(e) => setTestToolsStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="end-time">End Time:</label>
+                  <input
+                    id="end-time"
+                    type="datetime-local"
+                    value={testToolsEndTime}
+                    onChange={(e) => setTestToolsEndTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={testToolsLoading}
+              >
+                {testToolsLoading ? 'Generating...' : 'Generate Test Responses'}
+              </button>
+            </form>
+
+            {testToolsResult && (
+              <div className={`result-message ${testToolsResult.success ? 'success' : 'error'}`}>
+                {testToolsResult.message}
+              </div>
+            )}
           </div>
         )}
       </div>
