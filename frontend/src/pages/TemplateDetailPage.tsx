@@ -5,8 +5,10 @@ import type { Conversation, ConversationListItem } from '../types';
 import { ConversationState, RecurrencePattern } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import DesignToggle from '../components/DesignToggle';
+import TemplateDetailPageNew from './TemplateDetailPageNew';
 
-export default function TemplateDetailPage() {
+function TemplateDetailPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -383,5 +385,19 @@ export default function TemplateDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TemplateDetailPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <TemplateDetailPageNew /> : <TemplateDetailPageOld />}
+    </>
   );
 }
