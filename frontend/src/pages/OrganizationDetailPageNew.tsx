@@ -25,6 +25,7 @@ export default function OrganizationDetailPageNew() {
       minHeight: '100vh',
       backgroundColor: colors.primary[100],
       padding: spacing[8],
+      paddingTop: `calc(80px + ${spacing[8]})`, // Account for fixed header
     },
     container: {
       maxWidth: '1200px',

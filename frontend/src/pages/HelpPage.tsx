@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import DesignToggle from '../components/DesignToggle';
+import HelpPageNew from './HelpPageNew';
 
-export default function HelpPage() {
+function HelpPageOld() {
   const getIcon = (iconName: string) => {
     const icons: Record<string, JSX.Element> = {
       'create': (
@@ -209,5 +212,19 @@ export default function HelpPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HelpPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <HelpPageNew /> : <HelpPageOld />}
+    </>
   );
 }

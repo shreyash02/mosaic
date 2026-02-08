@@ -76,8 +76,8 @@
 }
 
 .nav-link.active {
-  color: #4299e1;
-  background-color: #ebf8ff;
+  color: #1a1a2e;
+  background-color: #f0f0f3;
 }
 
 .user-info {
@@ -258,8 +258,8 @@
 }
 
 .org-switcher-item.active {
-  background-color: #ebf8ff;
-  color: #4299e1;
+  background-color: #f0f0f3;
+  color: #1a1a2e;
   font-weight: 500;
 }
 
@@ -296,7 +296,7 @@
   width: 100%;
   padding: 0.75rem 1rem;
   background-color: transparent;
-  color: #4299e1;
+  color: #1a1a2e;
   font-size: 0.9rem;
   font-weight: 500;
   text-align: left;
@@ -306,7 +306,7 @@
 }
 
 .org-switcher-manage:hover {
-  background-color: #ebf8ff;
+  background-color: #f0f0f3;
 }
 
 /* Mobile Responsive Styles */

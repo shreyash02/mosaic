@@ -7,8 +7,10 @@ import { formatDate, formatRelativeTime } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
+import DesignToggle from '../components/DesignToggle';
+import JoinPageNew from './JoinPageNew';
 
-export default function JoinPage() {
+function JoinPageOld() {
   const { accessCode: accessCodeFromPath } = useParams<{ accessCode: string }>();
   const [searchParams] = useSearchParams();
   const accessCodeFromQuery = searchParams.get('code');
@@ -1533,5 +1535,19 @@ export default function JoinPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function JoinPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <JoinPageNew /> : <JoinPageOld />}
+    </>
   );
 }

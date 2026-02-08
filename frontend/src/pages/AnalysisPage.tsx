@@ -5,8 +5,10 @@ import type { Analysis, Conversation, ResponseWithQuestion } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
+import DesignToggle from '../components/DesignToggle';
+import AnalysisPageNew from './AnalysisPageNew';
 
-export default function AnalysisPage() {
+function AnalysisPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -492,5 +494,19 @@ export default function AnalysisPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AnalysisPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <AnalysisPageNew /> : <AnalysisPageOld />}
+    </>
   );
 }
