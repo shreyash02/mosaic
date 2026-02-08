@@ -8,10 +8,12 @@ import type {
 } from '../types';
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
+import DesignToggle from '../components/DesignToggle';
+import OrganizationDetailPageNew from './OrganizationDetailPageNew';
 
 type TabType = 'conversations' | 'members' | 'settings';
 
-export default function OrganizationDetailPage() {
+function OrganizationDetailPageOld() {
   const { id } = useParams<{ id: string }>();
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
@@ -364,5 +366,19 @@ export default function OrganizationDetailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OrganizationDetailPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <OrganizationDetailPageNew /> : <OrganizationDetailPageOld />}
+    </>
   );
 }

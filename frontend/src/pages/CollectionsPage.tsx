@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
+import DesignToggle from '../components/DesignToggle';
+import CollectionsPageNew from './CollectionsPageNew';
 
 interface CollectionWithCount extends Series {
   conversationCount: number;
 }
 
-export default function CollectionsPage() {
+function CollectionsPageOld() {
   const { currentOrgId } = useOrganization();
   const navigate = useNavigate();
   const [collections, setCollections] = useState<CollectionWithCount[]>([]);
@@ -387,3 +389,16 @@ export default function CollectionsPage() {
   );
 }
 
+export default function CollectionsPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <CollectionsPageNew /> : <CollectionsPageOld />}
+    </>
+  );
+}

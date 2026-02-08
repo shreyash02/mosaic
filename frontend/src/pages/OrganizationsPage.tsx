@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Organization } from '../types';
+import DesignToggle from '../components/DesignToggle';
+import OrganizationsPageNew from './OrganizationsPageNew';
 
 interface OrganizationWithRole extends Organization {
   userRole?: 'admin' | 'member';
   memberCount?: number;
 }
 
-export default function OrganizationsPage() {
+function OrganizationsPageOld() {
   const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -153,5 +155,19 @@ export default function OrganizationsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OrganizationsPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <OrganizationsPageNew /> : <OrganizationsPageOld />}
+    </>
   );
 }
