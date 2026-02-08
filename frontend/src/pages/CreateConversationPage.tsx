@@ -9,6 +9,8 @@ import SetupModeToggle from '../components/SetupModeToggle';
 import IntentSelection from '../components/IntentSelection';
 import ConfigurationSummary from '../components/ConfigurationSummary';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
+import DesignToggle from '../components/DesignToggle';
+import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import {
   DndContext,
   closestCenter,
@@ -234,7 +236,7 @@ interface LocationState {
   organizationId?: string;  // Pre-selected organization
 }
 
-export default function CreateConversationPage() {
+function CreateConversationPageOld() {
   const navigate = useNavigate();
   const location = useLocation();
   const followUpState = location.state as LocationState;
@@ -1978,5 +1980,120 @@ export default function CreateConversationPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+// New design version - wraps old version with new styling via CSS class
+function CreateConversationPageNew() {
+  return (
+    <div className="create-page-new-design">
+      <CreateConversationPageOld />
+      <style>{`
+        .create-page-new-design {
+          background-color: ${colors.primary[100]};
+          min-height: 100vh;
+        }
+        .create-page-new-design .create-conversation-page {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: ${spacing[8]};
+        }
+        .create-page-new-design .page-header {
+          margin-bottom: ${spacing[8]};
+        }
+        .create-page-new-design .page-header h1 {
+          font-size: ${typography.fontSize['3xl']};
+          font-weight: ${typography.fontWeight.bold};
+          color: ${colors.primary[900]};
+        }
+        .create-page-new-design .conversation-form {
+          background-color: ${colors.primary[50]};
+          border-radius: ${borders.radius.xl};
+          border: ${borders.width.thin} solid ${colors.primary[300]};
+          padding: ${spacing[8]};
+          box-shadow: ${shadows.sm};
+        }
+        .create-page-new-design .form-section {
+          margin-bottom: ${spacing[6]};
+          padding-bottom: ${spacing[6]};
+          border-bottom: ${borders.width.thin} solid ${colors.primary[200]};
+        }
+        .create-page-new-design .form-group label {
+          font-size: ${typography.fontSize.sm};
+          font-weight: ${typography.fontWeight.medium};
+          color: ${colors.primary[900]};
+        }
+        .create-page-new-design input[type="text"],
+        .create-page-new-design input[type="email"],
+        .create-page-new-design input[type="number"],
+        .create-page-new-design textarea,
+        .create-page-new-design select {
+          border: ${borders.width.thin} solid ${colors.primary[400]};
+          border-radius: ${borders.radius.md};
+          padding: ${spacing[3]};
+          font-size: ${typography.fontSize.sm};
+          background-color: ${colors.primary[50]};
+          color: ${colors.primary[900]};
+          transition: border-color ${transitions.duration.normal} ${transitions.timing.ease};
+        }
+        .create-page-new-design input:focus,
+        .create-page-new-design textarea:focus,
+        .create-page-new-design select:focus {
+          border-color: ${colors.primary[500]};
+          outline: none;
+        }
+        .create-page-new-design .btn-primary {
+          background-color: ${colors.primary[900]};
+          color: ${colors.primary[50]};
+          border: none;
+          border-radius: ${borders.radius.md};
+          font-weight: ${typography.fontWeight.medium};
+          transition: all ${transitions.duration.normal} ${transitions.timing.ease};
+        }
+        .create-page-new-design .btn-primary:hover {
+          background-color: ${colors.primary[800]};
+          box-shadow: ${shadows.sm};
+        }
+        .create-page-new-design .btn-secondary {
+          background-color: ${colors.primary[50]};
+          color: ${colors.primary[700]};
+          border: ${borders.width.thin} solid ${colors.primary[400]};
+          border-radius: ${borders.radius.md};
+          font-weight: ${typography.fontWeight.medium};
+          transition: all ${transitions.duration.normal} ${transitions.timing.ease};
+        }
+        .create-page-new-design .btn-secondary:hover {
+          background-color: ${colors.primary[100]};
+          border-color: ${colors.primary[500]};
+        }
+        .create-page-new-design .error-message {
+          background-color: ${colors.semantic.error.light};
+          border: ${borders.width.thin} solid ${colors.semantic.error.main};
+          border-radius: ${borders.radius.md};
+          padding: ${spacing[4]};
+          color: ${colors.semantic.error.text};
+        }
+        .create-page-new-design .form-help-text {
+          font-size: ${typography.fontSize.xs};
+          color: ${colors.primary[600]};
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Wrapper with design toggle
+export default function CreateConversationPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <CreateConversationPageNew /> : <CreateConversationPageOld />}
+    </>
   );
 }

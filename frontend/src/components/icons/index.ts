@@ -13,4 +13,8 @@ export { default as GridIcon } from './GridIcon';
 export { default as ListIcon } from './ListIcon';
 export { default as SearchIcon } from './SearchIcon';
 export { default as FilterIcon } from './FilterIcon';
+export { default as InboxIcon } from './InboxIcon';
+export { default as GlobeIcon } from './GlobeIcon';
+export { default as GearIcon } from './GearIcon';
+export { default as TargetIcon } from './TargetIcon';
 
