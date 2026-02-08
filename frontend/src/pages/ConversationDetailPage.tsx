@@ -6,9 +6,11 @@ import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
+import DesignToggle from '../components/DesignToggle';
+import ConversationDetailPageNew from './ConversationDetailPageNew';
 import QRCode from 'qrcode';
 
-export default function ConversationDetailPage() {
+function ConversationDetailPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -1368,5 +1370,19 @@ export default function ConversationDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ConversationDetailPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <ConversationDetailPageNew /> : <ConversationDetailPageOld />}
+    </>
   );
 }
