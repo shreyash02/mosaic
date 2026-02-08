@@ -5,6 +5,8 @@ import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, 
 import { convertUTCToLocalDateTimeString, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
+import DesignToggle from '../components/DesignToggle';
+import EditConversationPageNew from './EditConversationPageNew';
 import {
   DndContext,
   closestCenter,
@@ -217,7 +219,7 @@ function SortableQuestion({
   );
 }
 
-export default function EditConversationPage() {
+function EditConversationPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -1792,5 +1794,19 @@ export default function EditConversationPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function EditConversationPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <EditConversationPageNew /> : <EditConversationPageOld />}
+    </>
   );
 }
