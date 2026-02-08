@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LockIcon, RobotIcon, LightningIcon, ChartIcon } from '../components/icons';
+import DesignToggle from '../components/DesignToggle';
+import HomePageNew from './HomePageNew';
 
-export default function HomePage() {
+function HomePageOld() {
   const { isAuthenticated } = useAuth();
 
   return (
@@ -81,10 +84,24 @@ export default function HomePage() {
       <footer className="home-footer">
         <div className="footer-content">
           <Link to="/terms">Terms of Service</Link>
-          <span className="footer-separator">•</span>
+          <span className="footer-separator">&bull;</span>
           <Link to="/privacy">Privacy Policy</Link>
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <HomePageNew /> : <HomePageOld />}
+    </>
   );
 }
