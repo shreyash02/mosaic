@@ -59,6 +59,17 @@ export default function Header() {
           </div>
         </Link>
 
+        {!isAuthenticated && (
+          <div className="header-auth-buttons">
+            <Link to="/login" className="btn-header-login">
+              Log In
+            </Link>
+            <Link to="/register" className="btn-header-signup">
+              Sign Up
+            </Link>
+          </div>
+        )}
+
         {isAuthenticated && user && (
           <>
             {/* Organization Switcher */}

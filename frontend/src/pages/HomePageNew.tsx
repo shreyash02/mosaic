@@ -298,7 +298,7 @@ export default function HomePageNew() {
                   <span>&rarr;</span>
                 </Link>
                 <Link to="/login" style={styles.buttonSecondary}>
-                  View demo
+                  Log in
                 </Link>
               </>
             )}
