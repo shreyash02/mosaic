@@ -3,8 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationWithMembers, OrganizationInvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
+import DesignToggle from '../components/DesignToggle';
+import InviteMembersPageNew from './InviteMembersPageNew';
 
-export default function InviteMembersPage() {
+function InviteMembersPageOld() {
   const { id } = useParams<{ id: string }>();
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
   const [invitations, setInvitations] = useState<OrganizationInvitationListResponse | null>(null);
@@ -294,5 +296,19 @@ export default function InviteMembersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function InviteMembersPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <InviteMembersPageNew /> : <InviteMembersPageOld />}
+    </>
   );
 }

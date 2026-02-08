@@ -4,8 +4,10 @@ import { api } from '../services/api';
 import type { Conversation, InvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import DesignToggle from '../components/DesignToggle';
+import ManageInvitationsPageNew from './ManageInvitationsPageNew';
 
-export default function ManageInvitationsPage() {
+function ManageInvitationsPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -324,6 +326,20 @@ export default function ManageInvitationsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ManageInvitationsPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <ManageInvitationsPageNew /> : <ManageInvitationsPageOld />}
+    </>
   );
 }
 
