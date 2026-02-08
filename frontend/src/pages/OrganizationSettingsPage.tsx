@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationWithMembers } from '../types';
+import DesignToggle from '../components/DesignToggle';
+import OrganizationSettingsPageNew from './OrganizationSettingsPageNew';
 
-export default function OrganizationSettingsPage() {
+function OrganizationSettingsPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
@@ -268,5 +270,19 @@ export default function OrganizationSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OrganizationSettingsPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <OrganizationSettingsPageNew /> : <OrganizationSettingsPageOld />}
+    </>
   );
 }

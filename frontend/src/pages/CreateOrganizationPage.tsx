@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationCreate } from '../types';
+import DesignToggle from '../components/DesignToggle';
+import CreateOrganizationPageNew from './CreateOrganizationPageNew';
 
-export default function CreateOrganizationPage() {
+function CreateOrganizationPageOld() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -104,5 +106,19 @@ export default function CreateOrganizationPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function CreateOrganizationPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <CreateOrganizationPageNew /> : <CreateOrganizationPageOld />}
+    </>
   );
 }

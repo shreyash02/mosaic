@@ -5,8 +5,10 @@ import type { SeriesWithConversations, ConversationListItem, CollectionAnalysis 
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import TrendChart from '../components/TrendChart';
+import DesignToggle from '../components/DesignToggle';
+import CollectionDetailPageNew from './CollectionDetailPageNew';
 
-export default function CollectionDetailPage() {
+function CollectionDetailPageOld() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [collection, setCollection] = useState<SeriesWithConversations | null>(null);
@@ -368,6 +370,20 @@ export default function CollectionDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CollectionDetailPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <CollectionDetailPageNew /> : <CollectionDetailPageOld />}
+    </>
   );
 }
 
