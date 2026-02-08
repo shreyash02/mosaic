@@ -825,7 +825,7 @@ export default function EditConversationPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="participantTitle">Participant-Facing Title (optional)</label>
+            <label htmlFor="participantTitle">Display Title (optional)</label>
             <input
               id="participantTitle"
               type="text"
@@ -834,7 +834,7 @@ export default function EditConversationPage() {
               placeholder="e.g., Student feedback or Feedback for [Teacher Name]"
             />
             <small className="form-help-text">
-              Optional title shown to participants when they respond. If not set, the conversation title above will be used.
+              Title shown to respondents. If not set, the conversation title above will be used.
             </small>
           </div>
 

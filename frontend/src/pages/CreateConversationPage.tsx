@@ -5,6 +5,10 @@ import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, 
 import { formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
+import SetupModeToggle from '../components/SetupModeToggle';
+import IntentSelection from '../components/IntentSelection';
+import ConfigurationSummary from '../components/ConfigurationSummary';
+import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
 import {
   DndContext,
   closestCenter,
@@ -274,6 +278,11 @@ export default function CreateConversationPage() {
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
   const [creatingSeries, setCreatingSeries] = useState(false);
 
+  // Intent-based setup state
+  const [isGuidedMode, setIsGuidedMode] = useState(true);
+  const [selectedIntent, setSelectedIntent] = useState<IntentType | null>(null);
+  const [showIntentSelection, setShowIntentSelection] = useState(true);
+
   // Don't auto-enable recurring - templates can exist without recurrence
 
   // Prefill form if this is a follow-up conversation
@@ -393,6 +402,43 @@ export default function CreateConversationPage() {
     }
   };
 
+  // Handler for intent selection in guided mode
+  const handleIntentSelection = (intent: IntentType) => {
+    setSelectedIntent(intent);
+
+    // Apply smart defaults from intent preset
+    if (intent !== 'custom') {
+      const preset = INTENT_PRESETS[intent];
+      setAnonymityLevel(preset.settings.anonymity_level);
+      setResultsAccess(preset.settings.results_access);
+      setShowVerbatimResponses(preset.settings.show_verbatim_responses);
+      setInviteOnly(preset.settings.invite_only);
+    }
+  };
+
+  const handleContinueFromIntent = () => {
+    if (selectedIntent === 'custom') {
+      // Switch to manual mode if they chose custom setup
+      setIsGuidedMode(false);
+      setShowIntentSelection(false);
+    } else {
+      // Continue to main form with smart defaults applied
+      setShowIntentSelection(false);
+    }
+  };
+
+  const handleToggleMode = () => {
+    setIsGuidedMode(!isGuidedMode);
+    if (!isGuidedMode) {
+      // Switching to guided mode - show intent selection
+      setShowIntentSelection(true);
+      setSelectedIntent(null);
+    } else {
+      // Switching to manual mode - hide intent selection
+      setShowIntentSelection(false);
+    }
+  };
+
   const getQuestionTypeLabel = (type: string | undefined): string => {
     switch (type) {
       case 'text':
@@ -400,9 +446,9 @@ export default function CreateConversationPage() {
       case 'rating':
         return 'Rating';
       case 'single_choice':
-        return 'Poll (Single)';
+        return 'Single Choice';
       case 'multiple_choice':
-        return 'Poll (Multiple)';
+        return 'Multiple Choice';
       default:
         return 'Text Response';
     }
@@ -876,6 +922,28 @@ export default function CreateConversationPage() {
           </div>
         )}
 
+        {/* Setup Mode Toggle */}
+        <SetupModeToggle
+          isGuidedMode={isGuidedMode}
+          onToggle={handleToggleMode}
+        />
+
+        {/* Intent Selection (Guided Mode Only) */}
+        {isGuidedMode && showIntentSelection && (
+          <IntentSelection
+            selectedIntent={selectedIntent}
+            onSelectIntent={handleIntentSelection}
+            onContinue={handleContinueFromIntent}
+            onSwitchToManual={() => {
+              setIsGuidedMode(false);
+              setShowIntentSelection(false);
+            }}
+          />
+        )}
+
+        {/* Main Form (shown after intent selection in guided mode, or always in manual mode) */}
+        {(!isGuidedMode || !showIntentSelection) && (
+        <>
         <div className="form-section">
           {/* Workspace indicator */}
           <div className="form-group" style={{
@@ -913,7 +981,7 @@ export default function CreateConversationPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="participantTitle">Participant-Facing Title (optional)</label>
+            <label htmlFor="participantTitle">Display Title (optional)</label>
             <input
               id="participantTitle"
               type="text"
@@ -922,7 +990,7 @@ export default function CreateConversationPage() {
               placeholder="e.g., Student feedback or Feedback for [Teacher Name]"
             />
             <small className="form-help-text">
-              Optional title shown to participants when they respond. If not set, the conversation title above will be used.
+              Title shown to respondents. If not set, the conversation title above will be used.
             </small>
           </div>
 
@@ -1012,107 +1080,118 @@ export default function CreateConversationPage() {
           </div>
         </div>
 
-        <div className="form-section">
-          <h2>Privacy Settings</h2>
+        {/* Privacy Settings - Guided mode shows ConfigurationSummary, Manual mode shows full settings */}
+        {isGuidedMode && selectedIntent && !showIntentSelection ? (
+          <ConfigurationSummary
+            intent={INTENT_PRESETS[selectedIntent]}
+            anonymityLevel={anonymityLevel}
+            resultsAccess={resultsAccess}
+            showVerbatimResponses={showVerbatimResponses}
+            inviteOnly={inviteOnly}
+            inviteEmails={inviteEmails}
+            onAnonymityChange={setAnonymityLevel}
+            onResultsAccessChange={setResultsAccess}
+            onShowVerbatimChange={setShowVerbatimResponses}
+            onInviteOnlyChange={setInviteOnly}
+            onInviteEmailsChange={setInviteEmails}
+          />
+        ) : (
+          <div className="form-section">
+            <h2>Privacy Settings</h2>
 
-          <div className="form-group">
-            <label htmlFor="anonymityLevel">Anonymity Level *</label>
-            <select
-              id="anonymityLevel"
-              value={anonymityLevel}
-              onChange={(e) => setAnonymityLevel(e.target.value as AnonymityLevel)}
-              required
-            >
-              <option value={AnonymityLevel.FULLY_ANONYMOUS}>
-                Fully Anonymous - Unique one-time codes, no user tracking
-              </option>
-              <option value={AnonymityLevel.PLATFORM_TRACKED}>
-                Platform Tracked - User tracked internally, hidden from facilitator
-              </option>
-              <option value={AnonymityLevel.REVEALABLE}>
-                Revealable - User can consent to reveal identity
-              </option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="resultsAccess">Who can see results? *</label>
-            <select
-              id="resultsAccess"
-              value={resultsAccess}
-              onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
-              required
-            >
-              <option value={ResultsAccess.CREATOR_ONLY}>
-                Creator Only - Feedback collection mode
-              </option>
-              <option value={ResultsAccess.PARTICIPANTS}>
-                All Participants - Collaborative mode
-              </option>
-              <option value={ResultsAccess.PUBLIC_LINK}>
-                Anyone with Link - Public sharing mode
-              </option>
-            </select>
-            <p className="form-help-text">
-              {resultsAccess === ResultsAccess.CREATOR_ONLY &&
-                "Participants submit responses and receive a confirmation message. Only you can see the results and analysis."}
-              {resultsAccess === ResultsAccess.PARTICIPANTS &&
-                "Participants who can respond (have access code or invitation) can also view all responses and analysis."}
-              {resultsAccess === ResultsAccess.PUBLIC_LINK &&
-                "Anyone with the results link can view responses and analysis, even without responding."}
-            </p>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={showVerbatimResponses}
-                onChange={(e) => {
-                  console.log('Checkbox changed to:', e.target.checked);
-                  setShowVerbatimResponses(e.target.checked);
-                }}
-              />
-              <span>Show verbatim responses - Allow viewers to see raw responses</span>
-            </label>
-            <p className="form-help-text">
-              When enabled, viewers can see all raw responses along with AI analysis. When disabled, only AI-generated summaries and themes are visible, protecting individual response privacy while sharing insights.
-            </p>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={inviteOnly}
-                onChange={(e) => setInviteOnly(e.target.checked)}
-              />
-              <span>Invite-only mode - Only invited users can access this conversation</span>
-            </label>
-            <p className="form-help-text">
-              When enabled, only users who have been invited by email can view and submit responses.
-              For fully anonymous conversations, participant codes must be distributed only to invited users.
-            </p>
-          </div>
-
-          {inviteOnly && (
             <div className="form-group">
-              <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
-              <textarea
-                id="invite-emails"
-                value={inviteEmails}
-                onChange={(e) => setInviteEmails(e.target.value)}
-                placeholder="user1@example.com, user2@example.com"
-                rows={3}
-                disabled={loading}
-              />
+              <label htmlFor="anonymityLevel">Response Privacy *</label>
+              <select
+                id="anonymityLevel"
+                value={anonymityLevel}
+                onChange={(e) => setAnonymityLevel(e.target.value as AnonymityLevel)}
+                required
+              >
+                <option value={AnonymityLevel.FULLY_ANONYMOUS}>Fully Anonymous</option>
+                <option value={AnonymityLevel.PLATFORM_TRACKED}>Anonymous to You</option>
+                <option value={AnonymityLevel.REVEALABLE}>Identity on Request</option>
+              </select>
               <p className="form-help-text">
-                Enter email addresses separated by commas. These users will be invited to the conversation.
-                You can also add more invitations after creating the conversation, even after it's activated.
+                {anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS &&
+                  "Respondents use unique one-time codes. No user tracking or session data is stored."}
+                {anonymityLevel === AnonymityLevel.PLATFORM_TRACKED &&
+                  "User activity is tracked internally but hidden from you. Prevents duplicate responses."}
+                {anonymityLevel === AnonymityLevel.REVEALABLE &&
+                  "Respondents can choose to reveal their identity after submitting."}
               </p>
             </div>
-          )}
-        </div>
+
+            <div className="form-group">
+              <label htmlFor="resultsAccess">Results Visibility *</label>
+              <select
+                id="resultsAccess"
+                value={resultsAccess}
+                onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
+                required
+              >
+                <option value={ResultsAccess.CREATOR_ONLY}>Only Me</option>
+                <option value={ResultsAccess.PARTICIPANTS}>All Respondents</option>
+                <option value={ResultsAccess.PUBLIC_LINK}>Public (Anyone with Link)</option>
+              </select>
+              <p className="form-help-text">
+                {resultsAccess === ResultsAccess.CREATOR_ONLY &&
+                  "Only you can see results and analysis. Respondents receive a confirmation message."}
+                {resultsAccess === ResultsAccess.PARTICIPANTS &&
+                  "Anyone who can respond can also view all responses and analysis."}
+                {resultsAccess === ResultsAccess.PUBLIC_LINK &&
+                  "Anyone with the results link can view responses and analysis without responding."}
+              </p>
+            </div>
+
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showVerbatimResponses}
+                  onChange={(e) => {
+                    console.log('Checkbox changed to:', e.target.checked);
+                    setShowVerbatimResponses(e.target.checked);
+                  }}
+                />
+                <span>Show individual responses</span>
+              </label>
+              <p className="form-help-text">
+                When disabled, viewers only see AI-generated summaries (not individual responses).
+              </p>
+            </div>
+
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={inviteOnly}
+                  onChange={(e) => setInviteOnly(e.target.checked)}
+                />
+                <span>Restrict to invited users only</span>
+              </label>
+              <p className="form-help-text">
+                Only invited users can access this conversation.
+              </p>
+            </div>
+
+            {inviteOnly && (
+              <div className="form-group">
+                <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
+                <textarea
+                  id="invite-emails"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  placeholder="user1@example.com, user2@example.com"
+                  rows={3}
+                  disabled={loading}
+                />
+                <p className="form-help-text">
+                  Enter email addresses separated by commas. You can also add more invitations after creating the conversation.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="form-section">
           <h2>Timing Settings</h2>
@@ -1626,8 +1705,8 @@ export default function CreateConversationPage() {
                       >
                         <option value="text">Text Response</option>
                         <option value="rating">Rating (0-10)</option>
-                        <option value="single_choice">Poll (Single Choice)</option>
-                        <option value="multiple_choice">Poll (Multiple Choice)</option>
+                        <option value="single_choice">Single Choice</option>
+                        <option value="multiple_choice">Multiple Choice</option>
                       </select>
                     </div>
 
@@ -1772,6 +1851,7 @@ export default function CreateConversationPage() {
           </DndContext>
         </div>
 
+        {/* Form Actions */}
         <div className="form-actions">
           <button
             type="button"
@@ -1803,6 +1883,10 @@ export default function CreateConversationPage() {
                 : 'Create Conversation'}
           </button>
         </div>
+
+        {/* End of conditional main form wrapper */}
+        </>
+        )}
       </form>
 
       {showPreview && (

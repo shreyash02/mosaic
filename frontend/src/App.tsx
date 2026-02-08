@@ -1,6 +1,7 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
+import { ConversationFormProvider } from './contexts/ConversationFormContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -10,8 +11,16 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import CreateConversationPage from './pages/CreateConversationPage';
-import EditConversationPage from './pages/EditConversationPage';
+
+// Multi-step conversation creation
+import ConversationFormLayout from './components/ConversationFormLayout';
+import EditConversationLoader from './components/EditConversationLoader';
+import IntentStep from './pages/create/IntentStep';
+import DetailsStep from './pages/create/DetailsStep';
+import PrivacyStep from './pages/create/PrivacyStep';
+import QuestionsStep from './pages/create/QuestionsStep';
+import TimingStep from './pages/create/TimingStep';
+import ReviewStep from './pages/create/ReviewStep';
 import ConversationDetailPage from './pages/ConversationDetailPage';
 import ManageInvitationsPage from './pages/ManageInvitationsPage';
 import JoinPage from './pages/JoinPage';
@@ -67,22 +76,57 @@ function App() {
               }
             />
 
+            {/* Multi-step conversation creation */}
+            <Route
+              path="/create/conversation/*"
+              element={
+                <ProtectedRoute>
+                  <ConversationFormProvider>
+                    <ConversationFormLayout />
+                  </ConversationFormProvider>
+                </ProtectedRoute>
+              }
+            >
+              <Route path="intent" element={<IntentStep />} />
+              <Route path="details" element={<DetailsStep />} />
+              <Route path="privacy" element={<PrivacyStep />} />
+              <Route path="questions" element={<QuestionsStep />} />
+              <Route path="timing" element={<TimingStep />} />
+              <Route path="review" element={<ReviewStep />} />
+              <Route index element={<Navigate to="intent" replace />} />
+            </Route>
+
+            {/* Legacy route - redirect to new flow */}
             <Route
               path="/conversations/new"
-              element={
-                <ProtectedRoute>
-                  <CreateConversationPage />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/create/conversation/intent" replace />}
             />
 
+            {/* Multi-step conversation editing */}
             <Route
-              path="/conversations/:id/edit"
+              path="/edit/conversation/:id/*"
               element={
                 <ProtectedRoute>
-                  <EditConversationPage />
+                  <ConversationFormProvider>
+                    <EditConversationLoader>
+                      <ConversationFormLayout />
+                    </EditConversationLoader>
+                  </ConversationFormProvider>
                 </ProtectedRoute>
               }
+            >
+              <Route path="details" element={<DetailsStep />} />
+              <Route path="privacy" element={<PrivacyStep />} />
+              <Route path="questions" element={<QuestionsStep />} />
+              <Route path="timing" element={<TimingStep />} />
+              <Route path="review" element={<ReviewStep />} />
+              <Route index element={<Navigate to="details" replace />} />
+            </Route>
+
+            {/* Legacy edit route - redirect to new flow */}
+            <Route
+              path="/conversations/:id/edit"
+              element={<Navigate to={`/edit/conversation/${window.location.pathname.split('/')[2]}/details`} replace />}
             />
 
             <Route
@@ -121,13 +165,10 @@ function App() {
               }
             />
 
+            {/* Legacy template edit route - redirect to new flow */}
             <Route
               path="/templates/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <EditConversationPage />
-                </ProtectedRoute>
-              }
+              element={<Navigate to={`/edit/conversation/${window.location.pathname.split('/')[2]}/details`} replace />}
             />
 
             <Route
