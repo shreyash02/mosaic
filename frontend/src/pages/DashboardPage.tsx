@@ -5,12 +5,14 @@ import type { ConversationListItem, ConversationInvitationWithConversation, Seri
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import DesignToggle from '../components/DesignToggle';
+import DashboardPageNew from './DashboardPageNew';
 import axios from 'axios';
 
 type DateRange = 'all' | '7' | '30' | '90';
 type GroupingMode = 'none' | 'parent-child' | 'series' | 'template';
 
-export default function DashboardPage() {
+function DashboardPageOld() {
   const navigate = useNavigate();
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
@@ -1369,5 +1371,19 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  const [isNewDesign, setIsNewDesign] = useState(true);
+
+  return (
+    <>
+      <DesignToggle
+        isNewDesign={isNewDesign}
+        onToggle={() => setIsNewDesign(!isNewDesign)}
+      />
+      {isNewDesign ? <DashboardPageNew /> : <DashboardPageOld />}
+    </>
   );
 }

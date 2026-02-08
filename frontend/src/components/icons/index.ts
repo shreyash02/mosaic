@@ -7,4 +7,10 @@ export { default as RefreshIcon } from './RefreshIcon';
 export { default as SparklesIcon } from './SparklesIcon';
 export { default as UsersIcon } from './UsersIcon';
 export { default as ClockIcon } from './ClockIcon';
+export { default as MessageIcon } from './MessageIcon';
+export { default as TrendingIcon } from './TrendingIcon';
+export { default as GridIcon } from './GridIcon';
+export { default as ListIcon } from './ListIcon';
+export { default as SearchIcon } from './SearchIcon';
+export { default as FilterIcon } from './FilterIcon';
 
