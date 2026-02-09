@@ -183,7 +183,7 @@ export default function TemplatesPage() {
   }, [loadTemplates]);
 
   const handleCreateTemplate = () => {
-    navigate('/conversations/new', { state: { createTemplate: true } });
+    navigate('/create/conversation/intent', { state: { createTemplate: true } });
   };
 
   return (

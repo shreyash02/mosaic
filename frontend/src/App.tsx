@@ -17,6 +17,7 @@ import TemplatesPage from './pages/TemplatesPage';
 // Multi-step conversation creation
 import ConversationFormLayout from './components/ConversationFormLayout';
 import EditConversationLoader from './components/EditConversationLoader';
+import TemplateConversationLoader from './components/TemplateConversationLoader';
 import IntentStep from './pages/create/IntentStep';
 import DetailsStep from './pages/create/DetailsStep';
 import PrivacyStep from './pages/create/PrivacyStep';
@@ -149,6 +150,27 @@ function App() {
               path="/conversations/:id/edit"
               element={<Navigate to={`/edit/conversation/${window.location.pathname.split('/')[2]}/details`} replace />}
             />
+
+            {/* Create conversation from template */}
+            <Route
+              path="/create/from-template/*"
+              element={
+                <ProtectedRoute>
+                  <ConversationFormProvider>
+                    <TemplateConversationLoader>
+                      <ConversationFormLayout />
+                    </TemplateConversationLoader>
+                  </ConversationFormProvider>
+                </ProtectedRoute>
+              }
+            >
+              <Route path="details" element={<DetailsStep />} />
+              <Route path="privacy" element={<PrivacyStep />} />
+              <Route path="questions" element={<QuestionsStep />} />
+              <Route path="timing" element={<TimingStep />} />
+              <Route path="review" element={<ReviewStep />} />
+              <Route index element={<Navigate to="review" replace />} />
+            </Route>
 
             <Route
               path="/conversations/:id"

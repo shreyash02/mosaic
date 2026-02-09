@@ -349,10 +349,19 @@ export default function ReviewStep() {
       }}>
         <button
           type="button"
-          onClick={() => navigate('/create/conversation/timing')}
+          onClick={() => {
+            // If creating from template, go back to template page
+            if (formState.parentConversation?.is_template && formState.parentConversationId) {
+              navigate(`/templates/${formState.parentConversationId}`);
+            } else if (formState.isEditMode && formState.conversationId) {
+              navigate(`/edit/conversation/${formState.conversationId}/timing`);
+            } else {
+              navigate('/create/conversation/timing');
+            }
+          }}
           className="btn btn-secondary"
         >
-          ← Back
+          ← {formState.parentConversation?.is_template ? 'Back to Template' : 'Back'}
         </button>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button

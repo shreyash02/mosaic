@@ -386,7 +386,7 @@ export default function TemplateDetailPage() {
   const handleCreateInstanceNow = () => {
     if (!template) return;
 
-    navigate('/conversations/new', {
+    navigate('/create/from-template/review', {
       state: {
         isFollowUp: true,
         isRecurring: true,
@@ -396,6 +396,7 @@ export default function TemplateDetailPage() {
         copyInvitations: true,
         copyQuestions: true,
         parentConversation: template,
+        instanceNumber: instances.length + 1,
       }
     });
   };
