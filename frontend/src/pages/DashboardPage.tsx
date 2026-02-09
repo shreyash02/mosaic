@@ -5,6 +5,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem } from '../types';
 import { ConversationState } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import {
   MessageIcon,
@@ -14,6 +15,7 @@ import {
 } from '../components/icons';
 import EmptyState from '../components/EmptyState';
 import { SkeletonDashboard } from '../components/Skeleton';
+import WelcomeModal, { resetWelcomeState } from '../components/WelcomeModal';
 
 // Use CSS custom properties for dark mode support
 const s = {
@@ -204,10 +206,18 @@ const getStatusColor = (state: ConversationState): string => {
 
 export default function DashboardPage() {
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [welcomeKey, setWelcomeKey] = useState(0);
 
   usePageTitle('Dashboard');
+
+  // Debug function to show welcome modal again
+  const handleShowWelcome = () => {
+    resetWelcomeState();
+    setWelcomeKey(prev => prev + 1);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -552,6 +562,32 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Welcome Modal for first-time users */}
+      <WelcomeModal key={welcomeKey} userName={user?.full_name?.split(' ')[0]} />
+
+      {/* Debug button to show welcome modal */}
+      {process.env.NODE_ENV === 'development' && (
+        <button
+          onClick={handleShowWelcome}
+          style={{
+            position: 'fixed',
+            bottom: spacing[4],
+            right: spacing[4],
+            padding: `${spacing[2]} ${spacing[4]}`,
+            backgroundColor: 'var(--color-primary-700)',
+            color: 'var(--color-primary-50)',
+            border: 'none',
+            borderRadius: borders.radius.md,
+            fontSize: typography.fontSize.xs,
+            cursor: 'pointer',
+            zIndex: 50,
+            opacity: 0.7,
+          }}
+        >
+          Show Welcome
+        </button>
+      )}
     </div>
   );
 }
