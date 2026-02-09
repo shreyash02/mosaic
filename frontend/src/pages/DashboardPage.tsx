@@ -190,10 +190,10 @@ const s = {
 
 const getStatusColor = (state: ConversationState): string => {
   switch (state) {
-    case ConversationState.ACTIVE: return colors.semantic.success.main;
-    case ConversationState.DRAFT: return colors.semantic.warning.main;
-    case ConversationState.ANALYZING: return colors.semantic.warning.main;
-    case ConversationState.ANALYZED: return colors.semantic.info.main;
+    case ConversationState.ACTIVE: return colors.primary[900];
+    case ConversationState.DRAFT: return colors.primary[400];
+    case ConversationState.ANALYZING: return colors.primary[500];
+    case ConversationState.ANALYZED: return colors.primary[900];
     default: return colors.primary[400];
   }
 };

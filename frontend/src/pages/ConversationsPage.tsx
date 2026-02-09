@@ -388,11 +388,11 @@ const s = {
     height: '8px',
     borderRadius: borders.radius.full,
   },
-  statusDotDraft: { backgroundColor: colors.semantic.warning.main },
-  statusDotActive: { backgroundColor: colors.semantic.success.main },
+  statusDotDraft: { backgroundColor: colors.primary[400] },
+  statusDotActive: { backgroundColor: colors.primary[900] },
   statusDotClosed: { backgroundColor: colors.primary[400] },
-  statusDotAnalyzing: { backgroundColor: colors.semantic.warning.main },
-  statusDotAnalyzed: { backgroundColor: colors.semantic.info.main },
+  statusDotAnalyzing: { backgroundColor: colors.primary[500] },
+  statusDotAnalyzed: { backgroundColor: colors.primary[900] },
   // Badge variants for tile view
   statusBadgePill: {
     fontSize: typography.fontSize.xs,
@@ -406,20 +406,20 @@ const s = {
     color: colors.primary[700],
   },
   statusActive: {
-    backgroundColor: colors.semantic.success.light,
-    color: colors.semantic.success.text,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
   },
   statusClosed: {
     backgroundColor: colors.primary[200],
     color: colors.primary[600],
   },
   statusAnalyzing: {
-    backgroundColor: colors.semantic.warning.light,
-    color: colors.semantic.warning.text,
+    backgroundColor: colors.primary[300],
+    color: colors.primary[700],
   },
   statusAnalyzed: {
-    backgroundColor: colors.semantic.info.light,
-    color: colors.semantic.info.text,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
   },
   // Card meta
   cardMeta: {

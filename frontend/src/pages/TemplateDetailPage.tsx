@@ -118,12 +118,12 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: 'white',
-    color: colors.primary[700],
+    backgroundColor: 'transparent',
+    color: colors.semantic.error.main,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${colors.semantic.error.main}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -591,10 +591,10 @@ export default function TemplateDetailPage() {
               <button
                 onClick={() => setShowDeleteModal(true)}
                 style={{
-                  ...styles.buttonDanger,
+                  ...styles.buttonSecondary,
                   ...(actionLoading ? styles.buttonDisabled : {}),
                 }}
-                className="template-btn-danger"
+                className="template-btn-secondary"
                 disabled={actionLoading}
               >
                 Delete

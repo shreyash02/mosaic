@@ -238,11 +238,11 @@ export default function OrganizationDetailPage() {
   const getStatusStyles = (state: ConversationState) => {
     const statusColors: Record<ConversationState, { bg: string; text: string }> = {
       [ConversationState.DRAFT]: { bg: colors.primary[200], text: colors.primary[700] },
-      [ConversationState.ACTIVE]: { bg: colors.semantic.success.light, text: colors.semantic.success.text },
+      [ConversationState.ACTIVE]: { bg: colors.primary[900], text: colors.primary[50] },
       [ConversationState.CLOSED]: { bg: colors.primary[300], text: colors.primary[700] },
-      [ConversationState.ANALYZING]: { bg: colors.semantic.warning.light, text: colors.semantic.warning.text },
-      [ConversationState.ANALYZED]: { bg: colors.semantic.info.light, text: colors.semantic.info.text },
-      [ConversationState.DELETED]: { bg: colors.semantic.error.light, text: colors.semantic.error.text },
+      [ConversationState.ANALYZING]: { bg: colors.primary[300], text: colors.primary[700] },
+      [ConversationState.ANALYZED]: { bg: colors.primary[900], text: colors.primary[50] },
+      [ConversationState.DELETED]: { bg: colors.primary[200], text: colors.primary[600] },
     };
     return statusColors[state] || statusColors[ConversationState.DRAFT];
   };

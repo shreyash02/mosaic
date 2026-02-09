@@ -90,12 +90,12 @@ const styles = {
     alignItems: 'center',
     gap: spacing[2],
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'transparent',
+    color: colors.semantic.error.main,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: 'none',
+    border: `1px solid ${colors.semantic.error.main}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -499,8 +499,8 @@ export default function CollectionDetailPage() {
                   : (analysis ? 'Re-run Analysis' : 'Run Analysis')}
               </button>
               <button
-                style={styles.buttonDanger}
-                className="collection-btn-danger"
+                style={styles.buttonSecondary}
+                className="collection-btn-secondary"
                 onClick={() => setShowDeleteModal(true)}
               >
                 Delete
@@ -652,10 +652,10 @@ export default function CollectionDetailPage() {
                 <button
                   onClick={handleDelete}
                   style={{
-                    ...styles.buttonDanger,
+                    ...styles.buttonPrimary,
                     ...(deleting ? styles.buttonDisabled : {}),
                   }}
-                  className="collection-btn-danger"
+                  className="collection-btn-primary"
                   disabled={deleting}
                 >
                   {deleting ? 'Deleting...' : 'Delete Collection'}

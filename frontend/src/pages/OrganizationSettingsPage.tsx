@@ -155,12 +155,12 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'transparent',
+    color: colors.semantic.error.main,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: 'none',
+    border: `1px solid ${colors.semantic.error.main}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -505,10 +505,10 @@ export default function OrganizationSettingsPage() {
               <button
                 onClick={() => setShowDeleteModal(true)}
                 style={{
-                  ...styles.buttonDanger,
+                  ...styles.buttonSecondary,
                   ...(deleting ? styles.buttonDisabled : {}),
                 }}
-                className="org-settings-btn-danger"
+                className="org-settings-btn-secondary"
                 disabled={deleting}
               >
                 Delete Organization
@@ -560,10 +560,10 @@ export default function OrganizationSettingsPage() {
                 <button
                   onClick={handleDelete}
                   style={{
-                    ...styles.buttonDanger,
+                    ...styles.buttonPrimary,
                     ...(deleting || deleteConfirmText !== organization.name ? styles.buttonDisabled : {}),
                   }}
-                  className="org-settings-btn-danger"
+                  className="org-settings-btn-primary"
                   disabled={deleting || deleteConfirmText !== organization.name}
                 >
                   {deleting ? 'Deleting...' : 'Delete Organization'}

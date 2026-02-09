@@ -6,7 +6,7 @@ import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows } from '../styles';
+import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import QRCode from 'qrcode';
 
 // Design tokens based styles
@@ -79,16 +79,16 @@ const s = {
     color: colors.primary[700],
   },
   statusActive: {
-    backgroundColor: colors.semantic.success.light,
-    color: colors.semantic.success.text,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
   },
   statusClosed: {
     backgroundColor: colors.primary[200],
     color: colors.primary[600],
   },
   statusAnalyzing: {
-    backgroundColor: colors.semantic.warning.light,
-    color: colors.semantic.warning.text,
+    backgroundColor: colors.primary[300],
+    color: colors.primary[700],
   },
   statusAnalyzed: {
     backgroundColor: colors.primary[900],
@@ -884,7 +884,7 @@ export default function ConversationDetailPage() {
   }
 
   return (
-    <div style={s.page}>
+    <div style={s.page} className="convo-detail-page">
       {/* Back button */}
       <button onClick={() => navigate('/dashboard')} style={s.backButton}>
         ← Back to Dashboard
@@ -893,7 +893,7 @@ export default function ConversationDetailPage() {
       {/* Header */}
       <header style={s.header}>
         <div style={s.titleRow}>
-          <h1 style={s.pageTitle}>{conversation.title}</h1>
+          <h1 style={s.pageTitle} className="convo-detail-header-title">{conversation.title}</h1>
           <span style={merge(s.statusBadge, getStatusStyle(conversation.state))}>
             {conversation.state}
           </span>
@@ -931,7 +931,7 @@ export default function ConversationDetailPage() {
       </header>
 
       {/* Actions bar */}
-      <div style={s.actionsBar}>
+      <div style={s.actionsBar} className="convo-detail-actions">
         {conversation.state === ConversationState.DRAFT && (
           <>
             <button
@@ -950,7 +950,7 @@ export default function ConversationDetailPage() {
         {conversation.state === ConversationState.ACTIVE && (
           <button
             onClick={handleClose}
-            style={merge(s.buttonPrimary, s.buttonWarning, actionLoading && s.buttonDisabled)}
+            style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
             disabled={actionLoading}
           >
             Close Conversation
@@ -1006,7 +1006,7 @@ export default function ConversationDetailPage() {
 
         <button
           onClick={() => setShowDeleteModal(true)}
-          style={merge(s.buttonSecondary, s.buttonDanger)}
+          style={s.buttonSecondary}
           disabled={actionLoading}
         >
           Delete
@@ -1023,7 +1023,7 @@ export default function ConversationDetailPage() {
 
       {/* Stats row */}
       {stats && (
-        <div style={s.statsRow}>
+        <div style={s.statsRow} className="convo-detail-stats">
           <div style={s.statItem}>
             <div style={s.statValue}>{stats.unique_participants}</div>
             <div style={s.statLabel}>Responses</div>
@@ -1044,7 +1044,7 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Main content */}
-      <div style={s.contentGrid}>
+      <div style={s.contentGrid} className="convo-detail-grid">
         <div style={s.mainColumn}>
           {/* Questions Card */}
           <div style={s.card}>
@@ -1325,7 +1325,7 @@ export default function ConversationDetailPage() {
               </button>
               <button
                 onClick={handleDelete}
-                style={merge(s.buttonPrimary, { backgroundColor: colors.semantic.error.main })}
+                style={s.buttonPrimary}
                 disabled={actionLoading}
               >
                 {actionLoading ? 'Deleting...' : 'Delete'}
@@ -1526,15 +1526,40 @@ export default function ConversationDetailPage() {
         </div>
       )}
 
-      {/* CSS for spinner animation */}
+      {/* CSS for spinner animation and responsive styles */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @media (max-width: 768px) {
-          .content-grid-responsive {
+        @media ${mediaQueries.tabletDown} {
+          .convo-detail-page {
+            padding: ${spacing[4]} !important;
+          }
+          .convo-detail-grid {
             grid-template-columns: 1fr !important;
+          }
+          .convo-detail-actions {
+            flex-direction: column !important;
+          }
+          .convo-detail-actions > * {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+          }
+          .convo-detail-stats {
+            gap: ${spacing[2]} !important;
+          }
+          .convo-detail-stats > div {
+            padding: ${spacing[3]} !important;
+          }
+        }
+        @media ${mediaQueries.mobile} {
+          .convo-detail-page {
+            padding: ${spacing[3]} !important;
+          }
+          .convo-detail-header-title {
+            font-size: ${typography.fontSize.xl} !important;
           }
         }
       `}</style>
