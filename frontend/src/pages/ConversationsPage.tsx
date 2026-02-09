@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem, ConversationInvitationWithConversation, Series } from '../types';
-import { ConversationState, AnonymityLevel } from '../types';
+import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
@@ -11,17 +11,12 @@ import {
   MessageIcon,
   UsersIcon,
   TrendingIcon,
-  GridIcon,
-  ListIcon,
-  SearchIcon,
-  FilterIcon,
 } from '../components/icons';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
+import ConversationsList from '../components/ConversationsList';
 import axios from 'axios';
 
-type DateRange = 'all' | '7' | '30' | '90';
-type ViewMode = 'tile' | 'list';
 
 // Design tokens based styles - using CSS custom properties for dark mode
 const s = {
@@ -612,19 +607,11 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [seriesList, setSeriesList] = useState<Series[]>([]);
-  const [selectedStates, setSelectedStates] = useState<ConversationState[]>([]);
-  const [selectedAnonymityLevels, setSelectedAnonymityLevels] = useState<AnonymityLevel[]>([]);
-  const [dateRange, setDateRange] = useState<DateRange>('all');
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
 
   usePageTitle('Conversations');
   const [actionLoading, setActionLoading] = useState(false);
-  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('tile');
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Data loading
   const loadInvitations = useCallback(async () => {
@@ -713,20 +700,6 @@ export default function ConversationsPage() {
     }
   }, [currentOrgId, activeTab]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('[data-dropdown]')) {
-        setShowFilterDropdown(false);
-      }
-      if (!target.closest('[data-menu]')) {
-        setOpenMenuId(null);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -762,42 +735,6 @@ export default function ConversationsPage() {
     };
   }, [actualConversations]);
 
-  // Filtering
-  const isWithinDateRange = (createdAt: string, range: DateRange): boolean => {
-    if (range === 'all') return true;
-    const now = new Date();
-    const created = new Date(createdAt);
-    const daysAgo = parseInt(range);
-    const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-    return created >= cutoffDate;
-  };
-
-  const filteredConversations = useMemo(() => {
-    let filtered = activeTab === 'owned' ? actualConversations : participatedConversations;
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(c => c.title.toLowerCase().includes(query));
-    }
-
-    // State filter
-    if (selectedStates.length > 0) {
-      filtered = filtered.filter(c => selectedStates.includes(c.state));
-    }
-
-    // Anonymity filter
-    if (selectedAnonymityLevels.length > 0) {
-      filtered = filtered.filter(c => selectedAnonymityLevels.includes(c.anonymity_level));
-    }
-
-    // Date filter
-    if (dateRange !== 'all') {
-      filtered = filtered.filter(c => isWithinDateRange(c.created_at, dateRange));
-    }
-
-    return filtered;
-  }, [activeTab, actualConversations, participatedConversations, searchQuery, selectedStates, selectedAnonymityLevels, dateRange]);
 
   // Helper functions
   const getStateLabel = (state: ConversationState) => {
@@ -812,18 +749,6 @@ export default function ConversationsPage() {
     return labels[state];
   };
 
-  const getStatusDotStyle = (state: ConversationState): React.CSSProperties => {
-    const styles: Record<ConversationState, React.CSSProperties> = {
-      [ConversationState.DRAFT]: s.statusDotDraft,
-      [ConversationState.ACTIVE]: s.statusDotActive,
-      [ConversationState.CLOSED]: s.statusDotClosed,
-      [ConversationState.ANALYZING]: s.statusDotAnalyzing,
-      [ConversationState.ANALYZED]: s.statusDotAnalyzed,
-      [ConversationState.DELETED]: s.statusDotClosed,
-    };
-    return styles[state];
-  };
-
   const getStatusPillStyle = (state: ConversationState): React.CSSProperties => {
     const styles: Record<ConversationState, React.CSSProperties> = {
       [ConversationState.DRAFT]: s.statusDraft,
@@ -836,53 +761,8 @@ export default function ConversationsPage() {
     return styles[state];
   };
 
-  const getAnonymityLabel = (level: AnonymityLevel) => {
-    const labels: Record<AnonymityLevel, string> = {
-      [AnonymityLevel.FULLY_ANONYMOUS]: 'Anonymous',
-      [AnonymityLevel.PLATFORM_TRACKED]: 'Platform-tracked',
-      [AnonymityLevel.REVEALABLE]: 'Revealable',
-    };
-    return labels[level];
-  };
-
-  const getDateRangeLabel = (range: DateRange) => {
-    const labels: Record<DateRange, string> = {
-      'all': 'All time',
-      '7': 'Last 7 days',
-      '30': 'Last 30 days',
-      '90': 'Last 90 days',
-    };
-    return labels[range];
-  };
-
-  const getStateCount = (state: ConversationState) => actualConversations.filter(c => c.state === state).length;
-  const getAnonymityCount = (level: AnonymityLevel) => actualConversations.filter(c => c.anonymity_level === level).length;
-
-  const hasActiveFilters = selectedStates.length > 0 || selectedAnonymityLevels.length > 0 || dateRange !== 'all';
 
   // Actions
-  const handleDuplicate = async (e: React.MouseEvent, conversationId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setOpenMenuId(null);
-
-    try {
-      await api.duplicateConversation(conversationId);
-      await loadConversations();
-    } catch (err) {
-      console.error('Failed to duplicate conversation:', err);
-      setError('Failed to duplicate conversation');
-    }
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setOpenMenuId(null);
-    setDeleteConversationId(conversationId);
-    setShowDeleteModal(true);
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deleteConversationId) return;
 
@@ -902,191 +782,6 @@ export default function ConversationsPage() {
     }
   };
 
-  const toggleStateFilter = (state: ConversationState) => {
-    if (selectedStates.includes(state)) {
-      setSelectedStates(selectedStates.filter(s => s !== state));
-    } else {
-      setSelectedStates([...selectedStates, state]);
-    }
-  };
-
-  const toggleAnonymityFilter = (level: AnonymityLevel) => {
-    if (selectedAnonymityLevels.includes(level)) {
-      setSelectedAnonymityLevels(selectedAnonymityLevels.filter(l => l !== level));
-    } else {
-      setSelectedAnonymityLevels([...selectedAnonymityLevels, level]);
-    }
-  };
-
-  const clearFilters = () => {
-    setSelectedStates([]);
-    setSelectedAnonymityLevels([]);
-    setDateRange('all');
-  };
-
-  const allStates = [ConversationState.DRAFT, ConversationState.ACTIVE, ConversationState.CLOSED, ConversationState.ANALYZED];
-  const allAnonymityLevels = [AnonymityLevel.FULLY_ANONYMOUS, AnonymityLevel.PLATFORM_TRACKED, AnonymityLevel.REVEALABLE];
-
-  // Render: Tile card
-  const renderTileCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => {
-    const isMenuOpen = openMenuId === conversation.id;
-    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
-
-    return (
-      <div
-        key={conversation.id}
-        style={s.cardWrapper}
-        data-menu
-      >
-        <Link
-          to={`/conversations/${conversation.id}`}
-          className="dashboard-card-new"
-          style={s.card}
-        >
-          <div style={s.cardHeader}>
-            <h3 style={s.cardTitle}>
-              {isFollowUp && (
-                <span style={s.followUpArrow}>
-                  {conversation.is_recurring_instance ? '↻' : '↳'}
-                </span>
-              )}
-              {conversation.title}
-            </h3>
-            <span style={merge(s.statusBadgePill, getStatusPillStyle(conversation.state))}>
-              {getStateLabel(conversation.state)}
-            </span>
-          </div>
-
-          {collection && (
-            <span style={s.collectionBadge}>{collection.name}</span>
-          )}
-
-          <div style={s.cardMeta}>
-            <span>
-              {conversation.unique_participants !== undefined && conversation.unique_participants > 0 ? (
-                <>
-                  <span style={s.cardMetaValue}>{conversation.unique_participants}</span>
-                  {' '}{conversation.unique_participants === 1 ? 'response' : 'responses'}
-                </>
-              ) : (
-                'No responses yet'
-              )}
-            </span>
-          </div>
-          <div style={s.cardMeta}>
-            <span>Created {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-          </div>
-        </Link>
-
-        <div style={s.cardMenu}>
-          <button
-            style={s.menuButton}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpenMenuId(isMenuOpen ? null : conversation.id);
-            }}
-            aria-label="More options"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <circle cx="8" cy="3" r="1.5"/>
-              <circle cx="8" cy="8" r="1.5"/>
-              <circle cx="8" cy="13" r="1.5"/>
-            </svg>
-          </button>
-          {isMenuOpen && (
-            <div style={s.menuDropdown}>
-              <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
-                Duplicate
-              </button>
-              <button
-                style={merge(s.menuItem, s.menuItemDanger)}
-                onClick={(e) => handleDeleteClick(e, conversation.id)}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Render: List row
-  const renderListRow = (conversation: ConversationListItem) => {
-    const isMenuOpen = openMenuId === conversation.id;
-    const isHovered = hoveredRowId === conversation.id;
-    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
-
-    return (
-      <tr
-        key={conversation.id}
-        style={merge(s.tr, isHovered && s.trHover)}
-        onMouseEnter={() => setHoveredRowId(conversation.id)}
-        onMouseLeave={() => setHoveredRowId(null)}
-      >
-        <td style={merge(s.td, s.tdTitle)}>
-          <Link to={`/conversations/${conversation.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-            {conversation.title}
-          </Link>
-        </td>
-        <td style={s.td}>
-          <span style={s.statusBadge}>
-            <span style={merge(s.statusDot, getStatusDotStyle(conversation.state))} />
-            {getStateLabel(conversation.state)}
-          </span>
-        </td>
-        <td style={s.td}>
-          {conversation.unique_participants || 0}
-        </td>
-        <td style={s.td}>
-          {getAnonymityLabel(conversation.anonymity_level)}
-        </td>
-        <td style={s.td}>
-          {collection ? (
-            <Link to={`/collections/${collection.id}`} style={{ color: 'var(--color-primary-900)', textDecoration: 'none' }}>
-              {collection.name}
-            </Link>
-          ) : (
-            <span style={{ color: 'var(--color-primary-400)' }}>—</span>
-          )}
-        </td>
-        <td style={s.td}>
-          {formatDateShort(conversation.created_at, conversation.timezone)}
-        </td>
-        <td style={{ ...s.td, position: 'relative', width: '40px' }} data-menu>
-          <button
-            style={s.menuButton}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpenMenuId(isMenuOpen ? null : conversation.id);
-            }}
-            aria-label="More options"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <circle cx="8" cy="3" r="1.5"/>
-              <circle cx="8" cy="8" r="1.5"/>
-              <circle cx="8" cy="13" r="1.5"/>
-            </svg>
-          </button>
-          {isMenuOpen && (
-            <div style={s.menuDropdown}>
-              <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
-                Duplicate
-              </button>
-              <button
-                style={merge(s.menuItem, s.menuItemDanger)}
-                onClick={(e) => handleDeleteClick(e, conversation.id)}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </td>
-      </tr>
-    );
-  };
 
   // Render: Participated card
   const renderParticipatedCard = (conversation: ConversationListItem) => {
@@ -1342,143 +1037,7 @@ export default function ConversationsPage() {
         </div>
       )}
 
-      {/* Toolbar: Search, View Toggle, Filter */}
-      {activeTab === 'owned' && actualConversations.length > 0 && (
-        <div className="conversations-toolbar">
-          {/* Search */}
-          <div style={s.searchContainer} className="search-container">
-            <div style={s.searchIcon}>
-              <SearchIcon size={18} />
-            </div>
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={s.searchInput}
-            />
-          </div>
-
-          {/* View Toggle */}
-          <div style={s.viewToggle} className="view-toggle">
-            <button
-              style={merge(s.viewToggleButton, viewMode === 'tile' && s.viewToggleButtonActive)}
-              onClick={() => setViewMode('tile')}
-              aria-label="Tile view"
-            >
-              <GridIcon size={18} />
-            </button>
-            <button
-              style={merge(s.viewToggleButton, viewMode === 'list' && s.viewToggleButtonActive)}
-              onClick={() => setViewMode('list')}
-              aria-label="List view"
-            >
-              <ListIcon size={18} />
-            </button>
-          </div>
-
-          {/* Filter */}
-          <div style={s.filterDropdownContainer} className="filter-container" data-dropdown>
-            <button
-              style={merge(s.filterButton, hasActiveFilters && s.filterButtonActive)}
-              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-            >
-              <FilterIcon size={16} />
-              Filter
-              {hasActiveFilters && (
-                <span style={{
-                  backgroundColor: 'var(--color-primary-900)',
-                  color: 'var(--color-primary-50)',
-                  borderRadius: borders.radius.full,
-                  padding: `0 ${spacing[2]}`,
-                  fontSize: typography.fontSize.xs,
-                  marginLeft: spacing[1],
-                }}>
-                  {selectedStates.length + selectedAnonymityLevels.length + (dateRange !== 'all' ? 1 : 0)}
-                </span>
-              )}
-            </button>
-
-            {showFilterDropdown && (
-              <div style={s.filterDropdown}>
-                {/* Status */}
-                <div style={s.filterSection}>
-                  <div style={s.filterSectionTitle}>Status</div>
-                  {allStates.map((state) => {
-                    const count = getStateCount(state);
-                    if (count === 0) return null;
-                    return (
-                      <label key={state} style={s.filterOption}>
-                        <input
-                          type="checkbox"
-                          checked={selectedStates.includes(state)}
-                          onChange={() => toggleStateFilter(state)}
-                        />
-                        <span style={s.statusBadge}>
-                          <span style={merge(s.statusDot, getStatusDotStyle(state))} />
-                          {getStateLabel(state)}
-                        </span>
-                        <span style={s.filterCount}>{count}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {/* Privacy */}
-                <div style={s.filterSection}>
-                  <div style={s.filterSectionTitle}>Privacy</div>
-                  {allAnonymityLevels.map((level) => {
-                    const count = getAnonymityCount(level);
-                    if (count === 0) return null;
-                    return (
-                      <label key={level} style={s.filterOption}>
-                        <input
-                          type="checkbox"
-                          checked={selectedAnonymityLevels.includes(level)}
-                          onChange={() => toggleAnonymityFilter(level)}
-                        />
-                        <span>{getAnonymityLabel(level)}</span>
-                        <span style={s.filterCount}>{count}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {/* Date */}
-                <div style={s.filterSection}>
-                  <div style={s.filterSectionTitle}>Date</div>
-                  {(['7', '30', '90', 'all'] as DateRange[]).map((range) => (
-                    <label key={range} style={s.filterOption}>
-                      <input
-                        type="radio"
-                        name="dateRange"
-                        checked={dateRange === range}
-                        onChange={() => setDateRange(range)}
-                      />
-                      <span>{getDateRangeLabel(range)}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {/* Clear */}
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearFilters}
-                    style={{
-                      ...s.buttonSecondary,
-                      ...s.buttonSmall,
-                      width: '100%',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    Clear all filters
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Toolbar is now part of ConversationsList for owned tab */}
 
       {/* Error */}
       {error && <div style={s.errorMessage}>{error}</div>}
@@ -1503,8 +1062,8 @@ export default function ConversationsPage() {
             </div>
           </>
         )
-      ) : actualConversations.length === 0 ? (
-        activeTab === 'owned' ? (
+      ) : activeTab === 'owned' ? (
+        actualConversations.length === 0 ? (
           <EmptyState
             type="conversations"
             title={`No conversations in ${currentWorkspaceName}`}
@@ -1516,54 +1075,34 @@ export default function ConversationsPage() {
             }
           />
         ) : (
+          <ConversationsList
+            conversations={actualConversations}
+            seriesList={seriesList}
+            showCollectionColumn={true}
+            showMenu={true}
+            onDuplicate={async (id) => {
+              await api.duplicateConversation(id);
+              await loadConversations();
+            }}
+            onDelete={(id) => {
+              setDeleteConversationId(id);
+              setShowDeleteModal(true);
+            }}
+          />
+        )
+      ) : activeTab === 'participated' ? (
+        participatedConversations.length === 0 ? (
           <EmptyState
             type="responses"
             title="No participated conversations"
             description="When you submit responses to conversations, they'll appear here."
           />
-        )
-      ) : filteredConversations.length === 0 ? (
-        <EmptyState
-          type="search"
-          title="No conversations found"
-          description={searchQuery ? `No conversations match "${searchQuery}"` : 'No conversations match the selected filters'}
-          action={
-            <button onClick={() => { clearFilters(); setSearchQuery(''); }} style={s.buttonSecondary}>
-              Clear Filters
-            </button>
-          }
-        />
-      ) : viewMode === 'list' && activeTab === 'owned' ? (
-        // List View
-        <div style={{ overflowX: 'auto' }}>
-          <table style={s.table}>
-            <thead style={s.tableHeader}>
-              <tr>
-                <th style={s.th}>Title</th>
-                <th style={s.th}>Status</th>
-                <th style={s.th}>Responses</th>
-                <th style={s.th}>Privacy</th>
-                <th style={s.th}>Collection</th>
-                <th style={s.th}>Created</th>
-                <th style={{ ...s.th, width: '40px' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredConversations.map((conversation) => renderListRow(conversation))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        // Tile View
-        <>
+        ) : (
           <div className="conversations-grid">
-            {activeTab === 'owned'
-              ? filteredConversations.map((conversation) => renderTileCard(conversation))
-              : filteredConversations.map((conversation) => renderParticipatedCard(conversation))
-            }
+            {participatedConversations.map((conversation) => renderParticipatedCard(conversation))}
           </div>
-        </>
-      )}
+        )
+      ) : null}
 
       {/* Delete Modal */}
       {showDeleteModal && (
