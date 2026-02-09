@@ -95,6 +95,11 @@ const s = {
     backgroundColor: colors.primary[900],
     color: colors.primary[50],
   },
+  continuousBadge: {
+    backgroundColor: colors.primary[100],
+    color: colors.primary[700],
+    border: `1px solid ${colors.primary[300]}`,
+  },
   orgBadge: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -539,6 +544,7 @@ export default function ConversationDetailPage() {
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
   const [updatingSeries, setUpdatingSeries] = useState(false);
+  const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
 
   usePageTitle(conversation?.title);
 
@@ -670,6 +676,22 @@ export default function ConversationDetailPage() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete conversation');
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleTriggerAnalysis = async () => {
+    if (!conversation?.is_continuous) return;
+
+    setTriggeringAnalysis(true);
+    setError('');
+    try {
+      await api.triggerPeriodicAnalysis(id!);
+      // Navigate to analysis page to show the new analysis
+      navigate(`/conversations/${id}/analysis`);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to trigger analysis');
+    } finally {
+      setTriggeringAnalysis(false);
     }
   };
 
@@ -900,6 +922,11 @@ export default function ConversationDetailPage() {
           <span style={merge(s.statusBadge, getStatusStyle(conversation.state))}>
             {conversation.state}
           </span>
+          {conversation.is_continuous && (
+            <span style={merge(s.statusBadge, s.continuousBadge)}>
+              Long-running
+            </span>
+          )}
           {organizationName && (
             <Link to={`/organizations/${conversation.organization_id}`} style={s.orgBadge}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -961,17 +988,34 @@ export default function ConversationDetailPage() {
 
         {conversation.state === ConversationState.ACTIVE && (
           <>
-            <button
-              onClick={handleClose}
-              style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
-              disabled={actionLoading}
-            >
-              Close Conversation
-            </button>
-            {conversation.is_continuous && (
-              <Link to={`/conversations/${id}/analysis`} style={s.buttonSecondary}>
-                View Analysis
-              </Link>
+            {conversation.is_continuous ? (
+              <>
+                <button
+                  onClick={handleTriggerAnalysis}
+                  style={merge(s.buttonPrimary, triggeringAnalysis && s.buttonDisabled)}
+                  disabled={triggeringAnalysis}
+                >
+                  {triggeringAnalysis ? 'Running...' : 'Run Analysis Now'}
+                </button>
+                <Link to={`/conversations/${id}/analysis`} style={s.buttonSecondary}>
+                  View Analysis History
+                </Link>
+                <button
+                  onClick={handleClose}
+                  style={merge(s.buttonSecondary, actionLoading && s.buttonDisabled)}
+                  disabled={actionLoading}
+                >
+                  Close Conversation
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleClose}
+                style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
+                disabled={actionLoading}
+              >
+                Close Conversation
+              </button>
             )}
           </>
         )}
