@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
 
 interface CollectionWithCount extends Series {
   conversationCount: number;
@@ -291,11 +291,51 @@ export default function CollectionsPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="collections-page">
+      <style>{`
+        .collections-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: ${spacing[8]};
+        }
+        .collections-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: ${spacing[6]};
+        }
+        @media ${mediaQueries.tabletDown} {
+          .collections-header {
+            flex-direction: column;
+            gap: ${spacing[4]};
+          }
+          .collections-header button {
+            width: 100%;
+          }
+          .collections-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media ${mediaQueries.mobile} {
+          .collections-page {
+            padding: ${spacing[4]} !important;
+          }
+          .collections-page-title {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+        }
+        .collections-card:hover {
+          border-color: ${colors.primary[500]};
+          box-shadow: ${shadows.sm};
+        }
+        .collections-primary-btn:hover {
+          background-color: ${colors.primary[800]};
+        }
+      `}</style>
       <div style={styles.container}>
-        <header style={styles.header}>
+        <header className="collections-header">
           <div>
-            <h1 style={styles.title}>Collections</h1>
+            <h1 style={styles.title} className="collections-page-title">Collections</h1>
             <p style={styles.description}>
               Group related conversations together to track trends and insights over time
             </p>
@@ -331,7 +371,7 @@ export default function CollectionsPage() {
             </button>
           </div>
         ) : (
-          <div style={styles.grid}>
+          <div className="collections-grid">
             {collections.map((collection) => {
               const isMenuOpen = openMenuId === collection.id;
               const isAnalyzing = analyzingCollectionId === collection.id;

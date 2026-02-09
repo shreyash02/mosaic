@@ -17,6 +17,7 @@ export {
   shadows,
   transitions,
   breakpoints,
+  mediaQueries,
   zIndex,
   components,
   cssVariables,

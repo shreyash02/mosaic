@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
 import { ConversationState } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows } from '../styles';
+import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import {
   MessageIcon,
   UsersIcon,
@@ -270,7 +270,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={s.page}>
+    <div style={s.page} className="dashboard-page">
       <style>{`
         .dashboard-card:hover {
           border-color: ${colors.primary[500]} !important;
@@ -279,18 +279,54 @@ export default function DashboardPage() {
         .view-all-link:hover {
           text-decoration: underline;
         }
+        .dashboard-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: ${spacing[4]};
+          margin-bottom: ${spacing[8]};
+        }
+        .dashboard-two-columns {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: ${spacing[6]};
+          margin-bottom: ${spacing[8]};
+        }
+        .dashboard-quick-actions {
+          display: flex;
+          gap: ${spacing[4]};
+          flex-wrap: wrap;
+        }
+        @media ${mediaQueries.tabletDown} {
+          .dashboard-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .dashboard-two-columns {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media ${mediaQueries.mobile} {
+          .dashboard-stats-grid {
+            grid-template-columns: 1fr;
+          }
+          .dashboard-page {
+            padding: ${spacing[4]} !important;
+          }
+          .dashboard-page-title {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+        }
       `}</style>
 
       {/* Header */}
       <header style={s.header}>
-        <h1 style={s.pageTitle}>Dashboard</h1>
+        <h1 style={s.pageTitle} className="dashboard-page-title">Dashboard</h1>
         <p style={s.pageSubtitle}>
           Overview of your feedback activity in {isPersonalWorkspace ? 'your personal workspace' : currentWorkspaceName}
         </p>
       </header>
 
       {/* Stats Grid */}
-      <div style={s.statsGrid}>
+      <div className="dashboard-stats-grid">
         <div style={s.statCard}>
           <MessageIcon size={20} />
           <div style={{ marginTop: spacing[3] }}>
@@ -322,7 +358,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Two Column Layout */}
-      <div style={s.twoColumns}>
+      <div className="dashboard-two-columns">
         {/* Status Breakdown */}
         <div style={s.card}>
           <h3 style={{ ...s.sectionTitle, marginBottom: spacing[4] }}>Conversation Status</h3>
@@ -446,7 +482,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div style={s.section}>
         <h3 style={{ ...s.sectionTitle, marginBottom: spacing[4] }}>Quick Actions</h3>
-        <div style={{ display: 'flex', gap: spacing[4] }}>
+        <div className="dashboard-quick-actions">
           <Link to="/conversations/new" style={{
             display: 'inline-flex',
             alignItems: 'center',

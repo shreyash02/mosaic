@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import type { ConversationListItem } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows } from '../styles';
+import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import { RefreshIcon } from '../components/icons';
 
 const s = {
@@ -187,18 +187,49 @@ export default function TemplatesPage() {
   };
 
   return (
-    <div style={s.page}>
+    <div style={s.page} className="templates-page">
       <style>{`
         .template-card:hover {
           border-color: ${colors.primary[500]} !important;
           box-shadow: ${shadows.sm} !important;
         }
+        .templates-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: ${spacing[8]};
+        }
+        .templates-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: ${spacing[4]};
+        }
+        @media ${mediaQueries.tabletDown} {
+          .templates-header {
+            flex-direction: column;
+            gap: ${spacing[4]};
+          }
+          .templates-header button {
+            width: 100%;
+          }
+          .templates-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media ${mediaQueries.mobile} {
+          .templates-page {
+            padding: ${spacing[4]} !important;
+          }
+          .templates-page-title {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+        }
       `}</style>
 
       {/* Header */}
-      <header style={s.header}>
+      <header className="templates-header">
         <div style={s.headerLeft}>
-          <h1 style={s.pageTitle}>Templates</h1>
+          <h1 style={s.pageTitle} className="templates-page-title">Templates</h1>
           <p style={s.pageSubtitle}>
             Reusable conversation configurations for {isPersonalWorkspace ? 'your workspace' : currentWorkspaceName}
           </p>
@@ -225,7 +256,7 @@ export default function TemplatesPage() {
           </button>
         </div>
       ) : (
-        <div style={s.templateGrid}>
+        <div className="templates-grid">
           {templates.map((template) => (
             <Link
               key={template.id}

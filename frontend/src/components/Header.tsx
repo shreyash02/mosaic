@@ -6,7 +6,7 @@ import './Header.css';
 
 export default function Header() {
   const location = useLocation();
-  
+
   // Hide header on admin portal routes
   if (location.pathname.startsWith('/adminportal')) {
     return null;
@@ -21,7 +21,9 @@ export default function Header() {
   } = useOrganization();
   const navigate = useNavigate();
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     logout();
@@ -33,22 +35,30 @@ export default function Header() {
     setShowOrgDropdown(false);
   };
 
-  // Click outside to close dropdown
+  // Click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowOrgDropdown(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
     };
 
-    if (showOrgDropdown) {
+    if (showOrgDropdown || mobileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showOrgDropdown]);
+  }, [showOrgDropdown, mobileMenuOpen]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <header className="app-header">
@@ -72,6 +82,26 @@ export default function Header() {
 
         {isAuthenticated && user && (
           <>
+            {/* Mobile Menu Button */}
+            <button
+              className="mobile-menu-btn"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
+            </button>
+
             {/* Organization Switcher */}
             <div className="org-switcher" ref={dropdownRef}>
               <button
@@ -147,7 +177,8 @@ export default function Header() {
               )}
             </div>
 
-            <nav className="header-nav">
+            {/* Desktop Navigation */}
+            <nav className="header-nav desktop-nav">
               <Link to="/dashboard" className="nav-link">
                 Dashboard
               </Link>
@@ -164,15 +195,57 @@ export default function Header() {
                 Help
               </Link>
             </nav>
-            <div className="user-info">
-            <div className="user-details">
-              <span className="user-name">{user.full_name}</span>
-              <span className="user-email">{user.email}</span>
+
+            {/* Desktop User Info */}
+            <div className="user-info desktop-user-info">
+              <div className="user-details">
+                <span className="user-name">{user.full_name}</span>
+                <span className="user-email">{user.email}</span>
+              </div>
+              <button onClick={handleLogout} className="btn-logout">
+                Logout
+              </button>
             </div>
-            <button onClick={handleLogout} className="btn-logout">
-              Logout
-            </button>
-          </div>
+
+            {/* Mobile Menu Overlay */}
+            <div
+              className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+
+            {/* Mobile Menu */}
+            <div
+              className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
+              ref={mobileMenuRef}
+            >
+              <nav className="mobile-nav">
+                <Link to="/dashboard" className="mobile-nav-link">
+                  Dashboard
+                </Link>
+                <Link to="/conversations" className="mobile-nav-link">
+                  Conversations
+                </Link>
+                <Link to="/templates" className="mobile-nav-link">
+                  Templates
+                </Link>
+                <Link to="/collections" className="mobile-nav-link">
+                  Collections
+                </Link>
+                <Link to="/help" className="mobile-nav-link">
+                  Help
+                </Link>
+              </nav>
+              <div className="mobile-menu-divider" />
+              <div className="mobile-user-info">
+                <div className="mobile-user-details">
+                  <span className="mobile-user-name">{user.full_name}</span>
+                  <span className="mobile-user-email">{user.email}</span>
+                </div>
+                <button onClick={handleLogout} className="mobile-logout-btn">
+                  Logout
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>

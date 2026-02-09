@@ -5,7 +5,7 @@ import type { ConversationListItem, ConversationInvitationWithConversation, Seri
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows } from '../styles';
+import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import {
   MessageIcon,
   UsersIcon,
@@ -1149,23 +1149,106 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div style={s.page}>
-      {/* CSS-based hover for cards - more reliable than React state */}
+    <div style={s.page} className="conversations-page">
+      {/* CSS-based hover for cards and responsive styles */}
       <style>{`
         .dashboard-card-new:hover,
         .dashboard-template-card:hover {
           border-color: ${colors.primary[500]} !important;
           box-shadow: ${shadows.sm} !important;
         }
+        .conversations-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: ${spacing[6]};
+        }
+        .conversations-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: ${spacing[4]};
+          margin-bottom: ${spacing[8]};
+        }
+        .conversations-tabs {
+          display: flex;
+          gap: ${spacing[1]};
+          margin-bottom: ${spacing[6]};
+          border-bottom: 1px solid ${colors.primary[300]};
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .conversations-toolbar {
+          display: flex;
+          align-items: center;
+          gap: ${spacing[4]};
+          margin-bottom: ${spacing[6]};
+        }
+        .conversations-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: ${spacing[4]};
+        }
+        @media ${mediaQueries.tabletDown} {
+          .conversations-header {
+            flex-direction: column;
+            gap: ${spacing[4]};
+          }
+          .conversations-header-actions {
+            width: 100%;
+          }
+          .conversations-header-actions a {
+            width: 100%;
+            justify-content: center;
+          }
+          .conversations-stats-grid {
+            grid-template-columns: 1fr;
+          }
+          .conversations-tabs {
+            gap: 0;
+          }
+          .conversations-tabs button {
+            padding: ${spacing[3]} ${spacing[4]};
+            font-size: ${typography.fontSize.xs};
+            white-space: nowrap;
+          }
+          .conversations-toolbar {
+            flex-wrap: wrap;
+          }
+          .conversations-toolbar .search-container {
+            flex: 1 1 100%;
+            order: 1;
+          }
+          .conversations-toolbar .view-toggle {
+            order: 2;
+          }
+          .conversations-toolbar .filter-container {
+            order: 3;
+            margin-left: auto;
+          }
+          .conversations-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media ${mediaQueries.mobile} {
+          .conversations-page {
+            padding: ${spacing[4]} !important;
+          }
+          .conversations-page-title {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+          .conversations-tabs button {
+            padding: ${spacing[2]} ${spacing[3]};
+          }
+        }
       `}</style>
 
       {/* Header */}
-      <header style={s.header}>
+      <header className="conversations-header">
         <div style={s.headerLeft}>
-          <h1 style={s.pageTitle}>Conversations</h1>
+          <h1 style={s.pageTitle} className="conversations-page-title">Conversations</h1>
           <p style={s.pageSubtitle}>Manage feedback collection across your {isPersonalWorkspace ? 'workspace' : 'organization'}</p>
         </div>
-        <div style={s.headerActions}>
+        <div className="conversations-header-actions">
           {activeTab === 'owned' && (
             <Link to="/conversations/new" style={s.buttonPrimary}>
               + New conversation
@@ -1176,7 +1259,7 @@ export default function ConversationsPage() {
 
       {/* Stats Cards */}
       {activeTab === 'owned' && !loading && (
-        <div style={{ ...s.statsGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        <div className="conversations-stats-grid">
           <div style={s.statCard}>
             <MessageIcon size={20} className="" />
             <div style={{ marginTop: spacing[3] }}>
@@ -1203,7 +1286,7 @@ export default function ConversationsPage() {
 
       {/* Tabs */}
       {isPersonalWorkspace && (
-        <div style={s.tabs}>
+        <div className="conversations-tabs">
           <button
             style={merge(s.tab, activeTab === 'owned' && s.tabActive)}
             onClick={() => setActiveTab('owned')}
@@ -1242,9 +1325,9 @@ export default function ConversationsPage() {
 
       {/* Toolbar: Search, View Toggle, Filter */}
       {activeTab === 'owned' && actualConversations.length > 0 && (
-        <div style={s.toolbar}>
+        <div className="conversations-toolbar">
           {/* Search */}
-          <div style={s.searchContainer}>
+          <div style={s.searchContainer} className="search-container">
             <div style={s.searchIcon}>
               <SearchIcon size={18} />
             </div>
@@ -1258,7 +1341,7 @@ export default function ConversationsPage() {
           </div>
 
           {/* View Toggle */}
-          <div style={s.viewToggle}>
+          <div style={s.viewToggle} className="view-toggle">
             <button
               style={merge(s.viewToggleButton, viewMode === 'tile' && s.viewToggleButtonActive)}
               onClick={() => setViewMode('tile')}
@@ -1276,7 +1359,7 @@ export default function ConversationsPage() {
           </div>
 
           {/* Filter */}
-          <div style={s.filterDropdownContainer} data-dropdown>
+          <div style={s.filterDropdownContainer} className="filter-container" data-dropdown>
             <button
               style={merge(s.filterButton, hasActiveFilters && s.filterButtonActive)}
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -1395,7 +1478,7 @@ export default function ConversationsPage() {
         ) : (
           <>
             <p style={s.sectionLabel}>Pending Invitations</p>
-            <div style={s.conversationGrid}>
+            <div className="conversations-grid">
               {invitations.map((invitation) => renderInvitationCard(invitation))}
             </div>
           </>
@@ -1450,7 +1533,7 @@ export default function ConversationsPage() {
       ) : (
         // Tile View
         <>
-          <div style={s.conversationGrid}>
+          <div className="conversations-grid">
             {activeTab === 'owned'
               ? filteredConversations.map((conversation) => renderTileCard(conversation))
               : filteredConversations.map((conversation) => renderParticipatedCard(conversation))

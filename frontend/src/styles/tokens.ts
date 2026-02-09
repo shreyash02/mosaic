@@ -205,6 +205,23 @@ export const breakpoints = {
   '2xl': '1536px',
 } as const;
 
+/**
+ * Media query helpers for use in CSS-in-JS or style tags.
+ * Usage: `@media ${mediaQueries.mobile} { ... }`
+ */
+export const mediaQueries = {
+  mobile: `(max-width: ${breakpoints.sm})`,           // <= 640px
+  tablet: `(max-width: ${breakpoints.md})`,           // <= 768px
+  desktop: `(min-width: ${breakpoints.lg})`,          // >= 1024px
+  // Specific ranges
+  mobileOnly: `(max-width: ${breakpoints.sm})`,       // <= 640px
+  tabletOnly: `(min-width: ${breakpoints.sm}) and (max-width: ${breakpoints.md})`, // 640-768px
+  tabletDown: `(max-width: ${breakpoints.md})`,       // <= 768px
+  tabletUp: `(min-width: ${breakpoints.md})`,         // >= 768px
+  desktopDown: `(max-width: ${breakpoints.lg})`,      // <= 1024px
+  desktopUp: `(min-width: ${breakpoints.lg})`,        // >= 1024px
+} as const;
+
 
 // =============================================================================
 // Z-INDEX

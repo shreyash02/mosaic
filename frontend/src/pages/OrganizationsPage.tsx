@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Organization } from '../types';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
 
 interface OrganizationWithRole extends Organization {
   userRole?: 'admin' | 'member';
@@ -207,11 +207,55 @@ export default function OrganizationsPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="orgs-page">
+      <style>{`
+        .orgs-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: ${spacing[8]};
+        }
+        .orgs-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: ${spacing[6]};
+        }
+        @media ${mediaQueries.tabletDown} {
+          .orgs-header {
+            flex-direction: column;
+            gap: ${spacing[4]};
+          }
+          .orgs-header a {
+            width: 100%;
+            text-align: center;
+          }
+          .orgs-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media ${mediaQueries.mobile} {
+          .orgs-page {
+            padding: ${spacing[4]} !important;
+          }
+          .orgs-page-title {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+        }
+        .orgs-card:hover {
+          border-color: ${colors.primary[500]};
+          box-shadow: ${shadows.sm};
+        }
+        .orgs-primary-btn:hover {
+          background-color: ${colors.primary[800]};
+        }
+        .orgs-secondary-btn:hover {
+          background-color: ${colors.primary[100]};
+        }
+      `}</style>
       <div style={styles.container}>
-        <header style={styles.header}>
+        <header className="orgs-header">
           <div>
-            <h1 style={styles.title}>Organizations</h1>
+            <h1 style={styles.title} className="orgs-page-title">Organizations</h1>
             <p style={styles.description}>
               Manage your organizations and collaborate with team members
             </p>
@@ -234,7 +278,7 @@ export default function OrganizationsPage() {
             </Link>
           </div>
         ) : (
-          <div style={styles.grid}>
+          <div className="orgs-grid">
             {organizations.map((org) => (
               <div key={org.id} style={styles.card} className="orgs-card">
                 <div style={styles.cardHeader}>
