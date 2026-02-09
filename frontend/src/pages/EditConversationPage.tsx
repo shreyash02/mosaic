@@ -5,8 +5,7 @@ import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, 
 import { convertUTCToLocalDateTimeString, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
-import DesignToggle from '../components/DesignToggle';
-import EditConversationPageNew from './EditConversationPageNew';
+import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 import {
   DndContext,
   closestCenter,
@@ -24,6 +23,366 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: colors.primary[50],
+    padding: spacing[6],
+    paddingTop: 'calc(60px + 1.5rem)',
+  },
+  container: {
+    maxWidth: '900px',
+    margin: '0 auto',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[6],
+    flexWrap: 'wrap' as const,
+    gap: spacing[4],
+  },
+  title: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    margin: 0,
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[6],
+    marginBottom: spacing[6],
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[4],
+  },
+  sectionDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[5],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  formGroup: {
+    marginBottom: spacing[5],
+  },
+  label: {
+    display: 'block',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+    marginBottom: spacing[2],
+  },
+  input: {
+    width: '100%',
+    padding: spacing[3],
+    fontSize: typography.fontSize.sm,
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    boxSizing: 'border-box' as const,
+    transition: transitions.duration.normal,
+  },
+  textarea: {
+    width: '100%',
+    padding: spacing[3],
+    fontSize: typography.fontSize.sm,
+    fontFamily: 'inherit',
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    resize: 'vertical' as const,
+    boxSizing: 'border-box' as const,
+    transition: transitions.duration.normal,
+  },
+  select: {
+    width: '100%',
+    padding: spacing[3],
+    fontSize: typography.fontSize.sm,
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    boxSizing: 'border-box' as const,
+  },
+  helpText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[500],
+    marginTop: spacing[1],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  checkboxGroup: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    marginBottom: spacing[4],
+  },
+  checkbox: {
+    marginTop: '2px',
+    width: '16px',
+    height: '16px',
+    accentColor: colors.primary[900],
+  },
+  checkboxLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+  },
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[3]} ${spacing[5]}`,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    textDecoration: 'none',
+  },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'white',
+    color: colors.primary[700],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    textDecoration: 'none',
+  },
+  buttonSmall: {
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  error: {
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[300]}`,
+    color: colors.primary[900],
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing[4],
+  },
+  questionCard: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  questionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[3],
+  },
+  questionNumber: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[600],
+  },
+  collapsedHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: `${spacing[3]} ${spacing[4]}`,
+    backgroundColor: 'white',
+    border: `1px solid ${colors.primary[200]}`,
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    marginBottom: spacing[2],
+  },
+  pollOptionItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+    padding: spacing[2],
+    backgroundColor: 'white',
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[200]}`,
+  },
+  dragHandle: {
+    cursor: 'grab',
+    padding: spacing[1],
+    color: colors.primary[400],
+    display: 'flex',
+    alignItems: 'center',
+    background: 'none',
+    border: 'none',
+  },
+  removeButton: {
+    background: 'none',
+    border: 'none',
+    color: colors.primary[400],
+    cursor: 'pointer',
+    padding: spacing[1],
+    fontSize: typography.fontSize.lg,
+    lineHeight: 1,
+  },
+  durationInputs: {
+    display: 'flex',
+    gap: spacing[4],
+    alignItems: 'center',
+  },
+  durationInputGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  durationInput: {
+    width: '80px',
+    padding: spacing[2],
+    fontSize: typography.fontSize.sm,
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    textAlign: 'center' as const,
+  },
+  durationLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  imagePreview: {
+    position: 'relative' as const,
+    display: 'inline-block',
+    marginBottom: spacing[2],
+  },
+  previewImage: {
+    maxWidth: '100%',
+    maxHeight: '200px',
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[200]}`,
+  },
+  removeImageButton: {
+    position: 'absolute' as const,
+    top: spacing[2],
+    right: spacing[2],
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  seriesSection: {
+    paddingLeft: spacing[4],
+    borderLeft: `3px solid ${colors.primary[400]}`,
+    marginTop: spacing[3],
+  },
+  formActions: {
+    display: 'flex',
+    gap: spacing[3],
+    justifyContent: 'flex-end',
+    marginTop: spacing[6],
+  },
+  modalOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: spacing[4],
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    padding: spacing[6],
+    maxWidth: '500px',
+    width: '100%',
+    maxHeight: '90vh',
+    overflow: 'auto',
+    boxShadow: shadows.lg,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  modalDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[5],
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: spacing[3],
+    marginTop: spacing[5],
+  },
+  loading: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    color: colors.primary[500],
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+  },
+  emptyStateTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[2],
+  },
+  emptyStateText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[4],
+  },
+  infoMessage: {
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[300]}`,
+    color: colors.primary[800],
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing[4],
+  },
+};
+
+const hoverStyles = `
+  .edit-input:focus {
+    border-color: ${colors.primary[500]};
+    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    outline: none;
+  }
+  .edit-btn-primary:hover:not(:disabled) {
+    background-color: ${colors.primary[800]};
+  }
+  .edit-btn-secondary:hover:not(:disabled) {
+    background-color: ${colors.primary[50]};
+    border-color: ${colors.primary[400]};
+  }
+  .edit-collapsed-header:hover {
+    background-color: ${colors.primary[50]};
+  }
+  .edit-drag-handle:hover {
+    color: ${colors.primary[600]};
+  }
+  .edit-remove-btn:hover {
+    color: ${colors.primary[900]};
+  }
+`;
 
 interface SortablePollOptionProps {
   choice: { id: string; label: string; order: number };
@@ -58,62 +417,40 @@ function SortablePollOption({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="poll-option-item">
+    <div ref={setNodeRef} style={{ ...style, ...styles.pollOptionItem }}>
       <button
         type="button"
-        className="drag-handle"
+        style={styles.dragHandle}
+        className="edit-drag-handle"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z"
-            fill="currentColor"
-          />
-          <path
-            d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z"
-            fill="currentColor"
-          />
-          <path
-            d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z"
-            fill="currentColor"
-          />
-          <path
-            d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z"
-            fill="currentColor"
-          />
-          <path
-            d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z"
-            fill="currentColor"
-          />
-          <path
-            d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z"
-            fill="currentColor"
-          />
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z" />
+          <path d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z" />
+          <path d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z" />
+          <path d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z" />
+          <path d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z" />
+          <path d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z" />
         </svg>
       </button>
-      <span className="option-number">{choiceIndex + 1}.</span>
+      <span style={{ color: colors.primary[500], fontSize: typography.fontSize.sm }}>{choiceIndex + 1}.</span>
       <input
         type="text"
         value={choice.label}
         onChange={(e) => onLabelChange(questionIndex, choice.id, e.target.value)}
         placeholder={`Option ${choiceIndex + 1}`}
         required
-        style={{ flex: '1 1 auto', minWidth: 0 }}
+        style={{ ...styles.input, flex: 1 }}
+        className="edit-input"
       />
       {canRemove && (
         <button
           type="button"
           onClick={() => onRemove(questionIndex, choice.id)}
-          className="btn-remove"
-          style={{ flexShrink: 0 }}
+          style={styles.removeButton}
+          className="edit-remove-btn"
         >
           ×
         </button>
@@ -160,7 +497,7 @@ function SortableQuestion({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}
+      style={{ ...style, display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}
     >
       {showDragHandle && (
         <div
@@ -168,58 +505,29 @@ function SortableQuestion({
           {...listeners}
           aria-label="Drag to reorder question"
           style={{
-            cursor: 'grab',
-            padding: '0.25rem',
-            color: '#718096',
-            flexShrink: 0,
-            marginTop: isExpanded ? '0.75rem' : '0.5rem',
+            ...styles.dragHandle,
+            marginTop: isExpanded ? spacing[3] : spacing[2],
           }}
+          className="edit-drag-handle"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z"
-              fill="currentColor"
-            />
-            <path
-              d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z"
-              fill="currentColor"
-            />
-            <path
-              d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z"
-              fill="currentColor"
-            />
-            <path
-              d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z"
-              fill="currentColor"
-            />
-            <path
-              d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z"
-              fill="currentColor"
-            />
-            <path
-              d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z"
-              fill="currentColor"
-            />
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z" />
+            <path d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z" />
+            <path d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z" />
+            <path d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z" />
+            <path d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z" />
+            <path d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z" />
           </svg>
         </div>
       )}
-      <div
-        style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}
-        className={isExpanded ? "question-item" : ""}
-      >
+      <div style={{ flex: 1, minWidth: 0 }}>
         {children}
       </div>
     </div>
   );
 }
 
-function EditConversationPageOld() {
+export default function EditConversationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -230,12 +538,8 @@ function EditConversationPageOld() {
   const [headerImageUrl, setHeaderImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState<Record<number, boolean>>({});
-  const [anonymityLevel, setAnonymityLevel] = useState<AnonymityLevel>(
-    AnonymityLevel.PLATFORM_TRACKED
-  );
-  const [resultsAccess, setResultsAccess] = useState<ResultsAccess>(
-    ResultsAccess.PARTICIPANTS
-  );
+  const [anonymityLevel, setAnonymityLevel] = useState<AnonymityLevel>(AnonymityLevel.PLATFORM_TRACKED);
+  const [resultsAccess, setResultsAccess] = useState<ResultsAccess>(ResultsAccess.PARTICIPANTS);
   const [inviteOnly, setInviteOnly] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [showVerbatimResponses, setShowVerbatimResponses] = useState(false);
@@ -251,15 +555,12 @@ function EditConversationPageOld() {
   const [loading, setLoading] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  // Recurring template fields
   const [isTemplate, setIsTemplate] = useState(false);
   const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(RecurrencePattern.WEEKLY);
   const [nextInstanceDate, setNextInstanceDate] = useState('');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
-  // Series fields for templates
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [selectedTemplateSeriesId, setSelectedTemplateSeriesId] = useState<string>('');
-  // Series fields for regular conversations
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
   const [addToSeries, setAddToSeries] = useState(false);
   const [showCreateSeriesModal, setShowCreateSeriesModal] = useState(false);
@@ -273,7 +574,6 @@ function EditConversationPageOld() {
     }
   }, [id]);
 
-  // Load series list for templates and regular conversations
   useEffect(() => {
     const loadSeries = async () => {
       try {
@@ -289,23 +589,20 @@ function EditConversationPageOld() {
   const loadConversation = async () => {
     try {
       setLoadingConversation(true);
-      setError(''); // Clear any previous errors
+      setError('');
 
       const conv = await api.getConversation(id!);
       setConversation(conv);
 
-      // Check if this is a template
       const isTemp = conv.is_template === true;
       setIsTemplate(isTemp);
 
-      // Only enforce draft state for regular conversations (not templates)
       if (!isTemp && conv.state !== 'draft') {
         setError('Only draft conversations can be edited');
         setTimeout(() => navigate(`/conversations/${id}`), 2000);
         return;
       }
 
-      // Populate form with existing data
       setTitle(conv.title);
       setParticipantTitle(conv.participant_title || '');
       setDescription(conv.description || '');
@@ -315,7 +612,6 @@ function EditConversationPageOld() {
       setInviteOnly(conv.invite_only || false);
       setShowVerbatimResponses(conv.show_verbatim_responses || false);
 
-      // Handle scheduled activation
       if (conv.scheduled_activate_at) {
         setScheduleActivation(true);
         try {
@@ -327,7 +623,6 @@ function EditConversationPageOld() {
         }
       }
 
-      // Convert duration_minutes to hours and minutes
       if (conv.duration_minutes) {
         setDurationHours(Math.floor(conv.duration_minutes / 60));
         setDurationMinutes(conv.duration_minutes % 60);
@@ -336,7 +631,6 @@ function EditConversationPageOld() {
         setDurationMinutes(0);
       }
 
-      // Load recurring fields if template
       if (isTemp && conv.recurrence_pattern) {
         setRecurrencePattern(conv.recurrence_pattern as RecurrencePattern);
 
@@ -351,7 +645,6 @@ function EditConversationPageOld() {
           }
         } catch (dateErr) {
           console.error('Error formatting dates:', dateErr);
-          // Fallback: try substring approach
           if (conv.next_instance_date) {
             setNextInstanceDate(conv.next_instance_date.substring(0, 16));
           }
@@ -361,17 +654,14 @@ function EditConversationPageOld() {
         }
       }
 
-      // Load template series configuration
       if (isTemp && conv.template_series_id) {
         setSelectedTemplateSeriesId(conv.template_series_id);
       }
-      // Load series for regular conversations
       if (!isTemp && conv.series_id) {
         setSelectedSeriesId(conv.series_id);
         setAddToSeries(true);
       }
 
-      // Convert Question[] to QuestionCreate[] (preserving id for drag-and-drop)
       if (conv.questions && conv.questions.length > 0) {
         setQuestions(
           conv.questions.map((q: Question) => ({
@@ -384,8 +674,7 @@ function EditConversationPageOld() {
             question_image_url: q.question_image_url,
           }))
         );
-        // Expand all questions by default when loading
-        setExpandedQuestions(new Set(conv.questions.map((_, i) => i)));
+        setExpandedQuestions(new Set(conv.questions.map((_: Question, i: number) => i)));
       } else {
         setQuestions([{ id: crypto.randomUUID(), question_text: '', question_type: 'text', question_order: 0, is_required: false }]);
         setExpandedQuestions(new Set([0]));
@@ -400,16 +689,11 @@ function EditConversationPageOld() {
 
   const getQuestionTypeLabel = (type: string | undefined): string => {
     switch (type) {
-      case 'text':
-        return 'Text Response';
-      case 'rating':
-        return 'Rating';
-      case 'single_choice':
-        return 'Poll (Single)';
-      case 'multiple_choice':
-        return 'Poll (Multiple)';
-      default:
-        return 'Text Response';
+      case 'text': return 'Text Response';
+      case 'rating': return 'Rating';
+      case 'single_choice': return 'Poll (Single)';
+      case 'multiple_choice': return 'Poll (Multiple)';
+      default: return 'Text Response';
     }
   };
 
@@ -429,19 +713,16 @@ function EditConversationPageOld() {
       ...questions,
       { id: crypto.randomUUID(), question_text: '', question_type: 'text', question_order: newIndex, is_required: false },
     ]);
-    // Expand the new question
     setExpandedQuestions(new Set([...expandedQuestions, newIndex]));
   };
 
   const removeQuestion = (index: number) => {
     if (questions.length > 1) {
       const newQuestions = questions.filter((_, i) => i !== index);
-      // Re-order remaining questions
       newQuestions.forEach((q, i) => {
         q.question_order = i;
       });
       setQuestions(newQuestions);
-      // Update expanded state
       const newExpanded = new Set<number>();
       expandedQuestions.forEach(i => {
         if (i < index) {
@@ -464,24 +745,19 @@ function EditConversationPageOld() {
     const newQuestions = [...questions];
     newQuestions[index].question_type = type as any;
 
-    // Initialize default options based on type
     if (type === 'rating') {
       newQuestions[index].options = { min: 0, max: 10, step: 1 };
     } else if (type === 'single_choice') {
       newQuestions[index].options = {
         mode: 'single',
         max_selections: 1,
-        choices: [
-          { id: crypto.randomUUID(), label: '', order: 0 }
-        ]
+        choices: [{ id: crypto.randomUUID(), label: '', order: 0 }]
       };
     } else if (type === 'multiple_choice') {
       newQuestions[index].options = {
         mode: 'multiple',
         max_selections: 3,
-        choices: [
-          { id: crypto.randomUUID(), label: '', order: 0 }
-        ]
+        choices: [{ id: crypto.randomUUID(), label: '', order: 0 }]
       };
     } else {
       delete newQuestions[index].options;
@@ -508,7 +784,6 @@ function EditConversationPageOld() {
     const newQuestions = [...questions];
     const choices = newQuestions[questionIndex].options?.choices || [];
     const filtered = choices.filter(c => c.id !== choiceId);
-    // Re-order
     filtered.forEach((c, i) => c.order = i);
     if (newQuestions[questionIndex].options) {
       newQuestions[questionIndex].options!.choices = filtered;
@@ -544,7 +819,6 @@ function EditConversationPageOld() {
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const reordered = arrayMove(choices, oldIndex, newIndex);
-      // Update order property
       reordered.forEach((choice, index) => {
         choice.order = index;
       });
@@ -564,13 +838,11 @@ function EditConversationPageOld() {
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const reordered = arrayMove([...questions], oldIndex, newIndex);
-      // Update question_order property
       reordered.forEach((question, index) => {
         question.question_order = index;
       });
       setQuestions(reordered);
 
-      // Update expandedQuestions indices to follow the moved questions
       const newExpanded = new Set<number>();
       expandedQuestions.forEach(expandedIdx => {
         const question = questions[expandedIdx];
@@ -657,11 +929,9 @@ function EditConversationPageOld() {
         organization_id: currentOrgId || undefined,
       });
 
-      // Refresh series list
       const updatedSeries = await api.listSeries(currentOrgId || undefined);
       setSeriesList(updatedSeries);
 
-      // Select the newly created series
       if (isTemplate) {
         setSelectedTemplateSeriesId(newSeries.id);
       } else {
@@ -669,7 +939,6 @@ function EditConversationPageOld() {
         setAddToSeries(true);
       }
 
-      // Close modal and reset form
       setShowCreateSeriesModal(false);
       setNewSeriesName('');
       setNewSeriesDescription('');
@@ -684,19 +953,16 @@ function EditConversationPageOld() {
     e.preventDefault();
     setError('');
 
-    // Validate questions
     if (questions.some((q) => !q.question_text.trim())) {
       setError('All questions must have text');
       return;
     }
 
-    // Validate that emails are not provided if invite-only is disabled
     if (!inviteOnly && inviteEmails.trim()) {
       setError('Email addresses can only be provided when invite-only mode is enabled');
       return;
     }
 
-    // Validate scheduled activation time if provided
     if (scheduleActivation && scheduledActivateAt) {
       const scheduledDate = new Date(scheduledActivateAt);
       const now = new Date();
@@ -709,17 +975,15 @@ function EditConversationPageOld() {
     setLoading(true);
 
     try {
-      // Calculate total minutes from hours and minutes
       const totalMinutes = durationHours * 60 + durationMinutes;
 
-      // Get user's timezone from browser
       let userTimezone = 'UTC';
       try {
         userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       } catch (err) {
         console.warn('Failed to detect timezone, using UTC:', err);
       }
-      
+
       await api.updateConversation(id!, {
         title,
         participant_title: participantTitle.trim() || undefined,
@@ -735,20 +999,17 @@ function EditConversationPageOld() {
         ...(scheduleActivation && scheduledActivateAt && {
           scheduled_activate_at: scheduledActivateAt + ':00'
         }),
-        // Include template fields if this is a template
         ...(isTemplate && {
           template_series_id: selectedTemplateSeriesId || undefined,
           recurrence_pattern: recurrencePattern,
           ...(nextInstanceDate && { next_instance_date: nextInstanceDate + ':00' }),
           ...(recurrenceEndDate && { recurrence_end_date: recurrenceEndDate + ':00' }),
         }),
-        // Include series_id for regular conversations
         ...(!isTemplate && {
           series_id: (addToSeries && selectedSeriesId) ? selectedSeriesId : undefined,
         }),
       });
 
-      // If invite-only is enabled and emails are provided, invite those users
       if (inviteOnly && inviteEmails.trim()) {
         const emails = inviteEmails
           .split(',')
@@ -759,7 +1020,6 @@ function EditConversationPageOld() {
           try {
             await api.inviteUsers(id!, emails);
           } catch (inviteErr: any) {
-            // Log error but don't block navigation - invitations can be added later
             console.error('Failed to invite users during update:', inviteErr);
           }
         }
@@ -774,1039 +1034,977 @@ function EditConversationPageOld() {
   };
 
   if (loadingConversation) {
-    return <div className="loading">Loading conversation...</div>;
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.loading}>Loading conversation...</div>
+          </div>
+        </div>
+      </>
+    );
   }
 
-  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
   const conversationOrgId = conversation?.organization_id || null;
   const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
 
   if (!conversation || wrongWorkspace) {
     return (
-      <div className="dashboard-page">
-        <div className="page-header">
-          <h1>Conversation Not Found</h1>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyState}>
+              <h3 style={styles.emptyStateTitle}>Conversation Not Found</h3>
+              <p style={styles.emptyStateText}>
+                This conversation doesn't exist or you don't have access to it.
+              </p>
+              <button
+                onClick={() => navigate('/dashboard')}
+                style={styles.buttonSecondary}
+                className="edit-btn-secondary"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="empty-state">
-          <h3>This conversation doesn't exist or you don't have access to it</h3>
-          <p>The conversation may have been deleted or you may not have permission to view it.</p>
-          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="create-conversation-page">
-      <div className="page-header">
-        <h1>{isTemplate ? 'Edit Template' : 'Edit Conversation'}</h1>
-        <button onClick={() => navigate(isTemplate ? `/templates/${id}` : `/conversations/${id}`)} className="btn btn-secondary">
-          Cancel
-        </button>
-      </div>
+    <>
+      <style>{hoverStyles}</style>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <header style={styles.header}>
+            <h1 style={styles.title}>{isTemplate ? 'Edit Template' : 'Edit Conversation'}</h1>
+            <button
+              onClick={() => navigate(isTemplate ? `/templates/${id}` : `/conversations/${id}`)}
+              style={styles.buttonSecondary}
+              className="edit-btn-secondary"
+            >
+              Cancel
+            </button>
+          </header>
 
-      <form onSubmit={handleSubmit} className="conversation-form">
-        {error && <div className="error-message">{error}</div>}
+          {error && <div style={styles.error}>{error}</div>}
 
-        <div className="form-section">
-          <div className="form-group">
-            <label htmlFor="title">Conversation Title *</label>
-            <input
-              id="title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              placeholder="e.g., Team retrospective: what's working & what's not"
-            />
-            <small className="form-help-text">
-              This is the title you'll see in your dashboard and conversation list.
-            </small>
-          </div>
+          <form onSubmit={handleSubmit}>
+            {/* Basic Information */}
+            <div style={styles.card}>
+              <h2 style={styles.sectionTitle}>Basic Information</h2>
 
-          <div className="form-group">
-            <label htmlFor="participantTitle">Display Title (optional)</label>
-            <input
-              id="participantTitle"
-              type="text"
-              value={participantTitle}
-              onChange={(e) => setParticipantTitle(e.target.value)}
-              placeholder="e.g., Student feedback or Feedback for [Teacher Name]"
-            />
-            <small className="form-help-text">
-              Title shown to respondents. If not set, the conversation title above will be used.
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Description (optional)</label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide context for participants..."
-              rows={3}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="headerImage">Header Image (optional)</label>
-            <p className="form-help-text" style={{ marginBottom: '0.5rem' }}>
-              Upload an image that will be displayed at the top when users are responding to this conversation.
-            </p>
-            
-            {headerImageUrl ? (
-              <div style={{ marginTop: '0.5rem' }}>
-                <div style={{ 
-                  position: 'relative', 
-                  display: 'inline-block',
-                  marginBottom: '0.5rem'
-                }}>
-                  <img 
-                    src={headerImageUrl} 
-                    alt="Header preview" 
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '200px', 
-                      borderRadius: '6px',
-                      border: '1px solid #e2e8f0'
-                    }} 
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setHeaderImageUrl('')}
-                    className="btn btn-secondary btn-small"
-                    style={{ 
-                      position: 'absolute', 
-                      top: '0.5rem', 
-                      right: '0.5rem',
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Conversation Title *</label>
                 <input
                   type="text"
-                  value={headerImageUrl}
-                  onChange={(e) => setHeaderImageUrl(e.target.value)}
-                  placeholder="Or paste an image URL"
-                  style={{ width: '100%', marginTop: '0.5rem' }}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  placeholder="e.g., Team retrospective: what's working & what's not"
+                  style={styles.input}
+                  className="edit-input"
                 />
-              </div>
-            ) : (
-              <div>
-                <input
-                  type="file"
-                  id="headerImage"
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                    if (!validTypes.includes(file.type)) {
-                      setError('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
-                      return;
-                    }
-
-                    if (file.size > 5 * 1024 * 1024) {
-                      setError('Image file size must be less than 5MB');
-                      return;
-                    }
-
-                    setUploadingImage(true);
-                    setError('');
-
-                    try {
-                      const result = await api.uploadImage(file);
-                      // Get full URL - if result.url is relative, construct full URL
-                      let fullUrl = result.url;
-                      if (!fullUrl.startsWith('http')) {
-                        // If relative URL, construct full URL from current origin
-                        const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-                        const baseUrl = apiBase.replace('/api', '');
-                        fullUrl = `${baseUrl}${result.url}`;
-                      }
-                      setHeaderImageUrl(fullUrl);
-                    } catch (err: any) {
-                      setError(err.response?.data?.detail || 'Failed to upload image');
-                    } finally {
-                      setUploadingImage(false);
-                      e.target.value = '';
-                    }
-                  }}
-                  disabled={uploadingImage}
-                  style={{ marginBottom: '0.5rem' }}
-                />
-                <p className="form-help-text" style={{ marginTop: '0.5rem' }}>
-                  Or paste an image URL:
+                <p style={styles.helpText}>
+                  This is the title you'll see in your dashboard and conversation list.
                 </p>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Display Title (optional)</label>
                 <input
-                  type="url"
-                  value={headerImageUrl}
-                  onChange={(e) => setHeaderImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  style={{ width: '100%', marginTop: '0.5rem' }}
+                  type="text"
+                  value={participantTitle}
+                  onChange={(e) => setParticipantTitle(e.target.value)}
+                  placeholder="e.g., Student feedback or Feedback for [Teacher Name]"
+                  style={styles.input}
+                  className="edit-input"
+                />
+                <p style={styles.helpText}>
+                  Title shown to respondents. If not set, the conversation title above will be used.
+                </p>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Description (optional)</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Provide context for participants..."
+                  rows={3}
+                  style={styles.textarea}
+                  className="edit-input"
                 />
               </div>
-            )}
-            {uploadingImage && (
-              <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                Uploading image...
-              </p>
-            )}
-          </div>
-        </div>
 
-        <div className="form-section">
-          <h2>Privacy Settings</h2>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Header Image (optional)</label>
+                <p style={styles.helpText}>
+                  Upload an image that will be displayed at the top when users are responding.
+                </p>
 
-          <div className="form-group">
-            <label htmlFor="anonymityLevel">Anonymity Level *</label>
-            <select
-              id="anonymityLevel"
-              value={anonymityLevel}
-              onChange={(e) => setAnonymityLevel(e.target.value as AnonymityLevel)}
-              required
-            >
-              <option value={AnonymityLevel.FULLY_ANONYMOUS}>
-                Fully Anonymous - Unique one-time codes, no user tracking
-              </option>
-              <option value={AnonymityLevel.PLATFORM_TRACKED}>
-                Platform Tracked - User tracked internally, hidden from facilitator
-              </option>
-              <option value={AnonymityLevel.REVEALABLE}>
-                Revealable - User can consent to reveal identity
-              </option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="resultsAccess">Who can see results? *</label>
-            <select
-              id="resultsAccess"
-              value={resultsAccess}
-              onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
-              required
-            >
-              <option value={ResultsAccess.CREATOR_ONLY}>
-                Creator Only - Feedback collection mode
-              </option>
-              <option value={ResultsAccess.PARTICIPANTS}>
-                All Participants - Collaborative mode
-              </option>
-              <option value={ResultsAccess.PUBLIC_LINK}>
-                Anyone with Link - Public sharing mode
-              </option>
-            </select>
-            <p className="form-help-text">
-              {resultsAccess === ResultsAccess.CREATOR_ONLY &&
-                "Participants submit responses and receive a confirmation message. Only you can see the results and analysis."}
-              {resultsAccess === ResultsAccess.PARTICIPANTS &&
-                "Participants who can respond (have access code or invitation) can also view all responses and analysis."}
-              {resultsAccess === ResultsAccess.PUBLIC_LINK &&
-                "Anyone with the results link can view responses and analysis, even without responding."}
-            </p>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={showVerbatimResponses}
-                onChange={(e) => setShowVerbatimResponses(e.target.checked)}
-              />
-              <span>Show verbatim responses - Allow viewers to see raw responses</span>
-            </label>
-            <p className="form-help-text">
-              When enabled, viewers can see all raw responses along with AI analysis. When disabled, only AI-generated summaries and themes are visible, protecting individual response privacy while sharing insights.
-            </p>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={inviteOnly}
-                onChange={(e) => setInviteOnly(e.target.checked)}
-              />
-              <span>Invite-only mode - Only invited users can access this conversation</span>
-            </label>
-            <p className="form-help-text">
-              When enabled, only users who have been invited by email can view and submit responses.
-              For fully anonymous conversations, participant codes must be distributed only to invited users.
-            </p>
-          </div>
-
-          {inviteOnly && (
-            <div className="form-group">
-              <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
-              <textarea
-                id="invite-emails"
-                value={inviteEmails}
-                onChange={(e) => setInviteEmails(e.target.value)}
-                placeholder="user1@example.com, user2@example.com"
-                rows={3}
-                disabled={loading}
-              />
-              <p className="form-help-text">
-                Enter email addresses separated by commas. These users will be invited to the conversation.
-                You can also add more invitations after updating the conversation, even after it's activated.
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="form-section">
-          <h2>Timing Settings</h2>
-
-          <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
-            <label htmlFor="scheduleActivation">
-              <input
-                id="scheduleActivation"
-                type="checkbox"
-                checked={scheduleActivation}
-                onChange={(e) => {
-                  setScheduleActivation(e.target.checked);
-                  if (e.target.checked) {
-                    // Set default to current time in local timezone
-                    const defaultTime = new Date();
-                    setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
-                  } else {
-                    setScheduledActivateAt('');
-                  }
-                }}
-              />
-              <span>Schedule activation for a future date and time</span>
-            </label>
-            <p className="form-help-text">
-              If enabled, the conversation will be automatically activated at the specified time.
-              Otherwise, you can activate it manually after creation.
-            </p>
-          </div>
-
-          {scheduleActivation && (
-            <div className="form-group">
-              <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
-              <input
-                id="scheduledActivateAt"
-                type="datetime-local"
-                value={scheduledActivateAt}
-                onChange={(e) => setScheduledActivateAt(e.target.value)}
-                min={formatDateForDateTimeLocal(new Date())}
-                required={scheduleActivation}
-              />
-              <p className="form-help-text">
-                The conversation will be automatically activated at this time. Make sure the time is in the future.
-              </p>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="durationHours">Duration After Activation</label>
-            <p className="form-help-text" style={{ marginBottom: '10px' }}>
-              How long should this conversation remain open for responses after activation?
-            </p>
-            <div className="duration-inputs">
-              <div className="duration-input-group">
-                <input
-                  id="durationHours"
-                  type="number"
-                  min="0"
-                  max="48"
-                  value={durationHours}
-                  onChange={(e) => {
-                    const value = Math.max(0, Math.min(48, parseInt(e.target.value) || 0));
-                    setDurationHours(value);
-                  }}
-                  placeholder="0"
-                />
-                <label htmlFor="durationHours" className="duration-label">Hours</label>
-              </div>
-              <div className="duration-input-group">
-                <input
-                  id="durationMinutes"
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={durationMinutes}
-                  onChange={(e) => {
-                    const value = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
-                    setDurationMinutes(value);
-                  }}
-                  placeholder="0"
-                />
-                <label htmlFor="durationMinutes" className="duration-label">Minutes</label>
-              </div>
-            </div>
-            <p className="form-help-text">
-              Maximum duration is 48 hours. The conversation will automatically close after this duration.
-            </p>
-          </div>
-        </div>
-
-        {/* Recurring Schedule Section - Only for templates */}
-        {isTemplate && (
-          <div className="form-section">
-            <h2>Recurring Schedule</h2>
-            <p className="form-help-text">Configure when new instances should be automatically created from this template.</p>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="recurrencePattern">Recurrence Pattern *</label>
-              <select
-                id="recurrencePattern"
-                value={recurrencePattern}
-                onChange={(e) => setRecurrencePattern(e.target.value as RecurrencePattern)}
-                required
-              >
-                <option value={RecurrencePattern.WEEKLY}>Weekly</option>
-                <option value={RecurrencePattern.BIWEEKLY}>Every 2 weeks</option>
-                <option value={RecurrencePattern.MONTHLY}>Monthly</option>
-                <option value={RecurrencePattern.QUARTERLY}>Quarterly</option>
-              </select>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="nextInstanceDate">Next Instance Date *</label>
-              <input
-                type="datetime-local"
-                id="nextInstanceDate"
-                value={nextInstanceDate}
-                onChange={(e) => setNextInstanceDate(e.target.value)}
-                required
-              />
-              <p className="form-help-text">
-                When should the next recurring instance be created?
-              </p>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="recurrenceEndDate">End Recurring Schedule (Optional)</label>
-              <input
-                type="datetime-local"
-                id="recurrenceEndDate"
-                value={recurrenceEndDate}
-                onChange={(e) => setRecurrenceEndDate(e.target.value)}
-              />
-              <p className="form-help-text">
-                When should the recurring schedule stop? Leave empty to continue indefinitely.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Series Configuration Section - Only for templates */}
-        {isTemplate && (
-          <div className="form-section">
-            <h2>Collection Configuration</h2>
-            <p className="form-help-text">Configure which collection instances created from this template will join.</p>
-
-            <div className="form-group">
-              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                <input
-                  type="checkbox"
-                  checked={!!selectedTemplateSeriesId}
-                  onChange={(e) => {
-                    if (!e.target.checked) {
-                      setSelectedTemplateSeriesId('');
-                    } else if (seriesList.length > 0) {
-                      setSelectedTemplateSeriesId(seriesList[0].id);
-                    } else {
-                      setShowCreateSeriesModal(true);
-                    }
-                  }}
-                  style={{ marginRight: '0.5rem' }}
-                />
-                <span style={{ fontWeight: 600 }}>Set Collection for Instances</span>
-              </label>
-              <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                Instances created from this template will automatically join the selected collection.
-              </p>
-
-              {selectedTemplateSeriesId && (
-                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
-                  <div className="form-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label htmlFor="templateSeriesSelect">Select Collection</label>
+                {headerImageUrl ? (
+                  <div style={{ marginTop: spacing[2] }}>
+                    <div style={styles.imagePreview}>
+                      <img src={headerImageUrl} alt="Header preview" style={styles.previewImage} />
                       <button
                         type="button"
-                        onClick={() => setShowCreateSeriesModal(true)}
-                        className="btn btn-secondary btn-small"
-                        style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                        onClick={() => setHeaderImageUrl('')}
+                        style={{ ...styles.buttonSecondary, ...styles.buttonSmall, ...styles.removeImageButton }}
+                        className="edit-btn-secondary"
                       >
-                        + Create New
+                        Remove
                       </button>
                     </div>
-                    <select
-                      id="templateSeriesSelect"
-                      value={selectedTemplateSeriesId}
-                      onChange={(e) => setSelectedTemplateSeriesId(e.target.value)}
-                    >
-                      <option value="">-- Select a collection --</option>
-                      {seriesList.map((series) => (
-                        <option key={series.id} value={series.id}>
-                          {series.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="form-help-text">
-                      {seriesList.length === 0
-                        ? 'No collections available. Click "Create New" to create a collection.'
-                        : 'Instances created from this template will join this collection.'}
+                    <input
+                      type="text"
+                      value={headerImageUrl}
+                      onChange={(e) => setHeaderImageUrl(e.target.value)}
+                      placeholder="Or paste an image URL"
+                      style={{ ...styles.input, marginTop: spacing[2] }}
+                      className="edit-input"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                        if (!validTypes.includes(file.type)) {
+                          setError('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+                          return;
+                        }
+
+                        if (file.size > 5 * 1024 * 1024) {
+                          setError('Image file size must be less than 5MB');
+                          return;
+                        }
+
+                        setUploadingImage(true);
+                        setError('');
+
+                        try {
+                          const result = await api.uploadImage(file);
+                          let fullUrl = result.url;
+                          if (!fullUrl.startsWith('http')) {
+                            const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+                            const baseUrl = apiBase.replace('/api', '');
+                            fullUrl = `${baseUrl}${result.url}`;
+                          }
+                          setHeaderImageUrl(fullUrl);
+                        } catch (err: any) {
+                          setError(err.response?.data?.detail || 'Failed to upload image');
+                        } finally {
+                          setUploadingImage(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      disabled={uploadingImage}
+                      style={{ marginBottom: spacing[2] }}
+                    />
+                    <p style={styles.helpText}>Or paste an image URL:</p>
+                    <input
+                      type="url"
+                      value={headerImageUrl}
+                      onChange={(e) => setHeaderImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      style={{ ...styles.input, marginTop: spacing[2] }}
+                      className="edit-input"
+                    />
+                  </div>
+                )}
+                {uploadingImage && (
+                  <p style={{ color: colors.primary[600], fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
+                    Uploading image...
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Privacy Settings */}
+            <div style={styles.card}>
+              <h2 style={styles.sectionTitle}>Privacy Settings</h2>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Anonymity Level *</label>
+                <select
+                  value={anonymityLevel}
+                  onChange={(e) => setAnonymityLevel(e.target.value as AnonymityLevel)}
+                  required
+                  style={styles.select}
+                  className="edit-input"
+                >
+                  <option value={AnonymityLevel.FULLY_ANONYMOUS}>
+                    Fully Anonymous - Unique one-time codes, no user tracking
+                  </option>
+                  <option value={AnonymityLevel.PLATFORM_TRACKED}>
+                    Platform Tracked - User tracked internally, hidden from facilitator
+                  </option>
+                  <option value={AnonymityLevel.REVEALABLE}>
+                    Revealable - User can consent to reveal identity
+                  </option>
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Who can see results? *</label>
+                <select
+                  value={resultsAccess}
+                  onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
+                  required
+                  style={styles.select}
+                  className="edit-input"
+                >
+                  <option value={ResultsAccess.CREATOR_ONLY}>
+                    Creator Only - Feedback collection mode
+                  </option>
+                  <option value={ResultsAccess.PARTICIPANTS}>
+                    All Participants - Collaborative mode
+                  </option>
+                  <option value={ResultsAccess.PUBLIC_LINK}>
+                    Anyone with Link - Public sharing mode
+                  </option>
+                </select>
+                <p style={styles.helpText}>
+                  {resultsAccess === ResultsAccess.CREATOR_ONLY &&
+                    "Participants submit responses and receive a confirmation. Only you can see results."}
+                  {resultsAccess === ResultsAccess.PARTICIPANTS &&
+                    "Participants who can respond can also view all responses and analysis."}
+                  {resultsAccess === ResultsAccess.PUBLIC_LINK &&
+                    "Anyone with the results link can view responses and analysis."}
+                </p>
+              </div>
+
+              <div style={styles.checkboxGroup}>
+                <input
+                  type="checkbox"
+                  id="showVerbatim"
+                  checked={showVerbatimResponses}
+                  onChange={(e) => setShowVerbatimResponses(e.target.checked)}
+                  style={styles.checkbox}
+                />
+                <div>
+                  <label htmlFor="showVerbatim" style={styles.checkboxLabel}>
+                    Show verbatim responses
+                  </label>
+                  <p style={styles.helpText}>
+                    When enabled, viewers can see all raw responses along with AI analysis.
+                  </p>
+                </div>
+              </div>
+
+              <div style={styles.checkboxGroup}>
+                <input
+                  type="checkbox"
+                  id="inviteOnly"
+                  checked={inviteOnly}
+                  onChange={(e) => setInviteOnly(e.target.checked)}
+                  style={styles.checkbox}
+                />
+                <div>
+                  <label htmlFor="inviteOnly" style={styles.checkboxLabel}>
+                    Invite-only mode
+                  </label>
+                  <p style={styles.helpText}>
+                    Only invited users can access this conversation.
+                  </p>
+                </div>
+              </div>
+
+              {inviteOnly && (
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Invite Users by Email (Optional)</label>
+                  <textarea
+                    value={inviteEmails}
+                    onChange={(e) => setInviteEmails(e.target.value)}
+                    placeholder="user1@example.com, user2@example.com"
+                    rows={3}
+                    disabled={loading}
+                    style={styles.textarea}
+                    className="edit-input"
+                  />
+                  <p style={styles.helpText}>
+                    Enter email addresses separated by commas.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Timing Settings */}
+            <div style={styles.card}>
+              <h2 style={styles.sectionTitle}>Timing Settings</h2>
+
+              <div style={styles.checkboxGroup}>
+                <input
+                  type="checkbox"
+                  id="scheduleActivation"
+                  checked={scheduleActivation}
+                  onChange={(e) => {
+                    setScheduleActivation(e.target.checked);
+                    if (e.target.checked) {
+                      const defaultTime = new Date();
+                      setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
+                    } else {
+                      setScheduledActivateAt('');
+                    }
+                  }}
+                  style={styles.checkbox}
+                />
+                <div>
+                  <label htmlFor="scheduleActivation" style={styles.checkboxLabel}>
+                    Schedule activation for a future date and time
+                  </label>
+                  <p style={styles.helpText}>
+                    The conversation will be automatically activated at the specified time.
+                  </p>
+                </div>
+              </div>
+
+              {scheduleActivation && (
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Scheduled Activation Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    value={scheduledActivateAt}
+                    onChange={(e) => setScheduledActivateAt(e.target.value)}
+                    min={formatDateForDateTimeLocal(new Date())}
+                    required={scheduleActivation}
+                    style={{ ...styles.input, width: 'auto' }}
+                    className="edit-input"
+                  />
+                </div>
+              )}
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Duration After Activation</label>
+                <p style={styles.helpText}>
+                  How long should this conversation remain open for responses?
+                </p>
+                <div style={styles.durationInputs}>
+                  <div style={styles.durationInputGroup}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="48"
+                      value={durationHours}
+                      onChange={(e) => {
+                        const value = Math.max(0, Math.min(48, parseInt(e.target.value) || 0));
+                        setDurationHours(value);
+                      }}
+                      style={styles.durationInput}
+                      className="edit-input"
+                    />
+                    <span style={styles.durationLabel}>Hours</span>
+                  </div>
+                  <div style={styles.durationInputGroup}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={durationMinutes}
+                      onChange={(e) => {
+                        const value = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                        setDurationMinutes(value);
+                      }}
+                      style={styles.durationInput}
+                      className="edit-input"
+                    />
+                    <span style={styles.durationLabel}>Minutes</span>
+                  </div>
+                </div>
+                <p style={styles.helpText}>
+                  Maximum duration is 48 hours.
+                </p>
+              </div>
+            </div>
+
+            {/* Recurring Schedule - Templates only */}
+            {isTemplate && (
+              <div style={styles.card}>
+                <h2 style={styles.sectionTitle}>Recurring Schedule</h2>
+                <p style={styles.sectionDescription}>
+                  Configure when new instances should be automatically created from this template.
+                </p>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Recurrence Pattern *</label>
+                  <select
+                    value={recurrencePattern}
+                    onChange={(e) => setRecurrencePattern(e.target.value as RecurrencePattern)}
+                    required
+                    style={styles.select}
+                    className="edit-input"
+                  >
+                    <option value={RecurrencePattern.WEEKLY}>Weekly</option>
+                    <option value={RecurrencePattern.BIWEEKLY}>Every 2 weeks</option>
+                    <option value={RecurrencePattern.MONTHLY}>Monthly</option>
+                    <option value={RecurrencePattern.QUARTERLY}>Quarterly</option>
+                  </select>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Next Instance Date *</label>
+                  <input
+                    type="datetime-local"
+                    value={nextInstanceDate}
+                    onChange={(e) => setNextInstanceDate(e.target.value)}
+                    required
+                    style={{ ...styles.input, width: 'auto' }}
+                    className="edit-input"
+                  />
+                  <p style={styles.helpText}>
+                    When should the next recurring instance be created?
+                  </p>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>End Recurring Schedule (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={recurrenceEndDate}
+                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                    style={{ ...styles.input, width: 'auto' }}
+                    className="edit-input"
+                  />
+                  <p style={styles.helpText}>
+                    Leave empty to continue indefinitely.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Collection Configuration - Templates */}
+            {isTemplate && (
+              <div style={styles.card}>
+                <h2 style={styles.sectionTitle}>Collection Configuration</h2>
+                <p style={styles.sectionDescription}>
+                  Configure which collection instances created from this template will join.
+                </p>
+
+                <div style={styles.checkboxGroup}>
+                  <input
+                    type="checkbox"
+                    id="setTemplateCollection"
+                    checked={!!selectedTemplateSeriesId}
+                    onChange={(e) => {
+                      if (!e.target.checked) {
+                        setSelectedTemplateSeriesId('');
+                      } else if (seriesList.length > 0) {
+                        setSelectedTemplateSeriesId(seriesList[0].id);
+                      } else {
+                        setShowCreateSeriesModal(true);
+                      }
+                    }}
+                    style={styles.checkbox}
+                  />
+                  <div>
+                    <label htmlFor="setTemplateCollection" style={styles.checkboxLabel}>
+                      Set Collection for Instances
+                    </label>
+                    <p style={styles.helpText}>
+                      Instances created from this template will automatically join the selected collection.
                     </p>
                   </div>
                 </div>
-              )}
 
-              {!selectedTemplateSeriesId && (
-                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateSeriesModal(true)}
-                    className="btn btn-secondary"
-                    style={{ marginTop: '0.5rem' }}
-                  >
-                    + Create New Collection
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Series Configuration Section - For regular conversations */}
-        {!isTemplate && (
-          <div className="form-section">
-            <h2>Collection</h2>
-            <p className="form-help-text">Add this conversation to a collection to group it with related conversations.</p>
-
-            <div className="form-group">
-              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                <input
-                  type="checkbox"
-                  checked={addToSeries || !!selectedSeriesId}
-                  onChange={(e) => {
-                    setAddToSeries(e.target.checked);
-                    if (!e.target.checked) {
-                      setSelectedSeriesId('');
-                    }
-                  }}
-                  style={{ marginRight: '0.5rem' }}
-                />
-                <span style={{ fontWeight: 600 }}>Add to Collection</span>
-              </label>
-              <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                Group this conversation with related conversations in a series.
-              </p>
-
-              {(addToSeries || selectedSeriesId) && (
-                <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
-                  <div className="form-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label htmlFor="seriesSelect">Select Collection</label>
+                {selectedTemplateSeriesId && (
+                  <div style={styles.seriesSection}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
+                      <label style={styles.label}>Select Collection</label>
                       <button
                         type="button"
                         onClick={() => setShowCreateSeriesModal(true)}
-                        className="btn btn-secondary btn-small"
-                        style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                        style={{ ...styles.buttonSecondary, ...styles.buttonSmall }}
+                        className="edit-btn-secondary"
                       >
                         + Create New
                       </button>
                     </div>
                     <select
-                      id="seriesSelect"
+                      value={selectedTemplateSeriesId}
+                      onChange={(e) => setSelectedTemplateSeriesId(e.target.value)}
+                      style={styles.select}
+                      className="edit-input"
+                    >
+                      <option value="">-- Select a collection --</option>
+                      {seriesList.map((series) => (
+                        <option key={series.id} value={series.id}>{series.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Collection - Regular conversations */}
+            {!isTemplate && (
+              <div style={styles.card}>
+                <h2 style={styles.sectionTitle}>Collection</h2>
+                <p style={styles.sectionDescription}>
+                  Add this conversation to a collection to group it with related conversations.
+                </p>
+
+                <div style={styles.checkboxGroup}>
+                  <input
+                    type="checkbox"
+                    id="addToSeries"
+                    checked={addToSeries || !!selectedSeriesId}
+                    onChange={(e) => {
+                      setAddToSeries(e.target.checked);
+                      if (!e.target.checked) {
+                        setSelectedSeriesId('');
+                      }
+                    }}
+                    style={styles.checkbox}
+                  />
+                  <div>
+                    <label htmlFor="addToSeries" style={styles.checkboxLabel}>
+                      Add to Collection
+                    </label>
+                    <p style={styles.helpText}>
+                      Group this conversation with related conversations.
+                    </p>
+                  </div>
+                </div>
+
+                {(addToSeries || selectedSeriesId) && (
+                  <div style={styles.seriesSection}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
+                      <label style={styles.label}>Select Collection</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateSeriesModal(true)}
+                        style={{ ...styles.buttonSecondary, ...styles.buttonSmall }}
+                        className="edit-btn-secondary"
+                      >
+                        + Create New
+                      </button>
+                    </div>
+                    <select
                       value={selectedSeriesId}
                       onChange={(e) => setSelectedSeriesId(e.target.value)}
                       required={addToSeries || !!selectedSeriesId}
+                      style={styles.select}
+                      className="edit-input"
                     >
                       <option value="">-- Select a collection --</option>
                       {seriesList.map((series) => (
-                        <option key={series.id} value={series.id}>
-                          {series.name}
-                        </option>
+                        <option key={series.id} value={series.id}>{series.name}</option>
                       ))}
                     </select>
-                    <p className="form-help-text">
-                      {seriesList.length === 0
-                        ? 'No collections available. Click "Create New" to create a collection or create this conversation independently.'
-                        : 'Select an existing collection to add this conversation to.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="form-section">
-          <div className="section-header">
-            <h2>Questions</h2>
-            <button type="button" onClick={addQuestion} className="btn btn-secondary btn-small">
-              + Add Question
-            </button>
-          </div>
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleQuestionDragEnd}
-          >
-            <SortableContext
-              items={questions.map(q => q.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {questions.map((question, index) => {
-                const isExpanded = expandedQuestions.has(index);
-                const questionText = question.question_text || 'Untitled question';
-                const questionType = getQuestionTypeLabel(question.question_type);
-                const isDraft = isTemplate || conversation?.state === 'draft' || !conversation;
-
-                return (
-                  <SortableQuestion
-                    key={question.id}
-                    id={question.id}
-                    isDraft={isDraft}
-                    questionsCount={questions.length}
-                    isExpanded={isExpanded}
-                  >
-                {/* Collapsed Header */}
-                {!isExpanded && (
-                  <div 
-                    className="question-collapsed-header"
-                    onClick={() => toggleQuestion(index)}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleQuestion(index);
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '0.25rem',
-                        cursor: 'pointer',
-                        color: '#718096',
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginRight: '0.5rem',
-                      }}
-                      aria-label="Expand question"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M6 9l6 6 6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                      <span style={{ color: '#718096', fontWeight: 500 }}>Question {index + 1}</span>
-                      <span style={{ color: '#a0aec0' }}>·</span>
-                      <span style={{ color: '#4299e1', fontSize: '0.9rem' }}>{questionType}</span>
-                      <span style={{ color: '#a0aec0' }}>·</span>
-                      <span style={{ color: '#2d3748', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {questionText}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeQuestion(index);
-                      }}
-                      className="btn-delete-question"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '0.25rem',
-                        cursor: 'pointer',
-                        color: '#e53e3e',
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginLeft: '0.5rem',
-                      }}
-                      aria-label="Delete question"
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
                   </div>
                 )}
+              </div>
+            )}
 
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <>
-                    <div className="question-header" style={{ width: '100%', marginBottom: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => toggleQuestion(index)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '0.25rem',
-                              cursor: 'pointer',
-                              color: '#718096',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                            aria-label="Collapse question"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M18 15l-6-6-6 6"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <span className="question-number">Question {index + 1}</span>
-                          {questions.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeQuestion(index)}
-                              className="btn-remove"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none' }}>
-                          <input
-                            type="checkbox"
-                            checked={question.is_required || false}
-                            onChange={(e) => {
-                              const newQuestions = [...questions];
-                              newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
-                              setQuestions(newQuestions);
-                            }}
-                          />
-                          <span>Required</span>
-                        </label>
-                      </div>
-                    </div>
+            {/* Questions */}
+            <div style={styles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
+                <h2 style={{ ...styles.sectionTitle, marginBottom: 0 }}>Questions</h2>
+                <button
+                  type="button"
+                  onClick={addQuestion}
+                  style={{ ...styles.buttonSecondary, ...styles.buttonSmall }}
+                  className="edit-btn-secondary"
+                >
+                  + Add Question
+                </button>
+              </div>
 
-                    <div className="form-group">
-                      <label>Question Type</label>
-                      <select
-                        value={question.question_type || 'text'}
-                        onChange={(e) => updateQuestionType(index, e.target.value)}
-                        style={{ width: '240px', paddingRight: '2.5rem' }}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleQuestionDragEnd}
+              >
+                <SortableContext
+                  items={questions.map(q => q.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {questions.map((question, index) => {
+                    const isExpanded = expandedQuestions.has(index);
+                    const questionText = question.question_text || 'Untitled question';
+                    const questionType = getQuestionTypeLabel(question.question_type);
+                    const isDraft = isTemplate || conversation?.state === 'draft' || !conversation;
+
+                    return (
+                      <SortableQuestion
+                        key={question.id}
+                        id={question.id}
+                        isDraft={isDraft}
+                        questionsCount={questions.length}
+                        isExpanded={isExpanded}
                       >
-                        <option value="text">Text Response</option>
-                        <option value="rating">Rating (0-10)</option>
-                        <option value="single_choice">Poll (Single Choice)</option>
-                        <option value="multiple_choice">Poll (Multiple Choice)</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Question Text</label>
-                      <textarea
-                        value={question.question_text}
-                        onChange={(e) => updateQuestion(index, e.target.value)}
-                        placeholder="Enter your question..."
-                        required
-                        rows={3}
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                    </div>
-
-                    {/* Question Image */}
-                    <div className="form-group">
-                      <label>Question Image (optional)</label>
-                      {question.question_image_url ? (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <div style={{
-                            position: 'relative',
-                            display: 'inline-block',
-                            marginBottom: '0.5rem'
-                          }}>
-                            <img
-                              src={question.question_image_url}
-                              alt="Question image"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '200px',
-                                borderRadius: '6px',
-                                border: '1px solid #e2e8f0'
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeQuestionImage(index)}
-                              className="btn btn-secondary btn-small"
-                              style={{
-                                position: 'absolute',
-                                top: '0.5rem',
-                                right: '0.5rem',
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                              }}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                            onChange={(e) => handleQuestionImageUpload(e, index)}
-                            disabled={uploadingQuestionImage[index]}
-                          />
-                          {uploadingQuestionImage[index] && (
-                            <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                              Uploading image...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {question.question_type === 'rating' && (
-                      <div className="question-config">
-                        <p className="config-info">
-                          Participants will rate on a scale from 0 to 10 using a slider.
-                        </p>
-                      </div>
-                    )}
-
-                    {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
-                      <div className="question-config">
-                        <div className="poll-options">
-                          <div className="config-header">
-                            <label>Answer Options</label>
-                            <button
-                              type="button"
-                              onClick={() => addPollOption(index)}
-                              className="btn btn-secondary btn-small"
-                            >
-                              + Add Option
-                            </button>
-                          </div>
-
-                          <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={(event: DragEndEvent) => {
-                              const { active, over } = event;
-                              if (over && active.id !== over.id) {
-                                reorderPollOptions(index, active.id as string, over.id as string);
-                              }
-                            }}
+                        {/* Collapsed Header */}
+                        {!isExpanded && (
+                          <div
+                            style={styles.collapsedHeader}
+                            className="edit-collapsed-header"
+                            onClick={() => toggleQuestion(index)}
                           >
-                            <SortableContext
-                              items={question.options?.choices?.map(c => c.id) || []}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {[...(question.options?.choices || [])]
-                                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                .map((choice, choiceIndex) => (
-                                  <SortablePollOption
-                                    key={choice.id}
-                                    choice={choice}
-                                    choiceIndex={choiceIndex}
-                                    questionIndex={index}
-                                    onLabelChange={updatePollOptionLabel}
-                                    onRemove={removePollOption}
-                                    canRemove={(question.options?.choices?.length || 0) > 1}
-                                  />
-                                ))}
-                            </SortableContext>
-                          </DndContext>
-                        </div>
-
-                        {question.question_type === 'multiple_choice' && (
-                          <div className="form-group">
-                            <label>Maximum Selections Allowed</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={question.options?.choices?.length || 1}
-                              value={question.options?.max_selections || 1}
-                              onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
-                            />
-                            <small>Participants can select up to this many options</small>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: spacing[2], color: colors.primary[400] }}>
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flex: 1, minWidth: 0 }}>
+                              <span style={{ color: colors.primary[600], fontWeight: typography.fontWeight.medium, fontSize: typography.fontSize.sm }}>
+                                Question {index + 1}
+                              </span>
+                              <span style={{ color: colors.primary[300] }}>·</span>
+                              <span style={{ color: colors.primary[500], fontSize: typography.fontSize.xs }}>{questionType}</span>
+                              <span style={{ color: colors.primary[300] }}>·</span>
+                              <span style={{ color: colors.primary[700], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, fontSize: typography.fontSize.sm }}>
+                                {questionText}
+                              </span>
+                            </div>
+                            {questions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeQuestion(index);
+                                }}
+                                style={{ ...styles.removeButton, color: colors.primary[400] }}
+                                className="edit-remove-btn"
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" />
+                                </svg>
+                              </button>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
-                  </>
-                )}
-                  </SortableQuestion>
-                );
-              })}
-            </SortableContext>
-          </DndContext>
-        </div>
 
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={() => setShowPreview(true)}
-            className="btn btn-secondary btn-large"
-            disabled={
-              !title.trim() ||
-              questions.some((q) => {
-                // Check if question text is empty
-                if (!q.question_text.trim()) return true;
+                        {/* Expanded Content */}
+                        {isExpanded && (
+                          <div style={styles.questionCard}>
+                            <div style={styles.questionHeader}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleQuestion(index)}
+                                  style={{ background: 'none', border: 'none', padding: spacing[1], cursor: 'pointer', color: colors.primary[400], display: 'flex' }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M18 15l-6-6-6 6" />
+                                  </svg>
+                                </button>
+                                <span style={styles.questionNumber}>Question {index + 1}</span>
+                                {questions.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeQuestion(index)}
+                                    style={{ ...styles.buttonSecondary, ...styles.buttonSmall, color: colors.primary[600] }}
+                                    className="edit-btn-secondary"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                              <div style={styles.checkboxGroup}>
+                                <input
+                                  type="checkbox"
+                                  id={`required-${index}`}
+                                  checked={question.is_required || false}
+                                  onChange={(e) => {
+                                    const newQuestions = [...questions];
+                                    newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
+                                    setQuestions(newQuestions);
+                                  }}
+                                  style={styles.checkbox}
+                                />
+                                <label htmlFor={`required-${index}`} style={{ fontSize: typography.fontSize.sm, color: colors.primary[600] }}>
+                                  Required
+                                </label>
+                              </div>
+                            </div>
 
-                // Check if poll questions have at least one option with a label
-                if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
-                  const hasValidOptions = q.options?.choices?.some(c => c.label.trim());
-                  if (!hasValidOptions) return true;
+                            <div style={styles.formGroup}>
+                              <label style={styles.label}>Question Type</label>
+                              <select
+                                value={question.question_type || 'text'}
+                                onChange={(e) => updateQuestionType(index, e.target.value)}
+                                style={{ ...styles.select, width: '240px' }}
+                                className="edit-input"
+                              >
+                                <option value="text">Text Response</option>
+                                <option value="rating">Rating (0-10)</option>
+                                <option value="single_choice">Poll (Single Choice)</option>
+                                <option value="multiple_choice">Poll (Multiple Choice)</option>
+                              </select>
+                            </div>
+
+                            <div style={styles.formGroup}>
+                              <label style={styles.label}>Question Text</label>
+                              <textarea
+                                value={question.question_text}
+                                onChange={(e) => updateQuestion(index, e.target.value)}
+                                placeholder="Enter your question..."
+                                required
+                                rows={3}
+                                style={styles.textarea}
+                                className="edit-input"
+                              />
+                            </div>
+
+                            {/* Question Image */}
+                            <div style={styles.formGroup}>
+                              <label style={styles.label}>Question Image (optional)</label>
+                              {question.question_image_url ? (
+                                <div style={{ marginTop: spacing[2] }}>
+                                  <div style={styles.imagePreview}>
+                                    <img src={question.question_image_url} alt="Question" style={styles.previewImage} />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeQuestionImage(index)}
+                                      style={{ ...styles.buttonSecondary, ...styles.buttonSmall, ...styles.removeImageButton }}
+                                      className="edit-btn-secondary"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onChange={(e) => handleQuestionImageUpload(e, index)}
+                                    disabled={uploadingQuestionImage[index]}
+                                  />
+                                  {uploadingQuestionImage[index] && (
+                                    <p style={{ color: colors.primary[600], fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
+                                      Uploading image...
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {question.question_type === 'rating' && (
+                              <div style={styles.infoMessage}>
+                                Participants will rate on a scale from 0 to 10 using a slider.
+                              </div>
+                            )}
+
+                            {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[3] }}>
+                                  <label style={styles.label}>Answer Options</label>
+                                  <button
+                                    type="button"
+                                    onClick={() => addPollOption(index)}
+                                    style={{ ...styles.buttonSecondary, ...styles.buttonSmall }}
+                                    className="edit-btn-secondary"
+                                  >
+                                    + Add Option
+                                  </button>
+                                </div>
+
+                                <DndContext
+                                  sensors={sensors}
+                                  collisionDetection={closestCenter}
+                                  onDragEnd={(event: DragEndEvent) => {
+                                    const { active, over } = event;
+                                    if (over && active.id !== over.id) {
+                                      reorderPollOptions(index, active.id as string, over.id as string);
+                                    }
+                                  }}
+                                >
+                                  <SortableContext
+                                    items={question.options?.choices?.map(c => c.id) || []}
+                                    strategy={verticalListSortingStrategy}
+                                  >
+                                    {[...(question.options?.choices || [])]
+                                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                      .map((choice, choiceIndex) => (
+                                        <SortablePollOption
+                                          key={choice.id}
+                                          choice={choice}
+                                          choiceIndex={choiceIndex}
+                                          questionIndex={index}
+                                          onLabelChange={updatePollOptionLabel}
+                                          onRemove={removePollOption}
+                                          canRemove={(question.options?.choices?.length || 0) > 1}
+                                        />
+                                      ))}
+                                  </SortableContext>
+                                </DndContext>
+
+                                {question.question_type === 'multiple_choice' && (
+                                  <div style={{ ...styles.formGroup, marginTop: spacing[4] }}>
+                                    <label style={styles.label}>Maximum Selections Allowed</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max={question.options?.choices?.length || 1}
+                                      value={question.options?.max_selections || 1}
+                                      onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
+                                      style={{ ...styles.input, width: '100px' }}
+                                      className="edit-input"
+                                    />
+                                    <p style={styles.helpText}>
+                                      Participants can select up to this many options.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </SortableQuestion>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+            </div>
+
+            {/* Form Actions */}
+            <div style={styles.formActions}>
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                style={{
+                  ...styles.buttonSecondary,
+                  ...((!title.trim() || questions.some((q) => {
+                    if (!q.question_text.trim()) return true;
+                    if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
+                      const hasValidOptions = q.options?.choices?.some(c => c.label.trim());
+                      if (!hasValidOptions) return true;
+                    }
+                    return false;
+                  })) ? styles.buttonDisabled : {}),
+                }}
+                className="edit-btn-secondary"
+                disabled={
+                  !title.trim() ||
+                  questions.some((q) => {
+                    if (!q.question_text.trim()) return true;
+                    if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
+                      const hasValidOptions = q.options?.choices?.some(c => c.label.trim());
+                      if (!hasValidOptions) return true;
+                    }
+                    return false;
+                  })
                 }
-
-                return false;
-              })
-            }
-          >
-            Preview
-          </button>
-          <button type="submit" className="btn btn-primary btn-large" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </form>
-
-      {showPreview && (
-        <ConversationPreview
-          title={title}
-          participantTitle={participantTitle}
-          description={description}
-          headerImageUrl={headerImageUrl}
-          anonymityLevel={anonymityLevel}
-          questions={questions}
-          maxResponseLength={10000}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
-
-      {/* Create Series Modal */}
-      {showCreateSeriesModal && (
-        <div className="modal-overlay" onClick={() => {
-          if (!creatingSeries) {
-            setShowCreateSeriesModal(false);
-            setNewSeriesName('');
-            setNewSeriesDescription('');
-            setError('');
-          }
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <h2>Create New Collection</h2>
-            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
-              Create a new collection to group related conversations together.
-            </p>
-
-            <div className="form-group">
-              <label htmlFor="newSeriesName">Collection Name *</label>
-              <input
-                id="newSeriesName"
-                type="text"
-                value={newSeriesName}
-                onChange={(e) => setNewSeriesName(e.target.value)}
-                placeholder="e.g., Q1 2025 Retros"
-                required
-                disabled={creatingSeries}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && newSeriesName.trim() && !creatingSeries) {
-                    e.preventDefault();
-                    handleCreateSeries();
-                  }
-                }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="newSeriesDescription">Description (optional)</label>
-              <textarea
-                id="newSeriesDescription"
-                value={newSeriesDescription}
-                onChange={(e) => setNewSeriesDescription(e.target.value)}
-                placeholder="Describe what this series is for..."
-                rows={3}
-                disabled={creatingSeries}
-              />
-            </div>
-
-            {error && <div className="error-message" style={{ marginTop: '1rem' }}>{error}</div>}
-
-            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
-              <button
-                onClick={() => {
-                  if (!creatingSeries) {
-                    setShowCreateSeriesModal(false);
-                    setNewSeriesName('');
-                    setNewSeriesDescription('');
-                    setError('');
-                  }
-                }}
-                className="btn btn-secondary"
-                disabled={creatingSeries}
               >
-                Cancel
+                Preview
               </button>
               <button
-                onClick={handleCreateSeries}
-                className="btn btn-primary"
-                disabled={creatingSeries || !newSeriesName.trim()}
+                type="submit"
+                style={{
+                  ...styles.buttonPrimary,
+                  ...(loading ? styles.buttonDisabled : {}),
+                }}
+                className="edit-btn-primary"
+                disabled={loading}
               >
-                {creatingSeries ? 'Creating...' : 'Create Collection'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
-          </div>
+          </form>
+
+          {showPreview && (
+            <ConversationPreview
+              title={title}
+              participantTitle={participantTitle}
+              description={description}
+              headerImageUrl={headerImageUrl}
+              anonymityLevel={anonymityLevel}
+              questions={questions}
+              maxResponseLength={10000}
+              onClose={() => setShowPreview(false)}
+            />
+          )}
+
+          {/* Create Series Modal */}
+          {showCreateSeriesModal && (
+            <div style={styles.modalOverlay} onClick={() => {
+              if (!creatingSeries) {
+                setShowCreateSeriesModal(false);
+                setNewSeriesName('');
+                setNewSeriesDescription('');
+                setError('');
+              }
+            }}>
+              <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <h2 style={styles.modalTitle}>Create New Collection</h2>
+                <p style={styles.modalDescription}>
+                  Create a new collection to group related conversations together.
+                </p>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Collection Name *</label>
+                  <input
+                    type="text"
+                    value={newSeriesName}
+                    onChange={(e) => setNewSeriesName(e.target.value)}
+                    placeholder="e.g., Q1 2025 Retros"
+                    required
+                    disabled={creatingSeries}
+                    style={styles.input}
+                    className="edit-input"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && newSeriesName.trim() && !creatingSeries) {
+                        e.preventDefault();
+                        handleCreateSeries();
+                      }
+                    }}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Description (optional)</label>
+                  <textarea
+                    value={newSeriesDescription}
+                    onChange={(e) => setNewSeriesDescription(e.target.value)}
+                    placeholder="Describe what this collection is for..."
+                    rows={3}
+                    disabled={creatingSeries}
+                    style={styles.textarea}
+                    className="edit-input"
+                  />
+                </div>
+
+                <div style={styles.modalActions}>
+                  <button
+                    onClick={() => {
+                      if (!creatingSeries) {
+                        setShowCreateSeriesModal(false);
+                        setNewSeriesName('');
+                        setNewSeriesDescription('');
+                        setError('');
+                      }
+                    }}
+                    style={styles.buttonSecondary}
+                    className="edit-btn-secondary"
+                    disabled={creatingSeries}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateSeries}
+                    style={{
+                      ...styles.buttonPrimary,
+                      ...((creatingSeries || !newSeriesName.trim()) ? styles.buttonDisabled : {}),
+                    }}
+                    className="edit-btn-primary"
+                    disabled={creatingSeries || !newSeriesName.trim()}
+                  >
+                    {creatingSeries ? 'Creating...' : 'Create Collection'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
-}
-
-export default function EditConversationPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <EditConversationPageNew /> : <EditConversationPageOld />}
+      </div>
     </>
   );
 }

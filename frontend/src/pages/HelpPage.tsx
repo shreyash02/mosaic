@@ -1,9 +1,163 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import DesignToggle from '../components/DesignToggle';
-import HelpPageNew from './HelpPageNew';
+import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 
-function HelpPageOld() {
+const styles = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: colors.primary[50],
+    padding: spacing[6],
+    paddingTop: 'calc(60px + 1.5rem)',
+  },
+  container: {
+    maxWidth: '1100px',
+    margin: '0 auto',
+  },
+  header: {
+    marginBottom: spacing[8],
+  },
+  title: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  subtitle: {
+    fontSize: typography.fontSize.lg,
+    color: colors.primary[600],
+    margin: 0,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  overviewCard: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[8],
+    marginBottom: spacing[8],
+    boxShadow: shadows.sm,
+  },
+  overviewTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[4],
+  },
+  overviewText: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[700],
+    lineHeight: typography.lineHeight.relaxed,
+    marginBottom: spacing[6],
+  },
+  featuresTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+  },
+  featuresList: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[700],
+    lineHeight: 2,
+    paddingLeft: spacing[5],
+    margin: 0,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[5],
+  },
+  topicsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: spacing[5],
+    marginBottom: spacing[8],
+  },
+  topicCard: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[5],
+    textDecoration: 'none',
+    color: 'inherit',
+    transition: transitions.duration.normal,
+    display: 'block',
+  },
+  topicIcon: {
+    marginBottom: spacing[4],
+    color: colors.primary[600],
+  },
+  topicTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  topicDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  supportCard: {
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.lg,
+    padding: spacing[6],
+  },
+  supportTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[4],
+  },
+  supportText: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[700],
+    marginBottom: spacing[5],
+  },
+  supportItems: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[5],
+  },
+  supportItem: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[1],
+  },
+  supportItemTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    margin: 0,
+  },
+  supportItemText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+    margin: 0,
+  },
+  link: {
+    color: colors.primary[700],
+    textDecoration: 'underline',
+    fontWeight: typography.fontWeight.medium,
+  },
+};
+
+const hoverStyles = `
+  .help-topic-card:hover {
+    border-color: ${colors.primary[400]};
+    box-shadow: ${shadows.md};
+    transform: translateY(-2px);
+  }
+  .help-link:hover {
+    color: ${colors.primary[900]};
+  }
+`;
+
+export default function HelpPage() {
   const getIcon = (iconName: string) => {
     const icons: Record<string, JSX.Element> = {
       'create': (
@@ -106,125 +260,89 @@ function HelpPageOld() {
   ];
 
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-header">
-        <div>
-          <h1>Help & Documentation</h1>
-          <p className="description">
-            Learn how to make the most of Mosaic for gathering feedback, facilitating discussions, and uncovering insights.
-          </p>
-        </div>
-      </div>
-
-      {/* Overview Section */}
-      <div style={{ marginBottom: '2rem' }}>
-        <div className="card" style={{ padding: '2rem' }}>
-          <h2 style={{ marginTop: 0 }}>What is Mosaic?</h2>
-          <p style={{ fontSize: '1.05rem', lineHeight: '1.6', color: '#4a5568' }}>
-            Mosaic is a platform for creating thoughtful conversations and gathering meaningful feedback.
-            Whether you're conducting surveys, facilitating discussions, or gathering team feedback,
-            Mosaic helps you collect responses and uncover insights through AI-powered analysis.
-          </p>
-
-          <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>Key Features</h3>
-          <ul style={{ fontSize: '1rem', lineHeight: '1.8', color: '#4a5568' }}>
-            <li><strong>Flexible Anonymity:</strong> Choose from fully anonymous, platform-tracked, or revealable responses</li>
-            <li><strong>Multiple Question Types:</strong> Text responses, ratings, single choice, and multiple choice</li>
-            <li><strong>AI-Powered Analysis:</strong> Automatically discover themes and insights from text responses</li>
-            <li><strong>Follow-up Conversations:</strong> Build on previous discussions to dive deeper</li>
-            <li><strong>Recurring Conversations:</strong> Set up templates for regular check-ins</li>
-            <li><strong>Organizations:</strong> Collaborate with teams and manage conversations together</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Help Topics Grid */}
-      <h2 style={{ marginBottom: '1.5rem' }}>Browse Help Topics</h2>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        {helpTopics.map((topic) => (
-          <Link
-            key={topic.link}
-            to={topic.link}
-            className="card"
-            style={{
-              padding: '1.5rem',
-              textDecoration: 'none',
-              color: 'inherit',
-              transition: 'all 0.2s',
-              cursor: 'pointer',
-              border: '1px solid #e2e8f0'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#4299e1';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(66, 153, 225, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <div style={{ marginBottom: '1rem', color: '#4299e1' }}>{getIcon(topic.icon)}</div>
-            <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: '#2d3748' }}>
-              {topic.title}
-            </h3>
-            <p style={{ color: '#718096', fontSize: '0.95rem', margin: 0, lineHeight: '1.5' }}>
-              {topic.description}
-            </p>
-          </Link>
-        ))}
-      </div>
-
-      {/* Quick Links */}
-      <div className="card" style={{ padding: '1.5rem', backgroundColor: '#f7fafc' }}>
-        <h3 style={{ marginTop: 0 }}>Need More Help?</h3>
-        <p style={{ color: '#4a5568', marginBottom: '1rem' }}>
-          Can't find what you're looking for? Here are some additional resources:
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <strong style={{ color: '#2d3748' }}>Email Support</strong>
-            <p style={{ color: '#4a5568', margin: '0.25rem 0 0 0' }}>
-              Have questions or need assistance? Email us at{' '}
-              <a href="mailto:shreyash02@gmail.com" style={{ color: '#4299e1', textDecoration: 'none' }}>
-                shreyash02@gmail.com
-              </a>
-            </p>
-          </div>
-          <div>
-            <strong style={{ color: '#2d3748' }}>Report an Issue</strong>
-            <p style={{ color: '#4a5568', margin: '0.25rem 0 0 0' }}>
-              Found a bug or have a feature request?{' '}
-              <a
-                href="https://github.com/mosaic-ask-app/mosaic-support/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#4299e1', textDecoration: 'none' }}
-              >
-                Submit an issue on GitHub
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function HelpPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
     <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <HelpPageNew /> : <HelpPageOld />}
+      <style>{hoverStyles}</style>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <header style={styles.header}>
+            <h1 style={styles.title}>Help & Documentation</h1>
+            <p style={styles.subtitle}>
+              Learn how to make the most of Mosaic for gathering feedback, facilitating discussions, and uncovering insights.
+            </p>
+          </header>
+
+          {/* Overview Section */}
+          <div style={styles.overviewCard}>
+            <h2 style={styles.overviewTitle}>What is Mosaic?</h2>
+            <p style={styles.overviewText}>
+              Mosaic is a platform for creating thoughtful conversations and gathering meaningful feedback.
+              Whether you're conducting surveys, facilitating discussions, or gathering team feedback,
+              Mosaic helps you collect responses and uncover insights through AI-powered analysis.
+            </p>
+
+            <h3 style={styles.featuresTitle}>Key Features</h3>
+            <ul style={styles.featuresList}>
+              <li><strong>Flexible Anonymity:</strong> Choose from fully anonymous, platform-tracked, or revealable responses</li>
+              <li><strong>Multiple Question Types:</strong> Text responses, ratings, single choice, and multiple choice</li>
+              <li><strong>AI-Powered Analysis:</strong> Automatically discover themes and insights from text responses</li>
+              <li><strong>Follow-up Conversations:</strong> Build on previous discussions to dive deeper</li>
+              <li><strong>Recurring Conversations:</strong> Set up templates for regular check-ins</li>
+              <li><strong>Organizations:</strong> Collaborate with teams and manage conversations together</li>
+            </ul>
+          </div>
+
+          {/* Help Topics Grid */}
+          <h2 style={styles.sectionTitle}>Browse Help Topics</h2>
+          <div style={styles.topicsGrid}>
+            {helpTopics.map((topic) => (
+              <Link
+                key={topic.link}
+                to={topic.link}
+                style={styles.topicCard}
+                className="help-topic-card"
+              >
+                <div style={styles.topicIcon}>{getIcon(topic.icon)}</div>
+                <h3 style={styles.topicTitle}>{topic.title}</h3>
+                <p style={styles.topicDescription}>{topic.description}</p>
+              </Link>
+            ))}
+          </div>
+
+          {/* Support Section */}
+          <div style={styles.supportCard}>
+            <h3 style={styles.supportTitle}>Need More Help?</h3>
+            <p style={styles.supportText}>
+              Can't find what you're looking for? Here are some additional resources:
+            </p>
+            <div style={styles.supportItems}>
+              <div style={styles.supportItem}>
+                <h4 style={styles.supportItemTitle}>Email Support</h4>
+                <p style={styles.supportItemText}>
+                  Have questions or need assistance? Email us at{' '}
+                  <a href="mailto:shreyash02@gmail.com" style={styles.link} className="help-link">
+                    shreyash02@gmail.com
+                  </a>
+                </p>
+              </div>
+              <div style={styles.supportItem}>
+                <h4 style={styles.supportItemTitle}>Report an Issue</h4>
+                <p style={styles.supportItemText}>
+                  Found a bug or have a feature request?{' '}
+                  <a
+                    href="https://github.com/mosaic-ask-app/mosaic-support/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.link}
+                    className="help-link"
+                  >
+                    Submit an issue on GitHub
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

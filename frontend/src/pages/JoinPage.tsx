@@ -7,20 +7,544 @@ import { formatDate, formatRelativeTime } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
-import DesignToggle from '../components/DesignToggle';
-import JoinPageNew from './JoinPageNew';
+import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 
-function JoinPageOld() {
+const styles = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: colors.primary[50],
+    padding: spacing[6],
+    paddingTop: 'calc(60px + 1.5rem)',
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  container: {
+    maxWidth: '700px',
+    width: '100%',
+  },
+  header: {
+    marginBottom: spacing[6],
+    textAlign: 'center' as const,
+  },
+  headerImage: {
+    marginBottom: spacing[5],
+    borderRadius: borders.radius.lg,
+    overflow: 'hidden',
+    maxHeight: '300px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary[100],
+  },
+  title: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  description: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[600],
+    margin: 0,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[6],
+    marginBottom: spacing[5],
+    boxShadow: shadows.sm,
+  },
+  cardCentered: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[8],
+    textAlign: 'center' as const,
+    boxShadow: shadows.sm,
+  },
+  privacyCard: {
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[200]}`,
+    borderRadius: borders.radius.lg,
+    padding: spacing[5],
+    marginBottom: spacing[5],
+  },
+  privacyHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: spacing[3],
+  },
+  privacyTitle: {
+    margin: 0,
+    marginLeft: spacing[2],
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+  },
+  privacyItem: {
+    marginBottom: spacing[3],
+    marginLeft: spacing[8],
+  },
+  privacyLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[800],
+    display: 'block',
+    marginBottom: spacing[1],
+  },
+  privacyText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  formGroup: {
+    marginBottom: spacing[5],
+  },
+  label: {
+    display: 'block',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+    marginBottom: spacing[2],
+  },
+  input: {
+    width: '100%',
+    padding: spacing[3],
+    fontSize: typography.fontSize.base,
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    boxSizing: 'border-box' as const,
+    transition: transitions.duration.normal,
+  },
+  textarea: {
+    width: '100%',
+    padding: spacing[3],
+    fontSize: typography.fontSize.base,
+    fontFamily: 'inherit',
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    resize: 'vertical' as const,
+    boxSizing: 'border-box' as const,
+    transition: transitions.duration.normal,
+  },
+  charCount: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[500],
+    marginTop: spacing[1],
+    textAlign: 'right' as const,
+  },
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[3]} ${spacing[6]}`,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    width: '100%',
+  },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[3]} ${spacing[5]}`,
+    backgroundColor: 'white',
+    color: colors.primary[700],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  error: {
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[300]}`,
+    color: colors.primary[900],
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing[4],
+  },
+  success: {
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[400]}`,
+    color: colors.primary[900],
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing[4],
+  },
+  loading: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    color: colors.primary[500],
+  },
+  successState: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+  },
+  successTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[3],
+  },
+  successText: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[600],
+    margin: 0,
+    marginBottom: spacing[2],
+  },
+  resultsBox: {
+    marginTop: spacing[5],
+    padding: spacing[5],
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[200]}`,
+    textAlign: 'left' as const,
+  },
+  resultsTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  resultsText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+    marginBottom: spacing[3],
+  },
+  resultsLink: {
+    backgroundColor: 'white',
+    padding: spacing[3],
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+    fontFamily: 'monospace',
+    fontSize: typography.fontSize.sm,
+    wordBreak: 'break-all' as const,
+    color: colors.primary[800],
+    marginBottom: spacing[3],
+  },
+  trustScreen: {
+    maxWidth: '600px',
+    margin: '0 auto',
+    padding: spacing[6],
+    textAlign: 'center' as const,
+  },
+  trustCard: {
+    backgroundColor: colors.primary[50],
+    border: `2px solid ${colors.primary[400]}`,
+    borderRadius: borders.radius.xl,
+    padding: spacing[6],
+    marginBottom: spacing[6],
+  },
+  trustIcon: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: spacing[5],
+    color: colors.primary[600],
+  },
+  trustTitle: {
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  trustText: {
+    color: colors.primary[600],
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.lineHeight.relaxed,
+    marginBottom: spacing[5],
+  },
+  trustDetails: {
+    textAlign: 'left' as const,
+    backgroundColor: 'white',
+    borderRadius: borders.radius.md,
+    padding: spacing[5],
+    marginBottom: spacing[5],
+  },
+  trustDetailItem: {
+    marginBottom: spacing[4],
+  },
+  trustDetailLabel: {
+    color: colors.primary[900],
+    display: 'block',
+    marginBottom: spacing[1],
+    fontWeight: typography.fontWeight.semibold,
+  },
+  trustDetailText: {
+    margin: 0,
+    color: colors.primary[600],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  conflictCard: {
+    backgroundColor: colors.primary[100],
+    border: `2px solid ${colors.primary[500]}`,
+    borderRadius: borders.radius.xl,
+    padding: spacing[6],
+    marginBottom: spacing[4],
+  },
+  conflictTitle: {
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  conflictText: {
+    color: colors.primary[800],
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.lineHeight.relaxed,
+    marginBottom: spacing[5],
+  },
+  conflictInfo: {
+    textAlign: 'left' as const,
+    backgroundColor: 'white',
+    borderRadius: borders.radius.md,
+    padding: spacing[5],
+    marginBottom: spacing[5],
+    border: `1px solid ${colors.primary[200]}`,
+  },
+  conflictButtons: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[3],
+  },
+  conflictHint: {
+    margin: `0 0 ${spacing[2]} 0`,
+    color: colors.primary[600],
+    fontSize: typography.fontSize.sm,
+    fontStyle: 'italic',
+  },
+  ratingInput: {
+    marginTop: spacing[3],
+  },
+  ratingSlider: {
+    width: '100%',
+    accentColor: colors.primary[900],
+  },
+  ratingValue: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    marginTop: spacing[2],
+  },
+  ratingNumber: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+  },
+  ratingRange: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[500],
+  },
+  pollInput: {
+    marginTop: spacing[3],
+  },
+  pollInstruction: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[3],
+  },
+  radioOption: {
+    marginBottom: spacing[2],
+  },
+  radioLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: spacing[3],
+    backgroundColor: 'white',
+    border: `1px solid ${colors.primary[200]}`,
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  checkboxGroup: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    marginTop: spacing[5],
+    padding: spacing[4],
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+  },
+  checkbox: {
+    marginTop: '2px',
+    width: '18px',
+    height: '18px',
+    accentColor: colors.primary[900],
+  },
+  draftStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[4],
+    padding: spacing[3],
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  draftIndicator: {
+    display: 'inline-block',
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    marginRight: spacing[2],
+  },
+  formActions: {
+    display: 'flex',
+    gap: spacing[3],
+    justifyContent: 'flex-end',
+  },
+  closeNotice: {
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.md,
+    padding: spacing[3],
+    marginBottom: spacing[4],
+    textAlign: 'center' as const,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+  },
+  modalOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: spacing[4],
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.xl,
+    padding: spacing[6],
+    maxWidth: '500px',
+    width: '90%',
+    boxShadow: shadows.lg,
+  },
+  modalTitle: {
+    marginTop: 0,
+    marginBottom: spacing[4],
+    color: colors.primary[900],
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  modalInstructions: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    padding: spacing[4],
+    marginBottom: spacing[5],
+  },
+  modalActions: {
+    display: 'flex',
+    gap: spacing[3],
+    justifyContent: 'flex-end',
+  },
+  lightbox: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    cursor: 'pointer',
+    padding: spacing[6],
+  },
+  lightboxClose: {
+    position: 'absolute' as const,
+    top: spacing[4],
+    right: spacing[4],
+    background: 'rgba(255, 255, 255, 0.9)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '40px',
+    height: '40px',
+    fontSize: typography.fontSize.xl,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: colors.primary[900],
+  },
+  questionImage: {
+    marginTop: spacing[2],
+    marginBottom: spacing[3],
+    borderRadius: borders.radius.md,
+    overflow: 'hidden',
+    maxHeight: '300px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary[50],
+    cursor: 'pointer',
+  },
+  draftNotice: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing[3],
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[4],
+    color: colors.primary[800],
+  },
+};
+
+const hoverStyles = `
+  .join-input:focus {
+    border-color: ${colors.primary[500]};
+    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    outline: none;
+  }
+  .join-btn-primary:hover:not(:disabled) {
+    background-color: ${colors.primary[800]};
+  }
+  .join-btn-secondary:hover:not(:disabled) {
+    background-color: ${colors.primary[50]};
+    border-color: ${colors.primary[400]};
+  }
+  .join-radio-label:hover {
+    border-color: ${colors.primary[400]};
+    background-color: ${colors.primary[50]};
+  }
+`;
+
+export default function JoinPage() {
   const { accessCode: accessCodeFromPath } = useParams<{ accessCode: string }>();
   const [searchParams] = useSearchParams();
   const accessCodeFromQuery = searchParams.get('code');
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
 
-  // Use code from path, query param, or require manual input
-  const [accessCode, setAccessCode] = useState<string | null>(
-    accessCodeFromPath || accessCodeFromQuery || null
-  );
+  const [accessCode, setAccessCode] = useState<string | null>(accessCodeFromPath || accessCodeFromQuery || null);
   const participantCodeFromQuery = searchParams.get('participant_code');
   const [participantCode, setParticipantCode] = useState(participantCodeFromQuery || '');
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -48,10 +572,8 @@ function JoinPageOld() {
   const [showDraftRestoredNotice, setShowDraftRestoredNotice] = useState(false);
   const [draftSaveError, setDraftSaveError] = useState<string | null>(null);
 
-  // Draft responses hook - handles localStorage and server persistence
   const handleDraftLoaded = useCallback((draftResponses: ResponseItem[], revealConsentValue: boolean) => {
     setResponses(prev => {
-      // Merge draft responses with current (draft takes precedence)
       const draftMap = new Map(draftResponses.map(r => [r.question_id, r]));
       return prev.map(r => draftMap.get(r.question_id) || r);
     });
@@ -61,7 +583,6 @@ function JoinPageOld() {
 
   const handleDraftSaveError = useCallback((_error: Error) => {
     setDraftSaveError('Failed to save draft to server');
-    // Auto-clear after 3 seconds
     setTimeout(() => setDraftSaveError(null), 3000);
   }, []);
 
@@ -85,7 +606,6 @@ function JoinPageOld() {
     onSaveError: handleDraftSaveError,
   });
 
-  // Sync responses to draft hook when they change
   useEffect(() => {
     if (conversation && trustScreenAcknowledged && !hasAlreadySubmitted) {
       setCurrentResponses(responses);
@@ -93,42 +613,33 @@ function JoinPageOld() {
     }
   }, [responses, revealConsent, conversation, trustScreenAcknowledged, hasAlreadySubmitted, setCurrentResponses, setCurrentRevealConsent]);
 
-  // Load draft when trust screen is acknowledged
   useEffect(() => {
     if (conversation && trustScreenAcknowledged && !hasAlreadySubmitted && !isDraftLoaded) {
       loadDraft();
     }
   }, [conversation, trustScreenAcknowledged, hasAlreadySubmitted, isDraftLoaded, loadDraft]);
 
-  // Step 1: Validate access code when available
   useEffect(() => {
     if (accessCode && !accessCodeValidated) {
       validateAccessCode();
     }
   }, [accessCode]);
 
-  // Step 2.5: Auto-validate participant code from URL if present
   useEffect(() => {
     if (accessCodeValidated && validation?.requires_participant_code && participantCodeFromQuery && !participantCodeValidated) {
-      // Automatically validate participant code from URL
       validateParticipantCodeFromURL();
     }
   }, [accessCodeValidated, validation?.requires_participant_code, participantCodeFromQuery]);
 
-  // Step 3: Load conversation after participant code is validated (or if not needed)
   useEffect(() => {
     if (accessCodeValidated && (participantCodeValidated || !validation?.requires_participant_code) && accessCode) {
       loadConversation();
     }
   }, [accessCodeValidated, participantCodeValidated]);
 
-  // Trust screen timer: enable "Continue" button after 10 seconds
   useEffect(() => {
     if (showTrustScreen && !canProceedFromTrustScreen) {
-      // Reset countdown when trust screen is shown
       setTrustScreenCountdown(10);
-
-      // Update countdown every second
       const countdownInterval = setInterval(() => {
         setTrustScreenCountdown((prev) => {
           if (prev <= 1) {
@@ -138,12 +649,9 @@ function JoinPageOld() {
           return prev - 1;
         });
       }, 1000);
-
-      // Enable continue button after 10 seconds
       const enableTimer = setTimeout(() => {
         setCanProceedFromTrustScreen(true);
       }, 10000);
-
       return () => {
         clearInterval(countdownInterval);
         clearTimeout(enableTimer);
@@ -151,7 +659,6 @@ function JoinPageOld() {
     }
   }, [showTrustScreen]);
 
-  // Close lightbox on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && lightboxImageUrl) {
@@ -170,30 +677,20 @@ function JoinPageOld() {
       setValidation(validationResult);
 
       if (validationResult.valid) {
-        // Check for anonymous conflict: fully anonymous conversation + logged in user
-        // Use localStorage check instead of isAuthenticated to avoid race conditions with auth context
         const hasAuthToken = !!localStorage.getItem('access_token');
         if (validationResult.requires_participant_code && hasAuthToken) {
           setShowAnonymousConflict(true);
           setLoading(false);
           return;
         }
-
         setAccessCodeValidated(true);
-        // If not fully_anonymous, we need authentication - redirect to login
-        // But first check if user is already logged in (they might have come from a share link)
         if (!validationResult.requires_participant_code) {
-          // For platform_tracked/revealable, require login
-          // Check if we have a token in localStorage
           const token = localStorage.getItem('access_token');
           if (!token) {
             navigate(`/login?redirect=/join/${accessCode}`);
             return;
           }
-          // If token exists, try to load conversation (will fail if invalid)
-          // The loadConversation will handle auth errors
         }
-        // For fully_anonymous, we'll prompt for participant code
       } else {
         setError(validationResult.message || 'Invalid access code');
       }
@@ -206,7 +703,6 @@ function JoinPageOld() {
 
   const validateParticipantCodeFromURL = async () => {
     if (!participantCodeFromQuery) return;
-
     setValidating(true);
     setError('');
 
@@ -217,31 +713,25 @@ function JoinPageOld() {
         setSessionToken(validationResult.session_token);
         setValidation(validationResult);
 
-        // Handle different scenarios based on conversation state and submission status
         const state = validationResult.conversation_state;
         const hasSubmitted = validationResult.has_submitted;
 
         if (state === 'active') {
           if (hasSubmitted) {
-            // Already submitted to an active conversation
             setHasAlreadySubmitted(true);
             setAlreadySubmittedMessage('You have already submitted your response to this conversation.');
-            setParticipantCodeValidated(true);  // Still load conversation to show title/description
+            setParticipantCodeValidated(true);
           } else {
-            // Can submit - normal flow
             setParticipantCodeValidated(true);
           }
         } else if (state === 'analyzed') {
           if (hasSubmitted) {
-            // Redirect to analysis page
             navigate(`/conversations/${validationResult.conversation_id}/analysis`);
           } else {
-            // Too late to respond
             setError('This conversation has been closed. It is no longer accepting responses.');
           }
         } else if (state === 'closed' || state === 'analyzing') {
           if (hasSubmitted) {
-            // Load conversation and show "results will be available soon" message
             setParticipantCodeValidated(true);
             setHasAlreadySubmitted(true);
             setAlreadySubmittedMessage(
@@ -250,7 +740,6 @@ function JoinPageOld() {
                 : 'Your response has been recorded. Analysis will be available soon.'
             );
           } else {
-            // Too late to respond
             setError('This conversation has been closed. It is no longer accepting responses.');
           }
         }
@@ -283,31 +772,25 @@ function JoinPageOld() {
         setSessionToken(validationResult.session_token);
         setValidation(validationResult);
 
-        // Handle different scenarios based on conversation state and submission status
         const state = validationResult.conversation_state;
         const hasSubmitted = validationResult.has_submitted;
 
         if (state === 'active') {
           if (hasSubmitted) {
-            // Already submitted to an active conversation
             setHasAlreadySubmitted(true);
             setAlreadySubmittedMessage('You have already submitted your response to this conversation.');
-            setParticipantCodeValidated(true);  // Still load conversation to show title/description
+            setParticipantCodeValidated(true);
           } else {
-            // Can submit - normal flow
             setParticipantCodeValidated(true);
           }
         } else if (state === 'analyzed') {
           if (hasSubmitted) {
-            // Redirect to analysis page
             navigate(`/conversations/${validationResult.conversation_id}/analysis`);
           } else {
-            // Too late to respond
             setError('This conversation has been closed. It is no longer accepting responses.');
           }
         } else if (state === 'closed' || state === 'analyzing') {
           if (hasSubmitted) {
-            // Load conversation and show "results will be available soon" message
             setParticipantCodeValidated(true);
             setHasAlreadySubmitted(true);
             setAlreadySubmittedMessage(
@@ -316,7 +799,6 @@ function JoinPageOld() {
                 : 'Your response has been recorded. Analysis will be available soon.'
             );
           } else {
-            // Too late to respond
             setError('This conversation has been closed. It is no longer accepting responses.');
           }
         }
@@ -336,7 +818,6 @@ function JoinPageOld() {
       const convData = await api.getConversationByCode(accessCode!, sessionToken || undefined);
       setConversation(convData);
 
-      // For authenticated conversations (platform_tracked/revealable), check if user has already submitted
       if (convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS) {
         try {
           const responseCheck = await api.checkUserResponse(accessCode!);
@@ -347,8 +828,7 @@ function JoinPageOld() {
             return;
           }
         } catch (checkErr: any) {
-          // If check fails (e.g., user not authenticated), continue normally
-          // The form submission will handle the error
+          // Continue normally
         }
       }
 
@@ -366,23 +846,18 @@ function JoinPageOld() {
         );
       }
 
-      // Show trust screen before allowing responses
       setShowTrustScreen(true);
     } catch (err: any) {
       const status = err.response?.status;
       const detail = err.response?.data?.detail;
-      
+
       if (status === 401) {
-        // For non-fully-anonymous, redirect to login
         navigate(`/login?redirect=/join/${accessCode}`);
       } else if (status === 403) {
-        // Access denied - invite-only mode or conversation not active
         setError(detail || 'You do not have access to this conversation');
       } else if (status === 404) {
-        // Conversation not found
         setError(detail || 'Conversation not found. Please check the access code and try again.');
       } else if (status === 410) {
-        // Conversation closed
         setError(detail || 'This conversation has been closed and is no longer accepting responses.');
       } else {
         setError(detail || 'Failed to load conversation. Please try again later.');
@@ -393,20 +868,14 @@ function JoinPageOld() {
   };
 
   const handleContinueAnonymously = async () => {
-    // Logout the user and proceed with the fully anonymous conversation
     logout();
     setShowAnonymousConflict(false);
-
-    // Re-validate the access code now that user is logged out
-    // This time it won't trigger the anonymous conflict since there's no auth token
     setLoading(true);
     setError('');
     try {
       const validationResult = await api.validateCode(accessCode!);
       setValidation(validationResult);
-
       if (validationResult.valid) {
-        // User is now logged out, so no conflict check needed
         setAccessCodeValidated(true);
       } else {
         setError(validationResult.message || 'Invalid access code');
@@ -419,20 +888,17 @@ function JoinPageOld() {
   };
 
   const handleUseIncognito = async () => {
-    // Copy the current URL to clipboard if possible
     const currentUrl = window.location.href;
     try {
       await navigator.clipboard.writeText(currentUrl);
       setLinkCopied(true);
     } catch (err) {
-      // Clipboard API might fail, but still show the modal with the link
       setLinkCopied(false);
     }
     setShowIncognitoModal(true);
   };
 
   const handleCancelAnonymous = () => {
-    // Navigate back to dashboard or home
     if (isAuthenticated) {
       navigate('/dashboard');
     } else {
@@ -449,9 +915,7 @@ function JoinPageOld() {
   const updateRatingResponse = (questionId: string, rating: number) => {
     setResponses((prev) =>
       prev.map((r) =>
-        r.question_id === questionId
-          ? { ...r, response_data: { rating } }
-          : r
+        r.question_id === questionId ? { ...r, response_data: { rating } } : r
       )
     );
   };
@@ -459,9 +923,7 @@ function JoinPageOld() {
   const updatePollResponse = (questionId: string, selected: string | string[]) => {
     setResponses((prev) =>
       prev.map((r) =>
-        r.question_id === questionId
-          ? { ...r, response_data: { selected } }
-          : r
+        r.question_id === questionId ? { ...r, response_data: { selected } } : r
       )
     );
   };
@@ -469,14 +931,13 @@ function JoinPageOld() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    // Validate required questions
+
     if (conversation?.questions) {
       const requiredQuestions = conversation.questions.filter(q => q.is_required);
       const missingRequired = requiredQuestions.filter(reqQ => {
         const response = responses.find(r => r.question_id === reqQ.id);
         if (!response) return true;
-        
+
         if (reqQ.question_type === 'text') {
           return !response.response_text || !response.response_text.trim();
         } else if (reqQ.question_type === 'rating') {
@@ -488,13 +949,13 @@ function JoinPageOld() {
         }
         return true;
       });
-      
+
       if (missingRequired.length > 0) {
         setError(`Please answer all required questions. Missing: ${missingRequired.map(q => q.question_text).join(', ')}`);
         return;
       }
     }
-    
+
     setSubmitting(true);
 
     try {
@@ -503,13 +964,11 @@ function JoinPageOld() {
         reveal_consent: revealConsent,
       };
 
-      // For fully_anonymous, include participant_code
       if (conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS) {
         submitData.participant_code = participantCode;
       }
 
       await api.submitResponse(accessCode!, submitData);
-      // Clear draft after successful submission
       await clearDraft();
       setSuccess(true);
     } catch (err: any) {
@@ -523,1031 +982,652 @@ function JoinPageOld() {
     }
   };
 
-  // Show access code input if no code provided
+  // Access code input
   if (!accessCode) {
     return (
-      <div className="join-page">
-        <div className="join-container">
-          <header className="join-header">
-            <h1>Enter Access Code</h1>
-            <p className="description">
-              Please enter the access code for the conversation.
-            </p>
-          </header>
-
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const input = (e.target as HTMLFormElement).querySelector('input') as HTMLInputElement;
-            if (input?.value.trim()) {
-              setAccessCode(input.value.trim().toUpperCase());
-            }
-          }} className="code-input-form">
-            {error && <div className="error-message">{error}</div>}
-            
-            <div className="form-group">
-              <label htmlFor="access-code-input">Access Code</label>
-              <input
-                id="access-code-input"
-                type="text"
-                placeholder="Enter access code"
-                autoFocus
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              className="btn btn-primary btn-large"
-            >
-              Continue
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading state while validating access code
-  if (loading && !accessCodeValidated) {
-    return (
-      <div className="join-page">
-        <div className="loading">Validating access code...</div>
-      </div>
-    );
-  }
-
-  // Show error if access code validation failed or access denied
-  if (error && !loading && !conversation) {
-    const isAccessDenied = error && (
-      error.includes('invite-only') || 
-      error.includes('must be invited') || 
-      error.includes('not have access') ||
-      error.includes('not been activated') ||
-      error.includes('not currently available')
-    );
-    const isNotFound = error && (
-      error.includes('not found') || 
-      error.includes('check the access code')
-    );
-    const isClosed = error && error.includes('closed');
-    
-    return (
-      <div className="join-page">
-        <div className="join-container">
-          <div className="error-state">
-            {isAccessDenied && (
-              <>
-                <h2>Access Restricted</h2>
-                <p className="error-message">{error}</p>
-                <div className="error-help">
-                  <p>If you believe you should have access to this conversation, please contact the conversation organizer.</p>
-                </div>
-              </>
-            )}
-            {isNotFound && (
-              <>
-                <h2>Conversation Not Found</h2>
-                <p className="error-message">{error}</p>
-                <div className="error-help">
-                  <p>Please verify that you have the correct access code. The code is case-sensitive.</p>
-                </div>
-              </>
-            )}
-            {isClosed && (
-              <>
-                <h2>Conversation Closed</h2>
-                <p className="error-message">{error}</p>
-                <div className="error-help">
-                  <p>This conversation is no longer accepting responses. If you need to access it, please contact the organizer.</p>
-                </div>
-              </>
-            )}
-            {!isAccessDenied && !isNotFound && !isClosed && (
-              <>
-                <h2>Unable to Load Conversation</h2>
-                <p className="error-message">{error || 'An error occurred while loading the conversation.'}</p>
-              </>
-            )}
-            <button 
-              className="btn btn-secondary" 
-              onClick={() => {
-                setAccessCode(null);
-                setError('');
-                setAccessCodeValidated(false);
-              }}
-            >
-              Try Another Code
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show anonymous conflict interstitial if logged in user tries to access fully anonymous conversation
-  if (showAnonymousConflict) {
-    return (
-      <div className="join-page">
-        <div className="join-container">
-          <div style={{
-            maxWidth: '600px',
-            margin: '0 auto',
-            padding: '2rem',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              backgroundColor: '#fff7ed',
-              border: '2px solid #f97316',
-              borderRadius: '12px',
-              padding: '2rem',
-              marginBottom: '1rem'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                marginBottom: '1.5rem'
-              }}>
-                <span style={{ color: '#f97316', display: 'flex' }}>
-                  <LockIcon size={48} />
-                </span>
-              </div>
-
-              <h2 style={{ color: '#9a3412', marginBottom: '1rem', fontSize: '1.5rem' }}>
-                This is a Fully Anonymous Conversation
-              </h2>
-
-              <p style={{ color: '#7c2d12', fontSize: '1.05rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                You're currently logged in as <strong>{user?.email}</strong>, but this conversation requires full anonymity.
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.cardCentered}>
+              <h1 style={styles.title}>Enter Access Code</h1>
+              <p style={{ ...styles.description, marginBottom: spacing[6] }}>
+                Please enter the access code for the conversation.
               </p>
 
-              <div style={{
-                textAlign: 'left',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                padding: '1.5rem',
-                marginBottom: '1.5rem',
-                border: '1px solid #fed7aa'
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const input = (e.target as HTMLFormElement).querySelector('input') as HTMLInputElement;
+                if (input?.value.trim()) {
+                  setAccessCode(input.value.trim().toUpperCase());
+                }
               }}>
-                <p style={{ margin: '0 0 1rem 0', color: '#78350f', lineHeight: '1.6' }}>
-                  <strong>To protect your privacy:</strong> Your responses cannot be linked to your account in any way.
-                  You must respond without being logged in.
-                </p>
-                <p style={{ margin: 0, color: '#78350f', lineHeight: '1.6' }}>
-                  <strong>Choose an option below</strong> to proceed anonymously:
-                </p>
-              </div>
+                {error && <div style={styles.error}>{error}</div>}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button
-                  onClick={handleContinueAnonymously}
-                  className="btn btn-primary btn-large"
-                  style={{ width: '100%' }}
-                >
-                  Continue Anonymously (Log Out)
-                </button>
-                <p style={{
-                  margin: '0 0 0.5rem 0',
-                  color: '#92400e',
-                  fontSize: '0.875rem',
-                  fontStyle: 'italic'
-                }}>
-                  This will log you out temporarily so you can respond anonymously
-                </p>
-
-                <button
-                  onClick={handleUseIncognito}
-                  className="btn btn-secondary btn-large"
-                  style={{ width: '100%' }}
-                >
-                  Use Incognito/Private Window
-                </button>
-                <p style={{
-                  margin: '0 0 0.5rem 0',
-                  color: '#92400e',
-                  fontSize: '0.875rem',
-                  fontStyle: 'italic'
-                }}>
-                  We'll copy the link so you can open it in a private browser window
-                </p>
-
-                <button
-                  onClick={handleCancelAnonymous}
-                  className="btn btn-secondary"
-                  style={{ width: '100%', marginTop: '0.5rem' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Incognito Instructions Modal */}
-          {showIncognitoModal && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 1000
-            }} onClick={() => {
-              setShowIncognitoModal(false);
-              setLinkCopied(false);
-            }}>
-              <div style={{
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                padding: '2rem',
-                maxWidth: '500px',
-                width: '90%',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-              }} onClick={(e) => e.stopPropagation()}>
-                <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#2d3748' }}>
-                  Open in Incognito/Private Window
-                </h2>
-
-                {linkCopied && (
-                  <div style={{
-                    backgroundColor: '#d1fae5',
-                    border: '1px solid #6ee7b7',
-                    borderRadius: '8px',
-                    padding: '0.75rem',
-                    marginBottom: '1rem'
-                  }}>
-                    <p style={{ margin: 0, color: '#065f46', fontWeight: '600' }}>
-                      ✓ Link copied to clipboard!
-                    </p>
-                  </div>
-                )}
-
-                <div style={{
-                  backgroundColor: '#f7fafc',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  marginBottom: '1.5rem'
-                }}>
-                  <p style={{ margin: '0 0 0.75rem 0', color: '#4a5568', fontWeight: '600' }}>
-                    Follow these steps:
-                  </p>
-                  <ol style={{ margin: 0, paddingLeft: '1.5rem', color: '#4a5568', lineHeight: '1.8' }}>
-                    <li>Open an incognito/private browser window:
-                      <ul style={{ marginTop: '0.25rem', paddingLeft: '1.5rem', listStyleType: 'disc' }}>
-                        <li><strong>Chrome/Edge:</strong> Ctrl+Shift+N (Cmd+Shift+N on Mac)</li>
-                        <li><strong>Firefox:</strong> Ctrl+Shift+P (Cmd+Shift+P on Mac)</li>
-                        <li><strong>Safari:</strong> Cmd+Shift+N</li>
-                      </ul>
-                    </li>
-                    <li style={{ marginTop: '0.5rem' }}>
-                      {linkCopied ? 'Paste the link (Ctrl+V or Cmd+V)' : 'Copy and paste this URL'}
-                    </li>
-                    <li style={{ marginTop: '0.5rem' }}>Respond to the conversation anonymously</li>
-                  </ol>
+                <div style={styles.formGroup}>
+                  <label htmlFor="access-code-input" style={styles.label}>Access Code</label>
+                  <input
+                    id="access-code-input"
+                    type="text"
+                    placeholder="Enter access code"
+                    autoFocus
+                    style={styles.input}
+                    className="join-input"
+                  />
                 </div>
 
-                {!linkCopied && (
-                  <div style={{
-                    backgroundColor: '#f7fafc',
-                    border: '1px solid #cbd5e0',
-                    borderRadius: '8px',
-                    padding: '0.75rem',
-                    marginBottom: '1.5rem',
-                    fontFamily: 'monospace',
-                    fontSize: '0.875rem',
-                    wordBreak: 'break-all',
-                    color: '#2d3748'
-                  }}>
-                    {window.location.href}
-                  </div>
-                )}
+                <button type="submit" style={styles.buttonPrimary} className="join-btn-primary">
+                  Continue
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                  {!linkCopied && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(window.location.href);
-                          setLinkCopied(true);
-                        } catch (err) {
-                          // Fallback if clipboard fails
-                        }
-                      }}
-                      className="btn btn-secondary"
-                    >
-                      Copy Link
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowIncognitoModal(false);
-                      setLinkCopied(false);
-                    }}
-                    className="btn btn-primary"
-                  >
-                    Got It
+  // Loading state
+  if (loading && !accessCodeValidated) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.loading}>Validating access code...</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Error state
+  if (error && !loading && !conversation) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.cardCentered}>
+              <h2 style={styles.title}>Unable to Load Conversation</h2>
+              <p style={{ ...styles.description, marginBottom: spacing[5] }}>{error}</p>
+              <button
+                style={styles.buttonSecondary}
+                className="join-btn-secondary"
+                onClick={() => {
+                  setAccessCode(null);
+                  setError('');
+                  setAccessCodeValidated(false);
+                }}
+              >
+                Try Another Code
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Anonymous conflict
+  if (showAnonymousConflict) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.trustScreen}>
+              <div style={styles.conflictCard}>
+                <div style={styles.trustIcon}>
+                  <LockIcon size={48} />
+                </div>
+                <h2 style={styles.conflictTitle}>This is a Fully Anonymous Conversation</h2>
+                <p style={styles.conflictText}>
+                  You're currently logged in as <strong>{user?.email}</strong>, but this conversation requires full anonymity.
+                </p>
+
+                <div style={styles.conflictInfo}>
+                  <p style={{ margin: `0 0 ${spacing[3]} 0`, color: colors.primary[800], lineHeight: typography.lineHeight.relaxed }}>
+                    <strong>To protect your privacy:</strong> Your responses cannot be linked to your account in any way. You must respond without being logged in.
+                  </p>
+                  <p style={{ margin: 0, color: colors.primary[800], lineHeight: typography.lineHeight.relaxed }}>
+                    <strong>Choose an option below</strong> to proceed anonymously:
+                  </p>
+                </div>
+
+                <div style={styles.conflictButtons}>
+                  <button onClick={handleContinueAnonymously} style={styles.buttonPrimary} className="join-btn-primary">
+                    Continue Anonymously (Log Out)
+                  </button>
+                  <p style={styles.conflictHint}>This will log you out temporarily so you can respond anonymously</p>
+
+                  <button onClick={handleUseIncognito} style={styles.buttonSecondary} className="join-btn-secondary">
+                    Use Incognito/Private Window
+                  </button>
+                  <p style={styles.conflictHint}>We'll copy the link so you can open it in a private browser window</p>
+
+                  <button onClick={handleCancelAnonymous} style={{ ...styles.buttonSecondary, marginTop: spacing[2] }} className="join-btn-secondary">
+                    Cancel
                   </button>
                 </div>
               </div>
             </div>
-          )}
+
+            {showIncognitoModal && (
+              <div style={styles.modalOverlay} onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }}>
+                <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                  <h2 style={styles.modalTitle}>Open in Incognito/Private Window</h2>
+
+                  {linkCopied && (
+                    <div style={{ ...styles.success, marginBottom: spacing[4] }}>
+                      Link copied to clipboard!
+                    </div>
+                  )}
+
+                  <div style={styles.modalInstructions}>
+                    <p style={{ margin: `0 0 ${spacing[3]} 0`, color: colors.primary[700], fontWeight: typography.fontWeight.semibold }}>
+                      Follow these steps:
+                    </p>
+                    <ol style={{ margin: 0, paddingLeft: spacing[5], color: colors.primary[600], lineHeight: 1.8 }}>
+                      <li>Open an incognito/private browser window</li>
+                      <li>{linkCopied ? 'Paste the link (Ctrl+V or Cmd+V)' : 'Copy and paste the URL'}</li>
+                      <li>Respond to the conversation anonymously</li>
+                    </ol>
+                  </div>
+
+                  <div style={styles.modalActions}>
+                    {!linkCopied && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(window.location.href);
+                            setLinkCopied(true);
+                          } catch (err) {}
+                        }}
+                        style={styles.buttonSecondary}
+                        className="join-btn-secondary"
+                      >
+                        Copy Link
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }}
+                      style={styles.buttonPrimary}
+                      className="join-btn-primary"
+                    >
+                      Got It
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // Show participant code input if access code is validated but participant code is not
-  // Only show this if the conversation actually requires a participant code
+  // Participant code input
   if (accessCodeValidated && !participantCodeValidated && validation?.requires_participant_code) {
     return (
-      <div className="join-page">
-        <div className="join-container">
-          <header className="join-header">
-            <h1>Enter Participant Code</h1>
-            <p className="description">
-              This conversation requires a unique participant code. Please enter your code below.
-            </p>
-          </header>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.cardCentered}>
+              <h1 style={styles.title}>Enter Participant Code</h1>
+              <p style={{ ...styles.description, marginBottom: spacing[6] }}>
+                This conversation requires a unique participant code. Please enter your code below.
+              </p>
 
-          <form onSubmit={handleParticipantCodeSubmit} className="code-input-form">
-            {error && <div className="error-message">{error}</div>}
-            
-            <div className="form-group">
-              <label htmlFor="participant-code-input">Participant Code</label>
-              <input
-                id="participant-code-input"
-                type="text"
-                value={participantCode}
-                onChange={(e) => setParticipantCode(e.target.value.toUpperCase())}
-                placeholder="Enter your participant code"
-                autoFocus
-                disabled={validating}
-              />
+              <form onSubmit={handleParticipantCodeSubmit}>
+                {error && <div style={styles.error}>{error}</div>}
+
+                <div style={styles.formGroup}>
+                  <label htmlFor="participant-code-input" style={styles.label}>Participant Code</label>
+                  <input
+                    id="participant-code-input"
+                    type="text"
+                    value={participantCode}
+                    onChange={(e) => setParticipantCode(e.target.value.toUpperCase())}
+                    placeholder="Enter your participant code"
+                    autoFocus
+                    disabled={validating}
+                    style={styles.input}
+                    className="join-input"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  style={{ ...styles.buttonPrimary, ...(validating || !participantCode.trim() ? styles.buttonDisabled : {}) }}
+                  className="join-btn-primary"
+                  disabled={validating || !participantCode.trim()}
+                >
+                  {validating ? 'Validating...' : 'Continue'}
+                </button>
+              </form>
             </div>
-
-            <button 
-              type="submit" 
-              className="btn btn-primary btn-large" 
-              disabled={validating || !participantCode.trim()}
-            >
-              {validating ? 'Validating...' : 'Continue'}
-            </button>
-          </form>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // Show loading state while loading conversation
+  // Loading conversation
   if (loading && !conversation) {
     return (
-      <div className="join-page">
-        <div className="loading">Loading conversation...</div>
-      </div>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.loading}>Loading conversation...</div>
+          </div>
+        </div>
+      </>
     );
   }
 
+  // Success state
   if (success) {
-    // Generate view results link
     const viewResultsLink = conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
       ? `/join/${accessCode}?participant_code=${participantCode}`
       : `/conversations/${conversation?.id}/analysis`;
 
     return (
-      <div className="join-page">
-        <div className="success-state">
-          <h2>Thank You!</h2>
-          <p>Your response has been submitted successfully.</p>
-          <p className="success-note">
-            Your feedback will help improve the conversation.
-          </p>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.cardCentered}>
+              <div style={styles.successState}>
+                <h2 style={styles.successTitle}>Thank You!</h2>
+                <p style={styles.successText}>Your response has been submitted successfully.</p>
+                <p style={{ ...styles.successText, color: colors.primary[500] }}>
+                  Your feedback will help improve the conversation.
+                </p>
 
-          {conversation?.results_access !== ResultsAccess.CREATOR_ONLY && (
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1.5rem',
-              backgroundColor: '#f7fafc',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0'
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem', color: '#2d3748' }}>
-                View Results
-              </h3>
-              <p style={{ margin: '0 0 1rem 0', color: '#4a5568', fontSize: '0.9rem' }}>
-                {conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
-                  ? 'Save this link to view the analysis results once they are ready:'
-                  : 'You can view the results and analysis once the conversation is analyzed:'}
-              </p>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e0',
-                marginBottom: '1rem',
-                fontFamily: 'monospace',
-                fontSize: '0.85rem',
-                wordBreak: 'break-all',
-                color: '#2d3748'
-              }}>
-                {window.location.origin}{viewResultsLink}
+                {conversation?.results_access !== ResultsAccess.CREATOR_ONLY && (
+                  <div style={styles.resultsBox}>
+                    <h3 style={styles.resultsTitle}>View Results</h3>
+                    <p style={styles.resultsText}>
+                      {conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
+                        ? 'Save this link to view the analysis results once they are ready:'
+                        : 'You can view the results once the conversation is analyzed:'}
+                    </p>
+                    <div style={styles.resultsLink}>
+                      {window.location.origin}{viewResultsLink}
+                    </div>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}${viewResultsLink}`)}
+                      style={{ ...styles.buttonSecondary, width: '100%' }}
+                      className="join-btn-secondary"
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}${viewResultsLink}`);
-                }}
-                className="btn btn-secondary"
-                style={{ width: '100%' }}
-              >
-                Copy Link
-              </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // Show message if user has already submitted (for authenticated users only)
+  // Already submitted
   if (hasAlreadySubmitted && conversation) {
     return (
-      <div className="join-page">
-        <div className="join-container">
-          <header className="join-header">
-            {conversation.header_image_url && (
-              <div style={{ 
-                marginBottom: '1.5rem',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                maxHeight: '300px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#f7fafc'
-              }}>
-                <img 
-                  src={conversation.header_image_url} 
-                  alt="Conversation header" 
-                  style={{ 
-                    width: '100%', 
-                    height: 'auto',
-                    maxHeight: '300px',
-                    objectFit: 'cover',
-                    display: 'block'
-                  }} 
-                />
-              </div>
-            )}
-            <h1>{conversation.participant_title || conversation.title}</h1>
-            {conversation.description && <p className="description">{conversation.description}</p>}
-          </header>
-          <div className="success-state">
-            <h2>Response Already Submitted</h2>
-            <p>{alreadySubmittedMessage}</p>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <header style={styles.header}>
+              {conversation.header_image_url && (
+                <div style={styles.headerImage}>
+                  <img src={conversation.header_image_url} alt="Conversation header" style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'cover' }} />
+                </div>
+              )}
+              <h1 style={styles.title}>{conversation.participant_title || conversation.title}</h1>
+              {conversation.description && <p style={styles.description}>{conversation.description}</p>}
+            </header>
+            <div style={styles.cardCentered}>
+              <h2 style={styles.successTitle}>Response Already Submitted</h2>
+              <p style={styles.successText}>{alreadySubmittedMessage}</p>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!conversation) {
-    return <div className="error">Conversation not found</div>;
-  }
-
-  // Show trust screen before allowing response form
-  if (showTrustScreen && !trustScreenAcknowledged) {
     return (
-      <div className="join-page">
-        <div className="join-container">
-          <div style={{
-            maxWidth: '600px',
-            margin: '0 auto',
-            padding: '2rem',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              backgroundColor: '#f7fafc',
-              border: '2px solid #4299e1',
-              borderRadius: '12px',
-              padding: '2rem',
-              marginBottom: '2rem'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                marginBottom: '1.5rem'
-              }}>
-                <span style={{ color: '#4299e1', display: 'flex' }}>
-                  <LockIcon size={48} />
-                </span>
-              </div>
-
-              <h2 style={{ color: '#2d3748', marginBottom: '1rem' }}>
-                Before You Respond
-              </h2>
-
-              <p style={{ color: '#4a5568', fontSize: '1.05rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                Please take a moment to understand how your privacy is protected in this conversation.
-              </p>
-
-              <div style={{
-                textAlign: 'left',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                padding: '1.5rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <strong style={{ color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
-                    Your Identity:
-                  </strong>
-                  <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.6' }}>
-                    {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
-                      'Your responses are completely anonymous. Not even the conversation creator can identify you.'}
-                    {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED &&
-                      'The platform tracks that you responded, but your identity is not revealed in the results.'}
-                    {conversation.anonymity_level === AnonymityLevel.REVEALABLE &&
-                      'You can choose whether to reveal your identity with your responses.'}
-                  </p>
-                </div>
-
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <strong style={{ color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
-                    Who Can See Results:
-                  </strong>
-                  <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.6' }}>
-                    {conversation.results_access === ResultsAccess.CREATOR_ONLY &&
-                      'Only the conversation creator can view results and analysis.'}
-                    {conversation.results_access === ResultsAccess.PARTICIPANTS &&
-                      'All participants (anyone who can respond) can view results and analysis.'}
-                    {conversation.results_access === ResultsAccess.PUBLIC_LINK &&
-                      'Anyone with the results link can view, even without responding.'}
-                  </p>
-                </div>
-
-                <div>
-                  <strong style={{ color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
-                    What Can Be Seen:
-                  </strong>
-                  <p style={{ margin: 0, color: '#4a5568', lineHeight: '1.6' }}>
-                    {conversation.show_verbatim_responses ?
-                      'Viewers can see your exact responses along with AI-generated summaries and themes.' :
-                      'Viewers can only see AI-generated summaries and themes. Your exact responses remain private.'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setTrustScreenAcknowledged(true)}
-                disabled={!canProceedFromTrustScreen}
-                className="btn btn-primary btn-large"
-                style={{
-                  width: '100%',
-                  opacity: canProceedFromTrustScreen ? 1 : 0.5,
-                  cursor: canProceedFromTrustScreen ? 'pointer' : 'not-allowed'
-                }}
-              >
-                {canProceedFromTrustScreen ? 'I Understand, Continue' : `Please read (${trustScreenCountdown}s)`}
-              </button>
-
-              {!canProceedFromTrustScreen && (
-                <p style={{
-                  marginTop: '0.75rem',
-                  color: '#718096',
-                  fontSize: '0.9rem'
-                }}>
-                  Please take a moment to review the privacy settings above.
-                </p>
-              )}
-            </div>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.error}>Conversation not found</div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  return (
-    <div className="join-page">
-      <div className="join-container">
-        <header className="join-header">
-          {conversation.header_image_url && (
-            <div style={{ 
-              marginBottom: '1.5rem',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              maxHeight: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f7fafc'
-            }}>
-              <img 
-                src={conversation.header_image_url} 
-                alt="Conversation header" 
-                style={{ 
-                  width: '100%', 
-                  height: 'auto',
-                  maxHeight: '300px',
-                  objectFit: 'cover',
-                  display: 'block'
-                }} 
-              />
-            </div>
-          )}
-          <h1>{conversation.participant_title || conversation.title}</h1>
-          {conversation.description && <p className="description">{conversation.description}</p>}
-        </header>
+  // Trust screen
+  if (showTrustScreen && !trustScreenAcknowledged) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.trustScreen}>
+              <div style={styles.trustCard}>
+                <div style={styles.trustIcon}>
+                  <LockIcon size={48} />
+                </div>
+                <h2 style={styles.trustTitle}>Before You Respond</h2>
+                <p style={styles.trustText}>
+                  Please take a moment to understand how your privacy is protected in this conversation.
+                </p>
 
-        <div style={{
-          backgroundColor: '#f7fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          marginBottom: '1.5rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <LockIcon size={20} className="privacy-icon" />
-            <h3 style={{ margin: 0, marginLeft: '0.5rem', fontSize: '1rem', fontWeight: '600' }}>
-              Privacy & Visibility Settings
-            </h3>
-          </div>
+                <div style={styles.trustDetails}>
+                  <div style={styles.trustDetailItem}>
+                    <strong style={styles.trustDetailLabel}>Your Identity:</strong>
+                    <p style={styles.trustDetailText}>
+                      {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && 'Your responses are completely anonymous. Not even the conversation creator can identify you.'}
+                      {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED && 'The platform tracks that you responded, but your identity is not revealed in the results.'}
+                      {conversation.anonymity_level === AnonymityLevel.REVEALABLE && 'You can choose whether to reveal your identity with your responses.'}
+                    </p>
+                  </div>
 
-          <div style={{ marginLeft: '1.75rem' }}>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <strong>Your Identity:</strong>
-              <p style={{ margin: '0.25rem 0 0 0', color: '#4a5568' }}>
-                {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
-                  'Your responses are completely anonymous. Not even the conversation creator can identify you.'}
-                {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED &&
-                  'The platform tracks that you responded, but your identity is not revealed in the results.'}
-                {conversation.anonymity_level === AnonymityLevel.REVEALABLE &&
-                  'You can choose whether to reveal your identity with your responses.'}
-              </p>
-            </div>
+                  <div style={styles.trustDetailItem}>
+                    <strong style={styles.trustDetailLabel}>Who Can See Results:</strong>
+                    <p style={styles.trustDetailText}>
+                      {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results and analysis.'}
+                      {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results and analysis.'}
+                      {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
+                    </p>
+                  </div>
 
-            <div style={{ marginBottom: '0.75rem' }}>
-              <strong>Who Can See Results:</strong>
-              <p style={{ margin: '0.25rem 0 0 0', color: '#4a5568' }}>
-                {conversation.results_access === ResultsAccess.CREATOR_ONLY &&
-                  'Only the conversation creator can view results and analysis. You will receive a confirmation after submitting.'}
-                {conversation.results_access === ResultsAccess.PARTICIPANTS &&
-                  'All participants (anyone who can respond) can view results and analysis.'}
-                {conversation.results_access === ResultsAccess.PUBLIC_LINK &&
-                  'Anyone with the results link can view, even without responding.'}
-              </p>
-            </div>
+                  <div>
+                    <strong style={styles.trustDetailLabel}>What Can Be Seen:</strong>
+                    <p style={styles.trustDetailText}>
+                      {conversation.show_verbatim_responses
+                        ? 'Viewers can see your exact responses along with AI-generated summaries.'
+                        : 'Viewers can only see AI-generated summaries. Your exact responses remain private.'}
+                    </p>
+                  </div>
+                </div>
 
-            <div>
-              <strong>What Can Be Seen:</strong>
-              <p style={{ margin: '0.25rem 0 0 0', color: '#4a5568' }}>
-                {conversation.show_verbatim_responses ?
-                  'Viewers can see your exact responses along with AI-generated summaries and themes.' :
-                  'Viewers can only see AI-generated summaries and themes. Your exact responses remain private.'}
-              </p>
+                <button
+                  onClick={() => setTrustScreenAcknowledged(true)}
+                  disabled={!canProceedFromTrustScreen}
+                  style={{ ...styles.buttonPrimary, ...(canProceedFromTrustScreen ? {} : styles.buttonDisabled) }}
+                  className="join-btn-primary"
+                >
+                  {canProceedFromTrustScreen ? 'I Understand, Continue' : `Please read (${trustScreenCountdown}s)`}
+                </button>
+
+                {!canProceedFromTrustScreen && (
+                  <p style={{ marginTop: spacing[3], color: colors.primary[500], fontSize: typography.fontSize.sm }}>
+                    Please take a moment to review the privacy settings above.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      </>
+    );
+  }
 
-        {conversation.auto_close_at && (
-          <div className="close-notice">
-            <p>Closes at {formatDate(conversation.auto_close_at, conversation.timezone)}</p>
+  // Main response form
+  return (
+    <>
+      <style>{hoverStyles}</style>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <header style={styles.header}>
+            {conversation.header_image_url && (
+              <div style={styles.headerImage}>
+                <img src={conversation.header_image_url} alt="Conversation header" style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'cover' }} />
+              </div>
+            )}
+            <h1 style={styles.title}>{conversation.participant_title || conversation.title}</h1>
+            {conversation.description && <p style={styles.description}>{conversation.description}</p>}
+          </header>
+
+          <div style={styles.privacyCard}>
+            <div style={styles.privacyHeader}>
+              <LockIcon size={20} />
+              <h3 style={styles.privacyTitle}>Privacy & Visibility Settings</h3>
+            </div>
+            <div style={styles.privacyItem}>
+              <strong style={styles.privacyLabel}>Your Identity:</strong>
+              <p style={styles.privacyText}>
+                {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && 'Your responses are completely anonymous.'}
+                {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED && 'The platform tracks that you responded, but your identity is hidden.'}
+                {conversation.anonymity_level === AnonymityLevel.REVEALABLE && 'You can choose whether to reveal your identity.'}
+              </p>
+            </div>
+            <div style={styles.privacyItem}>
+              <strong style={styles.privacyLabel}>Who Can See Results:</strong>
+              <p style={styles.privacyText}>
+                {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results.'}
+                {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results.'}
+                {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
+              </p>
+            </div>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="response-form">
-          {error && <div className="error-message">{error}</div>}
-
-          {/* Draft restored notice */}
-          {showDraftRestoredNotice && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.75rem 1rem',
-              backgroundColor: '#ebf8ff',
-              border: '1px solid #90cdf4',
-              borderRadius: '8px',
-              marginBottom: '1rem',
-              color: '#2b6cb0'
-            }}>
-              <span>Your previous draft has been restored.</span>
-              <button
-                type="button"
-                onClick={() => setShowDraftRestoredNotice(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#2b6cb0',
-                  fontSize: '1.25rem',
-                  padding: '0 0.25rem',
-                  lineHeight: 1
-                }}
-                aria-label="Dismiss"
-              >
-                ×
-              </button>
+          {conversation.auto_close_at && (
+            <div style={styles.closeNotice}>
+              Closes at {formatDate(conversation.auto_close_at, conversation.timezone)}
             </div>
           )}
 
-          {conversation.questions?.map((question, index) => {
-            const response = responses.find((r) => r.question_id === question.id);
+          <form onSubmit={handleSubmit}>
+            {error && <div style={styles.error}>{error}</div>}
 
-            return (
-              <div key={question.id} className="form-group">
-                <label htmlFor={`question-${question.id}`}>
-                  {index + 1}. {question.question_text}
-                  {question.is_required && <span style={{ color: 'red', marginLeft: '4px' }}>*</span>}
-                </label>
-
-                {question.question_image_url && (
-                  <div
-                    onClick={() => setLightboxImageUrl(question.question_image_url!)}
-                    style={{
-                      marginTop: '0.5rem',
-                      marginBottom: '0.75rem',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      maxHeight: '300px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#f7fafc',
-                      cursor: 'pointer'
-                    }}
-                    title="Click to enlarge"
-                  >
-                    <img
-                      src={question.question_image_url}
-                      alt={`Image for question ${index + 1}`}
-                      style={{
-                        maxWidth: '100%',
-                        height: 'auto',
-                        maxHeight: '300px',
-                        objectFit: 'contain',
-                        display: 'block'
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Text Response */}
-                {(!question.question_type || question.question_type === 'text') && (
-                  <>
-                    <textarea
-                      id={`question-${question.id}`}
-                      value={response?.response_text || ''}
-                      onChange={(e) => updateResponse(question.id, e.target.value)}
-                      placeholder="Type your response here..."
-                      rows={4}
-                      maxLength={conversation.max_response_length}
-                    />
-                    <small className="char-count">
-                      {response?.response_text?.length || 0} / {conversation.max_response_length} characters
-                    </small>
-                  </>
-                )}
-
-                {/* Rating Response */}
-                {question.question_type === 'rating' && (
-                  <div className="rating-input">
-                    <input
-                      type="range"
-                      id={`question-${question.id}`}
-                      min={question.options?.min || 0}
-                      max={question.options?.max || 10}
-                      step={question.options?.step || 1}
-                      value={response?.response_data?.rating ?? 5}
-                      onChange={(e) => updateRatingResponse(question.id, parseInt(e.target.value))}
-                      className="rating-slider"
-                    />
-                    <div className="rating-value">
-                      <span className="rating-number">{response?.response_data?.rating ?? 5}</span>
-                      <span className="rating-range">
-                        ({question.options?.min || 0} - {question.options?.max || 10})
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Single Choice Poll */}
-                {question.question_type === 'single_choice' && (
-                  <div className="poll-input">
-                    {question.options?.choices?.map((choice) => (
-                      <div key={choice.id} className="radio-option">
-                        <label className="radio-label">
-                          <input
-                            type="radio"
-                            name={`question-${question.id}`}
-                            value={choice.id}
-                            checked={response?.response_data?.selected === choice.id}
-                            onChange={(e) => updatePollResponse(question.id, e.target.value)}
-                          />
-                          <span>{choice.label}</span>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Multiple Choice Poll */}
-                {question.question_type === 'multiple_choice' && (
-                  <div className="poll-input">
-                    <p className="poll-instruction">
-                      Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
-                    </p>
-                    {question.options?.choices?.map((choice) => (
-                      <div key={choice.id} className="checkbox-option">
-                        <label className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            value={choice.id}
-                            checked={(response?.response_data?.selected as string[] || []).includes(choice.id)}
-                            onChange={(e) => {
-                              const currentSelected = (response?.response_data?.selected as string[]) || [];
-                              const newSelected = e.target.checked
-                                ? [...currentSelected, choice.id]
-                                : currentSelected.filter(id => id !== choice.id);
-
-                              // Check max selections
-                              const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
-                              if (newSelected.length <= maxSelections) {
-                                updatePollResponse(question.id, newSelected);
-                              }
-                            }}
-                          />
-                          <span>{choice.label}</span>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {showDraftRestoredNotice && (
+              <div style={styles.draftNotice}>
+                <span>Your previous draft has been restored.</span>
+                <button
+                  type="button"
+                  onClick={() => setShowDraftRestoredNotice(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.primary[600], fontSize: typography.fontSize.lg, padding: 0, lineHeight: 1 }}
+                >
+                  ×
+                </button>
               </div>
-            );
-          })}
+            )}
 
-          {conversation.anonymity_level === 'revealable' && (
-            <div className="form-group checkbox-group">
-              <label>
+            {conversation.questions?.map((question, index) => {
+              const response = responses.find((r) => r.question_id === question.id);
+
+              return (
+                <div key={question.id} style={styles.card}>
+                  <label style={{ ...styles.label, fontSize: typography.fontSize.base }}>
+                    {index + 1}. {question.question_text}
+                    {question.is_required && <span style={{ color: colors.primary[600], marginLeft: '4px' }}>*</span>}
+                  </label>
+
+                  {question.question_image_url && (
+                    <div
+                      onClick={() => setLightboxImageUrl(question.question_image_url!)}
+                      style={styles.questionImage}
+                      title="Click to enlarge"
+                    >
+                      <img src={question.question_image_url} alt={`Image for question ${index + 1}`} style={{ maxWidth: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} />
+                    </div>
+                  )}
+
+                  {(!question.question_type || question.question_type === 'text') && (
+                    <>
+                      <textarea
+                        value={response?.response_text || ''}
+                        onChange={(e) => updateResponse(question.id, e.target.value)}
+                        placeholder="Type your response here..."
+                        rows={4}
+                        maxLength={conversation.max_response_length}
+                        style={styles.textarea}
+                        className="join-input"
+                      />
+                      <div style={styles.charCount}>
+                        {response?.response_text?.length || 0} / {conversation.max_response_length} characters
+                      </div>
+                    </>
+                  )}
+
+                  {question.question_type === 'rating' && (
+                    <div style={styles.ratingInput}>
+                      <input
+                        type="range"
+                        min={question.options?.min || 0}
+                        max={question.options?.max || 10}
+                        step={question.options?.step || 1}
+                        value={response?.response_data?.rating ?? 5}
+                        onChange={(e) => updateRatingResponse(question.id, parseInt(e.target.value))}
+                        style={styles.ratingSlider}
+                      />
+                      <div style={styles.ratingValue}>
+                        <span style={styles.ratingNumber}>{response?.response_data?.rating ?? 5}</span>
+                        <span style={styles.ratingRange}>({question.options?.min || 0} - {question.options?.max || 10})</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {question.question_type === 'single_choice' && (
+                    <div style={styles.pollInput}>
+                      {question.options?.choices?.map((choice) => (
+                        <div key={choice.id} style={styles.radioOption}>
+                          <label style={styles.radioLabel} className="join-radio-label">
+                            <input
+                              type="radio"
+                              name={`question-${question.id}`}
+                              value={choice.id}
+                              checked={response?.response_data?.selected === choice.id}
+                              onChange={(e) => updatePollResponse(question.id, e.target.value)}
+                              style={{ accentColor: colors.primary[900] }}
+                            />
+                            <span>{choice.label}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {question.question_type === 'multiple_choice' && (
+                    <div style={styles.pollInput}>
+                      <p style={styles.pollInstruction}>
+                        Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
+                      </p>
+                      {question.options?.choices?.map((choice) => (
+                        <div key={choice.id} style={styles.radioOption}>
+                          <label style={styles.radioLabel} className="join-radio-label">
+                            <input
+                              type="checkbox"
+                              value={choice.id}
+                              checked={(response?.response_data?.selected as string[] || []).includes(choice.id)}
+                              onChange={(e) => {
+                                const currentSelected = (response?.response_data?.selected as string[]) || [];
+                                const newSelected = e.target.checked
+                                  ? [...currentSelected, choice.id]
+                                  : currentSelected.filter(id => id !== choice.id);
+                                const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
+                                if (newSelected.length <= maxSelections) {
+                                  updatePollResponse(question.id, newSelected);
+                                }
+                              }}
+                              style={{ accentColor: colors.primary[900] }}
+                            />
+                            <span>{choice.label}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {conversation.anonymity_level === 'revealable' && (
+              <div style={styles.checkboxGroup}>
                 <input
                   type="checkbox"
+                  id="revealConsent"
                   checked={revealConsent}
                   onChange={(e) => setRevealConsent(e.target.checked)}
+                  style={styles.checkbox}
                 />
-                <span>I consent to revealing my identity with my responses</span>
-              </label>
-            </div>
-          )}
-
-          {/* Draft status indicator */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '1rem',
-            padding: '0.75rem 1rem',
-            backgroundColor: '#f7fafc',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            color: '#4a5568'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {isDraftSaving && (
-                <>
-                  <span style={{
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#f6ad55',
-                    animation: 'pulse 1s infinite'
-                  }} />
-                  <span>Saving draft...</span>
-                </>
-              )}
-              {!isDraftSaving && draftLastSavedAt && (
-                <>
-                  <span style={{
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#48bb78'
-                  }} />
-                  <span>Draft saved {formatRelativeTime(draftLastSavedAt.toISOString())}</span>
-                </>
-              )}
-              {!isDraftSaving && !draftLastSavedAt && hasUnsavedChanges && (
-                <>
-                  <span style={{
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#ed8936'
-                  }} />
-                  <span>Unsaved changes</span>
-                </>
-              )}
-              {!isDraftSaving && !draftLastSavedAt && !hasUnsavedChanges && (
-                <span style={{ color: '#a0aec0' }}>Your progress will be saved automatically</span>
-              )}
-            </div>
-            {draftSaveError && (
-              <span style={{ color: '#e53e3e', fontSize: '0.75rem' }}>{draftSaveError}</span>
+                <label htmlFor="revealConsent" style={{ fontSize: typography.fontSize.sm, color: colors.primary[700] }}>
+                  I consent to revealing my identity with my responses
+                </label>
+              </div>
             )}
-          </div>
 
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => saveDraftToServer(responses, revealConsent)}
-              disabled={isDraftSaving || !hasUnsavedChanges || submitting}
-              style={{ minWidth: '120px' }}
-            >
-              {isDraftSaving ? 'Saving...' : 'Save Draft'}
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary btn-large"
-              disabled={submitting}
-            >
-              {submitting ? 'Submitting...' : 'Submit Response'}
-            </button>
-          </div>
-        </form>
+            <div style={styles.draftStatus}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {isDraftSaving && (
+                  <>
+                    <span style={{ ...styles.draftIndicator, backgroundColor: '#f6ad55' }} />
+                    <span>Saving draft...</span>
+                  </>
+                )}
+                {!isDraftSaving && draftLastSavedAt && (
+                  <>
+                    <span style={{ ...styles.draftIndicator, backgroundColor: '#48bb78' }} />
+                    <span>Draft saved {formatRelativeTime(draftLastSavedAt.toISOString())}</span>
+                  </>
+                )}
+                {!isDraftSaving && !draftLastSavedAt && hasUnsavedChanges && (
+                  <>
+                    <span style={{ ...styles.draftIndicator, backgroundColor: '#ed8936' }} />
+                    <span>Unsaved changes</span>
+                  </>
+                )}
+                {!isDraftSaving && !draftLastSavedAt && !hasUnsavedChanges && (
+                  <span style={{ color: colors.primary[400] }}>Your progress will be saved automatically</span>
+                )}
+              </div>
+              {draftSaveError && <span style={{ color: '#e53e3e', fontSize: typography.fontSize.xs }}>{draftSaveError}</span>}
+            </div>
+
+            <div style={styles.formActions}>
+              <button
+                type="button"
+                onClick={() => saveDraftToServer(responses, revealConsent)}
+                disabled={isDraftSaving || !hasUnsavedChanges || submitting}
+                style={{ ...styles.buttonSecondary, minWidth: '120px', ...(isDraftSaving || !hasUnsavedChanges || submitting ? styles.buttonDisabled : {}) }}
+                className="join-btn-secondary"
+              >
+                {isDraftSaving ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{ ...styles.buttonPrimary, flex: 1, ...(submitting ? styles.buttonDisabled : {}) }}
+                className="join-btn-primary"
+              >
+                {submitting ? 'Submitting...' : 'Submit Response'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
-      {/* Image Lightbox */}
       {lightboxImageUrl && (
-        <div
-          onClick={() => setLightboxImageUrl(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            cursor: 'pointer',
-            padding: '2rem'
-          }}
-        >
+        <div onClick={() => setLightboxImageUrl(null)} style={styles.lightbox}>
           <img
             src={lightboxImageUrl}
             alt="Enlarged view"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: '90vw',
-              maxHeight: '90vh',
-              objectFit: 'contain',
-              borderRadius: '8px',
-              cursor: 'default'
-            }}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: borders.radius.md, cursor: 'default' }}
           />
-          <button
-            onClick={() => setLightboxImageUrl(null)}
-            style={{
-              position: 'absolute',
-              top: '1rem',
-              right: '1rem',
-              background: 'rgba(255, 255, 255, 0.9)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '40px',
-              height: '40px',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#333'
-            }}
-            aria-label="Close lightbox"
-          >
-            ×
-          </button>
+          <button onClick={() => setLightboxImageUrl(null)} style={styles.lightboxClose} aria-label="Close lightbox">×</button>
         </div>
       )}
-    </div>
-  );
-}
-
-export default function JoinPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <JoinPageNew /> : <JoinPageOld />}
     </>
   );
 }

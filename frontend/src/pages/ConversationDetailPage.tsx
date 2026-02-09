@@ -6,11 +6,502 @@ import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
-import DesignToggle from '../components/DesignToggle';
-import ConversationDetailPageNew from './ConversationDetailPageNew';
+import { colors, typography, spacing, borders, shadows } from '../styles';
 import QRCode from 'qrcode';
 
-function ConversationDetailPageOld() {
+// Design tokens based styles
+const s = {
+  page: {
+    maxWidth: '1000px',
+    margin: '0 auto',
+    padding: spacing[6],
+    paddingTop: 'calc(2rem + 80px)',
+    backgroundColor: colors.primary[50],
+    minHeight: '100vh',
+  },
+  // Back button
+  backButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    color: colors.primary[600],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+    marginBottom: spacing[4],
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+  },
+  // Header
+  header: {
+    marginBottom: spacing[6],
+  },
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap' as const,
+    gap: spacing[3],
+    marginBottom: spacing[2],
+  },
+  pageTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    margin: 0,
+  },
+  description: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  headerImage: {
+    marginTop: spacing[4],
+    borderRadius: borders.radius.lg,
+    overflow: 'hidden',
+    maxHeight: '300px',
+    backgroundColor: colors.primary[100],
+  },
+  // Status badges
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: `${spacing[1]} ${spacing[3]}`,
+    borderRadius: borders.radius.full,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    textTransform: 'uppercase' as const,
+    letterSpacing: typography.letterSpacing.wide,
+  },
+  statusDraft: {
+    backgroundColor: colors.primary[200],
+    color: colors.primary[700],
+  },
+  statusActive: {
+    backgroundColor: colors.semantic.success.light,
+    color: colors.semantic.success.text,
+  },
+  statusClosed: {
+    backgroundColor: colors.primary[200],
+    color: colors.primary[600],
+  },
+  statusAnalyzing: {
+    backgroundColor: colors.semantic.warning.light,
+    color: colors.semantic.warning.text,
+  },
+  statusAnalyzed: {
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+  },
+  orgBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[3]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    backgroundColor: colors.primary[100],
+    color: colors.primary[700],
+    textDecoration: 'none',
+  },
+  templateBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[3]}`,
+    borderRadius: borders.radius.full,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    backgroundColor: colors.primary[200],
+    color: colors.primary[700],
+  },
+  // Actions bar
+  actionsBar: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: spacing[3],
+    marginBottom: spacing[6],
+    padding: spacing[4],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.lg,
+  },
+  // Buttons
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+    border: 'none',
+    cursor: 'pointer',
+  },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: 'transparent',
+    color: colors.primary[900],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+    border: `1px solid ${colors.primary[400]}`,
+    cursor: 'pointer',
+  },
+  buttonDanger: {
+    backgroundColor: 'transparent',
+    color: colors.semantic.error.main,
+    border: `1px solid ${colors.semantic.error.main}`,
+  },
+  buttonSuccess: {
+    backgroundColor: colors.semantic.success.main,
+    color: colors.primary[50],
+    border: 'none',
+  },
+  buttonWarning: {
+    backgroundColor: colors.semantic.warning.main,
+    color: colors.primary[50],
+    border: 'none',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  // Content layout
+  contentGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 320px',
+    gap: spacing[6],
+  },
+  mainColumn: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[6],
+  },
+  sidebar: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[6],
+  },
+  // Cards/Panels
+  card: {
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    padding: spacing[6],
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+    paddingBottom: spacing[3],
+    borderBottom: `1px solid ${colors.primary[200]}`,
+  },
+  // Info items
+  infoItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: `${spacing[3]} 0`,
+    borderBottom: `1px solid ${colors.primary[200]}`,
+  },
+  infoItemLast: {
+    borderBottom: 'none',
+  },
+  infoLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[600],
+  },
+  infoValue: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    textAlign: 'right' as const,
+  },
+  // Questions list
+  questionItem: {
+    display: 'flex',
+    gap: spacing[3],
+    padding: spacing[4],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[3],
+  },
+  questionNumber: {
+    width: '24px',
+    height: '24px',
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    borderRadius: borders.radius.full,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  questionText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  // Share section
+  shareSection: {
+    padding: spacing[4],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[4],
+  },
+  shareDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[3],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  shareButtons: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: spacing[2],
+  },
+  // Participant codes
+  codesSection: {
+    marginTop: spacing[4],
+    padding: spacing[4],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.md,
+  },
+  codesForm: {
+    display: 'flex',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  codeInput: {
+    width: '80px',
+    padding: `${spacing[2]} ${spacing[3]}`,
+    border: `1px solid ${colors.primary[400]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+  },
+  codesList: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gap: spacing[2],
+    maxHeight: '300px',
+    overflowY: 'auto' as const,
+    padding: spacing[3],
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+  },
+  codeItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing[2],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.sm,
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.mono,
+  },
+  // Analysis preview
+  analysisPreview: {
+    padding: spacing[6],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[300]}`,
+  },
+  analysisSummary: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+    lineHeight: typography.lineHeight.relaxed,
+    marginBottom: spacing[4],
+  },
+  // Parent/follow-up section
+  relationSection: {
+    padding: spacing[4],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.md,
+    marginTop: spacing[4],
+  },
+  relationLink: {
+    color: colors.primary[900],
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+  },
+  // Modal
+  modalOverlay: {
+    position: 'fixed' as const,
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    padding: spacing[4],
+  },
+  modalContent: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.xl,
+    padding: spacing[8],
+    maxWidth: '500px',
+    width: '100%',
+    maxHeight: '90vh',
+    overflowY: 'auto' as const,
+    boxShadow: shadows.lg,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+  },
+  modalText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[6],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  modalActions: {
+    display: 'flex',
+    gap: spacing[3],
+    justifyContent: 'flex-end',
+  },
+  // Messages
+  errorMessage: {
+    backgroundColor: colors.semantic.error.light,
+    color: colors.semantic.error.text,
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[4],
+    fontSize: typography.fontSize.sm,
+  },
+  successMessage: {
+    backgroundColor: colors.semantic.success.light,
+    color: colors.semantic.success.text,
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[4],
+    fontSize: typography.fontSize.sm,
+  },
+  // Loading
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[16],
+    color: colors.primary[500],
+    fontSize: typography.fontSize.sm,
+  },
+  // Empty state
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: spacing[16],
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.lg,
+    border: `2px dashed ${colors.primary[300]}`,
+  },
+  emptyTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[2],
+  },
+  emptyText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[6],
+  },
+  // Stats row
+  statsRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: spacing[4],
+    marginBottom: spacing[6],
+  },
+  statItem: {
+    textAlign: 'center' as const,
+    padding: spacing[4],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.md,
+  },
+  statValue: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+  },
+  statLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[600],
+    marginTop: spacing[1],
+  },
+  // Form elements
+  formGroup: {
+    marginBottom: spacing[4],
+  },
+  formLabel: {
+    display: 'block',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+    marginBottom: spacing[2],
+  },
+  input: {
+    width: '100%',
+    padding: spacing[3],
+    border: `1px solid ${colors.primary[400]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+  },
+  select: {
+    width: '100%',
+    padding: spacing[3],
+    border: `1px solid ${colors.primary[400]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    backgroundColor: colors.primary[50],
+  },
+  checkbox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    cursor: 'pointer',
+  },
+  radioGroup: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[3],
+  },
+};
+
+const merge = (...styles: (React.CSSProperties | false | undefined)[]) =>
+  Object.assign({}, ...styles.filter(Boolean));
+
+const getStatusStyle = (state: ConversationState): React.CSSProperties => {
+  const styles: Record<ConversationState, React.CSSProperties> = {
+    [ConversationState.DRAFT]: s.statusDraft,
+    [ConversationState.ACTIVE]: s.statusActive,
+    [ConversationState.CLOSED]: s.statusClosed,
+    [ConversationState.ANALYZING]: s.statusAnalyzing,
+    [ConversationState.ANALYZED]: s.statusAnalyzed,
+    [ConversationState.DELETED]: s.statusClosed,
+  };
+  return styles[state];
+};
+
+export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -31,12 +522,9 @@ function ConversationDetailPageOld() {
   const [showAllCodes, setShowAllCodes] = useState(false);
   const [loadingCodes, setLoadingCodes] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [copiedAllNewCodes, setCopiedAllNewCodes] = useState(false);
   const [copiedAllCodes, setCopiedAllCodes] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAnalysisSuccess, setShowAnalysisSuccess] = useState(false);
-  const [showLargeModeModal, setShowLargeModeModal] = useState(false);
-  const [largeModeCodes, setLargeModeCodes] = useState<string[]>([]);
   const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
   const [showActivateModal, setShowActivateModal] = useState(false);
   const [scheduledActivateAt, setScheduledActivateAt] = useState('');
@@ -56,7 +544,6 @@ function ConversationDetailPageOld() {
     if (id) {
       loadConversation();
       loadInvitations();
-      // Clear QR code when conversation changes
       setQrCodeDataUrl(null);
     }
   }, [id]);
@@ -73,14 +560,12 @@ function ConversationDetailPageOld() {
     }
   }, [conversation]);
 
-  // Redirect to template page if this is a template
   useEffect(() => {
     if (conversation && conversation.is_template) {
       navigate(`/templates/${id}`, { replace: true });
     }
   }, [conversation, id, navigate]);
 
-  // Poll for analysis completion when state is ANALYZING
   useEffect(() => {
     if (!conversation || conversation.state !== ConversationState.ANALYZING) {
       return;
@@ -90,14 +575,13 @@ function ConversationDetailPageOld() {
       try {
         const convData = await api.getConversation(id!);
         if (convData.state !== ConversationState.ANALYZING) {
-          // Analysis completed or failed, reload everything
           await loadConversation();
           clearInterval(pollInterval);
         }
       } catch (err) {
         console.error('Error polling for analysis status:', err);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [conversation?.state, id]);
@@ -112,7 +596,6 @@ function ConversationDetailPageOld() {
       setConversation(convData);
       setStats(statsData);
 
-      // Load organization name if this is an org conversation
       if (convData.organization_id) {
         try {
           const orgData = await api.getOrganization(convData.organization_id);
@@ -122,7 +605,6 @@ function ConversationDetailPageOld() {
         }
       }
 
-      // Load analysis if available
       if (convData.state === ConversationState.ANALYZED) {
         try {
           const analysisData = await api.getAnalysis(id!);
@@ -169,12 +651,9 @@ function ConversationDetailPageOld() {
     setActionLoading(true);
     try {
       await api.triggerAnalysis(id!);
-      // Reload conversation to get updated state (ANALYZING)
       await loadConversation();
       setShowAnalysisSuccess(true);
-      setTimeout(() => {
-        setShowAnalysisSuccess(false);
-      }, 3000);
+      setTimeout(() => setShowAnalysisSuccess(false), 3000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to start analysis');
     } finally {
@@ -194,7 +673,6 @@ function ConversationDetailPageOld() {
 
   const handleCreateFollowUp = async () => {
     try {
-      // Create follow-up via API
       const followUp = await api.createFollowUp(id!, {
         copy_settings: copySettings,
         copy_invitations: copyInvitations,
@@ -213,11 +691,8 @@ function ConversationDetailPageOld() {
     try {
       await navigator.clipboard.writeText(link);
       setLinkCopied(true);
-      setTimeout(() => {
-        setLinkCopied(false);
-      }, 2000);
+      setTimeout(() => setLinkCopied(false), 2000);
     } catch (err) {
-      // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = link;
       textArea.style.position = 'fixed';
@@ -227,9 +702,7 @@ function ConversationDetailPageOld() {
       try {
         document.execCommand('copy');
         setLinkCopied(true);
-        setTimeout(() => {
-          setLinkCopied(false);
-        }, 2000);
+        setTimeout(() => setLinkCopied(false), 2000);
       } catch (fallbackErr) {
         console.error('Failed to copy link', fallbackErr);
       }
@@ -237,14 +710,10 @@ function ConversationDetailPageOld() {
     }
   };
 
-  const getInviteLink = () => {
-    return `${window.location.origin}/join/${conversation?.access_code}`;
-  };
+  const getInviteLink = () => `${window.location.origin}/join/${conversation?.access_code}`;
 
   const generateQRCode = async () => {
     if (!conversation?.access_code) return;
-    
-    // If QR code already generated, just show the modal
     if (qrCodeDataUrl) {
       setShowQRCodeModal(true);
       return;
@@ -256,10 +725,7 @@ function ConversationDetailPageOld() {
       const dataUrl = await QRCode.toDataURL(link, {
         width: 400,
         margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF',
-        },
+        color: { dark: '#000000', light: '#FFFFFF' },
       });
       setQrCodeDataUrl(dataUrl);
       setShowQRCodeModal(true);
@@ -273,32 +739,10 @@ function ConversationDetailPageOld() {
 
   const downloadQRCode = () => {
     if (!qrCodeDataUrl) return;
-
     const link = document.createElement('a');
     link.download = `qr-code-${conversation?.access_code || 'conversation'}.png`;
     link.href = qrCodeDataUrl;
     link.click();
-  };
-
-  const handleGenerateCodes = async () => {
-    if (!id || !conversation) return;
-    
-    setGeneratingCodes(true);
-    setError('');
-    try {
-      const result = await api.generateParticipantCodes(id, codeCount);
-      // Randomize the order of newly generated codes
-      const shuffled = shuffleArray(result.codes);
-      setNewlyGeneratedCodes(shuffled);
-      setShowNewCodes(true);
-      setShowAllCodes(false); // Hide all codes view when showing new ones
-      // Reload conversation to update stats
-      loadConversation();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to generate participant codes');
-    } finally {
-      setGeneratingCodes(false);
-    }
   };
 
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -310,29 +754,38 @@ function ConversationDetailPageOld() {
     return shuffled;
   };
 
+  const handleGenerateCodes = async () => {
+    if (!id || !conversation) return;
+    setGeneratingCodes(true);
+    setError('');
+    try {
+      const result = await api.generateParticipantCodes(id, codeCount);
+      const shuffled = shuffleArray(result.codes);
+      setNewlyGeneratedCodes(shuffled);
+      setShowNewCodes(true);
+      setShowAllCodes(false);
+      loadConversation();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to generate participant codes');
+    } finally {
+      setGeneratingCodes(false);
+    }
+  };
+
   const handleLoadAllCodes = async () => {
     if (!id || !conversation) return;
-    
     setLoadingCodes(true);
     setError('');
     try {
       const result = await api.listParticipantCodes(id);
-      // Randomize the order when loading
       const shuffled = shuffleArray(result.codes);
       setAllCodes(shuffled);
       setShowAllCodes(true);
-      setShowNewCodes(false); // Hide new codes view when showing all
+      setShowNewCodes(false);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load participant codes');
     } finally {
       setLoadingCodes(false);
-    }
-  };
-
-  const handleShuffleCodes = () => {
-    if (allCodes.length > 0) {
-      const shuffled = shuffleArray(allCodes);
-      setAllCodes(shuffled);
     }
   };
 
@@ -342,7 +795,6 @@ function ConversationDetailPageOld() {
       const data = await api.listInvitations(id);
       setInvitations(data);
     } catch (err) {
-      // Silently fail - invitations are optional
       console.error('Failed to load invitations', err);
     }
   };
@@ -372,21 +824,12 @@ function ConversationDetailPageOld() {
     }
   };
 
-
-  const openLargeMode = (codes: string[]) => {
-    setLargeModeCodes(codes);
-    setShowLargeModeModal(true);
-  };
-
   const copyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(code);
-      setTimeout(() => {
-        setCopiedCode(null);
-      }, 2000);
+      setTimeout(() => setCopiedCode(null), 2000);
     } catch (err) {
-      // Fallback
       const textArea = document.createElement('textarea');
       textArea.value = code;
       textArea.style.position = 'fixed';
@@ -396,48 +839,17 @@ function ConversationDetailPageOld() {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       setCopiedCode(code);
-      setTimeout(() => {
-        setCopiedCode(null);
-      }, 2000);
+      setTimeout(() => setCopiedCode(null), 2000);
     }
   };
 
-  const copyAllNewCodes = async () => {
-    const codesText = newlyGeneratedCodes.join('\n');
-    try {
-      await navigator.clipboard.writeText(codesText);
-      setCopiedAllNewCodes(true);
-      setTimeout(() => {
-        setCopiedAllNewCodes(false);
-      }, 2000);
-    } catch (err) {
-      // Fallback
-      const textArea = document.createElement('textarea');
-      textArea.value = codesText;
-      textArea.style.position = 'fixed';
-      textArea.style.opacity = '0';
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopiedAllNewCodes(true);
-      setTimeout(() => {
-        setCopiedAllNewCodes(false);
-      }, 2000);
-    }
-  };
-
-  const copyAllCodes = async (codes?: string[]) => {
-    const codesToCopy = codes || allCodes.map(c => c.participant_code);
-    const codesText = codesToCopy.join('\n');
+  const copyAllCodes = async (codes: string[]) => {
+    const codesText = codes.join('\n');
     try {
       await navigator.clipboard.writeText(codesText);
       setCopiedAllCodes(true);
-      setTimeout(() => {
-        setCopiedAllCodes(false);
-      }, 2000);
+      setTimeout(() => setCopiedAllCodes(false), 2000);
     } catch (err) {
-      // Fallback
       const textArea = document.createElement('textarea');
       textArea.value = codesText;
       textArea.style.position = 'fixed';
@@ -447,30 +859,24 @@ function ConversationDetailPageOld() {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       setCopiedAllCodes(true);
-      setTimeout(() => {
-        setCopiedAllCodes(false);
-      }, 2000);
+      setTimeout(() => setCopiedAllCodes(false), 2000);
     }
   };
 
   if (loading) {
-    return <div className="loading">Loading conversation...</div>;
+    return <div style={s.loading}>Loading conversation...</div>;
   }
 
-  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
   const conversationOrgId = conversation?.organization_id || null;
   const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
 
   if (!conversation || wrongWorkspace) {
     return (
-      <div className="dashboard-page">
-        <div className="page-header">
-          <h1>Conversation Not Found</h1>
-        </div>
-        <div className="empty-state">
-          <h3>This conversation doesn't exist or you don't have access to it</h3>
-          <p>The conversation may have been deleted or you may not have permission to view it.</p>
-          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
+      <div style={s.page}>
+        <div style={s.emptyState}>
+          <h3 style={s.emptyTitle}>Conversation Not Found</h3>
+          <p style={s.emptyText}>This conversation doesn't exist or you don't have access to it.</p>
+          <button onClick={() => navigate('/dashboard')} style={s.buttonSecondary}>
             Back to Dashboard
           </button>
         </div>
@@ -479,535 +885,426 @@ function ConversationDetailPageOld() {
   }
 
   return (
-    <div className="conversation-detail-page">
-      <div className="page-header">
-        <div>
-          <button onClick={() => navigate('/dashboard')} className="btn-back">
-            ← Back to Dashboard
-          </button>
-          <div className="title-row">
-            <h1>
-              {conversation.title}
-            </h1>
-            <span className={`status-badge-inline status-${conversation.state}`}>
-              {conversation.state}
+    <div style={s.page}>
+      {/* Back button */}
+      <button onClick={() => navigate('/dashboard')} style={s.backButton}>
+        ← Back to Dashboard
+      </button>
+
+      {/* Header */}
+      <header style={s.header}>
+        <div style={s.titleRow}>
+          <h1 style={s.pageTitle}>{conversation.title}</h1>
+          <span style={merge(s.statusBadge, getStatusStyle(conversation.state))}>
+            {conversation.state}
+          </span>
+          {organizationName && (
+            <Link to={`/organizations/${conversation.organization_id}`} style={s.orgBadge}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1.5 14.25c0 .138.112.25.25.25H4v-1.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v1.25h2.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25v12.5Z"/>
+                <path d="M11.5 3.25h3.25v11.5H11.5V3.25Z"/>
+              </svg>
+              {organizationName}
+            </Link>
+          )}
+          {conversation.is_recurring_instance && (
+            <span style={s.templateBadge}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+              </svg>
+              Recurring
             </span>
-            {organizationName && (
-              <Link
-                to={`/organizations/${conversation.organization_id}`}
-                className="badge"
-                style={{
-                  backgroundColor: '#EBF8FF',
-                  color: '#2C5282',
-                  textDecoration: 'none',
-                  padding: '0.25rem 0.65rem',
-                  borderRadius: '6px',
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.025em',
-                  marginLeft: '0.75rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }}
-                title="View organization"
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M1.5 14.25c0 .138.112.25.25.25H4v-1.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v1.25h2.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25v12.5Z"/>
-                  <path d="M11.5 3.25h3.25v11.5H11.5V3.25Z"/>
-                </svg>
-                {organizationName}
-              </Link>
-            )}
-            {conversation.series_id === null && conversation.recurrence_pattern && (
-              <span className="badge recurring-badge" title="Recurring Template">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                  <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                </svg>
-                TEMPLATE
-              </span>
-            )}
-            {conversation.is_recurring_instance && (
-              <span className="badge recurring-badge" title="Recurring Instance">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle' }}>
-                  <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                </svg>
-                RECURRING
-              </span>
-            )}
-          </div>
-          {conversation.description && <p className="description">{conversation.description}</p>}
-          {conversation.header_image_url && (
-            <div style={{ 
-              marginTop: '1rem',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              maxHeight: '400px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f7fafc'
-            }}>
-              <img 
-                src={conversation.header_image_url} 
-                alt="Conversation header" 
-                style={{ 
-                  width: '100%', 
-                  height: 'auto',
-                  maxHeight: '400px',
-                  objectFit: 'cover',
-                  display: 'block'
-                }} 
-              />
-            </div>
           )}
         </div>
-        <div className="header-actions">
-          <div className="conversation-actions-top">
-            {/* Primary state-specific action */}
-            {conversation.state === ConversationState.DRAFT && (
-              <button
-                onClick={() => setShowActivateModal(true)}
-                className="btn btn-primary btn-small"
-                disabled={actionLoading}
-              >
-                Activate
-              </button>
-            )}
+        {conversation.description && (
+          <p style={s.description}>{conversation.description}</p>
+        )}
+        {conversation.header_image_url && (
+          <div style={s.headerImage}>
+            <img
+              src={conversation.header_image_url}
+              alt="Conversation header"
+              style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'cover' }}
+            />
+          </div>
+        )}
+      </header>
 
-            {conversation.state === ConversationState.ACTIVE && (
-              <button
-                onClick={handleClose}
-                className="btn btn-warning btn-small"
-                disabled={actionLoading}
-              >
-                Close
-              </button>
-            )}
-
-            {conversation.state === ConversationState.CLOSED && (
-              <button
-                onClick={handleAnalyze}
-                className="btn btn-primary btn-small"
-                disabled={actionLoading}
-              >
-                Run Analysis
-              </button>
-            )}
-
-            {conversation.state === ConversationState.ANALYZING && (
-              <button
-                className="btn btn-primary btn-small"
-                disabled={true}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }}>
-                  <path d="M21 12a9 9 0 11-6.219-8.56" />
-                </svg>
-                Analyzing...
-              </button>
-            )}
-
-            {conversation.state === ConversationState.ANALYZED && (
-              <Link to={`/conversations/${id}/analysis`} className="btn btn-primary btn-small">
-                View Analysis
-              </Link>
-            )}
-
-            {/* Secondary actions */}
+      {/* Actions bar */}
+      <div style={s.actionsBar}>
+        {conversation.state === ConversationState.DRAFT && (
+          <>
             <button
-              onClick={() => setShowPreview(true)}
-              className="btn btn-outline-secondary btn-small"
-            >
-              Preview
-            </button>
-
-            {conversation.state === ConversationState.DRAFT && (
-              <Link
-                to={`/conversations/${id}/edit`}
-                className="btn btn-outline-secondary btn-small"
-              >
-                Edit
-              </Link>
-            )}
-
-            {(conversation.state === ConversationState.CLOSED || conversation.state === ConversationState.ANALYZED) && (
-              <button
-                onClick={() => setShowFollowUpModal(true)}
-                className="btn btn-outline-secondary btn-small"
-                disabled={actionLoading}
-              >
-                Create Follow-up
-              </button>
-            )}
-
-            {/* Destructive action */}
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="btn btn-outline-danger btn-small"
+              onClick={() => setShowActivateModal(true)}
+              style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
               disabled={actionLoading}
             >
-              Delete
+              Activate
             </button>
-          </div>
-        </div>
+            <Link to={`/conversations/${id}/edit`} style={s.buttonSecondary}>
+              Edit
+            </Link>
+          </>
+        )}
+
+        {conversation.state === ConversationState.ACTIVE && (
+          <button
+            onClick={handleClose}
+            style={merge(s.buttonPrimary, s.buttonWarning, actionLoading && s.buttonDisabled)}
+            disabled={actionLoading}
+          >
+            Close Conversation
+          </button>
+        )}
+
+        {conversation.state === ConversationState.CLOSED && (
+          <>
+            <button
+              onClick={handleAnalyze}
+              style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
+              disabled={actionLoading}
+            >
+              Run Analysis
+            </button>
+            <button
+              onClick={() => setShowFollowUpModal(true)}
+              style={s.buttonSecondary}
+              disabled={actionLoading}
+            >
+              Create Follow-up
+            </button>
+          </>
+        )}
+
+        {conversation.state === ConversationState.ANALYZING && (
+          <button style={merge(s.buttonPrimary, s.buttonDisabled)} disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M21 12a9 9 0 11-6.219-8.56" />
+            </svg>
+            Analyzing...
+          </button>
+        )}
+
+        {conversation.state === ConversationState.ANALYZED && (
+          <>
+            <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
+              View Analysis
+            </Link>
+            <button
+              onClick={() => setShowFollowUpModal(true)}
+              style={s.buttonSecondary}
+              disabled={actionLoading}
+            >
+              Create Follow-up
+            </button>
+          </>
+        )}
+
+        <button onClick={() => setShowPreview(true)} style={s.buttonSecondary}>
+          Preview
+        </button>
+
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          style={merge(s.buttonSecondary, s.buttonDanger)}
+          disabled={actionLoading}
+        >
+          Delete
+        </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      
+      {/* Messages */}
+      {error && <div style={s.errorMessage}>{error}</div>}
       {showAnalysisSuccess && (
-        <div className="success-message">
-          ✓ Analysis started! Refresh the page in a minute to see results.
+        <div style={s.successMessage}>
+          Analysis started! Results will appear shortly.
         </div>
       )}
 
-      <div className="conversation-content">
-        <div className="info-panel">
-          <h2>Details</h2>
-
-          <div className="info-item">
-            <label>Share Link:</label>
-            <div className="invite-code-display">
-              <div className="share-link-info">
-                <p className="share-link-description">
-                  {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
-                    ? 'Share this link with participants. They will need a participant code to access.'
-                    : 'Share this link with logged-in users. They can access the conversation directly.'}
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={copyInviteLink}
-                    className={`btn btn-small ${linkCopied ? 'btn-success' : 'btn-secondary'}`}
-                  >
-                    {linkCopied ? '✓ Copied!' : 'Copy Link'}
-                  </button>
-                  <button
-                    onClick={generateQRCode}
-                    className="btn btn-small btn-secondary"
-                    disabled={generatingQRCode}
-                  >
-                    {generatingQRCode ? 'Generating...' : 'Show QR Code'}
-                  </button>
-                </div>
-              </div>
+      {/* Stats row */}
+      {stats && (
+        <div style={s.statsRow}>
+          <div style={s.statItem}>
+            <div style={s.statValue}>{stats.unique_participants}</div>
+            <div style={s.statLabel}>Responses</div>
+          </div>
+          <div style={s.statItem}>
+            <div style={s.statValue}>{conversation.questions?.length || 0}</div>
+            <div style={s.statLabel}>Questions</div>
+          </div>
+          <div style={s.statItem}>
+            <div style={s.statValue}>
+              {conversation.state === ConversationState.ACTIVE ? 'Live' :
+               conversation.state === ConversationState.ANALYZED ? 'Done' :
+               conversation.state.charAt(0).toUpperCase() + conversation.state.slice(1).toLowerCase()}
             </div>
+            <div style={s.statLabel}>Status</div>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div style={s.contentGrid}>
+        <div style={s.mainColumn}>
+          {/* Questions Card */}
+          <div style={s.card}>
+            <h2 style={s.cardTitle}>Questions</h2>
+            {conversation.questions?.map((question, index) => (
+              <div key={question.id} style={s.questionItem}>
+                <span style={s.questionNumber}>{index + 1}</span>
+                <span style={s.questionText}>{question.question_text}</span>
+              </div>
+            ))}
           </div>
 
-          {conversation.invite_only ? (
-            <div className="info-item invitations-section">
-              <label>Invite Users:</label>
-              <div className="invitations-summary">
-                {invitations && invitations.total_invitations > 0 ? (
-                  <p style={{ margin: '0.5rem 0', color: '#666' }}>
-                    {invitations.total_invitations} {invitations.total_invitations === 1 ? 'person has' : 'people have'} been invited to respond
-                  </p>
-                ) : (
-                  <p style={{ margin: '0.5rem 0', color: '#666' }}>
-                    No invitations sent yet
-                  </p>
-                )}
+          {/* Analysis Preview */}
+          {analysis && (
+            <div style={s.analysisPreview}>
+              <h2 style={s.cardTitle}>Analysis Summary</h2>
+              <p style={s.analysisSummary}>{analysis.overall_summary}</p>
+              <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
+                View Full Analysis
+              </Link>
+            </div>
+          )}
+
+          {/* Parent Conversation */}
+          {conversation.parent_conversation && (
+            <div style={s.card}>
+              <h2 style={s.cardTitle}>
+                {conversation.parent_conversation.is_template || conversation.is_recurring_instance
+                  ? 'Created from Template'
+                  : conversation.is_follow_up
+                    ? 'Follow-up From'
+                    : 'Parent Conversation'}
+              </h2>
+              <div style={s.relationSection}>
                 <Link
-                  to={`/conversations/${id}/invitations`}
-                  className="btn btn-primary btn-small"
+                  to={conversation.parent_conversation.is_template
+                    ? `/templates/${conversation.parent_conversation.id}`
+                    : `/conversations/${conversation.parent_conversation.id}`}
+                  style={s.relationLink}
                 >
-                  Manage Invitations
+                  ← {conversation.parent_conversation.title}
                 </Link>
               </div>
             </div>
-          ) : (
-            <div className="info-item">
-              <label>Access:</label>
-              <p style={{ margin: '0.5rem 0', color: '#666', fontSize: '0.9rem' }}>
+          )}
+
+          {/* Follow-up Conversations */}
+          {conversation.follow_up_conversations && conversation.follow_up_conversations.length > 0 && (
+            <div style={s.card}>
+              <h2 style={s.cardTitle}>Follow-up Conversations</h2>
+              {conversation.follow_up_conversations.map((followUp) => (
+                <div key={followUp.id} style={merge(s.infoItem, { alignItems: 'center' })}>
+                  <Link to={`/conversations/${followUp.id}`} style={s.relationLink}>
+                    {followUp.title}
+                  </Link>
+                  <span style={merge(s.statusBadge, getStatusStyle(followUp.state))}>
+                    {followUp.state}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div style={s.sidebar}>
+          {/* Share Card */}
+          <div style={s.card}>
+            <h2 style={s.cardTitle}>Share</h2>
+            <div style={s.shareSection}>
+              <p style={s.shareDescription}>
                 {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
-                  ? 'Anyone with a participant code can respond to this conversation.'
-                  : 'Any logged-in user with the link can respond to this conversation.'}
+                  ? 'Share this link with participants. They will need a participant code to access.'
+                  : 'Share this link with logged-in users to collect responses.'}
               </p>
-            </div>
-          )}
-
-          <div className="info-item">
-            <label>Anonymity Level:</label>
-            <span>{formatAnonymityLevel(conversation.anonymity_level)}</span>
-          </div>
-
-          <div className="info-item">
-            <label>Results Access:</label>
-            <span>{formatResultsAccess(conversation.results_access)}</span>
-          </div>
-
-          <div className="info-item">
-            <label>Verbatim Responses:</label>
-            <span>{conversation.show_verbatim_responses ? 'Visible' : 'Hidden (AI summaries only)'}</span>
-          </div>
-
-          {stats && (
-            <>
-              <div className="info-item">
-                <label>Number of responses:</label>
-                <span>{stats.unique_participants}</span>
+              <div style={s.shareButtons}>
+                <button
+                  onClick={copyInviteLink}
+                  style={merge(s.buttonSecondary, linkCopied && s.buttonSuccess)}
+                >
+                  {linkCopied ? '✓ Copied!' : 'Copy Link'}
+                </button>
+                <button
+                  onClick={generateQRCode}
+                  style={s.buttonSecondary}
+                  disabled={generatingQRCode}
+                >
+                  {generatingQRCode ? '...' : 'QR Code'}
+                </button>
               </div>
-            </>
-          )}
-
-          <div className="info-item">
-            <label>Created:</label>
-            <span>{formatDate(conversation.created_at, conversation.timezone)}</span>
-          </div>
-
-          {conversation.scheduled_activate_at && conversation.state === ConversationState.DRAFT && (
-            <div className="info-item">
-              <label>Scheduled Activation:</label>
-              <span>{formatDate(conversation.scheduled_activate_at, conversation.timezone)}</span>
             </div>
-          )}
 
-          {conversation.activated_at && (
-            <div className="info-item">
-              <label>Activated:</label>
-              <span>{formatDate(conversation.activated_at, conversation.timezone)}</span>
-            </div>
-          )}
-
-          {conversation.closed_at && (
-            <div className="info-item">
-              <label>Closed:</label>
-              <span>{formatDate(conversation.closed_at, conversation.timezone)}</span>
-            </div>
-          )}
-
-          <div className="info-item">
-            <label>Collection:</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {conversation.series_id ? (
-                <span>
-                  {seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown Collection'}
-                </span>
-              ) : (
-                <span style={{ color: '#718096' }}>Not in a collection</span>
-              )}
-              <button
-                onClick={() => {
-                  setSelectedSeriesId(conversation.series_id || '');
-                  setShowSeriesModal(true);
-                }}
-                className="btn btn-small btn-secondary"
-                style={{ marginLeft: '0.5rem' }}
-              >
-                {conversation.series_id ? 'Change' : 'Add to Collection'}
-              </button>
-            </div>
-          </div>
-
-          {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && (
-            <div className="info-item participant-codes-section">
-              <label>Participant Codes:</label>
-              <div className="participant-codes-controls">
-                <div className="code-generation-form">
+            {/* Participant Codes for Anonymous */}
+            {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && (
+              <div style={s.codesSection}>
+                <div style={s.codesForm}>
                   <input
                     type="number"
                     min="1"
                     max="1000"
                     value={codeCount}
                     onChange={(e) => setCodeCount(parseInt(e.target.value) || 10)}
-                    className="code-count-input"
+                    style={s.codeInput}
                     disabled={generatingCodes}
                   />
                   <button
                     onClick={handleGenerateCodes}
-                    className="btn btn-primary btn-small"
+                    style={merge(s.buttonPrimary, generatingCodes && s.buttonDisabled)}
                     disabled={generatingCodes}
                   >
-                    {generatingCodes ? 'Generating...' : 'Generate Codes'}
+                    {generatingCodes ? '...' : 'Generate'}
                   </button>
                 </div>
                 <button
                   onClick={handleLoadAllCodes}
-                  className="btn btn-secondary btn-small"
+                  style={merge(s.buttonSecondary, { width: '100%' })}
                   disabled={loadingCodes}
                 >
                   {loadingCodes ? 'Loading...' : 'View All Codes'}
                 </button>
-              </div>
-              
-              {/* Show newly generated codes */}
-              {showNewCodes && newlyGeneratedCodes.length > 0 && (
-                <div className="generated-codes-display">
-                  <div className="codes-header">
-                    <h3>Newly Generated Codes ({newlyGeneratedCodes.length})</h3>
-                    <div className="codes-header-actions">
+
+                {/* Show codes */}
+                {(showNewCodes && newlyGeneratedCodes.length > 0) && (
+                  <div style={{ marginTop: spacing[4] }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
+                      <span style={{ fontSize: typography.fontSize.xs, color: colors.primary[600] }}>
+                        {newlyGeneratedCodes.length} codes generated
+                      </span>
                       <button
-                        onClick={() => openLargeMode(newlyGeneratedCodes)}
-                        className="btn btn-secondary btn-small"
-                        title="View codes in large mode"
+                        onClick={() => copyAllCodes(newlyGeneratedCodes)}
+                        style={{ ...s.buttonSecondary, padding: `${spacing[1]} ${spacing[2]}`, fontSize: typography.fontSize.xs }}
                       >
-                        🔍 Large Mode
-                      </button>
-                      <button
-                        onClick={copyAllNewCodes}
-                        className={`btn btn-secondary btn-small ${copiedAllNewCodes ? 'btn-success' : ''}`}
-                      >
-                        {copiedAllNewCodes ? '✓ Copied!' : 'Copy All'}
-                      </button>
-                      <button
-                        onClick={() => setShowNewCodes(false)}
-                        className="btn btn-small btn-secondary"
-                      >
-                        Hide
+                        {copiedAllCodes ? '✓' : 'Copy All'}
                       </button>
                     </div>
-                  </div>
-                  <div className="codes-list">
-                    {newlyGeneratedCodes.map((code, index) => (
-                      <div key={index} className="code-item">
-                        <code>{code}</code>
-                        <button
-                          onClick={() => copyCode(code)}
-                          className={`btn btn-small ${copiedCode === code ? 'btn-success' : 'btn-secondary'}`}
-                          title="Copy code"
-                        >
-                          {copiedCode === code ? '✓ Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="codes-note">
-                    These are the newly generated codes. Distribute them to participants. Each code can only be used once.
-                  </p>
-                </div>
-              )}
-
-              {/* Show all codes */}
-              {showAllCodes && allCodes.length > 0 && (
-                <div className="generated-codes-display">
-                  <div className="codes-header">
-                    <h3>All Participant Codes ({allCodes.length})</h3>
-                    <div className="codes-header-actions">
-                      <button
-                        onClick={() => openLargeMode(allCodes.map(c => c.participant_code))}
-                        className="btn btn-secondary btn-small"
-                        title="View codes in large mode"
-                      >
-                        🔍 Large Mode
-                      </button>
-                      <button
-                        onClick={handleShuffleCodes}
-                        className="btn btn-secondary btn-small"
-                        title="Randomize order"
-                      >
-                        🔀 Shuffle
-                      </button>
-                      <button
-                        onClick={() => copyAllCodes()}
-                        className={`btn btn-secondary btn-small ${copiedAllCodes ? 'btn-success' : ''}`}
-                      >
-                        {copiedAllCodes ? '✓ Copied!' : 'Copy All'}
-                      </button>
-                      <button
-                        onClick={() => setShowAllCodes(false)}
-                        className="btn btn-small btn-secondary"
-                      >
-                        Hide
-                      </button>
+                    <div style={s.codesList}>
+                      {newlyGeneratedCodes.map((code, i) => (
+                        <div key={i} style={s.codeItem}>
+                          <code>{code}</code>
+                          <button
+                            onClick={() => copyCode(code)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: colors.primary[600] }}
+                          >
+                            {copiedCode === code ? '✓' : 'Copy'}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="codes-list">
-                    {allCodes.map((codeObj, index) => (
-                      <div key={index} className="code-item">
-                        <code>{codeObj.participant_code}</code>
-                        <button
-                          onClick={() => copyCode(codeObj.participant_code)}
-                          className={`btn btn-small ${copiedCode === codeObj.participant_code ? 'btn-success' : 'btn-secondary'}`}
-                          title="Copy code"
-                        >
-                          {copiedCode === codeObj.participant_code ? '✓ Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="codes-note">
-                    All participant codes for this conversation. Codes are displayed in random order. Each code can only be used once.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {/* Parent Conversation Section */}
-          {conversation.parent_conversation && (
-            <div className="info-item parent-conversation-section">
-              <label>
-                {conversation.parent_conversation.is_template || conversation.is_recurring_instance
-                  ? 'Created with template:'
-                  : conversation.is_follow_up
-                    ? 'Followed up from:'
-                    : 'Parent Conversation:'}
-              </label>
-              <div className="parent-conversation-link">
-                <Link to={conversation.parent_conversation.is_template 
-                  ? `/templates/${conversation.parent_conversation.id}`
-                  : `/conversations/${conversation.parent_conversation.id}`}>
-                  ← {conversation.parent_conversation.title}
-                </Link>
-                {!conversation.is_recurring_instance && !conversation.parent_conversation.is_template && (
-                  // Don't show status for templates - they're not active/closed
-                  <span className={`status-badge status-${conversation.parent_conversation.state}`}>
-                    {conversation.parent_conversation.state}
-                  </span>
+                {(showAllCodes && allCodes.length > 0) && (
+                  <div style={{ marginTop: spacing[4] }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
+                      <span style={{ fontSize: typography.fontSize.xs, color: colors.primary[600] }}>
+                        {allCodes.length} total codes
+                      </span>
+                      <button
+                        onClick={() => copyAllCodes(allCodes.map(c => c.participant_code))}
+                        style={{ ...s.buttonSecondary, padding: `${spacing[1]} ${spacing[2]}`, fontSize: typography.fontSize.xs }}
+                      >
+                        {copiedAllCodes ? '✓' : 'Copy All'}
+                      </button>
+                    </div>
+                    <div style={s.codesList}>
+                      {allCodes.map((codeObj, i) => (
+                        <div key={i} style={s.codeItem}>
+                          <code>{codeObj.participant_code}</code>
+                          <button
+                            onClick={() => copyCode(codeObj.participant_code)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: colors.primary[600] }}
+                          >
+                            {copiedCode === codeObj.participant_code ? '✓' : 'Copy'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Follow-up Conversations Section */}
-          {conversation.follow_up_conversations && conversation.follow_up_conversations.length > 0 && (
-            <div className="info-item follow-ups-section">
-              <label>Follow-up Conversations:</label>
-              <ul className="follow-up-list">
-                {conversation.follow_up_conversations.map((followUp) => (
-                  <li key={followUp.id}>
-                    <Link to={`/conversations/${followUp.id}`}>
-                      {followUp.title}
-                    </Link>
-                    <div className="follow-up-meta">
-                      <span className={`status-badge status-${followUp.state}`}>
-                        {followUp.state}
-                      </span>
-                      <span className="follow-up-date">
-                        {formatDate(followUp.created_at, conversation.timezone)}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <div className="questions-panel">
-          <h2>Questions</h2>
-          <ol className="questions-list">
-            {conversation.questions?.map((question) => (
-              <li key={question.id} className="question-item">
-                {question.question_text}
-              </li>
-            ))}
-          </ol>
-        </div>
-
-
-        {analysis && (
-          <div className="analysis-preview">
-            <h2>Analysis Summary</h2>
-            <p>{analysis.overall_summary}</p>
-            <Link to={`/conversations/${id}/analysis`} className="btn btn-link">
-              View Full Analysis →
-            </Link>
+            {/* Invitations for invite-only */}
+            {conversation.invite_only && (
+              <div style={{ marginTop: spacing[4] }}>
+                <p style={{ fontSize: typography.fontSize.sm, color: colors.primary[600], marginBottom: spacing[3] }}>
+                  {invitations && invitations.total_invitations > 0
+                    ? `${invitations.total_invitations} ${invitations.total_invitations === 1 ? 'person' : 'people'} invited`
+                    : 'No invitations sent yet'}
+                </p>
+                <Link to={`/conversations/${id}/invitations`} style={merge(s.buttonPrimary, { width: '100%', justifyContent: 'center' })}>
+                  Manage Invitations
+                </Link>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Details Card */}
+          <div style={s.card}>
+            <h2 style={s.cardTitle}>Details</h2>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Anonymity</span>
+              <span style={s.infoValue}>{formatAnonymityLevel(conversation.anonymity_level)}</span>
+            </div>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Results Access</span>
+              <span style={s.infoValue}>{formatResultsAccess(conversation.results_access)}</span>
+            </div>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Verbatim</span>
+              <span style={s.infoValue}>{conversation.show_verbatim_responses ? 'Visible' : 'Hidden'}</span>
+            </div>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Created</span>
+              <span style={s.infoValue}>{formatDate(conversation.created_at, conversation.timezone)}</span>
+            </div>
+
+            {conversation.activated_at && (
+              <div style={s.infoItem}>
+                <span style={s.infoLabel}>Activated</span>
+                <span style={s.infoValue}>{formatDate(conversation.activated_at, conversation.timezone)}</span>
+              </div>
+            )}
+
+            {conversation.closed_at && (
+              <div style={s.infoItem}>
+                <span style={s.infoLabel}>Closed</span>
+                <span style={s.infoValue}>{formatDate(conversation.closed_at, conversation.timezone)}</span>
+              </div>
+            )}
+
+            <div style={merge(s.infoItem, s.infoItemLast)}>
+              <span style={s.infoLabel}>Collection</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                <span style={s.infoValue}>
+                  {conversation.series_id
+                    ? seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown'
+                    : 'None'}
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedSeriesId(conversation.series_id || '');
+                    setShowSeriesModal(true);
+                  }}
+                  style={{ background: 'none', border: 'none', color: colors.primary[600], cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Preview Modal */}
       {showPreview && conversation && (
         <ConversationPreview
           conversation={conversation}
@@ -1015,22 +1312,21 @@ function ConversationDetailPageOld() {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Delete Conversation</h2>
-            <p>Are you sure you want to delete this conversation? This action cannot be undone.</p>
-            <div className="modal-actions">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="btn btn-secondary"
-              >
+        <div style={s.modalOverlay} onClick={() => setShowDeleteModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Delete Conversation</h2>
+            <p style={s.modalText}>
+              Are you sure you want to delete this conversation? This action cannot be undone.
+            </p>
+            <div style={s.modalActions}>
+              <button onClick={() => setShowDeleteModal(false)} style={s.buttonSecondary}>
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="btn btn-danger"
+                style={merge(s.buttonPrimary, { backgroundColor: colors.semantic.error.main })}
                 disabled={actionLoading}
               >
                 {actionLoading ? 'Deleting...' : 'Delete'}
@@ -1040,225 +1336,121 @@ function ConversationDetailPageOld() {
         </div>
       )}
 
-      {/* Activate Conversation Modal */}
+      {/* Activate Modal */}
       {showActivateModal && (
-        <div className="modal-overlay" onClick={() => setShowActivateModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Activate Conversation</h2>
-            <p>Choose when to activate this conversation:</p>
-            
-            <div className="form-group radio-group" style={{ marginTop: '20px' }}>
-              <div className="radio-option">
-                <label htmlFor="activate-now">
-                  <input
-                    type="radio"
-                    id="activate-now"
-                    name="activate-time"
-                    value="now"
-                    checked={!scheduledActivateAt}
-                    onChange={() => setScheduledActivateAt('')}
-                  />
-                  <span>Activate immediately</span>
-                </label>
-              </div>
+        <div style={s.modalOverlay} onClick={() => setShowActivateModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Activate Conversation</h2>
+            <p style={s.modalText}>Choose when to activate this conversation:</p>
 
-              <div className="radio-option">
-                <label htmlFor="activate-scheduled">
-                  <input
-                    type="radio"
-                    id="activate-scheduled"
-                    name="activate-time"
-                    value="scheduled"
-                    checked={!!scheduledActivateAt}
-                    onChange={() => {
-                      // Set default to current time in local timezone
-                      const defaultTime = new Date();
-                      setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
-                    }}
-                  />
-                  <span>Schedule activation</span>
-                </label>
-                
-                {scheduledActivateAt && (
-                  <div style={{ marginLeft: '1.5rem', marginTop: '0.75rem' }}>
-                    <input
-                      type="datetime-local"
-                      value={scheduledActivateAt}
-                      onChange={(e) => setScheduledActivateAt(e.target.value)}
-                      min={formatDateForDateTimeLocal(new Date())}
-                    />
-                  </div>
-                )}
-              </div>
+            <div style={s.radioGroup}>
+              <label style={s.checkbox}>
+                <input
+                  type="radio"
+                  name="activate-time"
+                  checked={!scheduledActivateAt}
+                  onChange={() => setScheduledActivateAt('')}
+                />
+                <span>Activate immediately</span>
+              </label>
+              <label style={s.checkbox}>
+                <input
+                  type="radio"
+                  name="activate-time"
+                  checked={!!scheduledActivateAt}
+                  onChange={() => {
+                    const defaultTime = new Date();
+                    setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
+                  }}
+                />
+                <span>Schedule activation</span>
+              </label>
+              {scheduledActivateAt && (
+                <input
+                  type="datetime-local"
+                  value={scheduledActivateAt}
+                  onChange={(e) => setScheduledActivateAt(e.target.value)}
+                  min={formatDateForDateTimeLocal(new Date())}
+                  style={{ ...s.input, marginLeft: spacing[6] }}
+                />
+              )}
             </div>
 
-            {error && <div className="error-message" style={{ marginTop: '15px' }}>{error}</div>}
-
-            <div className="modal-actions" style={{ marginTop: '20px' }}>
+            <div style={{ ...s.modalActions, marginTop: spacing[6] }}>
               <button
                 onClick={() => {
                   setShowActivateModal(false);
                   setScheduledActivateAt('');
-                  setError('');
                 }}
-                className="btn btn-secondary"
+                style={s.buttonSecondary}
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
                   if (scheduledActivateAt) {
-                    // Send datetime string as-is (naive, in format YYYY-MM-DDTHH:mm)
-                    // Backend will interpret it in the conversation's timezone
-                    handleActivate(scheduledActivateAt + ':00'); // Add seconds to make it valid ISO format
+                    handleActivate(scheduledActivateAt + ':00');
                   } else {
                     handleActivate();
                   }
                 }}
-                className="btn btn-primary"
+                style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
                 disabled={actionLoading}
               >
-                {actionLoading ? 'Activating...' : scheduledActivateAt ? 'Schedule Activation' : 'Activate Now'}
+                {actionLoading ? 'Activating...' : scheduledActivateAt ? 'Schedule' : 'Activate Now'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Follow-up Modal */}
+      {/* Follow-up Modal */}
       {showFollowUpModal && (
-        <div className="modal-overlay" onClick={() => setShowFollowUpModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Follow-up Conversation</h2>
-            <p>Create a new conversation that follows up on this one.</p>
+        <div style={s.modalOverlay} onClick={() => setShowFollowUpModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Create Follow-up</h2>
+            <p style={s.modalText}>Create a new conversation that follows up on this one.</p>
 
-            <div className="checkbox-group" style={{ marginTop: '1.5rem' }}>
-              <div className="checkbox-option">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={copySettings}
-                    onChange={(e) => setCopySettings(e.target.checked)}
-                  />
-                  <span>Keep the same settings</span>
-                </label>
-              </div>
+            <div style={{ marginBottom: spacing[4] }}>
+              <label style={s.checkbox}>
+                <input
+                  type="checkbox"
+                  checked={copySettings}
+                  onChange={(e) => setCopySettings(e.target.checked)}
+                />
+                <span>Keep the same settings</span>
+              </label>
               {conversation.invite_only && (
-                <div className="checkbox-option">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={copyInvitations}
-                      onChange={(e) => setCopyInvitations(e.target.checked)}
-                    />
-                    <span>Send invitations to the same users</span>
-                  </label>
-                </div>
-              )}
-              <div className="checkbox-option">
-                <label className="checkbox-label">
+                <label style={s.checkbox}>
                   <input
                     type="checkbox"
-                    checked={addToSeries}
-                    onChange={(e) => setAddToSeries(e.target.checked)}
+                    checked={copyInvitations}
+                    onChange={(e) => setCopyInvitations(e.target.checked)}
                   />
-                  <span>Add to collection</span>
+                  <span>Send invitations to the same users</span>
                 </label>
-                <p style={{ marginLeft: '1.5rem', fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                  {conversation.series_id
-                    ? 'Add this follow-up to the same series as the parent conversation.'
-                    : 'Create a new series or add to parent\'s series if it exists.'}
-                </p>
-              </div>
+              )}
+              <label style={s.checkbox}>
+                <input
+                  type="checkbox"
+                  checked={addToSeries}
+                  onChange={(e) => setAddToSeries(e.target.checked)}
+                />
+                <span>Add to collection</span>
+              </label>
             </div>
 
-            <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#666', lineHeight: '1.6' }}>
-              The follow-up conversation will start with empty questions. You can add new questions after creation.
+            <p style={{ fontSize: typography.fontSize.sm, color: colors.primary[600], marginBottom: spacing[6] }}>
+              The follow-up will start with empty questions. You can add new questions after creation.
             </p>
 
-            {error && <div className="error-message" style={{ marginTop: '1.5rem' }}>{error}</div>}
-
-            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
-              <button
-                onClick={() => {
-                  setShowFollowUpModal(false);
-                  setError('');
-                }}
-                className="btn btn-secondary"
-              >
+            <div style={s.modalActions}>
+              <button onClick={() => setShowFollowUpModal(false)} style={s.buttonSecondary}>
                 Cancel
               </button>
-              <button
-                onClick={handleCreateFollowUp}
-                className="btn btn-primary"
-              >
-                Next
+              <button onClick={handleCreateFollowUp} style={s.buttonPrimary}>
+                Create Follow-up
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Large Mode Modal */}
-      {showLargeModeModal && (
-        <div className="modal-overlay" onClick={() => setShowLargeModeModal(false)}>
-          <div className="modal-content large-mode-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="large-mode-header">
-              <h2>Participant Codes - Large Mode</h2>
-              <button
-                onClick={() => setShowLargeModeModal(false)}
-                className="btn btn-secondary btn-small"
-              >
-                Close
-              </button>
-            </div>
-            <div className="large-mode-actions">
-              <button
-                onClick={async () => {
-                  const codesText = largeModeCodes.join('\n');
-                  try {
-                    await navigator.clipboard.writeText(codesText);
-                    setCopiedAllCodes(true);
-                    setTimeout(() => {
-                      setCopiedAllCodes(false);
-                    }, 2000);
-                  } catch (err) {
-                    // Fallback
-                    const textArea = document.createElement('textarea');
-                    textArea.value = codesText;
-                    textArea.style.position = 'fixed';
-                    textArea.style.opacity = '0';
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    setCopiedAllCodes(true);
-                    setTimeout(() => {
-                      setCopiedAllCodes(false);
-                    }, 2000);
-                  }
-                }}
-                className={`btn btn-secondary ${copiedAllCodes ? 'btn-success' : ''}`}
-              >
-                {copiedAllCodes ? '✓ All Copied!' : 'Copy All'}
-              </button>
-            </div>
-            <div className="large-mode-codes-list">
-              {largeModeCodes.map((code, index) => (
-                <div key={index} className="large-mode-code-item">
-                  <code className="large-mode-code-text">{code}</code>
-                  <button
-                    onClick={() => {
-                      copyCode(code);
-                      // Keep modal open but show feedback
-                    }}
-                    className={`btn ${copiedCode === code ? 'btn-success' : 'btn-secondary'}`}
-                    title="Copy code"
-                  >
-                    {copiedCode === code ? '✓ Copied' : 'Copy'}
-                  </button>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -1266,79 +1458,52 @@ function ConversationDetailPageOld() {
 
       {/* QR Code Modal */}
       {showQRCodeModal && qrCodeDataUrl && (
-        <div className="modal-overlay" onClick={() => setShowQRCodeModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2>QR Code</h2>
-              <button
-                onClick={() => setShowQRCodeModal(false)}
-                className="btn btn-secondary btn-small"
-              >
-                Close
-              </button>
-            </div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <img 
-                src={qrCodeDataUrl} 
-                alt="QR Code for conversation link" 
-                style={{ 
-                  maxWidth: '100%', 
-                  height: 'auto',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  backgroundColor: '#fff'
-                }}
-              />
-            </div>
-            <p style={{ marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>
+        <div style={s.modalOverlay} onClick={() => setShowQRCodeModal(false)}>
+          <div style={{ ...s.modalContent, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>QR Code</h2>
+            <img
+              src={qrCodeDataUrl}
+              alt="QR Code"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                border: `1px solid ${colors.primary[300]}`,
+                borderRadius: borders.radius.lg,
+                padding: spacing[4],
+                marginBottom: spacing[4],
+              }}
+            />
+            <p style={{ ...s.modalText, textAlign: 'center' }}>
               Scan this QR code to access the conversation
             </p>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-              <button
-                onClick={downloadQRCode}
-                className="btn btn-primary"
-              >
-                Download QR Code
+            <div style={{ ...s.modalActions, justifyContent: 'center' }}>
+              <button onClick={downloadQRCode} style={s.buttonPrimary}>
+                Download
               </button>
-              <button
-                onClick={() => {
-                  copyInviteLink();
-                  setShowQRCodeModal(false);
-                }}
-                className="btn btn-secondary"
-              >
-                Copy Link Instead
+              <button onClick={() => setShowQRCodeModal(false)} style={s.buttonSecondary}>
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Series Selection Modal */}
+      {/* Series Modal */}
       {showSeriesModal && (
-        <div className="modal-overlay" onClick={() => setShowSeriesModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Manage Collection</h2>
-            <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+        <div style={s.modalOverlay} onClick={() => setShowSeriesModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Manage Collection</h2>
+            <p style={s.modalText}>
               Add this conversation to a collection or remove it from its current collection.
             </p>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                Select Collection:
-              </label>
+            <div style={s.formGroup}>
+              <label style={s.formLabel}>Select Collection</label>
               <select
                 value={selectedSeriesId}
                 onChange={(e) => setSelectedSeriesId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #cbd5e0',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                }}
+                style={s.select}
               >
-                <option value="">No collection (remove from collection)</option>
+                <option value="">No collection</option>
                 {seriesList.map((series) => (
                   <option key={series.id} value={series.id}>
                     {series.name}
@@ -1346,43 +1511,34 @@ function ConversationDetailPageOld() {
                 ))}
               </select>
             </div>
-            {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
-            <div className="modal-actions">
-              <button
-                onClick={() => {
-                  setShowSeriesModal(false);
-                  setError('');
-                }}
-                className="btn btn-secondary"
-                disabled={updatingSeries}
-              >
+            <div style={s.modalActions}>
+              <button onClick={() => setShowSeriesModal(false)} style={s.buttonSecondary}>
                 Cancel
               </button>
               <button
                 onClick={handleUpdateSeries}
-                className="btn btn-primary"
+                style={merge(s.buttonPrimary, updatingSeries && s.buttonDisabled)}
                 disabled={updatingSeries}
               >
-                {updatingSeries ? 'Updating...' : 'Save'}
+                {updatingSeries ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* CSS for spinner animation */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          .content-grid-responsive {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
-  );
-}
-
-export default function ConversationDetailPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <ConversationDetailPageNew /> : <ConversationDetailPageOld />}
-    </>
   );
 }

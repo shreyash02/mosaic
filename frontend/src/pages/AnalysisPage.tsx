@@ -5,10 +5,473 @@ import type { Analysis, Conversation, ResponseWithQuestion } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
-import DesignToggle from '../components/DesignToggle';
-import AnalysisPageNew from './AnalysisPageNew';
+import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 
-function AnalysisPageOld() {
+const styles = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: colors.primary[50],
+    padding: spacing[6],
+    paddingTop: 'calc(60px + 1.5rem)',
+  },
+  container: {
+    maxWidth: '1000px',
+    margin: '0 auto',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[6],
+    flexWrap: 'wrap' as const,
+    gap: spacing[4],
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  backLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    color: colors.primary[600],
+    textDecoration: 'none',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing[3],
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    transition: transitions.duration.normal,
+  },
+  title: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    margin: 0,
+    marginBottom: spacing[2],
+  },
+  subtitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[600],
+    margin: 0,
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[6],
+    marginBottom: spacing[6],
+    boxShadow: shadows.sm,
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[4],
+  },
+  summaryText: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[700],
+    lineHeight: typography.lineHeight.relaxed,
+    margin: 0,
+  },
+  metaGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: spacing[4],
+    marginTop: spacing[5],
+    paddingTop: spacing[5],
+    borderTop: `1px solid ${colors.primary[100]}`,
+  },
+  metaItem: {
+    textAlign: 'center' as const,
+  },
+  metaLabel: {
+    display: 'block',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[500],
+    textTransform: 'uppercase' as const,
+    letterSpacing: typography.letterSpacing.wide,
+    marginBottom: spacing[1],
+  },
+  metaValue: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+  },
+  insightItem: {
+    padding: spacing[4],
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[3],
+    borderLeft: `4px solid ${colors.primary[400]}`,
+  },
+  insightTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  insightDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+    margin: 0,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  questionCard: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[5],
+    marginBottom: spacing[4],
+  },
+  questionHeader: {
+    marginBottom: spacing[4],
+  },
+  questionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginTop: 0,
+    marginBottom: spacing[2],
+  },
+  questionMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  badge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.full,
+    backgroundColor: colors.primary[100],
+    color: colors.primary[700],
+  },
+  responseCount: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[500],
+  },
+  themeCard: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  themeHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+  themeName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+  },
+  frequencyBadge: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[600],
+    backgroundColor: colors.primary[200],
+    padding: `${spacing[1]} ${spacing[2]}`,
+    borderRadius: borders.radius.full,
+  },
+  themeSummary: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+    lineHeight: typography.lineHeight.relaxed,
+    margin: 0,
+  },
+  perspectiveItem: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.md,
+    padding: spacing[3],
+    marginTop: spacing[3],
+    border: `1px solid ${colors.primary[200]}`,
+  },
+  perspectiveHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[1],
+  },
+  perspectiveName: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[800],
+  },
+  perspectiveCount: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[500],
+  },
+  perspectiveSummary: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+  },
+  keyPointsList: {
+    marginTop: spacing[3],
+    paddingLeft: spacing[5],
+  },
+  keyPoint: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+    marginBottom: spacing[1],
+  },
+  ratingDisplay: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[6],
+    marginBottom: spacing[4],
+  },
+  ratingAverage: {
+    textAlign: 'center' as const,
+  },
+  averageValue: {
+    fontSize: typography.fontSize['4xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+  },
+  averageScale: {
+    fontSize: typography.fontSize.lg,
+    color: colors.primary[500],
+  },
+  ratingRange: {
+    display: 'flex',
+    gap: spacing[4],
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  distributionBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+    marginBottom: spacing[2],
+  },
+  ratingLabel: {
+    width: '24px',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+    textAlign: 'right' as const,
+  },
+  barContainer: {
+    flex: 1,
+    height: '20px',
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.full,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    backgroundColor: colors.primary[600],
+    borderRadius: borders.radius.full,
+    transition: 'width 0.3s ease',
+  },
+  countLabel: {
+    width: '30px',
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  pollResultItem: {
+    marginBottom: spacing[3],
+  },
+  choiceHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[1],
+  },
+  choiceLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[800],
+  },
+  choiceStats: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  verbatimSection: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[6],
+    marginBottom: spacing[6],
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    margin: 0,
+  },
+  sectionDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+    marginTop: spacing[1],
+  },
+  groupSelect: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    backgroundColor: 'white',
+  },
+  questionGroup: {
+    marginBottom: spacing[5],
+    paddingBottom: spacing[5],
+    borderBottom: `1px solid ${colors.primary[100]}`,
+  },
+  questionGroupTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[800],
+    marginTop: 0,
+    marginBottom: spacing[3],
+  },
+  responseItem: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.md,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+  },
+  responseHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+  responseNumber: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[600],
+  },
+  responseDate: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[500],
+  },
+  responseContent: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[800],
+    lineHeight: typography.lineHeight.relaxed,
+    margin: 0,
+  },
+  technicalDetails: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.lg,
+    padding: spacing[5],
+    marginTop: spacing[6],
+  },
+  detailsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: spacing[4],
+  },
+  detailItem: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[1],
+  },
+  detailLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[500],
+    textTransform: 'uppercase' as const,
+    letterSpacing: typography.letterSpacing.wide,
+  },
+  detailValue: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[800],
+  },
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'white',
+    color: colors.primary[700],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  loading: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    color: colors.primary[500],
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+  },
+  emptyStateTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[2],
+  },
+  emptyStateText: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[600],
+    marginBottom: spacing[4],
+  },
+  noAnalysis: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[500],
+    fontStyle: 'italic',
+  },
+};
+
+const hoverStyles = `
+  .analysis-back-link:hover {
+    color: ${colors.primary[900]};
+  }
+  .analysis-btn-primary:hover:not(:disabled) {
+    background-color: ${colors.primary[800]};
+  }
+  .analysis-btn-secondary:hover:not(:disabled) {
+    background-color: ${colors.primary[50]};
+    border-color: ${colors.primary[400]};
+  }
+`;
+
+export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
@@ -31,15 +494,12 @@ function AnalysisPageOld() {
   const checkConversationAccess = async () => {
     if (!id) return;
     try {
-      // Try to load the conversation detail to check if user has access
       await api.getConversation(id);
       setCanAccessConversation(true);
     } catch (err: any) {
-      // If 404 or 403, user doesn't have access (they're a participant)
       if (err.response?.status === 404 || err.response?.status === 403) {
         setCanAccessConversation(false);
       } else {
-        // For other errors, assume they might have access (will show button)
         setCanAccessConversation(true);
       }
     }
@@ -48,16 +508,8 @@ function AnalysisPageOld() {
   const loadAnalysis = async () => {
     try {
       const analysisData = await api.getAnalysis(id!);
-
-      // Debug: log surprising insights
-      if (analysisData.surprising_insights) {
-        console.log('Surprising insights found:', analysisData.surprising_insights);
-      } else {
-        console.log('No surprising insights in analysis data');
-      }
       setAnalysis(analysisData);
 
-      // Create a minimal conversation object from analysis metadata
       const minimalConv: any = {
         id,
         title: analysisData.conversation_title || 'Untitled Conversation',
@@ -67,7 +519,6 @@ function AnalysisPageOld() {
       };
       setConversation(minimalConv);
 
-      // Load responses if verbatim responses are enabled
       if (analysisData.show_verbatim_responses) {
         try {
           const responsesData = await api.getResponses(id!);
@@ -139,374 +590,366 @@ function AnalysisPageOld() {
     }
   };
 
+  const handleBackClick = () => {
+    if (canAccessConversation) {
+      navigate(`/conversations/${id}`);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   if (loading) {
-    return <div className="loading">Loading analysis...</div>;
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.loading}>Loading analysis...</div>
+          </div>
+        </div>
+      </>
+    );
   }
 
-  // Check if conversation doesn't exist (404 from API) OR belongs to wrong workspace
   const conversationOrgId = conversation?.organization_id || null;
   const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
 
   if (!conversation || wrongWorkspace) {
     return (
-      <div className="dashboard-page">
-        <div className="page-header">
-          <h1>Conversation Not Found</h1>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyState}>
+              <h3 style={styles.emptyStateTitle}>Conversation Not Found</h3>
+              <p style={styles.emptyStateText}>
+                This conversation doesn't exist or you don't have access to it.
+              </p>
+              <button
+                onClick={() => navigate('/dashboard')}
+                style={styles.buttonSecondary}
+                className="analysis-btn-secondary"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="empty-state">
-          <h3>This conversation doesn't exist or you don't have access to it</h3>
-          <p>The conversation may have been deleted or you may not have permission to view it.</p>
-          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
+      </>
     );
   }
 
   if (error || !analysis) {
-    const handleErrorBackClick = () => {
-      if (canAccessConversation) {
-        navigate(`/conversations/${id}`);
-      } else {
-        navigate('/dashboard');
-      }
-    };
-
     return (
-      <div className="analysis-page">
-        <div className="error-state">
-          <h2>Analysis Not Available</h2>
-          <p>{error || 'No analysis has been run for this conversation yet.'}</p>
-          <button onClick={handleErrorBackClick} className="btn btn-primary">
-            {canAccessConversation ? 'Back to Conversation' : 'Back to Dashboard'}
-          </button>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyState}>
+              <h3 style={styles.emptyStateTitle}>Analysis Not Available</h3>
+              <p style={styles.emptyStateText}>
+                {error || 'No analysis has been run for this conversation yet.'}
+              </p>
+              <button
+                onClick={handleBackClick}
+                style={styles.buttonPrimary}
+                className="analysis-btn-primary"
+              >
+                {canAccessConversation ? 'Back to Conversation' : 'Back to Dashboard'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  const handleBackClick = () => {
-    if (canAccessConversation) {
-      navigate(`/conversations/${id}`);
-    } else {
-      // Participant - navigate to dashboard instead
-      navigate('/dashboard');
-    }
-  };
-
   return (
-    <div className="analysis-page">
-      <div className="page-header">
-        <div>
-          <button onClick={handleBackClick} className="btn-back">
-            ← {canAccessConversation === false ? 'Back to Dashboard' : 'Back to Conversation'}
-          </button>
-          <h1>Analysis Results</h1>
-          {conversation && <p className="subtitle">{conversation.title}</p>}
-        </div>
-        <div className="header-actions">
-          <button onClick={handleExportPDF} className="btn btn-secondary" disabled={isExporting}>
-            {isExporting ? 'Exporting...' : 'Export PDF'}
-          </button>
-        </div>
-      </div>
-
-      <div className="analysis-content">
-        <div className="analysis-summary-card">
-          <h2>Overall Summary</h2>
-          <p className="summary-text">{analysis.overall_summary}</p>
-
-          <div className="analysis-meta">
-            <div className="meta-item">
-              <label>Responses Analyzed:</label>
-              <span>{analysis.total_responses_analyzed}</span>
+    <>
+      <style>{hoverStyles}</style>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <header style={styles.header}>
+            <div style={styles.headerInfo}>
+              <button
+                onClick={handleBackClick}
+                style={styles.backLink}
+                className="analysis-back-link"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 12L6 8L10 4" />
+                </svg>
+                {canAccessConversation === false ? 'Back to Dashboard' : 'Back to Conversation'}
+              </button>
+              <h1 style={styles.title}>Analysis Results</h1>
+              <p style={styles.subtitle}>{conversation.title}</p>
             </div>
-            <div className="meta-item">
-              <label>Themes Found:</label>
-              <span>{analysis.num_clusters_found}</span>
-            </div>
-            <div className="meta-item">
-              <label>Processing Time:</label>
-              <span>{(analysis.analysis_duration_ms / 1000).toFixed(2)}s</span>
+            <button
+              onClick={handleExportPDF}
+              style={{
+                ...styles.buttonSecondary,
+                ...(isExporting ? styles.buttonDisabled : {}),
+              }}
+              className="analysis-btn-secondary"
+              disabled={isExporting}
+            >
+              {isExporting ? 'Exporting...' : 'Export PDF'}
+            </button>
+          </header>
+
+          {/* Overall Summary */}
+          <div style={styles.card}>
+            <h2 style={styles.cardTitle}>Overall Summary</h2>
+            <p style={styles.summaryText}>{analysis.overall_summary}</p>
+
+            <div style={styles.metaGrid}>
+              <div style={styles.metaItem}>
+                <span style={styles.metaLabel}>Responses Analyzed</span>
+                <span style={styles.metaValue}>{analysis.total_responses_analyzed}</span>
+              </div>
+              <div style={styles.metaItem}>
+                <span style={styles.metaLabel}>Themes Found</span>
+                <span style={styles.metaValue}>{analysis.num_clusters_found}</span>
+              </div>
+              <div style={styles.metaItem}>
+                <span style={styles.metaLabel}>Processing Time</span>
+                <span style={styles.metaValue}>{(analysis.analysis_duration_ms / 1000).toFixed(2)}s</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
-          <div className="analysis-summary-card">
-            <h2>What Surprised Us</h2>
-            <div className="surprising-insights-list">
+          {/* Surprising Insights */}
+          {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>What Surprised Us</h2>
               {analysis.surprising_insights.map((insight, index) => (
-                <div key={index} className="surprising-insight-item">
-                  <h3 className="insight-title">{insight.title}</h3>
-                  <p className="insight-description">{insight.description}</p>
+                <div key={index} style={styles.insightItem}>
+                  <h3 style={styles.insightTitle}>{insight.title}</h3>
+                  <p style={styles.insightDescription}>{insight.description}</p>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="questions-section">
-          <h2>Question-by-Question Analysis</h2>
+          {/* Question-by-Question Analysis */}
+          <div style={{ marginBottom: spacing[6] }}>
+            <h2 style={{ ...styles.cardTitle, marginBottom: spacing[4] }}>Question-by-Question Analysis</h2>
 
-          {analysis.question_analyses && analysis.question_analyses.length > 0 ? (
-            <div className="questions-list">
-              {analysis.question_analyses.map((qa, index) => (
-                <div key={qa.question_id} className="question-analysis-card">
-                  <div className="question-header">
-                    <div>
-                      <h3>
-                        Q{index + 1}. {qa.question_text}
-                      </h3>
-                      <p className="question-meta">
-                        <span className="question-type-badge">{qa.question_type.replace('_', ' ')}</span>
-                        <span className="response-count">{qa.response_count} responses</span>
-                      </p>
+            {analysis.question_analyses && analysis.question_analyses.length > 0 ? (
+              analysis.question_analyses.map((qa, index) => (
+                <div key={qa.question_id} style={styles.questionCard}>
+                  <div style={styles.questionHeader}>
+                    <h3 style={styles.questionTitle}>
+                      Q{index + 1}. {qa.question_text}
+                    </h3>
+                    <div style={styles.questionMeta}>
+                      <span style={styles.badge}>{qa.question_type.replace('_', ' ')}</span>
+                      <span style={styles.responseCount}>{qa.response_count} responses</span>
                     </div>
                   </div>
 
                   {/* Text Question Analysis */}
                   {qa.question_type === 'text' && qa.themes && qa.themes.length > 0 && (
-                    <div className="text-analysis">
-                      <h4>Themes</h4>
-                      <div className="themes-list">
-                        {qa.themes.map((theme, themeIndex) => (
-                          <div key={themeIndex} className="theme-card">
-                            <div className="theme-header">
-                              <strong>{theme.theme}</strong>
-                              <span className="frequency-badge">{theme.frequency} responses</span>
-                            </div>
-                            <div className="theme-summary">
-                              <p>{theme.summary}</p>
-                            </div>
-
-                            {theme.perspectives && theme.perspectives.length > 0 && (
-                              <div className="perspectives-list">
-                                <h5>Perspectives</h5>
-                                {theme.perspectives.map((perspective, perspectiveIndex) => (
-                                  <div key={perspectiveIndex} className="perspective-item">
-                                    <div className="perspective-header">
-                                      <strong>{perspective.name}</strong>
-                                      <span className="perspective-count">{perspective.count} responses</span>
-                                    </div>
-                                    <p className="perspective-summary">{perspective.summary}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {theme.key_points && theme.key_points.length > 0 && (
-                              <div className="key-points-list">
-                                <h5>Key Points</h5>
-                                <ul>
-                                  {theme.key_points.map((point, pointIndex) => (
-                                    <li key={pointIndex}>{point}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
+                    <div>
+                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[3] }}>Themes</h4>
+                      {qa.themes.map((theme, themeIndex) => (
+                        <div key={themeIndex} style={styles.themeCard}>
+                          <div style={styles.themeHeader}>
+                            <span style={styles.themeName}>{theme.theme}</span>
+                            <span style={styles.frequencyBadge}>{theme.frequency} responses</span>
                           </div>
-                        ))}
-                      </div>
+                          <p style={styles.themeSummary}>{theme.summary}</p>
+
+                          {theme.perspectives && theme.perspectives.length > 0 && (
+                            <div>
+                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colors.primary[600], marginTop: spacing[3], marginBottom: spacing[2] }}>Perspectives</h5>
+                              {theme.perspectives.map((perspective, perspectiveIndex) => (
+                                <div key={perspectiveIndex} style={styles.perspectiveItem}>
+                                  <div style={styles.perspectiveHeader}>
+                                    <span style={styles.perspectiveName}>{perspective.name}</span>
+                                    <span style={styles.perspectiveCount}>{perspective.count} responses</span>
+                                  </div>
+                                  <p style={styles.perspectiveSummary}>{perspective.summary}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {theme.key_points && theme.key_points.length > 0 && (
+                            <div>
+                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colors.primary[600], marginTop: spacing[3], marginBottom: spacing[2] }}>Key Points</h5>
+                              <ul style={styles.keyPointsList}>
+                                {theme.key_points.map((point, pointIndex) => (
+                                  <li key={pointIndex} style={styles.keyPoint}>{point}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
 
                   {/* Rating Question Analysis */}
                   {qa.question_type === 'rating' && qa.rating_stats && (
-                    <div className="rating-analysis">
-                      <div className="rating-summary">
-                        <div className="rating-average">
-                          <span className="average-label">Average Rating</span>
-                          <span className="average-value">{qa.rating_stats.average}</span>
-                          <span className="average-scale">/ 10</span>
+                    <div>
+                      <div style={styles.ratingDisplay}>
+                        <div style={styles.ratingAverage}>
+                          <span style={styles.averageValue}>{qa.rating_stats.average}</span>
+                          <span style={styles.averageScale}> / 10</span>
                         </div>
-                        <div className="rating-range">
+                        <div style={styles.ratingRange}>
                           <span>Min: {qa.rating_stats.min_value}</span>
                           <span>Max: {qa.rating_stats.max_value}</span>
                         </div>
                       </div>
 
-                      <div className="rating-distribution">
-                        <h4>Distribution</h4>
-                        {Object.entries(qa.rating_stats.distribution)
-                          .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-                          .map(([rating, count]) => {
-                            const percentage = (count / qa.rating_stats!.total_responses) * 100;
-                            return (
-                              <div key={rating} className="distribution-bar">
-                                <span className="rating-label">{rating}</span>
-                                <div className="bar-container">
-                                  <div
-                                    className="bar-fill"
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                                <span className="count-label">{count}</span>
+                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[3] }}>Distribution</h4>
+                      {Object.entries(qa.rating_stats.distribution)
+                        .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                        .map(([rating, count]) => {
+                          const percentage = (count / qa.rating_stats!.total_responses) * 100;
+                          return (
+                            <div key={rating} style={styles.distributionBar}>
+                              <span style={styles.ratingLabel}>{rating}</span>
+                              <div style={styles.barContainer}>
+                                <div style={{ ...styles.barFill, width: `${percentage}%` }} />
                               </div>
-                            );
-                          })}
-                      </div>
+                              <span style={styles.countLabel}>{count}</span>
+                            </div>
+                          );
+                        })}
                     </div>
                   )}
 
                   {/* Poll Question Analysis */}
-                  {(qa.question_type === 'single_choice' || qa.question_type === 'multiple_choice') &&
-                    qa.poll_stats && (
-                      <div className="poll-analysis">
-                        <h4>Results</h4>
-                        <div className="poll-results">
-                          {qa.poll_stats.choices
-                            .sort((a, b) => b.count - a.count)
-                            .map((choice) => (
-                              <div key={choice.choice_id} className="poll-result-item">
-                                <div className="choice-header">
-                                  <span className="choice-label">{choice.label}</span>
-                                  <span className="choice-stats">
-                                    {choice.count} ({choice.percentage}%)
-                                  </span>
-                                </div>
-                                <div className="bar-container">
-                                  <div
-                                    className="bar-fill poll-bar"
-                                    style={{ width: `${choice.percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
+                  {(qa.question_type === 'single_choice' || qa.question_type === 'multiple_choice') && qa.poll_stats && (
+                    <div>
+                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[3] }}>Results</h4>
+                      {qa.poll_stats.choices
+                        .sort((a, b) => b.count - a.count)
+                        .map((choice) => (
+                          <div key={choice.choice_id} style={styles.pollResultItem}>
+                            <div style={styles.choiceHeader}>
+                              <span style={styles.choiceLabel}>{choice.label}</span>
+                              <span style={styles.choiceStats}>{choice.count} ({choice.percentage}%)</span>
+                            </div>
+                            <div style={styles.barContainer}>
+                              <div style={{ ...styles.barFill, width: `${choice.percentage}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
 
-                  {/* Summary when no themes available */}
+                  {/* No themes for text */}
                   {qa.question_type === 'text' && (!qa.themes || qa.themes.length === 0) && (
-                    <div className="text-analysis">
+                    <div>
                       {qa.summary ? (
-                        <div className="question-summary">
-                          <h4>Summary</h4>
-                          <p className="summary-text">{qa.summary}</p>
+                        <div>
+                          <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[2] }}>Summary</h4>
+                          <p style={styles.summaryText}>{qa.summary}</p>
                         </div>
                       ) : (
-                        <p className="no-analysis">Not enough responses to generate analysis.</p>
+                        <p style={styles.noAnalysis}>Not enough responses to generate analysis.</p>
                       )}
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="no-analysis">No analysis available.</p>
-          )}
-        </div>
-
-        {/* Verbatim Responses Section */}
-        {conversation?.show_verbatim_responses && responses.length > 0 && (
-          <div className="verbatim-responses-section">
-            <div className="section-header">
-              <div>
-                <h3>Verbatim Responses</h3>
-                <p className="section-description">All responses submitted by participants.</p>
-              </div>
-              <div className="grouping-controls">
-                <label htmlFor="groupBy">Group by:</label>
-                <select
-                  id="groupBy"
-                  value={groupBy}
-                  onChange={(e) => setGroupBy(e.target.value as 'question' | 'responder')}
-                  className="group-select"
-                >
-                  <option value="question">Question</option>
-                  <option value="responder">Responder</option>
-                </select>
-              </div>
-            </div>
-
-            {groupBy === 'question' ? (
-              <div className="responses-by-question">
-                {Object.entries(groupResponsesByQuestion()).map(([questionId, questionResponses]) => (
-                  <div key={questionId} className="question-group">
-                    <h4 className="question-group-title">{questionResponses[0].question_text}</h4>
-                    <div className="responses-list">
-                      {questionResponses.map((response, index) => (
-                        <div key={response.id} className="response-item">
-                          <div className="response-header">
-                            <span className="response-number">#{index + 1}</span>
-                            <span className="response-date">{formatDate(response.submitted_at, conversation?.timezone)}</span>
-                          </div>
-                          <div className="response-content">
-                            {response.response_text || <em>No text response</em>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))
             ) : (
-              <div className="responses-by-participant">
-                {Object.entries(groupResponsesByParticipant()).map(([participantKey, participantResponses], index) => (
-                  <div key={participantKey} className="participant-group">
-                    <h4 className="participant-group-title">Responder #{index + 1}</h4>
-                    <div className="responses-list">
-                      {participantResponses.map((response) => (
-                        <div key={response.id} className="response-item">
-                          <div className="response-header">
-                            <span className="response-question">{response.question_text}</span>
-                            <span className="response-date">{formatDate(response.submitted_at, conversation?.timezone)}</span>
-                          </div>
-                          <div className="response-content">
-                            {response.response_text || <em>No text response</em>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p style={styles.noAnalysis}>No analysis available.</p>
             )}
           </div>
-        )}
 
-        <div className="technical-details">
-          <h3>Technical Details</h3>
-          <div className="details-grid">
-            <div className="detail-item">
-              <label>Embedding Model:</label>
-              <span>
-                {analysis.embedding_provider} / {analysis.embedding_model}
-              </span>
+          {/* Verbatim Responses */}
+          {conversation?.show_verbatim_responses && responses.length > 0 && (
+            <div style={styles.verbatimSection}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h3 style={styles.sectionTitle}>Verbatim Responses</h3>
+                  <p style={styles.sectionDescription}>All responses submitted by participants.</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <label htmlFor="groupBy" style={{ fontSize: typography.fontSize.sm, color: colors.primary[600] }}>Group by:</label>
+                  <select
+                    id="groupBy"
+                    value={groupBy}
+                    onChange={(e) => setGroupBy(e.target.value as 'question' | 'responder')}
+                    style={styles.groupSelect}
+                  >
+                    <option value="question">Question</option>
+                    <option value="responder">Responder</option>
+                  </select>
+                </div>
+              </div>
+
+              {groupBy === 'question' ? (
+                <div>
+                  {Object.entries(groupResponsesByQuestion()).map(([questionId, questionResponses]) => (
+                    <div key={questionId} style={styles.questionGroup}>
+                      <h4 style={styles.questionGroupTitle}>{questionResponses[0].question_text}</h4>
+                      {questionResponses.map((response, index) => (
+                        <div key={response.id} style={styles.responseItem}>
+                          <div style={styles.responseHeader}>
+                            <span style={styles.responseNumber}>#{index + 1}</span>
+                            <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                          </div>
+                          <p style={styles.responseContent}>
+                            {response.response_text || <em>No text response</em>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  {Object.entries(groupResponsesByParticipant()).map(([participantKey, participantResponses], index) => (
+                    <div key={participantKey} style={styles.questionGroup}>
+                      <h4 style={styles.questionGroupTitle}>Responder #{index + 1}</h4>
+                      {participantResponses.map((response) => (
+                        <div key={response.id} style={styles.responseItem}>
+                          <div style={styles.responseHeader}>
+                            <span style={styles.responseNumber}>{response.question_text}</span>
+                            <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                          </div>
+                          <p style={styles.responseContent}>
+                            {response.response_text || <em>No text response</em>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="detail-item">
-              <label>Clustering:</label>
-              <span>{analysis.clustering_algorithm.toUpperCase()}</span>
-            </div>
-            <div className="detail-item">
-              <label>LLM:</label>
-              <span>
-                {analysis.llm_provider} / {analysis.llm_model}
-              </span>
-            </div>
-            <div className="detail-item">
-              <label>Analysis Date:</label>
-              <span>{formatDate(analysis.created_at, conversation?.timezone)}</span>
+          )}
+
+          {/* Technical Details */}
+          <div style={styles.technicalDetails}>
+            <h3 style={{ ...styles.sectionTitle, marginBottom: spacing[4] }}>Technical Details</h3>
+            <div style={styles.detailsGrid}>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>Embedding Model</span>
+                <span style={styles.detailValue}>{analysis.embedding_provider} / {analysis.embedding_model}</span>
+              </div>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>Clustering</span>
+                <span style={styles.detailValue}>{analysis.clustering_algorithm.toUpperCase()}</span>
+              </div>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>LLM</span>
+                <span style={styles.detailValue}>{analysis.llm_provider} / {analysis.llm_model}</span>
+              </div>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>Analysis Date</span>
+                <span style={styles.detailValue}>{formatDate(analysis.created_at, conversation?.timezone)}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-export default function AnalysisPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <AnalysisPageNew /> : <AnalysisPageOld />}
     </>
   );
 }

@@ -1,18 +1,606 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { ConversationListItem, ConversationInvitationWithConversation, Series } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import DesignToggle from '../components/DesignToggle';
-import DashboardPageNew from './DashboardPageNew';
+import { colors, typography, spacing, borders, shadows } from '../styles';
+import {
+  MessageIcon,
+  UsersIcon,
+  TrendingIcon,
+  ClockIcon,
+  GridIcon,
+  ListIcon,
+  SearchIcon,
+  FilterIcon,
+} from '../components/icons';
 import axios from 'axios';
 
 type DateRange = 'all' | '7' | '30' | '90';
-type GroupingMode = 'none' | 'parent-child' | 'series' | 'template';
+type ViewMode = 'tile' | 'list';
 
-function DashboardPageOld() {
+// Design tokens based styles
+const s = {
+  page: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: spacing[6],
+    paddingTop: 'calc(2rem + 80px)',
+    backgroundColor: colors.primary[50],
+    minHeight: '100vh',
+  },
+  // Header
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[6],
+  },
+  headerLeft: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[1],
+  },
+  pageTitle: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    margin: 0,
+  },
+  pageSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    margin: 0,
+  },
+  headerActions: {
+    display: 'flex',
+    gap: spacing[4],
+  },
+  // Buttons
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    padding: `${spacing[3]} ${spacing[6]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+    border: 'none',
+    cursor: 'pointer',
+  },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    color: colors.primary[900],
+    padding: `${spacing[3]} ${spacing[6]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+    border: `1px solid ${colors.primary[400]}`,
+    cursor: 'pointer',
+  },
+  buttonSmall: {
+    padding: `${spacing[2]} ${spacing[4]}`,
+    fontSize: typography.fontSize.xs,
+  },
+  buttonDanger: {
+    backgroundColor: colors.semantic.error.main,
+    color: colors.primary[50],
+    border: 'none',
+  },
+  // Stats cards
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: spacing[4],
+    marginBottom: spacing[8],
+  },
+  statCard: {
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    padding: spacing[6],
+  },
+  statIcon: {
+    color: colors.primary[500],
+    marginBottom: spacing[3],
+  },
+  statValue: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    lineHeight: 1,
+    marginBottom: spacing[1],
+  },
+  statLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  // Tabs
+  tabs: {
+    display: 'flex',
+    gap: spacing[1],
+    marginBottom: spacing[6],
+    borderBottom: `1px solid ${colors.primary[300]}`,
+  },
+  tab: {
+    padding: `${spacing[3]} ${spacing[6]}`,
+    background: 'none',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
+    borderBottom: '2px solid transparent',
+    color: colors.primary[500],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: '-1px',
+    transition: 'color 200ms, border-color 200ms',
+    outline: 'none',
+    boxShadow: 'none',
+  },
+  tabActive: {
+    color: colors.primary[900],
+    borderBottom: `2px solid ${colors.primary[900]}`,
+  },
+  tabCount: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '20px',
+    height: '20px',
+    padding: `0 ${spacing[2]}`,
+    backgroundColor: colors.primary[200],
+    color: colors.primary[600],
+    borderRadius: borders.radius.full,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  tabCountActive: {
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+  },
+  // Search and filter bar
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[4],
+    marginBottom: spacing[6],
+  },
+  searchContainer: {
+    flex: 1,
+    position: 'relative' as const,
+  },
+  searchIcon: {
+    position: 'absolute' as const,
+    left: spacing[4],
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: colors.primary[500],
+    pointerEvents: 'none' as const,
+  },
+  searchInput: {
+    width: '100%',
+    padding: `${spacing[3]} ${spacing[4]}`,
+    paddingLeft: spacing[12],
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    outline: 'none',
+  },
+  viewToggle: {
+    display: 'flex',
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    overflow: 'hidden',
+  },
+  viewToggleButton: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    color: colors.primary[500],
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewToggleButtonActive: {
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+  },
+  filterButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[3]} ${spacing[4]}`,
+    backgroundColor: 'transparent',
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    cursor: 'pointer',
+    fontWeight: typography.fontWeight.medium,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary[100],
+    borderColor: colors.primary[900],
+  },
+  // Filter dropdown
+  filterDropdownContainer: {
+    position: 'relative' as const,
+  },
+  filterDropdown: {
+    position: 'absolute' as const,
+    top: '100%',
+    right: 0,
+    marginTop: spacing[2],
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    boxShadow: shadows.lg,
+    zIndex: 50,
+    minWidth: '280px',
+    padding: spacing[4],
+  },
+  filterSection: {
+    marginBottom: spacing[4],
+  },
+  filterSectionTitle: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[500],
+    textTransform: 'uppercase' as const,
+    letterSpacing: typography.letterSpacing.wide,
+    marginBottom: spacing[2],
+  },
+  filterOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} 0`,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    cursor: 'pointer',
+  },
+  filterCount: {
+    marginLeft: 'auto',
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[500],
+  },
+  // Section label
+  sectionLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    letterSpacing: typography.letterSpacing.wide,
+    textTransform: 'uppercase' as const,
+    color: colors.primary[500],
+    marginBottom: spacing[4],
+  },
+  // Tile view - conversation grid
+  conversationGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gap: spacing[4],
+  },
+  // Tile card
+  card: {
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    padding: spacing[6],
+    textDecoration: 'none',
+    color: 'inherit',
+    display: 'block',
+    transition: 'border-color 200ms, box-shadow 200ms',
+    outline: 'none',
+    boxShadow: 'none',
+    transform: 'none',
+  },
+  cardHover: {
+    borderColor: colors.primary[500],
+    boxShadow: shadows.sm,
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[4],
+    gap: spacing[3],
+    paddingRight: spacing[8], // Make room for the menu button
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    margin: 0,
+    lineHeight: typography.lineHeight.tight,
+    flex: 1,
+  },
+  cardWrapper: {
+    position: 'relative' as const,
+  },
+  cardMenu: {
+    position: 'absolute' as const,
+    top: spacing[4],
+    right: spacing[4],
+    zIndex: 10,
+  },
+  // List view - table
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    overflow: 'hidden',
+  },
+  tableHeader: {
+    backgroundColor: colors.primary[100],
+  },
+  th: {
+    padding: `${spacing[4]} ${spacing[6]}`,
+    textAlign: 'left' as const,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[500],
+    textTransform: 'uppercase' as const,
+    letterSpacing: typography.letterSpacing.wide,
+    borderBottom: `1px solid ${colors.primary[300]}`,
+  },
+  tr: {
+    borderBottom: `1px solid ${colors.primary[200]}`,
+    transition: 'background-color 150ms',
+  },
+  trHover: {
+    backgroundColor: colors.primary[100],
+  },
+  td: {
+    padding: `${spacing[4]} ${spacing[6]}`,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    verticalAlign: 'middle' as const,
+  },
+  tdTitle: {
+    fontWeight: typography.fontWeight.medium,
+  },
+  // Status badge
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: borders.radius.full,
+  },
+  statusDotDraft: { backgroundColor: colors.semantic.warning.main },
+  statusDotActive: { backgroundColor: colors.semantic.success.main },
+  statusDotClosed: { backgroundColor: colors.primary[400] },
+  statusDotAnalyzing: { backgroundColor: colors.semantic.warning.main },
+  statusDotAnalyzed: { backgroundColor: colors.semantic.info.main },
+  // Badge variants for tile view
+  statusBadgePill: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    padding: `${spacing[1]} ${spacing[3]}`,
+    borderRadius: borders.radius.full,
+    whiteSpace: 'nowrap' as const,
+  },
+  statusDraft: {
+    backgroundColor: colors.primary[200],
+    color: colors.primary[700],
+  },
+  statusActive: {
+    backgroundColor: colors.semantic.success.light,
+    color: colors.semantic.success.text,
+  },
+  statusClosed: {
+    backgroundColor: colors.primary[200],
+    color: colors.primary[600],
+  },
+  statusAnalyzing: {
+    backgroundColor: colors.semantic.warning.light,
+    color: colors.semantic.warning.text,
+  },
+  statusAnalyzed: {
+    backgroundColor: colors.semantic.info.light,
+    color: colors.semantic.info.text,
+  },
+  // Card meta
+  cardMeta: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginTop: spacing[2],
+  },
+  cardMetaValue: {
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+  },
+  // Menu
+  menuButton: {
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    color: colors.primary[500],
+    transition: 'background-color 150ms',
+  },
+  menuDropdown: {
+    position: 'absolute' as const,
+    top: '100%',
+    right: 0,
+    marginTop: spacing[1],
+    backgroundColor: colors.primary[50],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    boxShadow: shadows.md,
+    minWidth: '120px',
+    overflow: 'hidden',
+    zIndex: 20,
+  },
+  menuItem: {
+    display: 'block',
+    width: '100%',
+    padding: `${spacing[3]} ${spacing[4]}`,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[900],
+    backgroundColor: 'transparent',
+    border: 'none',
+    textAlign: 'left' as const,
+    cursor: 'pointer',
+  },
+  menuItemDanger: {
+    color: colors.semantic.error.main,
+  },
+  // Empty state
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: `${spacing[16]} ${spacing[6]}`,
+  },
+  emptyTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[2],
+  },
+  emptyText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[6],
+  },
+  // Modal
+  modalOverlay: {
+    position: 'fixed' as const,
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  modalContent: {
+    backgroundColor: colors.primary[50],
+    borderRadius: borders.radius.xl,
+    padding: spacing[8],
+    maxWidth: '400px',
+    width: '90%',
+    boxShadow: shadows.lg,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+  },
+  modalText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[6],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  modalActions: {
+    display: 'flex',
+    gap: spacing[3],
+    justifyContent: 'flex-end',
+  },
+  // Template card
+  templateCard: {
+    borderColor: colors.primary[400],
+    backgroundColor: colors.primary[100],
+  },
+  templateBadge: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[700],
+    backgroundColor: colors.primary[200],
+    border: `1px solid ${colors.primary[400]}`,
+    padding: `${spacing[0.5]} ${spacing[3]}`,
+    borderRadius: borders.radius.full,
+    fontWeight: typography.fontWeight.semibold,
+    marginLeft: spacing[2],
+  },
+  // Collection badge
+  collectionBadge: {
+    display: 'inline-block',
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[600],
+    backgroundColor: colors.primary[100],
+    borderRadius: borders.radius.sm,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing[3],
+  },
+  // Divider
+  divider: {
+    height: '1px',
+    backgroundColor: colors.primary[200],
+    margin: `${spacing[8]} 0`,
+  },
+  // Loading
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[16],
+    color: colors.primary[500],
+    fontSize: typography.fontSize.sm,
+  },
+  // Error
+  errorMessage: {
+    backgroundColor: colors.semantic.error.light,
+    color: colors.semantic.error.text,
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[4],
+    fontSize: typography.fontSize.sm,
+  },
+  // Follow-up
+  followUpArrow: {
+    color: colors.primary[500],
+    marginRight: spacing[2],
+  },
+  // Group header
+  groupHeader: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+    paddingBottom: spacing[2],
+    borderBottom: `1px solid ${colors.primary[300]}`,
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+};
+
+const merge = (...styles: (React.CSSProperties | false | undefined)[]) =>
+  Object.assign({}, ...styles.filter(Boolean));
+
+export default function DashboardPage() {
   const navigate = useNavigate();
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
@@ -23,34 +611,29 @@ function DashboardPageOld() {
   const [activeTab, setActiveTab] = useState<'owned' | 'participated' | 'invitations'>('owned');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [groupingMode, setGroupingMode] = useState<GroupingMode>('none');
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [selectedStates, setSelectedStates] = useState<ConversationState[]>([]);
   const [selectedAnonymityLevels, setSelectedAnonymityLevels] = useState<AnonymityLevel[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('all');
-  const [showStateDropdown, setShowStateDropdown] = useState(false);
-  const [showAnonymityDropdown, setShowAnonymityDropdown] = useState(false);
-  const [showDateDropdown, setShowDateDropdown] = useState(false);
-  const [showGroupingDropdown, setShowGroupingDropdown] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('tile');
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Data loading
   const loadInvitations = useCallback(async () => {
     try {
       setInvitationsLoading(true);
-      console.log('Loading invitations...');
       const data = await api.getMyInvitations();
-      console.log('Received invitations:', data);
-      // Filter to only pending invitations
       const pending = data.filter(inv => !inv.is_accepted);
-      console.log('Pending invitations:', pending);
       setInvitations(pending);
       setInvitationsLoaded(true);
     } catch (err: any) {
       console.error('Failed to load invitations:', err);
-      console.error('Error details:', err.response?.data || err.message);
       setInvitations([]);
       setInvitationsLoaded(true);
     } finally {
@@ -58,80 +641,15 @@ function DashboardPageOld() {
     }
   }, []);
 
-  useEffect(() => {
-    loadConversations();
-    
-    // Also load invitations count if in personal workspace
-    if (isPersonalWorkspace) {
-      loadInvitations();
-    } else {
-      // Clear invitations when switching away from personal workspace
-      setInvitations([]);
-      setInvitationsLoaded(false);
-    }
-  }, [currentOrgId, isPersonalWorkspace, loadInvitations]);
-
-  useEffect(() => {
-    // Reload invitations if tab is clicked and we haven't loaded yet
-    if (activeTab === 'invitations' && !invitationsLoaded && !invitationsLoading && isPersonalWorkspace) {
-      loadInvitations();
-    }
-  }, [activeTab, loadInvitations, invitationsLoaded, invitationsLoading, isPersonalWorkspace]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      const clickedDropdown = target.closest('.filter-dropdown-container');
-      const clickedMenu = target.closest('.conversation-card-menu');
-
-      if (!clickedDropdown) {
-        setShowStateDropdown(false);
-        setShowAnonymityDropdown(false);
-        setShowDateDropdown(false);
-        setShowGroupingDropdown(false);
-      }
-      if (!clickedMenu) {
-        setOpenMenuId(null);
-      }
-    };
-
-    if (showStateDropdown || showAnonymityDropdown || showDateDropdown || showGroupingDropdown || openMenuId) {
-      document.addEventListener('click', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [showStateDropdown, showAnonymityDropdown, showDateDropdown, showGroupingDropdown, openMenuId]);
-
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showDeleteModal && !actionLoading) {
-        setShowDeleteModal(false);
-        setDeleteConversationId(null);
-      }
-    };
-
-    if (showDeleteModal) {
-      document.addEventListener('keydown', handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [showDeleteModal, actionLoading]);
-
   const loadConversations = async () => {
     try {
       setLoading(true);
       let data: ConversationListItem[];
 
       if (isPersonalWorkspace) {
-        // Personal workspace - fetch all conversations and filter for those without organization_id
         const allConversations = await api.getConversations();
         data = allConversations.filter(c => !c.organization_id);
 
-        // Also load participated conversations (only in personal workspace)
         try {
           const participatedData = await api.getParticipatedConversations();
           setParticipatedConversations(participatedData);
@@ -140,25 +658,20 @@ function DashboardPageOld() {
           setParticipatedConversations([]);
         }
       } else {
-        // Organization workspace - fetch org-specific conversations
         data = await api.listOrganizationConversations(currentOrgId!);
-        setParticipatedConversations([]); // Clear participated in org view
+        setParticipatedConversations([]);
       }
 
       setConversations(data);
       setError('');
     } catch (err: any) {
-      // Check if error is due to organization access issues (403/404)
       if (axios.isAxiosError(err) && !isPersonalWorkspace) {
         const status = err.response?.status;
         if (status === 403 || status === 404) {
-          console.warn('Organization access error. Refreshing organizations...');
-          // Refresh organizations to check if user still has access
           await refreshOrganizations();
-          return; // refreshOrganizations will handle switching to Personal if needed
+          return;
         }
       }
-
       setError('Failed to load conversations');
       console.error(err);
     } finally {
@@ -177,129 +690,120 @@ function DashboardPageOld() {
   };
 
   useEffect(() => {
+    loadConversations();
+    if (isPersonalWorkspace) {
+      loadInvitations();
+    } else {
+      setInvitations([]);
+      setInvitationsLoaded(false);
+    }
+  }, [currentOrgId, isPersonalWorkspace, loadInvitations]);
+
+  useEffect(() => {
+    if (activeTab === 'invitations' && !invitationsLoaded && !invitationsLoading && isPersonalWorkspace) {
+      loadInvitations();
+    }
+  }, [activeTab, loadInvitations, invitationsLoaded, invitationsLoading, isPersonalWorkspace]);
+
+  useEffect(() => {
     if (activeTab === 'owned') {
       loadSeries();
     }
   }, [currentOrgId, activeTab]);
 
-  const groupConversationsByParentChild = (conversations: ConversationListItem[]) => {
-    // Build a map of parent ID to children
-    const childrenMap = new Map<string, ConversationListItem[]>();
-    const rootConversations: ConversationListItem[] = [];
-
-    conversations.forEach(conv => {
-      if (conv.parent_conversation_id) {
-        // This is a follow-up
-        const children = childrenMap.get(conv.parent_conversation_id) || [];
-        children.push(conv);
-        childrenMap.set(conv.parent_conversation_id, children);
-      } else {
-        // This is a root conversation (no parent)
-        rootConversations.push(conv);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-dropdown]')) {
+        setShowFilterDropdown(false);
       }
-    });
+      if (!target.closest('[data-menu]')) {
+        setOpenMenuId(null);
+      }
+    };
 
-    // Sort children by created_at (oldest first)
-    childrenMap.forEach(children => {
-      children.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    });
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
-    return { rootConversations, childrenMap };
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showDeleteModal && !actionLoading) {
+        setShowDeleteModal(false);
+        setDeleteConversationId(null);
+      }
+    };
+
+    if (showDeleteModal) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showDeleteModal, actionLoading]);
+
+  // Computed values
+  const templates = useMemo(() =>
+    conversations.filter(c => c.is_template === true),
+    [conversations]
+  );
+
+  const actualConversations = useMemo(() =>
+    conversations.filter(c => c.is_template !== true),
+    [conversations]
+  );
+
+  const stats = useMemo(() => {
+    const active = actualConversations.filter(c => c.state === ConversationState.ACTIVE).length;
+    const totalResponses = actualConversations.reduce((sum, c) => sum + (c.unique_participants || 0), 0);
+    const withResponses = actualConversations.filter(c => (c.unique_participants || 0) > 0).length;
+    const responseRate = actualConversations.length > 0
+      ? Math.round((withResponses / actualConversations.length) * 100)
+      : 0;
+    return {
+      activeConversations: active,
+      totalResponses,
+      responseRate,
+      templates: templates.length,
+    };
+  }, [actualConversations, templates]);
+
+  // Filtering
+  const isWithinDateRange = (createdAt: string, range: DateRange): boolean => {
+    if (range === 'all') return true;
+    const now = new Date();
+    const created = new Date(createdAt);
+    const daysAgo = parseInt(range);
+    const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+    return created >= cutoffDate;
   };
 
-  const groupConversationsBySeries = (conversations: ConversationListItem[]) => {
-    // Build a map of series ID to conversations
-    const seriesMap = new Map<string, ConversationListItem[]>();
-    const standaloneConversations: ConversationListItem[] = [];
+  const filteredConversations = useMemo(() => {
+    let filtered = activeTab === 'owned' ? actualConversations : participatedConversations;
 
-    conversations.forEach(conv => {
-      if (conv.series_id) {
-        const existing = seriesMap.get(conv.series_id) || [];
-        existing.push(conv);
-        seriesMap.set(conv.series_id, existing);
-      } else {
-        standaloneConversations.push(conv);
-      }
-    });
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => c.title.toLowerCase().includes(query));
+    }
 
-    // Sort conversations in each series by created_at (oldest first)
-    seriesMap.forEach(convs => {
-      convs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    });
+    // State filter
+    if (selectedStates.length > 0) {
+      filtered = filtered.filter(c => selectedStates.includes(c.state));
+    }
 
-    // Sort standalone conversations by created_at (newest first)
-    standaloneConversations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // Anonymity filter
+    if (selectedAnonymityLevels.length > 0) {
+      filtered = filtered.filter(c => selectedAnonymityLevels.includes(c.anonymity_level));
+    }
 
-    return { seriesMap, standaloneConversations };
-  };
+    // Date filter
+    if (dateRange !== 'all') {
+      filtered = filtered.filter(c => isWithinDateRange(c.created_at, dateRange));
+    }
 
-  const groupConversationsByTemplate = (conversations: ConversationListItem[]) => {
-    // Separate templates from instances
-    const templates = conversations.filter(c => c.is_template === true);
-    const instances = conversations.filter(c => c.is_template !== true);
-    
-    // Build a map of template ID to instances
-    const templateInstancesMap = new Map<string, ConversationListItem[]>();
-    
-    // Initialize map with all templates
-    templates.forEach(template => {
-      templateInstancesMap.set(template.id, []);
-    });
-    
-    // Group instances by template
-    instances.forEach(instance => {
-      // Check if parent is a template
-      if (instance.parent_conversation_id) {
-        const parentTemplate = templates.find(t => t.id === instance.parent_conversation_id);
-        if (parentTemplate) {
-          const existing = templateInstancesMap.get(parentTemplate.id) || [];
-          existing.push(instance);
-          templateInstancesMap.set(parentTemplate.id, existing);
-          return;
-        }
-      }
-      
-      // Check if instance is in a template's series
-      if (instance.series_id) {
-        const matchingTemplate = templates.find(t => t.template_series_id === instance.series_id);
-        if (matchingTemplate) {
-          const existing = templateInstancesMap.get(matchingTemplate.id) || [];
-          existing.push(instance);
-          templateInstancesMap.set(matchingTemplate.id, existing);
-          return;
-        }
-      }
-    });
-    
-    // Sort instances by created_at (oldest first)
-    templateInstancesMap.forEach(instances => {
-      instances.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    });
-    
-    // Separate conversations that aren't templates or template instances
-    const standaloneConversations = instances.filter(instance => {
-      // Not a template instance if:
-      // - parent_conversation_id doesn't point to a template
-      // - series_id doesn't match any template's template_series_id
-      if (instance.parent_conversation_id) {
-        const parentIsTemplate = templates.some(t => t.id === instance.parent_conversation_id);
-        if (parentIsTemplate) return false;
-      }
-      if (instance.series_id) {
-        const inTemplateSeries = templates.some(t => t.template_series_id === instance.series_id);
-        if (inTemplateSeries) return false;
-      }
-      return true;
-    });
+    return filtered;
+  }, [activeTab, actualConversations, participatedConversations, searchQuery, selectedStates, selectedAnonymityLevels, dateRange]);
 
-    // Sort templates and standalone by created_at (newest first)
-    templates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    standaloneConversations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    
-    return { templates, templateInstancesMap, standaloneConversations };
-  };
-
-
+  // Helper functions
   const getStateLabel = (state: ConversationState) => {
     const labels: Record<ConversationState, string> = {
       [ConversationState.DRAFT]: 'Draft',
@@ -312,23 +816,60 @@ function DashboardPageOld() {
     return labels[state];
   };
 
-  const getStateClass = (state: ConversationState) => {
-    const classes: Record<ConversationState, string> = {
-      [ConversationState.DRAFT]: 'status-draft',
-      [ConversationState.ACTIVE]: 'status-active',
-      [ConversationState.CLOSED]: 'status-closed',
-      [ConversationState.ANALYZING]: 'status-analyzing',
-      [ConversationState.ANALYZED]: 'status-analyzed',
-      [ConversationState.DELETED]: 'status-deleted',
+  const getStatusDotStyle = (state: ConversationState): React.CSSProperties => {
+    const styles: Record<ConversationState, React.CSSProperties> = {
+      [ConversationState.DRAFT]: s.statusDotDraft,
+      [ConversationState.ACTIVE]: s.statusDotActive,
+      [ConversationState.CLOSED]: s.statusDotClosed,
+      [ConversationState.ANALYZING]: s.statusDotAnalyzing,
+      [ConversationState.ANALYZED]: s.statusDotAnalyzed,
+      [ConversationState.DELETED]: s.statusDotClosed,
     };
-    return classes[state];
+    return styles[state];
   };
 
+  const getStatusPillStyle = (state: ConversationState): React.CSSProperties => {
+    const styles: Record<ConversationState, React.CSSProperties> = {
+      [ConversationState.DRAFT]: s.statusDraft,
+      [ConversationState.ACTIVE]: s.statusActive,
+      [ConversationState.CLOSED]: s.statusClosed,
+      [ConversationState.ANALYZING]: s.statusAnalyzing,
+      [ConversationState.ANALYZED]: s.statusAnalyzed,
+      [ConversationState.DELETED]: s.statusDraft,
+    };
+    return styles[state];
+  };
+
+  const getAnonymityLabel = (level: AnonymityLevel) => {
+    const labels: Record<AnonymityLevel, string> = {
+      [AnonymityLevel.FULLY_ANONYMOUS]: 'Anonymous',
+      [AnonymityLevel.PLATFORM_TRACKED]: 'Platform-tracked',
+      [AnonymityLevel.REVEALABLE]: 'Revealable',
+    };
+    return labels[level];
+  };
+
+  const getDateRangeLabel = (range: DateRange) => {
+    const labels: Record<DateRange, string> = {
+      'all': 'All time',
+      '7': 'Last 7 days',
+      '30': 'Last 30 days',
+      '90': 'Last 90 days',
+    };
+    return labels[range];
+  };
+
+  const getStateCount = (state: ConversationState) => actualConversations.filter(c => c.state === state).length;
+  const getAnonymityCount = (level: AnonymityLevel) => actualConversations.filter(c => c.anonymity_level === level).length;
+
+  const hasActiveFilters = selectedStates.length > 0 || selectedAnonymityLevels.length > 0 || dateRange !== 'all';
+
+  // Actions
   const handleDuplicate = async (e: React.MouseEvent, conversationId: string) => {
     e.preventDefault();
     e.stopPropagation();
     setOpenMenuId(null);
-    
+
     try {
       await api.duplicateConversation(conversationId);
       await loadConversations();
@@ -348,7 +889,7 @@ function DashboardPageOld() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteConversationId) return;
-    
+
     try {
       setActionLoading(true);
       await api.deleteConversation(deleteConversationId);
@@ -363,266 +904,6 @@ function DashboardPageOld() {
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const renderTemplateCard = (template: ConversationListItem) => {
-    return (
-      <div
-        key={template.id}
-        className="conversation-card-wrapper"
-      >
-        <Link
-          to={`/templates/${template.id}`}
-          className="conversation-card template-card"
-          style={{ 
-            borderColor: '#90CDF4', 
-            background: '#F7FAFC',
-            height: 'auto',
-            minHeight: 'auto',
-            padding: '1rem 1.5rem'
-          }}
-        >
-          <div className="card-header" style={{ marginBottom: 0, paddingRight: 0, height: 'auto' }}>
-            <h3 title={template.title} style={{ margin: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
-                <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-              </svg>
-              {template.title}
-              <span className="template-badge" style={{
-                fontSize: '0.7rem',
-                color: '#2C5282',
-                background: '#BEE3F8',
-                padding: '0.125rem 0.5rem',
-                borderRadius: '12px',
-                marginLeft: '0.5rem',
-                fontWeight: 600
-              }}>
-                TEMPLATE
-              </span>
-            </h3>
-          </div>
-        </Link>
-      </div>
-    );
-  };
-
-  const renderConversationCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => {
-    const isMenuOpen = openMenuId === conversation.id;
-    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
-    
-    return (
-      <div
-        key={conversation.id}
-        className={`conversation-card-wrapper ${isFollowUp ? 'follow-up-card' : ''}`}
-      >
-        <Link
-          to={`/conversations/${conversation.id}`}
-          className={`conversation-card ${isFollowUp ? 'follow-up-card' : ''}`}
-        >
-          <div className="card-header">
-            <h3 title={conversation.title}>
-              {isFollowUp && (
-                conversation.is_recurring_instance ? (
-                  <span className="recurring-arrow" title="Recurring instance">↻ </span>
-                ) : (
-                  <span className="follow-up-arrow" title="Follow-up">↳ </span>
-                )
-              )}
-              {conversation.title}
-            </h3>
-            <span className={`status-badge ${getStateClass(conversation.state)}`}>
-              {getStateLabel(conversation.state)}
-            </span>
-          </div>
-          <div className="card-body">
-            {collection && (
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{
-                  display: 'inline-block',
-                  padding: '0.25rem 0.5rem',
-                  fontSize: '0.75rem',
-                  color: '#718096',
-                  backgroundColor: '#f7fafc',
-                  borderRadius: '4px',
-                  fontWeight: 500
-                }}>
-                  {collection.name}
-                </span>
-              </div>
-            )}
-            <div className="conversation-meta">
-              <span>
-                {conversation.unique_participants !== undefined && conversation.unique_participants > 0 ? (
-                  <>
-                    <strong>{conversation.unique_participants}</strong> {conversation.unique_participants === 1 ? 'person has' : 'people have'} responded
-                  </>
-                ) : (
-                  <span style={{ color: '#a0aec0' }}>No responses yet</span>
-                )}
-              </span>
-              <span></span>
-            </div>
-            <div className="conversation-meta">
-              <span>Created: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-              {conversation.activated_at ? (
-                <span>Activated: {formatDateShort(conversation.activated_at, conversation.timezone)}</span>
-              ) : (
-                <span></span>
-              )}
-            </div>
-          </div>
-        </Link>
-        <div className="conversation-card-menu">
-          <button
-            className="card-menu-button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpenMenuId(isMenuOpen ? null : conversation.id);
-            }}
-            aria-label="More options"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <circle cx="8" cy="3" r="1.5"/>
-              <circle cx="8" cy="8" r="1.5"/>
-              <circle cx="8" cy="13" r="1.5"/>
-            </svg>
-          </button>
-          {isMenuOpen && (
-            <div className="card-menu-dropdown">
-              <button
-                className="card-menu-item"
-                onClick={(e) => handleDuplicate(e, conversation.id)}
-              >
-                Duplicate
-              </button>
-              <button
-                className="card-menu-item card-menu-item-danger"
-                onClick={(e) => handleDeleteClick(e, conversation.id)}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderParticipatedConversationCard = (conversation: ConversationListItem) => {
-    // For participated conversations, link to analysis if analyzed, otherwise show status
-    const linkTo = conversation.state === ConversationState.ANALYZED
-      ? `/conversations/${conversation.id}/analysis`
-      : null;
-    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
-
-    const card = (
-      <div
-        key={conversation.id}
-        className={`conversation-card ${!linkTo ? 'conversation-card-disabled' : ''}`}
-      >
-        <div className="card-header">
-          <h3>{conversation.title}</h3>
-          <span className={`status-badge ${getStateClass(conversation.state)}`}>
-            {getStateLabel(conversation.state)}
-          </span>
-        </div>
-        <div className="card-body">
-          {collection && (
-            <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{
-                display: 'inline-block',
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.75rem',
-                color: '#718096',
-                backgroundColor: '#f7fafc',
-                borderRadius: '4px',
-                fontWeight: 500
-              }}>
-                {collection.name}
-              </span>
-            </div>
-          )}
-          <div className="conversation-meta">
-            <span>Responded: {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-            {conversation.state === ConversationState.ANALYZED && (
-              <span style={{ color: '#4299e1', fontWeight: 500 }}>Click to view results →</span>
-            )}
-            {conversation.state === ConversationState.ANALYZING && (
-              <span style={{ color: '#718096' }}>Analysis in progress...</span>
-            )}
-            {(conversation.state === ConversationState.ACTIVE || conversation.state === ConversationState.CLOSED) && (
-              <span style={{ color: '#718096' }}>Check back for results</span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-
-    return linkTo ? (
-      <Link key={conversation.id} to={linkTo} style={{ textDecoration: 'none' }}>
-        {card}
-      </Link>
-    ) : card;
-  };
-
-  const renderInvitationCard = (invitation: ConversationInvitationWithConversation) => {
-    const { conversation } = invitation;
-    const linkTo = conversation.state === ConversationState.ACTIVE || conversation.state === ConversationState.DRAFT
-      ? `/conversations/${conversation.access_code}`
-      : null;
-
-    const card = (
-      <div
-        key={invitation.id}
-        className={`conversation-card ${!linkTo ? 'conversation-card-disabled' : ''}`}
-      >
-        <div className="card-header">
-          <h3>{conversation.title}</h3>
-          <span className={`status-badge ${getStateClass(conversation.state)}`}>
-            {getStateLabel(conversation.state)}
-          </span>
-        </div>
-        <div className="card-body">
-          <div className="conversation-meta">
-            <span>Invited: {formatDateShort(invitation.created_at, conversation.timezone)}</span>
-            {conversation.state === ConversationState.ACTIVE && (
-              <span style={{ color: '#4299e1', fontWeight: 500 }}>Click to participate →</span>
-            )}
-            {conversation.state === ConversationState.DRAFT && (
-              <span style={{ color: '#718096' }}>Not yet active</span>
-            )}
-            {(conversation.state === ConversationState.CLOSED || conversation.state === ConversationState.ANALYZED) && (
-              <span style={{ color: '#718096' }}>Conversation ended</span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-
-    return linkTo ? (
-      <Link key={invitation.id} to={linkTo} style={{ textDecoration: 'none' }}>
-        {card}
-      </Link>
-    ) : card;
-  };
-
-  // Recursively render a conversation and all its descendants
-  const renderConversationWithFollowUps = (conversation: ConversationListItem, childrenMap: Map<string, ConversationListItem[]>, isFollowUp: boolean = false): JSX.Element => {
-    const children = childrenMap.get(conversation.id) || [];
-    const hasChildren = children.length > 0;
-
-    return (
-      <React.Fragment key={conversation.id}>
-        {renderConversationCard(conversation, isFollowUp)}
-        {hasChildren && (
-          <div className="follow-ups-container">
-            {children.map((child) => renderConversationWithFollowUps(child, childrenMap, true))}
-          </div>
-        )}
-      </React.Fragment>
-    );
   };
 
   const toggleStateFilter = (state: ConversationState) => {
@@ -647,721 +928,631 @@ function DashboardPageOld() {
     setDateRange('all');
   };
 
-  const isWithinDateRange = (createdAt: string, range: DateRange): boolean => {
-    if (range === 'all') return true;
+  const allStates = [ConversationState.DRAFT, ConversationState.ACTIVE, ConversationState.CLOSED, ConversationState.ANALYZED];
+  const allAnonymityLevels = [AnonymityLevel.FULLY_ANONYMOUS, AnonymityLevel.PLATFORM_TRACKED, AnonymityLevel.REVEALABLE];
 
-    const now = new Date();
-    const created = new Date(createdAt);
-    const daysAgo = parseInt(range);
-    const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+  // Render: Tile card
+  const renderTileCard = (conversation: ConversationListItem, isFollowUp: boolean = false) => {
+    const isMenuOpen = openMenuId === conversation.id;
+    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
 
-    return created >= cutoffDate;
+    return (
+      <div
+        key={conversation.id}
+        style={s.cardWrapper}
+        data-menu
+      >
+        <Link
+          to={`/conversations/${conversation.id}`}
+          className="dashboard-card-new"
+          style={s.card}
+        >
+          <div style={s.cardHeader}>
+            <h3 style={s.cardTitle}>
+              {isFollowUp && (
+                <span style={s.followUpArrow}>
+                  {conversation.is_recurring_instance ? '↻' : '↳'}
+                </span>
+              )}
+              {conversation.title}
+            </h3>
+            <span style={merge(s.statusBadgePill, getStatusPillStyle(conversation.state))}>
+              {getStateLabel(conversation.state)}
+            </span>
+          </div>
+
+          {collection && (
+            <span style={s.collectionBadge}>{collection.name}</span>
+          )}
+
+          <div style={s.cardMeta}>
+            <span>
+              {conversation.unique_participants !== undefined && conversation.unique_participants > 0 ? (
+                <>
+                  <span style={s.cardMetaValue}>{conversation.unique_participants}</span>
+                  {' '}{conversation.unique_participants === 1 ? 'response' : 'responses'}
+                </>
+              ) : (
+                'No responses yet'
+              )}
+            </span>
+          </div>
+          <div style={s.cardMeta}>
+            <span>Created {formatDateShort(conversation.created_at, conversation.timezone)}</span>
+          </div>
+        </Link>
+
+        <div style={s.cardMenu}>
+          <button
+            style={s.menuButton}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpenMenuId(isMenuOpen ? null : conversation.id);
+            }}
+            aria-label="More options"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="3" r="1.5"/>
+              <circle cx="8" cy="8" r="1.5"/>
+              <circle cx="8" cy="13" r="1.5"/>
+            </svg>
+          </button>
+          {isMenuOpen && (
+            <div style={s.menuDropdown}>
+              <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
+                Duplicate
+              </button>
+              <button
+                style={merge(s.menuItem, s.menuItemDanger)}
+                onClick={(e) => handleDeleteClick(e, conversation.id)}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  // Get the appropriate conversation list based on active tab
-  const currentConversations = activeTab === 'owned' ? conversations : participatedConversations;
+  // Render: List row
+  const renderListRow = (conversation: ConversationListItem) => {
+    const isMenuOpen = openMenuId === conversation.id;
+    const isHovered = hoveredRowId === conversation.id;
+    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
 
-  // Separate templates from actual conversations (only in owned tab)
-  const templates = activeTab === 'owned' ? conversations.filter(c =>
-    c.is_template === true
-  ) : [];
+    return (
+      <tr
+        key={conversation.id}
+        style={merge(s.tr, isHovered && s.trHover)}
+        onMouseEnter={() => setHoveredRowId(conversation.id)}
+        onMouseLeave={() => setHoveredRowId(null)}
+      >
+        <td style={merge(s.td, s.tdTitle)}>
+          <Link to={`/conversations/${conversation.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+            {conversation.title}
+          </Link>
+        </td>
+        <td style={s.td}>
+          <span style={s.statusBadge}>
+            <span style={merge(s.statusDot, getStatusDotStyle(conversation.state))} />
+            {getStateLabel(conversation.state)}
+          </span>
+        </td>
+        <td style={s.td}>
+          {conversation.unique_participants || 0}
+        </td>
+        <td style={s.td}>
+          {getAnonymityLabel(conversation.anonymity_level)}
+        </td>
+        <td style={s.td}>
+          {collection ? (
+            <Link to={`/collections/${collection.id}`} style={{ color: colors.primary[900], textDecoration: 'none' }}>
+              {collection.name}
+            </Link>
+          ) : (
+            <span style={{ color: colors.primary[400] }}>—</span>
+          )}
+        </td>
+        <td style={s.td}>
+          {formatDateShort(conversation.created_at, conversation.timezone)}
+        </td>
+        <td style={{ ...s.td, position: 'relative', width: '40px' }} data-menu>
+          <button
+            style={s.menuButton}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpenMenuId(isMenuOpen ? null : conversation.id);
+            }}
+            aria-label="More options"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="3" r="1.5"/>
+              <circle cx="8" cy="8" r="1.5"/>
+              <circle cx="8" cy="13" r="1.5"/>
+            </svg>
+          </button>
+          {isMenuOpen && (
+            <div style={s.menuDropdown}>
+              <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
+                Duplicate
+              </button>
+              <button
+                style={merge(s.menuItem, s.menuItemDanger)}
+                onClick={(e) => handleDeleteClick(e, conversation.id)}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </td>
+      </tr>
+    );
+  };
 
-  const actualConversations = currentConversations.filter(c =>
-    !(c.is_template === true)
+  // Render: Template card
+  const renderTemplateCard = (template: ConversationListItem) => (
+    <div key={template.id} style={s.cardWrapper}>
+      <Link
+        to={`/templates/${template.id}`}
+        className="dashboard-template-card"
+        style={merge(s.card, s.templateCard)}
+      >
+        <div style={s.cardHeader}>
+          <h3 style={s.cardTitle}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+              <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+              <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+            </svg>
+            {template.title}
+            <span style={s.templateBadge}>TEMPLATE</span>
+          </h3>
+        </div>
+        <div style={s.cardMeta}>
+          <span>Created {formatDateShort(template.created_at, template.timezone)}</span>
+        </div>
+      </Link>
+    </div>
   );
 
-  // For template grouping, include templates in the filtered list
-  const conversationsToFilter = groupingMode === 'template' && activeTab === 'owned' 
-    ? currentConversations 
-    : actualConversations;
+  // Render: Participated card
+  const renderParticipatedCard = (conversation: ConversationListItem) => {
+    const linkTo = conversation.state === ConversationState.ANALYZED
+      ? `/conversations/${conversation.id}/analysis`
+      : null;
 
-  const filteredConversations = conversationsToFilter.filter(c => {
-    // State filter
-    if (selectedStates.length > 0 && !selectedStates.includes(c.state)) {
-      return false;
-    }
+    const card = (
+      <div style={s.card}>
+        <div style={s.cardHeader}>
+          <h3 style={s.cardTitle}>{conversation.title}</h3>
+          <span style={merge(s.statusBadgePill, getStatusPillStyle(conversation.state))}>
+            {getStateLabel(conversation.state)}
+          </span>
+        </div>
+        <div style={s.cardMeta}>
+          <span>Responded {formatDateShort(conversation.created_at, conversation.timezone)}</span>
+          {conversation.state === ConversationState.ANALYZED && (
+            <span style={{ color: colors.interactive.link, fontWeight: typography.fontWeight.medium }}>
+              View results →
+            </span>
+          )}
+        </div>
+      </div>
+    );
 
-    // Anonymity level filter
-    if (selectedAnonymityLevels.length > 0 && !selectedAnonymityLevels.includes(c.anonymity_level)) {
-      return false;
-    }
-
-    // Date range filter
-    if (!isWithinDateRange(c.created_at, dateRange)) {
-      return false;
-    }
-
-    return true;
-  });
-
-  // Apply grouping based on selected mode
-  const { rootConversations, childrenMap } = groupingMode === 'parent-child' 
-    ? groupConversationsByParentChild(filteredConversations)
-    : { rootConversations: [], childrenMap: new Map() };
-  
-  const { seriesMap, standaloneConversations: standaloneBySeries } = groupingMode === 'series'
-    ? groupConversationsBySeries(filteredConversations)
-    : { seriesMap: new Map(), standaloneConversations: [] };
-  
-  const { templates: groupedTemplates, templateInstancesMap, standaloneConversations: standaloneByTemplate } = groupingMode === 'template'
-    ? groupConversationsByTemplate(filteredConversations)
-    : { templates: [], templateInstancesMap: new Map(), standaloneConversations: [] };
-
-  const getStateCount = (state: ConversationState) => {
-    return actualConversations.filter(c => c.state === state).length;
+    return linkTo ? (
+      <Link key={conversation.id} to={linkTo} style={{ textDecoration: 'none' }}>
+        {card}
+      </Link>
+    ) : <div key={conversation.id}>{card}</div>;
   };
 
-  const getAnonymityCount = (level: AnonymityLevel) => {
-    return actualConversations.filter(c => c.anonymity_level === level).length;
+  // Render: Invitation card
+  const renderInvitationCard = (invitation: ConversationInvitationWithConversation) => {
+    const { conversation } = invitation;
+    const linkTo = conversation.state === ConversationState.ACTIVE
+      ? `/conversations/${conversation.access_code}`
+      : null;
+
+    const card = (
+      <div style={s.card}>
+        <div style={s.cardHeader}>
+          <h3 style={s.cardTitle}>{conversation.title}</h3>
+          <span style={merge(s.statusBadgePill, getStatusPillStyle(conversation.state))}>
+            {getStateLabel(conversation.state)}
+          </span>
+        </div>
+        <div style={s.cardMeta}>
+          <span>Invited {formatDateShort(invitation.created_at, conversation.timezone)}</span>
+          {conversation.state === ConversationState.ACTIVE && (
+            <span style={{ color: colors.interactive.link, fontWeight: typography.fontWeight.medium }}>
+              Participate →
+            </span>
+          )}
+        </div>
+      </div>
+    );
+
+    return linkTo ? (
+      <Link key={invitation.id} to={linkTo} style={{ textDecoration: 'none' }}>
+        {card}
+      </Link>
+    ) : <div key={invitation.id}>{card}</div>;
   };
-
-  const getDateRangeCount = (range: DateRange) => {
-    return actualConversations.filter(c => isWithinDateRange(c.created_at, range)).length;
-  };
-
-  const getAnonymityLabel = (level: AnonymityLevel) => {
-    const labels: Record<AnonymityLevel, string> = {
-      [AnonymityLevel.FULLY_ANONYMOUS]: 'Fully Anonymous',
-      [AnonymityLevel.PLATFORM_TRACKED]: 'Platform Tracked',
-      [AnonymityLevel.REVEALABLE]: 'Revealable',
-    };
-    return labels[level];
-  };
-
-  const getDateRangeLabel = (range: DateRange) => {
-    const labels: Record<DateRange, string> = {
-      'all': 'All time',
-      '7': 'Last 7 days',
-      '30': 'Last 30 days',
-      '90': 'Last 90 days',
-    };
-    return labels[range];
-  };
-
-  const allStates = [
-    ConversationState.DRAFT,
-    ConversationState.ACTIVE,
-    ConversationState.CLOSED,
-    ConversationState.ANALYZED,
-  ];
-
-  const allAnonymityLevels = [
-    AnonymityLevel.FULLY_ANONYMOUS,
-    AnonymityLevel.PLATFORM_TRACKED,
-    AnonymityLevel.REVEALABLE,
-  ];
-
-  const allDateRanges: DateRange[] = ['7', '30', '90', 'all'];
 
   return (
-    <div className="dashboard-page">
-      <header className="dashboard-header">
-        <div>
-          <h1>Dashboard</h1>
+    <div style={s.page}>
+      {/* CSS-based hover for cards - more reliable than React state */}
+      <style>{`
+        .dashboard-card-new:hover,
+        .dashboard-template-card:hover {
+          border-color: ${colors.primary[500]} !important;
+          box-shadow: ${shadows.sm} !important;
+        }
+      `}</style>
+
+      {/* Header */}
+      <header style={s.header}>
+        <div style={s.headerLeft}>
+          <h1 style={s.pageTitle}>Conversations</h1>
+          <p style={s.pageSubtitle}>Manage feedback collection across your {isPersonalWorkspace ? 'workspace' : 'organization'}</p>
         </div>
-        <div className="header-actions">
+        <div style={s.headerActions}>
           {activeTab === 'owned' && (
-            <Link to="/conversations/new" className="btn btn-primary">
-              + New Conversation
+            <Link to="/conversations/new" style={s.buttonPrimary}>
+              + New conversation
             </Link>
           )}
         </div>
       </header>
 
-      {/* Tabs - only show in personal workspace */}
+      {/* Stats Cards */}
+      {activeTab === 'owned' && !loading && (
+        <div style={s.statsGrid}>
+          <div style={s.statCard}>
+            <MessageIcon size={20} className="" />
+            <div style={{ marginTop: spacing[3] }}>
+              <div style={s.statValue}>{stats.activeConversations}</div>
+              <div style={s.statLabel}>Active conversations</div>
+            </div>
+          </div>
+          <div style={s.statCard}>
+            <UsersIcon size={20} className="" />
+            <div style={{ marginTop: spacing[3] }}>
+              <div style={s.statValue}>{stats.totalResponses}</div>
+              <div style={s.statLabel}>Total responses</div>
+            </div>
+          </div>
+          <div style={s.statCard}>
+            <TrendingIcon size={20} className="" />
+            <div style={{ marginTop: spacing[3] }}>
+              <div style={s.statValue}>{stats.responseRate}%</div>
+              <div style={s.statLabel}>Conversations with responses</div>
+            </div>
+          </div>
+          <div style={s.statCard}>
+            <ClockIcon size={20} className="" />
+            <div style={{ marginTop: spacing[3] }}>
+              <div style={s.statValue}>{stats.templates}</div>
+              <div style={s.statLabel}>Templates</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
       {isPersonalWorkspace && (
-        <div className="dashboard-tabs">
+        <div style={s.tabs}>
           <button
-            className={`tab-button ${activeTab === 'owned' ? 'active' : ''}`}
+            style={merge(s.tab, activeTab === 'owned' && s.tabActive)}
             onClick={() => setActiveTab('owned')}
           >
             My Conversations
-            {conversations.length > 0 && <span className="tab-count">{conversations.length}</span>}
+            {conversations.length > 0 && (
+              <span style={merge(s.tabCount, activeTab === 'owned' && s.tabCountActive)}>
+                {actualConversations.length}
+              </span>
+            )}
           </button>
           <button
-            className={`tab-button ${activeTab === 'participated' ? 'active' : ''}`}
+            style={merge(s.tab, activeTab === 'participated' && s.tabActive)}
             onClick={() => setActiveTab('participated')}
           >
             Participated
-            {participatedConversations.length > 0 && <span className="tab-count">{participatedConversations.length}</span>}
+            {participatedConversations.length > 0 && (
+              <span style={merge(s.tabCount, activeTab === 'participated' && s.tabCountActive)}>
+                {participatedConversations.length}
+              </span>
+            )}
           </button>
           <button
-            className={`tab-button ${activeTab === 'invitations' ? 'active' : ''}`}
-            onClick={() => {
-              console.log('Invitations tab clicked');
-              setActiveTab('invitations');
-            }}
+            style={merge(s.tab, activeTab === 'invitations' && s.tabActive)}
+            onClick={() => setActiveTab('invitations')}
           >
-            Pending invitations
-            {invitations.length > 0 && <span className="tab-count">{invitations.length}</span>}
+            Pending Invitations
+            {invitations.length > 0 && (
+              <span style={merge(s.tabCount, activeTab === 'invitations' && s.tabCountActive)}>
+                {invitations.length}
+              </span>
+            )}
           </button>
         </div>
       )}
 
-      {actualConversations.length > 0 && activeTab === 'owned' && (
-        <div className="filter-bar">
-          <div className="filter-label">Filters:</div>
+      {/* Toolbar: Search, View Toggle, Filter */}
+      {activeTab === 'owned' && actualConversations.length > 0 && (
+        <div style={s.toolbar}>
+          {/* Search */}
+          <div style={s.searchContainer}>
+            <div style={s.searchIcon}>
+              <SearchIcon size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={s.searchInput}
+            />
+          </div>
 
-          {/* State Filter */}
-          <div className="filter-dropdown-container">
+          {/* View Toggle */}
+          <div style={s.viewToggle}>
             <button
-              onClick={() => {
-                setShowStateDropdown(!showStateDropdown);
-                setShowAnonymityDropdown(false);
-                setShowDateDropdown(false);
-              }}
-              className="filter-dropdown-toggle"
+              style={merge(s.viewToggleButton, viewMode === 'tile' && s.viewToggleButtonActive)}
+              onClick={() => setViewMode('tile')}
+              aria-label="Tile view"
             >
-              {selectedStates.length === 0
-                ? 'All states'
-                : `${selectedStates.length} state${selectedStates.length > 1 ? 's' : ''}`
-              }
-              <span className={`dropdown-arrow ${showStateDropdown ? 'open' : ''}`}>▼</span>
+              <GridIcon size={18} />
             </button>
-            {showStateDropdown && (
-              <div className="filter-dropdown-menu">
-                <div className="filter-dropdown-header">
-                  <span className="filter-dropdown-title">Filter by state</span>
-                  {selectedStates.length > 0 && (
-                    <button
-                      onClick={() => setSelectedStates([])}
-                      className="filter-clear-btn"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <div className="filter-dropdown-items">
+            <button
+              style={merge(s.viewToggleButton, viewMode === 'list' && s.viewToggleButtonActive)}
+              onClick={() => setViewMode('list')}
+              aria-label="List view"
+            >
+              <ListIcon size={18} />
+            </button>
+          </div>
+
+          {/* Filter */}
+          <div style={s.filterDropdownContainer} data-dropdown>
+            <button
+              style={merge(s.filterButton, hasActiveFilters && s.filterButtonActive)}
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            >
+              <FilterIcon size={16} />
+              Filter
+              {hasActiveFilters && (
+                <span style={{
+                  backgroundColor: colors.primary[900],
+                  color: colors.primary[50],
+                  borderRadius: borders.radius.full,
+                  padding: `0 ${spacing[2]}`,
+                  fontSize: typography.fontSize.xs,
+                  marginLeft: spacing[1],
+                }}>
+                  {selectedStates.length + selectedAnonymityLevels.length + (dateRange !== 'all' ? 1 : 0)}
+                </span>
+              )}
+            </button>
+
+            {showFilterDropdown && (
+              <div style={s.filterDropdown}>
+                {/* Status */}
+                <div style={s.filterSection}>
+                  <div style={s.filterSectionTitle}>Status</div>
                   {allStates.map((state) => {
                     const count = getStateCount(state);
                     if (count === 0) return null;
-
                     return (
-                      <label
-                        key={state}
-                        className="filter-dropdown-item"
-                      >
+                      <label key={state} style={s.filterOption}>
                         <input
                           type="checkbox"
                           checked={selectedStates.includes(state)}
                           onChange={() => toggleStateFilter(state)}
                         />
-                        <span className="filter-item-label">
+                        <span style={s.statusBadge}>
+                          <span style={merge(s.statusDot, getStatusDotStyle(state))} />
                           {getStateLabel(state)}
                         </span>
-                        <span className="filter-item-count">{count}</span>
+                        <span style={s.filterCount}>{count}</span>
                       </label>
                     );
                   })}
                 </div>
-              </div>
-            )}
-          </div>
 
-          {/* Anonymity Level Filter */}
-          <div className="filter-dropdown-container">
-            <button
-              onClick={() => {
-                setShowAnonymityDropdown(!showAnonymityDropdown);
-                setShowStateDropdown(false);
-                setShowDateDropdown(false);
-              }}
-              className="filter-dropdown-toggle"
-            >
-              {selectedAnonymityLevels.length === 0
-                ? 'All anonymity levels'
-                : `${selectedAnonymityLevels.length} level${selectedAnonymityLevels.length > 1 ? 's' : ''}`
-              }
-              <span className={`dropdown-arrow ${showAnonymityDropdown ? 'open' : ''}`}>▼</span>
-            </button>
-            {showAnonymityDropdown && (
-              <div className="filter-dropdown-menu">
-                <div className="filter-dropdown-header">
-                  <span className="filter-dropdown-title">Filter by anonymity</span>
-                  {selectedAnonymityLevels.length > 0 && (
-                    <button
-                      onClick={() => setSelectedAnonymityLevels([])}
-                      className="filter-clear-btn"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <div className="filter-dropdown-items">
+                {/* Privacy */}
+                <div style={s.filterSection}>
+                  <div style={s.filterSectionTitle}>Privacy</div>
                   {allAnonymityLevels.map((level) => {
                     const count = getAnonymityCount(level);
                     if (count === 0) return null;
-
                     return (
-                      <label
-                        key={level}
-                        className="filter-dropdown-item"
-                      >
+                      <label key={level} style={s.filterOption}>
                         <input
                           type="checkbox"
                           checked={selectedAnonymityLevels.includes(level)}
                           onChange={() => toggleAnonymityFilter(level)}
                         />
-                        <span className="filter-item-label">
-                          {getAnonymityLabel(level)}
-                        </span>
-                        <span className="filter-item-count">{count}</span>
+                        <span>{getAnonymityLabel(level)}</span>
+                        <span style={s.filterCount}>{count}</span>
                       </label>
                     );
                   })}
                 </div>
-              </div>
-            )}
-          </div>
 
-          {/* Date Range Filter */}
-          <div className="filter-dropdown-container">
-            <button
-              onClick={() => {
-                setShowDateDropdown(!showDateDropdown);
-                setShowStateDropdown(false);
-                setShowAnonymityDropdown(false);
-              }}
-              className="filter-dropdown-toggle"
-            >
-              {getDateRangeLabel(dateRange)}
-              <span className={`dropdown-arrow ${showDateDropdown ? 'open' : ''}`}>▼</span>
-            </button>
-            {showDateDropdown && (
-              <div className="filter-dropdown-menu">
-                <div className="filter-dropdown-header">
-                  <span className="filter-dropdown-title">Filter by date</span>
+                {/* Date */}
+                <div style={s.filterSection}>
+                  <div style={s.filterSectionTitle}>Date</div>
+                  {(['7', '30', '90', 'all'] as DateRange[]).map((range) => (
+                    <label key={range} style={s.filterOption}>
+                      <input
+                        type="radio"
+                        name="dateRange"
+                        checked={dateRange === range}
+                        onChange={() => setDateRange(range)}
+                      />
+                      <span>{getDateRangeLabel(range)}</span>
+                    </label>
+                  ))}
                 </div>
-                <div className="filter-dropdown-items">
-                  {allDateRanges.map((range) => {
-                    const count = getDateRangeCount(range);
 
-                    return (
-                      <label
-                        key={range}
-                        className="filter-dropdown-item"
-                      >
-                        <input
-                          type="radio"
-                          name="dateRange"
-                          checked={dateRange === range}
-                          onChange={() => {
-                            setDateRange(range);
-                            setShowDateDropdown(false);
-                          }}
-                        />
-                        <span className="filter-item-label">
-                          {getDateRangeLabel(range)}
-                        </span>
-                        <span className="filter-item-count">{count}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Clear All Filters */}
-          {(selectedStates.length > 0 || selectedAnonymityLevels.length > 0 || dateRange !== 'all') && (
-            <button
-              onClick={clearFilters}
-              className="btn btn-outline-secondary btn-small"
-            >
-              Clear all filters
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Group by dropdown - outside filter bar */}
-      {conversations.length > 0 && activeTab === 'owned' && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
-          marginBottom: '1rem',
-          marginTop: '-1rem'
-        }}>
-          <div className="filter-dropdown-container" style={{ position: 'relative' }}>
-            <button
-              onClick={() => {
-                setShowGroupingDropdown(!showGroupingDropdown);
-                setShowStateDropdown(false);
-                setShowAnonymityDropdown(false);
-                setShowDateDropdown(false);
-              }}
-              className="filter-dropdown-toggle"
-            >
-              {groupingMode === 'none' && 'Group by'}
-              {groupingMode === 'parent-child' && '✓ By Follow-up'}
-              {groupingMode === 'series' && '✓ By Collection'}
-              {groupingMode === 'template' && '✓ From Templates'}
-              <span className={`dropdown-arrow ${showGroupingDropdown ? 'open' : ''}`}>▼</span>
-            </button>
-            {showGroupingDropdown && (
-              <div className="filter-dropdown-menu" style={{ minWidth: '200px' }}>
-                <div className="filter-dropdown-header">
-                  <span className="filter-dropdown-title">Group conversations</span>
-                </div>
-                <div className="filter-dropdown-items">
-                  <label className="filter-dropdown-item">
-                    <input
-                      type="radio"
-                      name="groupingMode"
-                      checked={groupingMode === 'none'}
-                      onChange={() => {
-                        setGroupingMode('none');
-                        setShowGroupingDropdown(false);
-                      }}
-                    />
-                    <span className="filter-item-label">No grouping</span>
-                  </label>
-                  <label className="filter-dropdown-item">
-                    <input
-                      type="radio"
-                      name="groupingMode"
-                      checked={groupingMode === 'parent-child'}
-                      onChange={() => {
-                        setGroupingMode('parent-child');
-                        setShowGroupingDropdown(false);
-                      }}
-                    />
-                    <span className="filter-item-label">By Follow-up</span>
-                  </label>
-                  <label className="filter-dropdown-item">
-                    <input
-                      type="radio"
-                      name="groupingMode"
-                      checked={groupingMode === 'series'}
-                      onChange={() => {
-                        setGroupingMode('series');
-                        setShowGroupingDropdown(false);
-                      }}
-                    />
-                    <span className="filter-item-label">By Collection</span>
-                  </label>
-                  <label className="filter-dropdown-item">
-                    <input
-                      type="radio"
-                      name="groupingMode"
-                      checked={groupingMode === 'template'}
-                      onChange={() => {
-                        setGroupingMode('template');
-                        setShowGroupingDropdown(false);
-                      }}
-                    />
-                    <span className="filter-item-label">From Templates</span>
-                  </label>
-                </div>
+                {/* Clear */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    style={{
+                      ...s.buttonSecondary,
+                      ...s.buttonSmall,
+                      width: '100%',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    Clear all filters
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {error && <div className="error-message">{error}</div>}
+      {/* Error */}
+      {error && <div style={s.errorMessage}>{error}</div>}
 
+      {/* Content */}
       {loading && activeTab !== 'invitations' ? (
-        <div className="loading">Loading conversations...</div>
+        <div style={s.loading}>Loading conversations...</div>
       ) : activeTab === 'invitations' ? (
         invitationsLoading ? (
-          <div className="loading">Loading invitations...</div>
+          <div style={s.loading}>Loading invitations...</div>
         ) : invitations.length === 0 ? (
-          <div className="empty-state">
-            <h3>No pending invitations</h3>
-            <p>You don't have any pending conversation invitations at the moment.</p>
+          <div style={s.emptyState}>
+            <h3 style={s.emptyTitle}>No pending invitations</h3>
+            <p style={s.emptyText}>You don't have any pending conversation invitations.</p>
           </div>
         ) : (
-          <div className="conversations-list">
-            <h2>Pending invitations</h2>
-            <div className="conversation-grid">
+          <>
+            <p style={s.sectionLabel}>Pending Invitations</p>
+            <div style={s.conversationGrid}>
               {invitations.map((invitation) => renderInvitationCard(invitation))}
             </div>
-          </div>
+          </>
         )
       ) : actualConversations.length === 0 ? (
-        <div className="empty-state">
+        <div style={s.emptyState}>
           {activeTab === 'owned' ? (
             <>
-              <h3>No conversations in {currentWorkspaceName}</h3>
-              <p>Create your first conversation in this workspace</p>
-              <Link to="/conversations/new" className="btn btn-primary">
+              <h3 style={s.emptyTitle}>No conversations in {currentWorkspaceName}</h3>
+              <p style={s.emptyText}>Create your first conversation in this workspace</p>
+              <Link to="/conversations/new" style={s.buttonPrimary}>
                 Create Conversation
               </Link>
             </>
           ) : (
             <>
-              <h3>No participated conversations</h3>
-              <p>You haven't responded to any conversations yet. When you submit responses to conversations, they'll appear here.</p>
+              <h3 style={s.emptyTitle}>No participated conversations</h3>
+              <p style={s.emptyText}>When you submit responses to conversations, they'll appear here.</p>
             </>
           )}
         </div>
-      ) : groupingMode === 'parent-child' && activeTab === 'owned' ? (
-        rootConversations.length === 0 ? (
-          <div className="empty-state">
-            <h3>No conversations found</h3>
-            <p>No conversations match the selected filter</p>
-            <button
-              onClick={clearFilters}
-              className="btn btn-secondary"
-            >
-              Clear Filter
-            </button>
-          </div>
-        ) : (
-          <div className="conversations-list">
-            <div className="conversation-groups">
-              {rootConversations.map((conversation) => {
-                const children = childrenMap.get(conversation.id) || [];
-                const hasChildren = children.length > 0;
-
-                return (
-                  <div key={conversation.id} className={`conversation-group ${hasChildren ? 'has-follow-ups' : ''}`}>
-                    {renderConversationWithFollowUps(conversation, childrenMap, false)}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )
-      ) : groupingMode === 'series' && activeTab === 'owned' ? (
-        seriesMap.size === 0 && standaloneBySeries.length === 0 ? (
-          <div className="empty-state">
-            <h3>No conversations found</h3>
-            <p>No conversations match the selected filter</p>
-            <button
-              onClick={clearFilters}
-              className="btn btn-secondary"
-            >
-              Clear Filter
-            </button>
-          </div>
-        ) : (
-          <div className="conversations-list">
-            <div className="conversation-groups">
-              {Array.from(seriesMap.entries())
-                .sort(([seriesIdA], [seriesIdB]) => {
-                  const seriesA = seriesList.find(s => s.id === seriesIdA);
-                  const seriesB = seriesList.find(s => s.id === seriesIdB);
-                  const nameA = seriesA?.name || '';
-                  const nameB = seriesB?.name || '';
-                  return nameA.localeCompare(nameB);
-                })
-                .map(([seriesId, convs]) => {
-                  const series = seriesList.find(s => s.id === seriesId);
-                  return (
-                    <div key={seriesId} className="conversation-group has-series">
-                      <div style={{ 
-                        fontSize: '0.9rem', 
-                        fontWeight: 600, 
-                        color: '#4299e1', 
-                        marginBottom: '0.75rem',
-                        paddingBottom: '0.5rem',
-                        borderBottom: '2px solid #4299e1'
-                      }}>
-                        Collection: <Link to={`/collections/${seriesId}`} style={{ color: '#4299e1', textDecoration: 'none' }} onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}>{series?.name || `Collection ${seriesId.slice(0, 8)}...`}</Link>
-                      </div>
-                      <div className="conversation-grid">
-                        {convs.map((conv: ConversationListItem) => renderConversationCard(conv, false))}
-                      </div>
-                    </div>
-                  );
-                })}
-              {standaloneBySeries.length > 0 && (
-                <div className="conversation-group">
-                  <div style={{ 
-                    fontSize: '0.9rem', 
-                    fontWeight: 600, 
-                    color: '#718096', 
-                    marginBottom: '0.75rem',
-                    paddingBottom: '0.5rem',
-                    borderBottom: '1px solid #e2e8f0'
-                  }}>
-                    Not in a collection ({standaloneBySeries.length})
-                  </div>
-                  <div className="conversation-grid">
-                    {standaloneBySeries.map((conv) => renderConversationCard(conv, false))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      ) : groupingMode === 'template' && activeTab === 'owned' ? (
-        groupedTemplates.length === 0 && standaloneByTemplate.length === 0 ? (
-          <div className="empty-state">
-            <h3>No conversations found</h3>
-            <p>No conversations match the selected filter</p>
-            <button
-              onClick={clearFilters}
-              className="btn btn-secondary"
-            >
-              Clear Filter
-            </button>
-          </div>
-        ) : (
-          <div className="conversations-list">
-            <div className="conversation-groups">
-              {groupedTemplates.map((template) => {
-                const instances = templateInstancesMap.get(template.id) || [];
-                return (
-                  <div key={template.id} className={`conversation-group ${instances.length > 0 ? 'has-instances' : ''}`}>
-                    {renderTemplateCard(template)}
-                    {instances.length > 0 && (
-                      <div className="template-instances-container" style={{ paddingLeft: '2rem', marginTop: '0.5rem' }}>
-                        <div style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '0.5rem', fontWeight: 600 }}>
-                          Instances ({instances.length}):
-                        </div>
-                        <div className="conversation-grid">
-                          {instances.map((instance: ConversationListItem) => renderConversationCard(instance, true))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {standaloneByTemplate.length > 0 && (
-                <div className="conversation-group">
-                  <div style={{ 
-                    fontSize: '0.9rem', 
-                    fontWeight: 600, 
-                    color: '#718096', 
-                    marginBottom: '0.75rem',
-                    paddingBottom: '0.5rem',
-                    borderBottom: '1px solid #e2e8f0'
-                  }}>
-                    Not from a template ({standaloneByTemplate.length})
-                  </div>
-                  <div className="conversation-grid">
-                    {standaloneByTemplate.map((conv) => renderConversationCard(conv, false))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )
       ) : filteredConversations.length === 0 ? (
-        <div className="empty-state">
-          <h3>No conversations found</h3>
-          <p>No conversations match the selected filter</p>
-          <button
-            onClick={clearFilters}
-            className="btn btn-secondary"
-          >
-            Clear Filter
+        <div style={s.emptyState}>
+          <h3 style={s.emptyTitle}>No conversations found</h3>
+          <p style={s.emptyText}>
+            {searchQuery ? `No conversations match "${searchQuery}"` : 'No conversations match the selected filters'}
+          </p>
+          <button onClick={() => { clearFilters(); setSearchQuery(''); }} style={s.buttonSecondary}>
+            Clear Filters
           </button>
         </div>
-      ) : (
-        <div className="conversations-list">
-          <div className="conversation-grid">
-            {activeTab === 'owned' ? (
-              filteredConversations.map((conversation) => renderConversationCard(conversation, false))
-            ) : (
-              filteredConversations.map((conversation) => renderParticipatedConversationCard(conversation))
-            )}
-          </div>
+      ) : viewMode === 'list' && activeTab === 'owned' ? (
+        // List View
+        <div style={{ overflowX: 'auto' }}>
+          <table style={s.table}>
+            <thead style={s.tableHeader}>
+              <tr>
+                <th style={s.th}>Title</th>
+                <th style={s.th}>Status</th>
+                <th style={s.th}>Responses</th>
+                <th style={s.th}>Privacy</th>
+                <th style={s.th}>Collection</th>
+                <th style={s.th}>Created</th>
+                <th style={{ ...s.th, width: '40px' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredConversations.map((conversation) => renderListRow(conversation))}
+            </tbody>
+          </table>
         </div>
+      ) : (
+        // Tile View
+        <>
+          <div style={s.conversationGrid}>
+            {activeTab === 'owned'
+              ? filteredConversations.map((conversation) => renderTileCard(conversation))
+              : filteredConversations.map((conversation) => renderParticipatedCard(conversation))
+            }
+          </div>
+        </>
       )}
 
       {/* Templates Section */}
-      <div className="conversations-list" style={{ marginTop: '3rem' }}>
-        <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>Templates</h2>
-            <span style={{
-              marginLeft: '1rem',
-              padding: '0.25rem 0.75rem',
-              background: '#EBF8FF',
-              color: '#2C5282',
-              borderRadius: '12px',
-              fontSize: '0.9rem',
-              fontWeight: 600
-            }}>
-              {templates.length}
-            </span>
+      {activeTab === 'owned' && !loading && (
+        <>
+          <div style={s.divider} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+              <p style={{ ...s.sectionLabel, margin: 0 }}>Templates</p>
+              <span style={{
+                ...s.tabCount,
+                backgroundColor: colors.primary[200],
+                color: colors.primary[700],
+              }}>
+                {templates.length}
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/conversations/new', { state: { createTemplate: true } })}
+              style={merge(s.buttonSecondary, s.buttonSmall)}
+            >
+              + Create Template
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/conversations/new', { state: { createTemplate: true } })}
-            className="btn btn-primary btn-small"
-          >
-            + Create Template
-          </button>
-        </div>
-        <p style={{ color: '#718096', marginBottom: '1.5rem' }}>
-          Templates are reusable conversation configurations. They can be used to create independent conversations or recurring collection instances. Templates cannot receive responses directly.
-        </p>
+          <p style={{ color: colors.primary[600], fontSize: typography.fontSize.sm, marginBottom: spacing[6] }}>
+            Templates are reusable conversation configurations for creating independent or recurring conversations.
+          </p>
 
-        {templates.length > 0 && (
-          <div className="conversation-grid">
-            {templates.map((template) => (
-              <Link
-                key={template.id}
-                to={`/templates/${template.id}`}
-                className="conversation-card template-card"
-                style={{ borderColor: '#90CDF4', background: '#F7FAFC' }}
-              >
-                <div className="card-header">
-                  <h3>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
-                      <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                      <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                    </svg>
-                    {template.title}
-                    <span className="template-badge" style={{
-                      fontSize: '0.7rem',
-                      color: '#2C5282',
-                      background: '#BEE3F8',
-                      padding: '0.125rem 0.5rem',
-                      borderRadius: '12px',
-                      marginLeft: '0.5rem',
-                      fontWeight: 600
-                    }}>
-                      TEMPLATE
-                    </span>
-                  </h3>
-                  <span className={`status-badge ${template.state === ConversationState.DRAFT ? 'status-draft' : 'status-template-published'}`}>
-                    {template.state === ConversationState.DRAFT ? 'Unpublished' : 'Published'}
-                  </span>
-                </div>
-                <div className="card-body">
-                  <div className="conversation-meta">
-                    {template.recurrence_pattern && (
-                      <span>Pattern: <strong>{template.recurrence_pattern}</strong></span>
-                    )}
-                    {template.template_series_id ? (
-                      <span>Conversations: <strong>{conversations.filter(c => c.series_id === template.template_series_id).length}</strong></span>
-                    ) : (
-                      <span>No collection</span>
-                    )}
-                  </div>
-                  <div className="conversation-meta">
-                    <span>Created: {formatDateShort(template.created_at, template.timezone)}</span>
-                    <span></span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+          {templates.length > 0 && (
+            <div style={s.conversationGrid}>
+              {templates.map((template) => renderTemplateCard(template))}
+            </div>
+          )}
+        </>
+      )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="modal-overlay" onClick={() => !actionLoading && setShowDeleteModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Delete Conversation</h2>
-            <p>Are you sure you want to delete this conversation? This action cannot be undone.</p>
-            <div className="modal-actions">
+        <div style={s.modalOverlay} onClick={() => !actionLoading && setShowDeleteModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Delete Conversation</h2>
+            <p style={s.modalText}>
+              Are you sure you want to delete this conversation? This action cannot be undone.
+            </p>
+            <div style={s.modalActions}>
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="btn btn-secondary"
+                style={s.buttonSecondary}
                 disabled={actionLoading}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="btn btn-danger"
+                style={merge(s.buttonPrimary, s.buttonDanger)}
                 disabled={actionLoading}
               >
                 {actionLoading ? 'Deleting...' : 'Delete'}
@@ -1371,19 +1562,5 @@ function DashboardPageOld() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function DashboardPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <DashboardPageNew /> : <DashboardPageOld />}
-    </>
   );
 }

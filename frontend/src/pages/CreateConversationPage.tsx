@@ -9,7 +9,6 @@ import SetupModeToggle from '../components/SetupModeToggle';
 import IntentSelection from '../components/IntentSelection';
 import ConfigurationSummary from '../components/ConfigurationSummary';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
-import DesignToggle from '../components/DesignToggle';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import {
   DndContext,
@@ -236,7 +235,7 @@ interface LocationState {
   organizationId?: string;  // Pre-selected organization
 }
 
-function CreateConversationPageOld() {
+function CreateConversationPageContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const followUpState = location.state as LocationState;
@@ -1984,11 +1983,11 @@ function CreateConversationPageOld() {
 }
 
 
-// New design version - wraps old version with new styling via CSS class
-function CreateConversationPageNew() {
+// Main component with design token styling
+export default function CreateConversationPage() {
   return (
     <div className="create-page-new-design">
-      <CreateConversationPageOld />
+      <CreateConversationPageContent />
       <style>{`
         .create-page-new-design {
           background-color: ${colors.primary[100]};
@@ -2080,20 +2079,5 @@ function CreateConversationPageNew() {
         }
       `}</style>
     </div>
-  );
-}
-
-// Wrapper with design toggle
-export default function CreateConversationPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <CreateConversationPageNew /> : <CreateConversationPageOld />}
-    </>
   );
 }

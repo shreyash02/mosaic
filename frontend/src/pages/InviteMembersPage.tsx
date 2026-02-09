@@ -3,10 +3,250 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationWithMembers, OrganizationInvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
-import DesignToggle from '../components/DesignToggle';
-import InviteMembersPageNew from './InviteMembersPageNew';
+import { colors, typography, spacing, borders, transitions } from '../styles';
 
-function InviteMembersPageOld() {
+const styles = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: colors.primary[50],
+    padding: spacing[6],
+    paddingTop: 'calc(60px + 1.5rem)',
+  },
+  container: {
+    maxWidth: '900px',
+    margin: '0 auto',
+  },
+  backLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    color: colors.primary[600],
+    textDecoration: 'none',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing[4],
+    transition: transitions.duration.normal,
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[6],
+    flexWrap: 'wrap' as const,
+    gap: spacing[4],
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  title: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[900],
+    marginBottom: spacing[2],
+  },
+  subtitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[600],
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[6],
+    marginBottom: spacing[6],
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    margin: 0,
+  },
+  cardDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginBottom: spacing[6],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  formGroup: {
+    marginBottom: spacing[5],
+  },
+  label: {
+    display: 'block',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+    marginBottom: spacing[2],
+  },
+  textarea: {
+    width: '100%',
+    padding: spacing[3],
+    fontSize: typography.fontSize.sm,
+    fontFamily: 'inherit',
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    resize: 'vertical' as const,
+    boxSizing: 'border-box' as const,
+    transition: transitions.duration.normal,
+  },
+  select: {
+    padding: `${spacing[3]} ${spacing[4]}`,
+    fontSize: typography.fontSize.sm,
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    minWidth: '300px',
+  },
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[3]} ${spacing[5]}`,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    textDecoration: 'none',
+  },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'white',
+    color: colors.primary[700],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    textDecoration: 'none',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+  },
+  tableHeader: {
+    backgroundColor: colors.primary[50],
+    borderBottom: `2px solid ${colors.primary[200]}`,
+  },
+  th: {
+    padding: `${spacing[3]} ${spacing[4]}`,
+    textAlign: 'left' as const,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[600],
+    textTransform: 'uppercase' as const,
+    letterSpacing: typography.letterSpacing.wide,
+  },
+  td: {
+    padding: `${spacing[3]} ${spacing[4]}`,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+    borderBottom: `1px solid ${colors.primary[100]}`,
+  },
+  badge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.full,
+  },
+  badgeAdmin: {
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+  },
+  badgeMember: {
+    backgroundColor: colors.primary[100],
+    color: colors.primary[700],
+  },
+  badgeAccepted: {
+    backgroundColor: colors.primary[200],
+    color: colors.primary[800],
+  },
+  badgePending: {
+    backgroundColor: colors.primary[100],
+    color: colors.primary[600],
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    color: colors.primary[500],
+    fontSize: typography.fontSize.sm,
+  },
+  error: {
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[300]}`,
+    color: colors.primary[900],
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing[4],
+  },
+  success: {
+    backgroundColor: colors.primary[100],
+    border: `1px solid ${colors.primary[400]}`,
+    color: colors.primary[900],
+    padding: spacing[4],
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing[4],
+  },
+  loading: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+    color: colors.primary[500],
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[4],
+  },
+  statText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+};
+
+const hoverStyles = `
+  .invite-back-link:hover {
+    color: ${colors.primary[900]};
+  }
+  .invite-input:focus {
+    border-color: ${colors.primary[500]};
+    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    outline: none;
+  }
+  .invite-btn-primary:hover:not(:disabled) {
+    background-color: ${colors.primary[800]};
+  }
+  .invite-btn-secondary:hover:not(:disabled) {
+    background-color: ${colors.primary[50]};
+    border-color: ${colors.primary[400]};
+  }
+  .invite-table-row:hover {
+    background-color: ${colors.primary[50]};
+  }
+`;
+
+export default function InviteMembersPage() {
   const { id } = useParams<{ id: string }>();
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
   const [invitations, setInvitations] = useState<OrganizationInvitationListResponse | null>(null);
@@ -77,238 +317,196 @@ function InviteMembersPageOld() {
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="loading">Loading...</div>
-      </div>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.loading}>Loading...</div>
+          </div>
+        </div>
+      </>
     );
   }
 
   if (!organization) {
     return (
-      <div className="page-container">
-        <div className="error-message">Organization not found</div>
-        <Link to="/organizations" className="btn btn-secondary">
-          Back to Organizations
-        </Link>
-      </div>
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.error}>Organization not found</div>
+            <Link to="/organizations" style={styles.buttonSecondary} className="invite-btn-secondary">
+              Back to Organizations
+            </Link>
+          </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="conversation-detail-page">
-      <div className="card">
-        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ flex: 1 }}>
-            <Link to={`/organizations/${id}`} className="btn btn-secondary" style={{ marginBottom: '1rem' }}>
-              ← Back to Organization
-            </Link>
-            <h1>Invite Members</h1>
-            <p style={{ color: '#666', marginTop: '0.5rem', fontSize: '1rem' }}>
-              {organization.name}
-            </p>
-          </div>
-          {!showInviteForm && (
-            <button
-              onClick={() => {
-                setShowInviteForm(true);
-                setSuccess('');
-              }}
-              className="btn btn-primary"
-              style={{ alignSelf: 'flex-start', marginTop: '2.5rem' }}
-            >
-              Send New Invitations
-            </button>
-          )}
-        </div>
+    <>
+      <style>{hoverStyles}</style>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <Link to={`/organizations/${id}`} style={styles.backLink} className="invite-back-link">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 12L6 8L10 4" />
+            </svg>
+            Back to Organization
+          </Link>
 
-        {error && (
-          <div className="error-message" style={{ marginBottom: '1.5rem' }}>
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="success-message" style={{ marginBottom: '1.5rem' }}>
-            {success}
-          </div>
-        )}
-
-        {/* Invite Form */}
-        {showInviteForm && (
-          <div className="card" style={{ marginBottom: '2rem', backgroundColor: '#f9f9f9', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0 }}>Send New Invitations</h2>
+          <header style={styles.header}>
+            <div style={styles.headerInfo}>
+              <h1 style={styles.title}>Invite Members</h1>
+              <p style={styles.subtitle}>{organization.name}</p>
+            </div>
+            {!showInviteForm && (
               <button
                 onClick={() => {
-                  setShowInviteForm(false);
-                  setInviteEmails('');
-                  setError('');
+                  setShowInviteForm(true);
+                  setSuccess('');
                 }}
-                className="btn btn-secondary btn-small"
-                title="Close"
+                style={styles.buttonPrimary}
+                className="invite-btn-primary"
               >
-                ✕ Close
+                Send New Invitations
+              </button>
+            )}
+          </header>
+
+          {error && <div style={styles.error}>{error}</div>}
+          {success && <div style={styles.success}>{success}</div>}
+
+          {/* Invite Form */}
+          {showInviteForm && (
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h2 style={styles.cardTitle}>Send New Invitations</h2>
+                <button
+                  onClick={() => {
+                    setShowInviteForm(false);
+                    setInviteEmails('');
+                    setError('');
+                  }}
+                  style={styles.buttonSecondary}
+                  className="invite-btn-secondary"
+                >
+                  Close
+                </button>
+              </div>
+              <p style={styles.cardDescription}>
+                Invite team members to join this organization. They will receive an email with an invitation link.
+              </p>
+
+              <div style={styles.formGroup}>
+                <label htmlFor="invite-emails" style={styles.label}>
+                  Email Addresses (comma-separated)
+                </label>
+                <textarea
+                  id="invite-emails"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  placeholder="user1@example.com, user2@example.com"
+                  rows={4}
+                  disabled={inviting}
+                  style={styles.textarea}
+                  className="invite-input"
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label htmlFor="role-select" style={styles.label}>
+                  Role
+                </label>
+                <select
+                  id="role-select"
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'member')}
+                  disabled={inviting}
+                  style={styles.select}
+                  className="invite-input"
+                >
+                  <option value="member">Member - Can create conversations and view organization content</option>
+                  <option value="admin">Admin - Can manage members and organization settings</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleInviteUsers}
+                style={{
+                  ...styles.buttonPrimary,
+                  ...(inviting || !inviteEmails.trim() ? styles.buttonDisabled : {}),
+                }}
+                className="invite-btn-primary"
+                disabled={inviting || !inviteEmails.trim()}
+              >
+                {inviting ? 'Sending Invitations...' : 'Send Invitations'}
               </button>
             </div>
-            <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              Invite team members to join this organization. They will receive an email with an invitation link.
-            </p>
+          )}
 
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label htmlFor="invite-emails" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                Email Addresses (comma-separated):
-              </label>
-              <textarea
-                id="invite-emails"
-                value={inviteEmails}
-                onChange={(e) => setInviteEmails(e.target.value)}
-                placeholder="user1@example.com, user2@example.com"
-                rows={4}
-                disabled={inviting}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  fontSize: '0.9rem',
-                  fontFamily: 'inherit',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label htmlFor="role-select" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                Role:
-              </label>
-              <select
-                id="role-select"
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'member')}
-                disabled={inviting}
-                style={{
-                  padding: '0.75rem',
-                  fontSize: '0.9rem',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  backgroundColor: 'white',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="member">Member - Can create conversations and view organization content</option>
-                <option value="admin">Admin - Can manage members and organization settings</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleInviteUsers}
-              className="btn btn-primary"
-              disabled={inviting || !inviteEmails.trim()}
-            >
-              {inviting ? 'Sending Invitations...' : 'Send Invitations'}
-            </button>
-          </div>
-        )}
-
-        {/* Invitations Table */}
-        {invitations && invitations.total_invitations > 0 ? (
-          <div>
-            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>
-                Sent Invitations ({invitations.accepted_invitations} accepted, {invitations.pending_invitations} pending)
-              </h2>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f7fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.9rem', color: '#4a5568' }}>
-                      Email
-                    </th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.9rem', color: '#4a5568' }}>
-                      Role
-                    </th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.9rem', color: '#4a5568' }}>
-                      Status
-                    </th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.9rem', color: '#4a5568' }}>
-                      Time
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invitations.invitations.map((inv, index) => {
-                    const statusMessage = inv.is_accepted ? '✓ Accepted' : 'Pending';
-                    const statusClass = inv.is_accepted ? 'accepted' : 'pending';
-
-                    return (
-                      <tr
-                        key={inv.id}
-                        style={{
-                          borderBottom: index < invitations.invitations.length - 1 ? '1px solid #e2e8f0' : 'none',
-                          backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb'
-                        }}
-                      >
-                        <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}>
-                          <span style={{ fontWeight: 500 }}>{inv.email}</span>
+          {/* Invitations Table */}
+          {invitations && invitations.total_invitations > 0 ? (
+            <div style={styles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
+                <h2 style={styles.sectionTitle}>Sent Invitations</h2>
+                <span style={styles.statText}>
+                  {invitations.accepted_invitations} accepted, {invitations.pending_invitations} pending
+                </span>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.tableHeader}>
+                      <th style={styles.th}>Email</th>
+                      <th style={styles.th}>Role</th>
+                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invitations.invitations.map((inv) => (
+                      <tr key={inv.id} className="invite-table-row">
+                        <td style={{ ...styles.td, fontWeight: typography.fontWeight.medium }}>
+                          {inv.email}
                         </td>
-                        <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}>
-                          <span
-                            className={inv.role === 'admin' ? 'status-badge status-active' : 'status-badge status-draft'}
-                            style={{ fontSize: '0.8rem' }}
-                          >
+                        <td style={styles.td}>
+                          <span style={{
+                            ...styles.badge,
+                            ...(inv.role === 'admin' ? styles.badgeAdmin : styles.badgeMember),
+                          }}>
                             {inv.role === 'admin' ? 'Admin' : 'Member'}
                           </span>
                         </td>
-                        <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}>
-                          <span
-                            style={{
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 500,
-                              display: 'inline-block',
-                              backgroundColor: statusClass === 'accepted' ? '#c6f6d5' : '#fed7d7',
-                              color: statusClass === 'accepted' ? '#22543d' : '#9b2c2c'
-                            }}
-                          >
-                            {statusMessage}
+                        <td style={styles.td}>
+                          <span style={{
+                            ...styles.badge,
+                            ...(inv.is_accepted ? styles.badgeAccepted : styles.badgePending),
+                          }}>
+                            {inv.is_accepted ? 'Accepted' : 'Pending'}
                           </span>
                         </td>
-                        <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem', color: '#718096' }}>
+                        <td style={{ ...styles.td, color: colors.primary[500] }}>
                           {inv.is_accepted && inv.accepted_at
                             ? `Accepted ${formatRelativeTime(inv.accepted_at)}`
                             : `Invited ${formatRelativeTime(inv.created_at)}`}
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="card" style={{ backgroundColor: '#f9f9f9', textAlign: 'center', padding: '2rem' }}>
-            <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>
-              No invitations sent yet. Use the form above to invite team members.
-            </p>
-          </div>
-        )}
+          ) : (
+            <div style={styles.card}>
+              <div style={styles.emptyState}>
+                No invitations sent yet. Use the form above to invite team members.
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
-
-export default function InviteMembersPage() {
-  const [isNewDesign, setIsNewDesign] = useState(true);
-
-  return (
-    <>
-      <DesignToggle
-        isNewDesign={isNewDesign}
-        onToggle={() => setIsNewDesign(!isNewDesign)}
-      />
-      {isNewDesign ? <InviteMembersPageNew /> : <InviteMembersPageOld />}
     </>
   );
 }
