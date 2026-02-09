@@ -261,7 +261,7 @@ export default function OrganizationsPage() {
             </p>
           </div>
           <Link to="/organizations/new" style={styles.primaryButton} className="orgs-primary-btn">
-            Create Organization
+            + New Organization
           </Link>
         </header>
 
@@ -274,7 +274,7 @@ export default function OrganizationsPage() {
               Create your first organization to start collaborating with your team
             </p>
             <Link to="/organizations/new" style={styles.primaryButton} className="orgs-primary-btn">
-              Create Organization
+              + New Organization
             </Link>
           </div>
         ) : (

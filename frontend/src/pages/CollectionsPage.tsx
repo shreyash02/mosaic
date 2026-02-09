@@ -345,7 +345,7 @@ export default function CollectionsPage() {
             onClick={() => setShowCreateModal(true)}
             className="collections-primary-btn"
           >
-            Create Collection
+            + New Collection
           </button>
         </header>
 
@@ -367,7 +367,7 @@ export default function CollectionsPage() {
               onClick={() => setShowCreateModal(true)}
               className="collections-primary-btn"
             >
-              Create Collection
+              + New Collection
             </button>
           </div>
         ) : (

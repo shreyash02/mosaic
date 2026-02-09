@@ -235,7 +235,7 @@ export default function TemplatesPage() {
           </p>
         </div>
         <button onClick={handleCreateTemplate} style={s.buttonPrimary}>
-          + Create Template
+          + New Template
         </button>
       </header>
 

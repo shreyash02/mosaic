@@ -1265,7 +1265,7 @@ export default function ConversationsPage() {
         <div className="conversations-header-actions">
           {activeTab === 'owned' && (
             <Link to="/conversations/new" style={s.buttonPrimary}>
-              + New conversation
+              + New Conversation
             </Link>
           )}
         </div>
@@ -1504,7 +1504,7 @@ export default function ConversationsPage() {
               <h3 style={s.emptyTitle}>No conversations in {currentWorkspaceName}</h3>
               <p style={s.emptyText}>Create your first conversation in this workspace</p>
               <Link to="/conversations/new" style={s.buttonPrimary}>
-                Create Conversation
+                + New Conversation
               </Link>
             </>
           ) : (
