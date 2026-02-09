@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation, type AnalysisInterval } from '../types';
 import { IntentType, INTENT_PRESETS } from '../types/intentPresets';
 
 export interface ConversationFormState {
@@ -36,6 +36,12 @@ export interface ConversationFormState {
   recurrencePattern: RecurrencePattern;
   nextInstanceDate: string;
   recurrenceEndDate: string;
+
+  // Long-running feedback (continuous conversations)
+  isLongRunning: boolean;
+  analysisInterval: AnalysisInterval;
+  analysisScheduleDay: number;  // 0-6 for weekly (0=Sunday), 1-28 for monthly
+  analysisScheduleTime: string; // HH:MM format
 
   // Step 5: Organization & Invites
   addToSeries: boolean;
@@ -98,6 +104,12 @@ const getDefaultFormState = (): ConversationFormState => ({
   recurrencePattern: RecurrencePattern.WEEKLY,
   nextInstanceDate: '',
   recurrenceEndDate: '',
+
+  // Long-running feedback
+  isLongRunning: false,
+  analysisInterval: 'weekly',
+  analysisScheduleDay: 1, // Monday for weekly, 1st for monthly
+  analysisScheduleTime: '09:00',
 
   // Organization
   addToSeries: false,
@@ -211,6 +223,15 @@ export function ConversationFormProvider({
       recurrencePattern: conversation.recurrence_pattern || RecurrencePattern.WEEKLY,
       nextInstanceDate: conversation.next_instance_date ? conversation.next_instance_date.slice(0, 16) : '',
       recurrenceEndDate: conversation.recurrence_end_date ? conversation.recurrence_end_date.slice(0, 16) : '',
+      isLongRunning: !!conversation.is_continuous,
+      analysisInterval: conversation.analysis_interval || 'weekly',
+      // Parse next_analysis_at to extract day and time if available
+      analysisScheduleDay: conversation.next_analysis_at
+        ? new Date(conversation.next_analysis_at).getDay()
+        : 1,
+      analysisScheduleTime: conversation.next_analysis_at
+        ? new Date(conversation.next_analysis_at).toTimeString().slice(0, 5)
+        : '09:00',
       addToSeries: !!conversation.series_id || !!conversation.template_series_id,
       selectedSeriesId: conversation.series_id || conversation.template_series_id || '',
       createTemplate: conversation.is_template,

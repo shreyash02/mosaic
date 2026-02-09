@@ -29,6 +29,7 @@ import ConversationDetailPage from './pages/ConversationDetailPage';
 import ManageInvitationsPage from './pages/ManageInvitationsPage';
 import JoinPage from './pages/JoinPage';
 import AnalysisPage from './pages/AnalysisPage';
+import PeriodicAnalysisPage from './pages/PeriodicAnalysisPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AdminPortalPage from './pages/AdminPortalPage';
@@ -196,6 +197,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AnalysisPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations/:id/analysis/:periodLabel"
+              element={
+                <ProtectedRoute>
+                  <PeriodicAnalysisPage />
                 </ProtectedRoute>
               }
             />

@@ -107,7 +107,14 @@ export default function ReviewStep() {
         }
       }
 
-      // Calculate total minutes
+      // Validate long-running feedback
+      if (formState.isLongRunning && !formState.analysisInterval) {
+        setError('Analysis interval is required for long-running feedback');
+        setLoading(false);
+        return;
+      }
+
+      // Calculate total minutes (only for limited time)
       const totalMinutes = formState.durationHours * 60 + formState.durationMinutes;
 
       // Get user's timezone
@@ -130,7 +137,8 @@ export default function ReviewStep() {
         invite_only: formState.inviteOnly,
         timezone: userTimezone,
         questions: formState.questions,
-        ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
+        // Duration only applies to limited-time conversations
+        ...(!formState.isLongRunning && totalMinutes > 0 && { duration_minutes: totalMinutes }),
         ...(formState.scheduleActivation && formState.scheduledActivateAt && {
           scheduled_activate_at: formState.scheduledActivateAt + ':00'
         }),
@@ -149,6 +157,12 @@ export default function ReviewStep() {
           recurrence_pattern: formState.recurrencePattern,
           ...(formState.nextInstanceDate && { next_instance_date: formState.nextInstanceDate + ':00' }),
           ...(formState.recurrenceEndDate && { recurrence_end_date: formState.recurrenceEndDate + ':00' }),
+        }),
+        // Long-running feedback (continuous conversations)
+        ...(formState.isLongRunning && {
+          is_continuous: true,
+          analysis_interval: formState.analysisInterval,
+          analysis_timezone: userTimezone,
         }),
       };
 
@@ -227,12 +241,20 @@ export default function ReviewStep() {
             <p style={{ margin: '0.5rem 0' }}>
               <strong>Questions:</strong> {formState.questions.length} question{formState.questions.length !== 1 ? 's' : ''}
             </p>
-            {(formState.durationHours > 0 || formState.durationMinutes > 0) && (
+            {formState.isLongRunning ? (
               <p style={{ margin: '0.5rem 0' }}>
-                <strong>Duration:</strong> {formState.durationHours > 0 && `${formState.durationHours} hour${formState.durationHours !== 1 ? 's' : ''}`}
-                {formState.durationHours > 0 && formState.durationMinutes > 0 && ', '}
-                {formState.durationMinutes > 0 && `${formState.durationMinutes} minute${formState.durationMinutes !== 1 ? 's' : ''}`}
+                <strong>Mode:</strong> Long-running feedback ({formState.analysisInterval} analysis)
               </p>
+            ) : (
+              <>
+                {(formState.durationHours > 0 || formState.durationMinutes > 0) && (
+                  <p style={{ margin: '0.5rem 0' }}>
+                    <strong>Duration:</strong> {formState.durationHours > 0 && `${formState.durationHours} hour${formState.durationHours !== 1 ? 's' : ''}`}
+                    {formState.durationHours > 0 && formState.durationMinutes > 0 && ', '}
+                    {formState.durationMinutes > 0 && `${formState.durationMinutes} minute${formState.durationMinutes !== 1 ? 's' : ''}`}
+                  </p>
+                )}
+              </>
             )}
             {formState.scheduleActivation && formState.scheduledActivateAt && (
               <p style={{ margin: '0.5rem 0' }}>

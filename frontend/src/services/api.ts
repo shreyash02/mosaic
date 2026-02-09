@@ -17,6 +17,9 @@ import type {
   DraftSaveResponse,
   DraftLoadResponse,
   Analysis,
+  PeriodicAnalysis,
+  PeriodicAnalysisList,
+  TriggerPeriodicAnalysisRequest,
   SuccessResponse,
   CodeValidation,
   InviteUsersResponse,
@@ -337,6 +340,32 @@ class ApiService {
 
   async getAnalysis(conversationId: string): Promise<Analysis> {
     const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analysis`);
+    return response.data;
+  }
+
+  // Periodic analysis endpoints (for continuous conversations)
+  async listPeriodicAnalyses(conversationId: string): Promise<PeriodicAnalysisList> {
+    const response = await this.client.get<PeriodicAnalysisList>(
+      `/conversations/${conversationId}/periodic-analyses`
+    );
+    return response.data;
+  }
+
+  async getPeriodicAnalysis(conversationId: string, periodLabel: string): Promise<PeriodicAnalysis> {
+    const response = await this.client.get<PeriodicAnalysis>(
+      `/conversations/${conversationId}/periodic-analyses/${encodeURIComponent(periodLabel)}`
+    );
+    return response.data;
+  }
+
+  async triggerPeriodicAnalysis(
+    conversationId: string,
+    request?: TriggerPeriodicAnalysisRequest
+  ): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>(
+      `/conversations/${conversationId}/periodic-analyses/trigger`,
+      request || {}
+    );
     return response.data;
   }
 

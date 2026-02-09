@@ -1,13 +1,133 @@
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
-import { RecurrencePattern } from '../../types';
+import { RecurrencePattern, type AnalysisInterval } from '../../types';
 import { formatDateForDateTimeLocal } from '../../utils/formatting';
+import { colors, typography, spacing, borders } from '../../styles';
+
+const DAYS_OF_WEEK = [
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+];
+
+const TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
+  const hour = i.toString().padStart(2, '0');
+  return { value: `${hour}:00`, label: `${hour}:00` };
+});
+
+const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
+  value: i + 1,
+  label: `${i + 1}${getOrdinalSuffix(i + 1)}`,
+}));
+
+function getOrdinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+const s = {
+  radioGroup: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[4],
+    marginBottom: spacing[6],
+  },
+  radioOption: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    padding: spacing[4],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.lg,
+    cursor: 'pointer',
+    transition: 'border-color 200ms, background-color 200ms',
+  },
+  radioOptionSelected: {
+    borderColor: colors.primary[500],
+    backgroundColor: colors.primary[50],
+  },
+  radioHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  radioInput: {
+    width: '20px',
+    height: '20px',
+    cursor: 'pointer',
+  },
+  radioLabel: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+  },
+  radioDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+    marginTop: spacing[1],
+    marginLeft: '32px',
+  },
+  radioContent: {
+    marginLeft: '32px',
+    marginTop: spacing[4],
+    paddingTop: spacing[4],
+    borderTop: `1px solid ${colors.primary[200]}`,
+  },
+  scheduleGrid: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: spacing[3],
+    alignItems: 'flex-end',
+  },
+  scheduleField: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[1],
+  },
+  scheduleLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
+  },
+  scheduleSelect: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${colors.primary[300]}`,
+    fontSize: typography.fontSize.sm,
+    minWidth: '120px',
+  },
+  infoBox: {
+    background: colors.primary[100],
+    border: `1px solid ${colors.primary[300]}`,
+    borderRadius: borders.radius.md,
+    padding: spacing[4],
+    marginTop: spacing[4],
+  },
+  infoText: {
+    margin: 0,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[700],
+  },
+};
 
 export default function TimingStep() {
   const navigate = useNavigate();
   const { formState, updateFormState } = useConversationForm();
 
   const isTemplate = formState.createTemplate;
+
+  // When switching to long-running, disable recurring (mutually exclusive for templates)
+  const handleDurationModeChange = (isLongRunning: boolean) => {
+    updateFormState({
+      isLongRunning,
+      // Clear recurring when switching to long-running
+      ...(isLongRunning && { enableRecurring: false }),
+    });
+  };
 
   return (
     <div className="conversation-form">
@@ -17,96 +137,224 @@ export default function TimingStep() {
           Configure when and how long this conversation will be available
         </p>
 
-        {/* Schedule activation only applies to conversations, not templates */}
-        {!isTemplate && (
-          <>
-            <div className="form-group checkbox-group" style={{ marginTop: '0' }}>
-              <label htmlFor="scheduleActivation">
-                <input
-                  id="scheduleActivation"
-                  type="checkbox"
-                  checked={formState.scheduleActivation}
-                  onChange={(e) => {
-                    updateFormState({ scheduleActivation: e.target.checked });
-                    if (e.target.checked) {
-                      const defaultTime = new Date();
-                      updateFormState({ scheduledActivateAt: formatDateForDateTimeLocal(defaultTime) });
-                    } else {
-                      updateFormState({ scheduledActivateAt: '' });
-                    }
-                  }}
-                />
-                <span>Schedule activation for a future date and time</span>
-              </label>
-              <p className="form-help-text">
-                If enabled, the conversation will be automatically activated at the specified time.
-                Otherwise, you can activate it manually after creation.
-              </p>
-            </div>
-
-            {formState.scheduleActivation && (
-              <div className="form-group">
-                <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
-                <input
-                  id="scheduledActivateAt"
-                  type="datetime-local"
-                  value={formState.scheduledActivateAt}
-                  onChange={(e) => updateFormState({ scheduledActivateAt: e.target.value })}
-                  min={formatDateForDateTimeLocal(new Date())}
-                  required={formState.scheduleActivation}
-                />
-                <p className="form-help-text">
-                  The conversation will be automatically activated at this time.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-
+        {/* Collection Duration - Radio toggle */}
         <div className="form-group">
-          <label htmlFor="durationHours">Response Window (optional)</label>
-          <p className="form-help-text" style={{ marginBottom: '10px' }}>
-            How long should this conversation remain open for responses after activation?
-          </p>
-          <div className="duration-inputs">
-            <div className="duration-input-group">
-              <input
-                id="durationHours"
-                type="number"
-                min="0"
-                max="48"
-                value={formState.durationHours}
-                onChange={(e) => {
-                  const value = Math.max(0, Math.min(48, parseInt(e.target.value) || 0));
-                  updateFormState({ durationHours: value });
-                }}
-                placeholder="0"
-              />
-              <label htmlFor="durationHours" className="duration-label">Hours</label>
+          <label style={{ marginBottom: spacing[3], display: 'block' }}>Collection Duration</label>
+
+          <div style={s.radioGroup}>
+            {/* Limited Time Option */}
+            <div
+              style={{
+                ...s.radioOption,
+                ...(formState.isLongRunning ? {} : s.radioOptionSelected),
+              }}
+              onClick={() => handleDurationModeChange(false)}
+            >
+              <div style={s.radioHeader}>
+                <input
+                  type="radio"
+                  id="limitedTime"
+                  name="durationMode"
+                  checked={!formState.isLongRunning}
+                  onChange={() => handleDurationModeChange(false)}
+                  style={s.radioInput}
+                />
+                <label htmlFor="limitedTime" style={s.radioLabel}>Limited time</label>
+              </div>
+              <p style={s.radioDescription}>
+                Conversation closes automatically after a set duration
+              </p>
+
+              {!formState.isLongRunning && (
+                <div style={s.radioContent}>
+                  {/* Duration inputs */}
+                  <div className="form-group" style={{ marginBottom: spacing[4] }}>
+                    <label style={{ ...s.scheduleLabel, marginBottom: spacing[2] }}>
+                      Response Window
+                    </label>
+                    <div className="duration-inputs">
+                      <div className="duration-input-group">
+                        <input
+                          id="durationHours"
+                          type="number"
+                          min="0"
+                          max="168"
+                          value={formState.durationHours}
+                          onChange={(e) => {
+                            const value = Math.max(0, Math.min(168, parseInt(e.target.value) || 0));
+                            updateFormState({ durationHours: value });
+                          }}
+                          placeholder="0"
+                        />
+                        <label htmlFor="durationHours" className="duration-label">Hours</label>
+                      </div>
+                      <div className="duration-input-group">
+                        <input
+                          id="durationMinutes"
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={formState.durationMinutes}
+                          onChange={(e) => {
+                            const value = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                            updateFormState({ durationMinutes: value });
+                          }}
+                          placeholder="0"
+                        />
+                        <label htmlFor="durationMinutes" className="duration-label">Minutes</label>
+                      </div>
+                    </div>
+                    <p className="form-help-text" style={{ marginTop: spacing[2] }}>
+                      Maximum duration is 168 hours (1 week). Leave empty or set to 0 for no auto-close.
+                    </p>
+                  </div>
+
+                  {/* Schedule activation - only for conversations, not templates */}
+                  {!isTemplate && (
+                    <div className="form-group checkbox-group" style={{ marginTop: spacing[4], marginBottom: 0 }}>
+                      <label htmlFor="scheduleActivation">
+                        <input
+                          id="scheduleActivation"
+                          type="checkbox"
+                          checked={formState.scheduleActivation}
+                          onChange={(e) => {
+                            updateFormState({ scheduleActivation: e.target.checked });
+                            if (e.target.checked) {
+                              const defaultTime = new Date();
+                              updateFormState({ scheduledActivateAt: formatDateForDateTimeLocal(defaultTime) });
+                            } else {
+                              updateFormState({ scheduledActivateAt: '' });
+                            }
+                          }}
+                        />
+                        <span>Schedule activation for a future date and time</span>
+                      </label>
+
+                      {formState.scheduleActivation && (
+                        <div style={{ marginTop: spacing[3] }}>
+                          <input
+                            id="scheduledActivateAt"
+                            type="datetime-local"
+                            value={formState.scheduledActivateAt}
+                            onChange={(e) => updateFormState({ scheduledActivateAt: e.target.value })}
+                            min={formatDateForDateTimeLocal(new Date())}
+                            required={formState.scheduleActivation}
+                            style={{ width: '100%', maxWidth: '280px' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="duration-input-group">
-              <input
-                id="durationMinutes"
-                type="number"
-                min="0"
-                max="59"
-                value={formState.durationMinutes}
-                onChange={(e) => {
-                  const value = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
-                  updateFormState({ durationMinutes: value });
-                }}
-                placeholder="0"
-              />
-              <label htmlFor="durationMinutes" className="duration-label">Minutes</label>
+
+            {/* Long-running Option */}
+            <div
+              style={{
+                ...s.radioOption,
+                ...(formState.isLongRunning ? s.radioOptionSelected : {}),
+              }}
+              onClick={() => handleDurationModeChange(true)}
+            >
+              <div style={s.radioHeader}>
+                <input
+                  type="radio"
+                  id="longRunning"
+                  name="durationMode"
+                  checked={formState.isLongRunning}
+                  onChange={() => handleDurationModeChange(true)}
+                  style={s.radioInput}
+                />
+                <label htmlFor="longRunning" style={s.radioLabel}>Long-running feedback</label>
+              </div>
+              <p style={s.radioDescription}>
+                Stays open indefinitely with periodic analysis at scheduled intervals
+              </p>
+
+              {formState.isLongRunning && (
+                <div style={s.radioContent}>
+                  {/* Analysis interval */}
+                  <div style={s.scheduleGrid}>
+                    <div style={s.scheduleField}>
+                      <label htmlFor="analysisInterval" style={s.scheduleLabel}>
+                        Run analysis
+                      </label>
+                      <select
+                        id="analysisInterval"
+                        value={formState.analysisInterval}
+                        onChange={(e) => {
+                          const interval = e.target.value as AnalysisInterval;
+                          updateFormState({
+                            analysisInterval: interval,
+                            // Reset day when changing interval
+                            analysisScheduleDay: interval === 'monthly' ? 1 : 1, // Monday for weekly, 1st for monthly
+                          });
+                        }}
+                        style={s.scheduleSelect}
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Every 2 weeks</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    </div>
+
+                    {/* Day selector - only for weekly/biweekly/monthly */}
+                    {formState.analysisInterval !== 'daily' && (
+                      <div style={s.scheduleField}>
+                        <label htmlFor="analysisScheduleDay" style={s.scheduleLabel}>
+                          {formState.analysisInterval === 'monthly' ? 'On day' : 'On'}
+                        </label>
+                        <select
+                          id="analysisScheduleDay"
+                          value={formState.analysisScheduleDay}
+                          onChange={(e) => updateFormState({ analysisScheduleDay: parseInt(e.target.value) })}
+                          style={s.scheduleSelect}
+                        >
+                          {formState.analysisInterval === 'monthly'
+                            ? DAYS_OF_MONTH.map((d) => (
+                                <option key={d.value} value={d.value}>{d.label}</option>
+                              ))
+                            : DAYS_OF_WEEK.map((d) => (
+                                <option key={d.value} value={d.value}>{d.label}</option>
+                              ))
+                          }
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Time selector */}
+                    <div style={s.scheduleField}>
+                      <label htmlFor="analysisScheduleTime" style={s.scheduleLabel}>
+                        At
+                      </label>
+                      <select
+                        id="analysisScheduleTime"
+                        value={formState.analysisScheduleTime}
+                        onChange={(e) => updateFormState({ analysisScheduleTime: e.target.value })}
+                        style={s.scheduleSelect}
+                      >
+                        {TIME_OPTIONS.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={s.infoBox}>
+                    <p style={s.infoText}>
+                      The conversation will stay open until you manually close it. Analysis will run automatically at the scheduled time, summarizing all responses since the last analysis.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <p className="form-help-text">
-            Maximum duration is 48 hours. Leave empty or set to 0 for no auto-close.
-          </p>
         </div>
 
-        {/* Recurring Schedule - Only for templates */}
-        {isTemplate && (
+        {/* Recurring Schedule - Only for templates and when NOT long-running */}
+        {isTemplate && !formState.isLongRunning && (
           <div className="form-group">
             <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
               <input
@@ -124,7 +372,7 @@ export default function TimingStep() {
             </p>
 
             {formState.enableRecurring && (
-              <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
+              <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: `3px solid ${colors.primary[500]}` }}>
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label htmlFor="recurrencePattern">Frequency</label>
                   <select
@@ -170,14 +418,8 @@ export default function TimingStep() {
                   </p>
                 </div>
 
-                <div style={{
-                  background: '#EBF8FF',
-                  border: '1px solid #90CDF4',
-                  borderRadius: '6px',
-                  padding: '1rem',
-                  marginTop: '1rem'
-                }}>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#2C5282' }}>
+                <div style={s.infoBox}>
+                  <p style={s.infoText}>
                     <strong>Note:</strong> New instances will be created automatically with the same questions, settings, and invitations.
                   </p>
                 </div>

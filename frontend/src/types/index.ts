@@ -53,6 +53,9 @@ export enum RecurrencePattern {
   QUARTERLY = 'quarterly',
 }
 
+// Continuous conversation analysis interval
+export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+
 export type QuestionType = 'text' | 'rating' | 'single_choice' | 'multiple_choice';
 
 export interface PollChoice {
@@ -144,6 +147,11 @@ export interface Conversation {
   recurrence_pattern?: RecurrencePattern;
   next_instance_date?: string;
   recurrence_end_date?: string;
+  // Continuous conversation fields
+  is_continuous?: boolean;
+  analysis_interval?: AnalysisInterval;
+  next_analysis_at?: string;
+  analysis_timezone?: string;
 }
 
 export interface ConversationCreate {
@@ -174,6 +182,10 @@ export interface ConversationCreate {
   recurrence_pattern?: RecurrencePattern;
   next_instance_date?: string;
   recurrence_end_date?: string;
+  // Continuous conversation fields
+  is_continuous?: boolean;
+  analysis_interval?: AnalysisInterval;
+  analysis_timezone?: string;
 }
 
 export interface ConversationListItem {
@@ -196,6 +208,10 @@ export interface ConversationListItem {
   series_id?: string;
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
+  // Continuous conversation fields
+  is_continuous?: boolean;
+  analysis_interval?: AnalysisInterval;
+  next_analysis_at?: string;
 }
 
 export interface CreateFollowUpRequest {
@@ -359,6 +375,32 @@ export interface Analysis {
   unique_participants?: number;
   conversation_activated_at?: string;
   conversation_closed_at?: string;
+}
+
+// Periodic analysis for continuous conversations
+export interface PeriodicAnalysis {
+  id: string;
+  conversation_id: string;
+  period_label: string;
+  period_type: AnalysisInterval;
+  period_start: string;
+  period_end: string;
+  overall_summary?: string;
+  themes?: Theme[];
+  surprising_insights?: SurprisingInsight[];
+  question_analyses?: QuestionAnalysis[];
+  total_responses_analyzed?: number;
+  created_at: string;
+}
+
+export interface PeriodicAnalysisList {
+  items: PeriodicAnalysis[];
+  total: number;
+}
+
+export interface TriggerPeriodicAnalysisRequest {
+  period_start?: string;
+  period_end?: string;
 }
 
 // API Response types
