@@ -117,10 +117,10 @@ export default function ConversationFormLayout() {
 
         {/* Form Container */}
         <div style={{
-          backgroundColor: colors.primary[50],
-          borderRadius: borders.radius.xl,
-          border: `${borders.width.thin} solid ${colors.primary[300]}`,
-          padding: spacing[8],
+          backgroundColor: formState.createTemplate ? 'transparent' : colors.primary[50],
+          borderRadius: formState.createTemplate ? 0 : borders.radius.xl,
+          border: formState.createTemplate ? 'none' : `${borders.width.thin} solid ${colors.primary[300]}`,
+          padding: formState.createTemplate ? 0 : spacing[8],
         }}>
           {/* Mode Toggle (only shown in create mode, not edit) */}
           {!formState.isEditMode && (

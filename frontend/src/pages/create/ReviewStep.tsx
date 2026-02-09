@@ -199,9 +199,9 @@ export default function ReviewStep() {
       {error && <div className="error-message">{error}</div>}
 
       <div className="form-section">
-        <h2>Review & Launch</h2>
+        <h2>{formState.createTemplate ? 'Review' : 'Review & Launch'}</h2>
         <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
-          Review your conversation and configure final options
+          Review your {formState.createTemplate ? 'template' : 'conversation'} and configure final options
         </p>
 
         {/* Summary */}
