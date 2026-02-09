@@ -1233,7 +1233,7 @@ export default function ConversationsPage() {
             order: 1;
           }
           .conversations-toolbar .view-toggle {
-            order: 2;
+            display: none !important;
           }
           .conversations-toolbar .filter-container {
             order: 3;
