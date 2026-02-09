@@ -51,8 +51,11 @@ export default function ConversationFormLayout() {
   );
 
   const handleBack = () => {
+    // If editing a template, go back to template page
+    if (formState.isEditMode && formState.createTemplate && formState.conversationId) {
+      navigate(`/templates/${formState.conversationId}`);
     // If creating from template, go back to template page
-    if (formState.parentConversation?.is_template && formState.parentConversationId) {
+    } else if (formState.parentConversation?.is_template && formState.parentConversationId) {
       navigate(`/templates/${formState.parentConversationId}`);
     } else {
       navigate('/dashboard');
