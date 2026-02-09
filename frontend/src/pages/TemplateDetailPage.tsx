@@ -497,6 +497,26 @@ export default function TemplateDetailPage() {
     );
   }
 
+  // Validation for publish readiness
+  const getPublishBlockers = (): string[] => {
+    if (!template) return [];
+    const blockers: string[] = [];
+
+    if (!template.questions || template.questions.length === 0) {
+      blockers.push('Add at least one question');
+    } else {
+      const emptyQuestions = template.questions.filter(q => !q.question_text?.trim());
+      if (emptyQuestions.length > 0) {
+        blockers.push('All questions must have text');
+      }
+    }
+
+    return blockers;
+  };
+
+  const publishBlockers = getPublishBlockers();
+  const canPublish = publishBlockers.length === 0;
+
   if (error && template) {
     return (
       <>
@@ -553,17 +573,25 @@ export default function TemplateDetailPage() {
             </div>
             <div style={styles.headerActions}>
               {template.state === ConversationState.DRAFT ? (
-                <button
-                  onClick={handlePublish}
-                  style={{
-                    ...styles.buttonPrimary,
-                    ...(actionLoading ? styles.buttonDisabled : {}),
-                  }}
-                  className="template-btn-primary"
-                  disabled={actionLoading}
-                >
-                  Publish Template
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: spacing[1] }}>
+                  <button
+                    onClick={handlePublish}
+                    style={{
+                      ...styles.buttonPrimary,
+                      ...((actionLoading || !canPublish) ? styles.buttonDisabled : {}),
+                    }}
+                    className="template-btn-primary"
+                    disabled={actionLoading || !canPublish}
+                    title={!canPublish ? publishBlockers.join(', ') : undefined}
+                  >
+                    Publish Template
+                  </button>
+                  {!canPublish && (
+                    <span style={{ fontSize: typography.fontSize.xs, color: colors.semantic.error.main }}>
+                      {publishBlockers.join(' • ')}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <button
                   onClick={handleCreateInstanceNow}

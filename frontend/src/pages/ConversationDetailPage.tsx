@@ -891,6 +891,26 @@ export default function ConversationDetailPage() {
     return <div style={s.loading}>Loading conversation...</div>;
   }
 
+  // Validation for activation readiness
+  const getActivationBlockers = (): string[] => {
+    if (!conversation) return [];
+    const blockers: string[] = [];
+
+    if (!conversation.questions || conversation.questions.length === 0) {
+      blockers.push('Add at least one question');
+    } else {
+      const emptyQuestions = conversation.questions.filter(q => !q.question_text?.trim());
+      if (emptyQuestions.length > 0) {
+        blockers.push('All questions must have text');
+      }
+    }
+
+    return blockers;
+  };
+
+  const activationBlockers = getActivationBlockers();
+  const canActivate = activationBlockers.length === 0;
+
   const conversationOrgId = conversation?.organization_id || null;
   const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
 
@@ -973,13 +993,21 @@ export default function ConversationDetailPage() {
       <div style={s.actionsBar} className="convo-detail-actions">
         {conversation.state === ConversationState.DRAFT && (
           <>
-            <button
-              onClick={() => setShowActivateModal(true)}
-              style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
-              disabled={actionLoading}
-            >
-              Activate
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+              <button
+                onClick={() => setShowActivateModal(true)}
+                style={merge(s.buttonPrimary, (actionLoading || !canActivate) && s.buttonDisabled)}
+                disabled={actionLoading || !canActivate}
+                title={!canActivate ? activationBlockers.join(', ') : undefined}
+              >
+                Activate
+              </button>
+              {!canActivate && (
+                <span style={{ fontSize: typography.fontSize.xs, color: colors.semantic.error.main }}>
+                  {activationBlockers.join(' • ')}
+                </span>
+              )}
+            </div>
             <Link to={`/conversations/${id}/edit`} style={s.buttonSecondary}>
               Edit
             </Link>

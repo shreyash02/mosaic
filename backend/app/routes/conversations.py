@@ -1068,6 +1068,21 @@ async def activate_conversation(
             detail="Can only activate conversations in draft state"
         )
 
+    # Validate conversation has at least one question with text
+    questions = db.query(Question).filter(Question.conversation_id == conversation.id).all()
+    if not questions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot activate: Add at least one question"
+        )
+
+    empty_questions = [q for q in questions if not q.question_text or not q.question_text.strip()]
+    if empty_questions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot activate: All questions must have text"
+        )
+
     # Check if scheduling activation for future
     if activate_data.scheduled_activate_at:
         # Convert scheduled time from conversation timezone to UTC for storage
