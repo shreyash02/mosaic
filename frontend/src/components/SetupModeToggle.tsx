@@ -1,4 +1,4 @@
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { TargetIcon, GearIcon } from './icons';
 
 interface SetupModeToggleProps {
@@ -6,6 +6,7 @@ interface SetupModeToggleProps {
   onToggle: () => void;
 }
 
+// Use CSS custom properties for dark mode support
 export default function SetupModeToggle({ isGuidedMode, onToggle }: SetupModeToggleProps) {
   return (
     <div style={{
@@ -13,13 +14,13 @@ export default function SetupModeToggle({ isGuidedMode, onToggle }: SetupModeTog
       justifyContent: 'center',
       marginBottom: spacing[8],
       padding: spacing[4],
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       borderRadius: borders.radius.lg,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid var(--color-primary-300)`,
     }}>
       <div style={{
         display: 'inline-flex',
-        backgroundColor: colors.primary[50],
+        backgroundColor: 'var(--color-primary-50)',
         borderRadius: borders.radius.md,
         padding: spacing[1],
         boxShadow: shadows.sm,
@@ -31,8 +32,8 @@ export default function SetupModeToggle({ isGuidedMode, onToggle }: SetupModeTog
             padding: `${spacing[2]} ${spacing[6]}`,
             border: 'none',
             borderRadius: borders.radius.sm,
-            backgroundColor: isGuidedMode ? colors.primary[900] : 'transparent',
-            color: isGuidedMode ? colors.primary[50] : colors.primary[600],
+            backgroundColor: isGuidedMode ? 'var(--color-primary-900)' : 'transparent',
+            color: isGuidedMode ? 'var(--color-primary-50)' : 'var(--color-primary-600)',
             fontWeight: isGuidedMode ? typography.fontWeight.semibold : typography.fontWeight.normal,
             cursor: isGuidedMode ? 'default' : 'pointer',
             transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
@@ -52,8 +53,8 @@ export default function SetupModeToggle({ isGuidedMode, onToggle }: SetupModeTog
             padding: `${spacing[2]} ${spacing[6]}`,
             border: 'none',
             borderRadius: borders.radius.sm,
-            backgroundColor: !isGuidedMode ? colors.primary[900] : 'transparent',
-            color: !isGuidedMode ? colors.primary[50] : colors.primary[600],
+            backgroundColor: !isGuidedMode ? 'var(--color-primary-900)' : 'transparent',
+            color: !isGuidedMode ? 'var(--color-primary-50)' : 'var(--color-primary-600)',
             fontWeight: !isGuidedMode ? typography.fontWeight.semibold : typography.fontWeight.normal,
             cursor: !isGuidedMode ? 'default' : 'pointer',
             transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,

@@ -146,7 +146,7 @@ function DragHandle({ attributes, listeners }: { attributes: any; listeners: any
       style={{
         cursor: 'grab',
         padding: '0.25rem',
-        color: '#a0aec0',
+        color: 'var(--color-primary-500)',
         display: 'flex',
         alignItems: 'center',
         marginRight: '0.25rem',
@@ -446,7 +446,7 @@ export default function QuestionsStep() {
                           border: 'none',
                           padding: '0.25rem',
                           cursor: 'pointer',
-                          color: '#718096',
+                          color: 'var(--color-primary-600)',
                           display: 'flex',
                           alignItems: 'center',
                           marginRight: '0.5rem',
@@ -458,11 +458,11 @@ export default function QuestionsStep() {
                         </svg>
                       </button>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                        <span style={{ color: '#718096', fontWeight: 500 }}>Question {index + 1}</span>
-                        <span style={{ color: '#a0aec0' }}>·</span>
-                        <span style={{ color: '#4299e1', fontSize: '0.9rem' }}>{questionType}</span>
-                        <span style={{ color: '#a0aec0' }}>·</span>
-                        <span style={{ color: '#2d3748', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        <span style={{ color: 'var(--color-primary-600)', fontWeight: 500 }}>Question {index + 1}</span>
+                        <span style={{ color: 'var(--color-primary-500)' }}>·</span>
+                        <span style={{ color: 'var(--color-info)', fontSize: '0.9rem' }}>{questionType}</span>
+                        <span style={{ color: 'var(--color-primary-500)' }}>·</span>
+                        <span style={{ color: 'var(--color-primary-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                           {questionText}
                         </span>
                       </div>
@@ -475,7 +475,7 @@ export default function QuestionsStep() {
                           border: 'none',
                           padding: '0.25rem',
                           cursor: 'pointer',
-                          color: '#e53e3e',
+                          color: 'var(--color-error)',
                           display: 'flex',
                           alignItems: 'center',
                           marginLeft: '0.5rem',
@@ -504,7 +504,7 @@ export default function QuestionsStep() {
                                 border: 'none',
                                 padding: '0.25rem',
                                 cursor: 'pointer',
-                                color: '#718096',
+                                color: 'var(--color-primary-600)',
                                 display: 'flex',
                                 alignItems: 'center',
                               }}
@@ -567,7 +567,7 @@ export default function QuestionsStep() {
                               <img
                                 src={question.question_image_url}
                                 alt="Question image"
-                                style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid var(--color-primary-300)' }}
                               />
                               <button
                                 type="button"
@@ -681,7 +681,7 @@ export default function QuestionsStep() {
             justifyContent: 'center',
             gap: '0.5rem',
             padding: '0.75rem',
-            border: '1px dashed #cbd5e0',
+            border: '1px dashed var(--color-primary-400)',
             backgroundColor: 'transparent',
           }}
         >
@@ -698,7 +698,7 @@ export default function QuestionsStep() {
         justifyContent: 'space-between',
         marginTop: '2rem',
         paddingTop: '2rem',
-        borderTop: '1px solid #e2e8f0',
+        borderTop: '1px solid var(--color-primary-300)',
       }}>
         <button
           type="button"

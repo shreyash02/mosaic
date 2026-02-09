@@ -4,7 +4,7 @@ import { useConversationForm } from '../contexts/ConversationFormContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import SetupModeToggle from './SetupModeToggle';
 import { api } from '../services/api';
-import { colors, typography, spacing, borders, transitions } from '../styles/tokens';
+import { typography, spacing, borders, transitions } from '../styles/tokens';
 
 interface Step {
   id: string;
@@ -187,7 +187,7 @@ export default function ConversationFormLayout() {
   return (
     <div className="new-design-wrapper" style={{
       minHeight: '100vh',
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       padding: spacing[8],
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -201,7 +201,7 @@ export default function ConversationFormLayout() {
           <h1 style={{
             fontSize: typography.fontSize['3xl'],
             fontWeight: typography.fontWeight.bold,
-            color: colors.primary[900],
+            color: 'var(--color-primary-900)',
             margin: 0,
           }}>
             {getTitle()}
@@ -215,9 +215,9 @@ export default function ConversationFormLayout() {
                 padding: `${spacing[3]} ${spacing[6]}`,
                 fontSize: typography.fontSize.sm,
                 fontWeight: typography.fontWeight.medium,
-                color: colors.primary[50],
-                backgroundColor: colors.primary[900],
-                border: `${borders.width.thin} solid ${colors.primary[900]}`,
+                color: 'var(--color-primary-50)',
+                backgroundColor: 'var(--color-primary-900)',
+                border: `${borders.width.thin} solid var(--color-primary-900)`,
                 borderRadius: borders.radius.md,
                 cursor: savingDraft ? 'not-allowed' : 'pointer',
                 opacity: savingDraft ? 0.6 : 1,
@@ -233,9 +233,9 @@ export default function ConversationFormLayout() {
                 padding: `${spacing[3]} ${spacing[6]}`,
                 fontSize: typography.fontSize.sm,
                 fontWeight: typography.fontWeight.medium,
-                color: colors.primary[700],
-                backgroundColor: colors.primary[50],
-                border: `${borders.width.thin} solid ${colors.primary[400]}`,
+                color: 'var(--color-primary-700)',
+                backgroundColor: 'var(--color-primary-50)',
+                border: `${borders.width.thin} solid var(--color-primary-400)`,
                 borderRadius: borders.radius.md,
                 cursor: 'pointer',
                 transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
@@ -249,9 +249,9 @@ export default function ConversationFormLayout() {
         {/* Draft Error Message */}
         {draftError && (
           <div style={{
-            backgroundColor: colors.semantic.error.light,
-            border: `1px solid ${colors.semantic.error.main}`,
-            color: colors.semantic.error.text,
+            backgroundColor: 'var(--color-error-light)',
+            border: '1px solid var(--color-error)',
+            color: 'var(--color-error)',
             padding: `${spacing[3]} ${spacing[4]}`,
             borderRadius: borders.radius.md,
             marginBottom: spacing[6],
@@ -267,8 +267,8 @@ export default function ConversationFormLayout() {
             position: 'fixed',
             top: 'calc(var(--header-height) + 16px)',
             right: spacing[6],
-            backgroundColor: colors.primary[900],
-            color: colors.primary[50],
+            backgroundColor: 'var(--color-primary-900)',
+            color: 'var(--color-primary-50)',
             padding: `${spacing[3]} ${spacing[5]}`,
             borderRadius: borders.radius.md,
             fontSize: typography.fontSize.sm,
@@ -289,9 +289,9 @@ export default function ConversationFormLayout() {
 
         {/* Form Container */}
         <div style={{
-          backgroundColor: formState.createTemplate ? 'transparent' : colors.primary[50],
+          backgroundColor: formState.createTemplate ? 'transparent' : 'var(--color-primary-50)',
           borderRadius: formState.createTemplate ? 0 : borders.radius.xl,
-          border: formState.createTemplate ? 'none' : `${borders.width.thin} solid ${colors.primary[300]}`,
+          border: formState.createTemplate ? 'none' : `${borders.width.thin} solid var(--color-primary-300)`,
           padding: formState.createTemplate ? 0 : spacing[8],
         }}>
           {/* Mode Toggle (only shown in create mode, not edit) */}
@@ -321,12 +321,12 @@ export default function ConversationFormLayout() {
                 left: '0',
                 right: '0',
                 height: '2px',
-                backgroundColor: colors.primary[300],
+                backgroundColor: 'var(--color-primary-300)',
                 zIndex: 0,
               }}>
                 <div style={{
                   height: '100%',
-                  backgroundColor: colors.primary[900],
+                  backgroundColor: 'var(--color-primary-900)',
                   width: `${(currentStepIndex / (visibleSteps.length - 1)) * 100}%`,
                   transition: `width ${transitions.duration.slow} ${transitions.timing.ease}`,
                 }} />
@@ -360,14 +360,14 @@ export default function ConversationFormLayout() {
                       width: '32px',
                       height: '32px',
                       borderRadius: borders.radius.full,
-                      backgroundColor: isCompleted || isActive ? colors.primary[900] : colors.primary[50],
-                      border: `2px solid ${isCompleted || isActive ? colors.primary[900] : colors.primary[400]}`,
+                      backgroundColor: isCompleted || isActive ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                      border: `2px solid ${isCompleted || isActive ? 'var(--color-primary-900)' : 'var(--color-primary-400)'}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontWeight: typography.fontWeight.semibold,
                       fontSize: typography.fontSize.sm,
-                      color: isCompleted || isActive ? colors.primary[50] : colors.primary[500],
+                      color: isCompleted || isActive ? 'var(--color-primary-50)' : 'var(--color-primary-500)',
                       transition: `all ${transitions.duration.slow} ${transitions.timing.ease}`,
                       marginBottom: spacing[2],
                     }}>
@@ -382,7 +382,7 @@ export default function ConversationFormLayout() {
                     <div style={{
                       fontSize: typography.fontSize.xs,
                       fontWeight: isActive ? typography.fontWeight.semibold : typography.fontWeight.normal,
-                      color: isActive ? colors.primary[900] : colors.primary[600],
+                      color: isActive ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
                       textAlign: 'center',
                       whiteSpace: 'nowrap',
                     }}>
@@ -414,44 +414,44 @@ export default function ConversationFormLayout() {
           }
         }
         .form-layout-save-draft-btn:hover:not(:disabled) {
-          background-color: ${colors.primary[800]} !important;
-          border-color: ${colors.primary[800]} !important;
+          background-color: var(--color-primary-800) !important;
+          border-color: var(--color-primary-800) !important;
         }
         .form-layout-cancel-btn:hover {
-          background-color: ${colors.primary[100]} !important;
-          border-color: ${colors.primary[500]} !important;
+          background-color: var(--color-primary-100) !important;
+          border-color: var(--color-primary-500) !important;
         }
 
         /* Primary button overrides */
         .new-design-wrapper .btn-primary,
         .new-design-wrapper .btn.btn-primary {
-          background-color: ${colors.primary[900]} !important;
-          border-color: ${colors.primary[900]} !important;
-          color: ${colors.primary[50]} !important;
+          background-color: var(--color-primary-900) !important;
+          border-color: var(--color-primary-900) !important;
+          color: var(--color-primary-50) !important;
         }
         .new-design-wrapper .btn-primary:hover,
         .new-design-wrapper .btn.btn-primary:hover {
-          background-color: ${colors.primary[800]} !important;
-          border-color: ${colors.primary[800]} !important;
+          background-color: var(--color-primary-800) !important;
+          border-color: var(--color-primary-800) !important;
         }
         .new-design-wrapper .btn-primary:disabled,
         .new-design-wrapper .btn.btn-primary:disabled {
-          background-color: ${colors.primary[400]} !important;
-          border-color: ${colors.primary[400]} !important;
+          background-color: var(--color-primary-400) !important;
+          border-color: var(--color-primary-400) !important;
           cursor: not-allowed;
         }
 
         /* Secondary button overrides */
         .new-design-wrapper .btn-secondary,
         .new-design-wrapper .btn.btn-secondary {
-          background-color: ${colors.primary[50]} !important;
-          border: 1px solid ${colors.primary[400]} !important;
-          color: ${colors.primary[700]} !important;
+          background-color: var(--color-primary-50) !important;
+          border: 1px solid var(--color-primary-400) !important;
+          color: var(--color-primary-700) !important;
         }
         .new-design-wrapper .btn-secondary:hover,
         .new-design-wrapper .btn.btn-secondary:hover {
-          background-color: ${colors.primary[100]} !important;
-          border-color: ${colors.primary[500]} !important;
+          background-color: var(--color-primary-100) !important;
+          border-color: var(--color-primary-500) !important;
         }
 
         /* Form elements */
@@ -461,52 +461,52 @@ export default function ConversationFormLayout() {
         .new-design-wrapper input[type="number"],
         .new-design-wrapper textarea,
         .new-design-wrapper select {
-          border: 1px solid ${colors.primary[400]} !important;
+          border: 1px solid var(--color-primary-400) !important;
           border-radius: ${borders.radius.md} !important;
         }
         .new-design-wrapper input:focus,
         .new-design-wrapper textarea:focus,
         .new-design-wrapper select:focus {
-          border-color: ${colors.primary[600]} !important;
+          border-color: var(--color-primary-600) !important;
           outline: none !important;
-          box-shadow: 0 0 0 2px ${colors.primary[200]} !important;
+          box-shadow: 0 0 0 2px var(--color-primary-200) !important;
         }
 
         /* Form section styling */
         .new-design-wrapper .form-section {
-          background-color: ${colors.primary[50]};
+          background-color: var(--color-primary-50);
           border-radius: ${borders.radius.lg};
           padding: ${spacing[6]};
-          border: 1px solid ${colors.primary[200]};
+          border: 1px solid var(--color-primary-200);
         }
 
         /* Labels */
         .new-design-wrapper label {
-          color: ${colors.primary[900]} !important;
+          color: var(--color-primary-900) !important;
           font-weight: ${typography.fontWeight.medium} !important;
         }
 
         /* Help text */
         .new-design-wrapper .form-help-text {
-          color: ${colors.primary[600]} !important;
+          color: var(--color-primary-600) !important;
         }
 
         /* Error message */
         .new-design-wrapper .error-message {
-          background-color: ${colors.semantic.error.light} !important;
-          border: 1px solid ${colors.semantic.error.main} !important;
-          color: ${colors.semantic.error.text} !important;
+          background-color: var(--color-error-light) !important;
+          border: 1px solid var(--color-error) !important;
+          color: var(--color-error) !important;
           border-radius: ${borders.radius.md} !important;
         }
 
         /* Section titles */
         .new-design-wrapper h2 {
-          color: ${colors.primary[900]} !important;
+          color: var(--color-primary-900) !important;
         }
 
         /* Borders */
         .new-design-wrapper .form-actions {
-          border-top-color: ${colors.primary[200]} !important;
+          border-top-color: var(--color-primary-200) !important;
         }
       `}</style>
     </div>

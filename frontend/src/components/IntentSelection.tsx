@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import IntentSelectionCard from './IntentSelectionCard';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
 import { GearIcon } from './icons';
-import { colors, typography, spacing, transitions } from '../styles/tokens';
+import { typography, spacing, transitions } from '../styles/tokens';
 
 interface IntentSelectionProps {
   selectedIntent: IntentType | null;
@@ -36,7 +36,7 @@ export default function IntentSelection({
   return (
     <div style={{
       minHeight: 'calc(100vh - var(--header-height))',
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       padding: `${spacing[6]} ${spacing[8]}`,
     }}>
       {/* Back to dashboard link */}
@@ -52,7 +52,7 @@ export default function IntentSelection({
             display: 'inline-flex',
             alignItems: 'center',
             gap: spacing[2],
-            color: colors.primary[900],
+            color: 'var(--color-primary-900)',
             textDecoration: 'none',
             fontSize: typography.fontSize.sm,
             fontWeight: typography.fontWeight.medium,
@@ -74,7 +74,7 @@ export default function IntentSelection({
         <h1 style={{
           fontSize: typography.fontSize['2xl'],
           fontWeight: typography.fontWeight.bold,
-          color: colors.primary[900],
+          color: 'var(--color-primary-900)',
           margin: 0,
           marginBottom: spacing[2],
         }}>
@@ -82,7 +82,7 @@ export default function IntentSelection({
         </h1>
         <p style={{
           fontSize: typography.fontSize.base,
-          color: colors.primary[600],
+          color: 'var(--color-primary-600)',
           margin: 0,
         }}>
           We'll configure the privacy settings based on your choice
@@ -123,7 +123,7 @@ export default function IntentSelection({
             display: 'inline-flex',
             alignItems: 'center',
             gap: spacing[2],
-            color: colors.primary[600],
+            color: 'var(--color-primary-600)',
             backgroundColor: 'transparent',
             border: 'none',
             fontSize: typography.fontSize.sm,
@@ -141,10 +141,10 @@ export default function IntentSelection({
       {/* Hover styles */}
       <style>{`
         .back-to-dashboard-link:hover {
-          color: ${colors.primary[700]} !important;
+          color: var(--color-primary-700) !important;
         }
         .manual-config-link:hover {
-          color: ${colors.primary[900]} !important;
+          color: var(--color-primary-900) !important;
         }
 
         /* Responsive: stack cards on smaller screens */

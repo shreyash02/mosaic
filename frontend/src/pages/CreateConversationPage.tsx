@@ -9,7 +9,7 @@ import SetupModeToggle from '../components/SetupModeToggle';
 import IntentSelection from '../components/IntentSelection';
 import ConfigurationSummary from '../components/ConfigurationSummary';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import {
   DndContext,
   closestCenter,
@@ -1990,7 +1990,7 @@ export default function CreateConversationPage() {
       <CreateConversationPageContent />
       <style>{`
         .create-page-new-design {
-          background-color: ${colors.primary[100]};
+          background-color: var(--color-primary-100);
           min-height: 100vh;
         }
         .create-page-new-design .create-conversation-page {
@@ -2004,78 +2004,77 @@ export default function CreateConversationPage() {
         .create-page-new-design .page-header h1 {
           font-size: ${typography.fontSize['3xl']};
           font-weight: ${typography.fontWeight.bold};
-          color: ${colors.primary[900]};
+          color: var(--color-primary-900);
         }
         .create-page-new-design .conversation-form {
-          background-color: ${colors.primary[50]};
+          background-color: var(--color-primary-50);
           border-radius: ${borders.radius.xl};
-          border: ${borders.width.thin} solid ${colors.primary[300]};
+          border: ${borders.width.thin} solid var(--color-primary-300);
           padding: ${spacing[8]};
           box-shadow: ${shadows.sm};
         }
         .create-page-new-design .form-section {
           margin-bottom: ${spacing[6]};
           padding-bottom: ${spacing[6]};
-          border-bottom: ${borders.width.thin} solid ${colors.primary[200]};
+          border-bottom: ${borders.width.thin} solid var(--color-primary-200);
         }
         .create-page-new-design .form-group label {
           font-size: ${typography.fontSize.sm};
           font-weight: ${typography.fontWeight.medium};
-          color: ${colors.primary[900]};
+          color: var(--color-primary-900);
         }
         .create-page-new-design input[type="text"],
         .create-page-new-design input[type="email"],
         .create-page-new-design input[type="number"],
         .create-page-new-design textarea,
         .create-page-new-design select {
-          border: ${borders.width.thin} solid ${colors.primary[400]};
+          border: ${borders.width.thin} solid var(--color-primary-400);
           border-radius: ${borders.radius.md};
           padding: ${spacing[3]};
           font-size: ${typography.fontSize.sm};
-          background-color: ${colors.primary[50]};
-          color: ${colors.primary[900]};
+          background-color: var(--color-primary-50);
+          color: var(--color-primary-900);
           transition: border-color ${transitions.duration.normal} ${transitions.timing.ease};
         }
         .create-page-new-design input:focus,
         .create-page-new-design textarea:focus,
         .create-page-new-design select:focus {
-          border-color: ${colors.primary[500]};
+          border-color: var(--color-primary-500);
           outline: none;
         }
         .create-page-new-design .btn-primary {
-          background-color: ${colors.primary[900]};
-          color: ${colors.primary[50]};
+          background-color: var(--color-primary-900);
+          color: var(--color-primary-50);
           border: none;
           border-radius: ${borders.radius.md};
           font-weight: ${typography.fontWeight.medium};
           transition: all ${transitions.duration.normal} ${transitions.timing.ease};
         }
         .create-page-new-design .btn-primary:hover {
-          background-color: ${colors.primary[800]};
           box-shadow: ${shadows.sm};
         }
         .create-page-new-design .btn-secondary {
-          background-color: ${colors.primary[50]};
-          color: ${colors.primary[700]};
-          border: ${borders.width.thin} solid ${colors.primary[400]};
+          background-color: var(--color-primary-50);
+          color: var(--color-primary-700);
+          border: ${borders.width.thin} solid var(--color-primary-400);
           border-radius: ${borders.radius.md};
           font-weight: ${typography.fontWeight.medium};
           transition: all ${transitions.duration.normal} ${transitions.timing.ease};
         }
         .create-page-new-design .btn-secondary:hover {
-          background-color: ${colors.primary[100]};
-          border-color: ${colors.primary[500]};
+          background-color: var(--color-primary-100);
+          border-color: var(--color-primary-500);
         }
         .create-page-new-design .error-message {
-          background-color: ${colors.semantic.error.light};
-          border: ${borders.width.thin} solid ${colors.semantic.error.main};
+          background-color: var(--color-error-light);
+          border: ${borders.width.thin} solid var(--color-error);
           border-radius: ${borders.radius.md};
           padding: ${spacing[4]};
-          color: ${colors.semantic.error.text};
+          color: var(--color-error);
         }
         .create-page-new-design .form-help-text {
           font-size: ${typography.fontSize.xs};
-          color: ${colors.primary[600]};
+          color: var(--color-primary-600);
         }
       `}</style>
     </div>

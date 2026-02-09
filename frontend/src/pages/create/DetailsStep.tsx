@@ -82,18 +82,18 @@ export default function DetailsStep() {
 
         {/* Workspace indicator */}
         <div className="form-group" style={{
-          backgroundColor: '#f7fafc',
+          backgroundColor: 'var(--color-primary-100)',
           padding: '1rem',
           borderRadius: '6px',
-          border: '1px solid #e2e8f0'
+          border: '1px solid var(--color-primary-300)'
         }}>
-          <div style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '0.25rem' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--color-primary-600)', marginBottom: '0.25rem' }}>
             Creating conversation in:
           </div>
-          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#2d3748' }}>
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-primary-900)' }}>
             {currentWorkspaceName}
           </div>
-          <small style={{ color: '#718096' }}>
+          <small style={{ color: 'var(--color-primary-600)' }}>
             {currentOrgId
               ? 'This conversation will be visible to all organization members'
               : 'This is a personal conversation'}
@@ -161,7 +161,7 @@ export default function DetailsStep() {
                     maxWidth: '100%',
                     maxHeight: '200px',
                     borderRadius: '6px',
-                    border: '1px solid #e2e8f0'
+                    border: '1px solid var(--color-primary-300)'
                   }}
                 />
                 <button
@@ -217,7 +217,7 @@ export default function DetailsStep() {
         justifyContent: 'space-between',
         marginTop: '2rem',
         paddingTop: '2rem',
-        borderTop: '1px solid #e2e8f0',
+        borderTop: '1px solid var(--color-primary-300)',
       }}>
         <button
           type="button"

@@ -1,5 +1,5 @@
 import { IntentPreset, IntentType } from '../types/intentPresets';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { InboxIcon, UsersIcon, LockIcon, GlobeIcon } from './icons';
 
 interface IntentSelectionCardProps {
@@ -27,11 +27,11 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
       className="intent-card-new"
       style={{
         border: selected
-          ? `${borders.width.medium} solid ${colors.primary[900]}`
-          : `${borders.width.thin} solid ${colors.primary[300]}`,
+          ? `${borders.width.medium} solid var(--color-primary-900)`
+          : `${borders.width.thin} solid var(--color-primary-300)`,
         borderRadius: borders.radius.lg,
         padding: spacing[6],
-        backgroundColor: colors.primary[50],
+        backgroundColor: 'var(--color-primary-50)',
         cursor: 'pointer',
         textAlign: 'left',
         transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
@@ -47,12 +47,12 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
         width: '48px',
         height: '48px',
         minWidth: '48px',
-        backgroundColor: colors.primary[100],
+        backgroundColor: 'var(--color-primary-100)',
         borderRadius: borders.radius.lg,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: colors.primary[700],
+        color: 'var(--color-primary-700)',
       }}>
         <IconComponent size={24} />
       </div>
@@ -65,7 +65,7 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
             margin: 0,
             fontSize: typography.fontSize.base,
             fontWeight: typography.fontWeight.semibold,
-            color: colors.primary[900],
+            color: 'var(--color-primary-900)',
             marginBottom: spacing[1],
           }}>
             {intent.label}
@@ -73,7 +73,7 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
           <p style={{
             margin: 0,
             fontSize: typography.fontSize.sm,
-            color: colors.primary[600],
+            color: 'var(--color-primary-600)',
           }}>
             {intent.description}
           </p>
@@ -85,7 +85,7 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
           padding: 0,
           listStyle: 'none',
           fontSize: typography.fontSize.xs,
-          color: colors.primary[500],
+          color: 'var(--color-primary-500)',
         }}>
           {intent.explanation.map((item, index) => (
             <li key={index} style={{
@@ -98,7 +98,7 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
                 width: '4px',
                 height: '4px',
                 borderRadius: '50%',
-                backgroundColor: colors.primary[400],
+                backgroundColor: 'var(--color-primary-400)',
                 flexShrink: 0,
               }} />
               <span>{item}</span>
@@ -110,7 +110,7 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
       {/* CSS for hover state */}
       <style>{`
         .intent-card-new:hover {
-          border-color: ${colors.primary[400]} !important;
+          border-color: var(--color-primary-400) !important;
           box-shadow: ${shadows.sm} !important;
         }
       `}</style>

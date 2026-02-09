@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { RecurrencePattern, type AnalysisInterval } from '../../types';
 import { formatDateForDateTimeLocal } from '../../utils/formatting';
-import { colors, typography, spacing, borders } from '../../styles';
+import { typography, spacing, borders } from '../../styles';
 import CustomSelect from '../../components/CustomSelect';
 
 const INTERVAL_OPTIONS = [
@@ -63,6 +63,7 @@ function getOrdinalSuffix(n: number): string {
   return s[(v - 20) % 10] || s[v] || s[0];
 }
 
+// Use CSS custom properties for dark mode support
 const s = {
   radioGroup: {
     display: 'flex',
@@ -74,14 +75,14 @@ const s = {
     display: 'flex',
     flexDirection: 'column' as const,
     padding: spacing[4],
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     cursor: 'pointer',
     transition: 'border-color 200ms, background-color 200ms',
   },
   radioOptionSelected: {
-    borderColor: colors.primary[500],
-    backgroundColor: colors.primary[50],
+    borderColor: 'var(--color-primary-500)',
+    backgroundColor: 'var(--color-primary-50)',
   },
   radioHeader: {
     display: 'flex',
@@ -96,11 +97,11 @@ const s = {
   radioLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   radioDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginTop: spacing[1],
     marginLeft: '32px',
   },
@@ -108,7 +109,7 @@ const s = {
     marginLeft: '32px',
     marginTop: spacing[4],
     paddingTop: spacing[4],
-    borderTop: `1px solid ${colors.primary[200]}`,
+    borderTop: '1px solid var(--color-primary-200)',
   },
   scheduleGrid: {
     display: 'flex',
@@ -124,11 +125,11 @@ const s = {
   scheduleLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   infoBox: {
-    background: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
+    background: 'var(--color-primary-100)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
     padding: spacing[4],
     marginTop: spacing[4],
@@ -136,7 +137,7 @@ const s = {
   infoText: {
     margin: 0,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
 };
 
@@ -401,7 +402,7 @@ export default function TimingStep() {
             </p>
 
             {formState.enableRecurring && (
-              <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: `3px solid ${colors.primary[500]}` }}>
+              <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: '3px solid var(--color-primary-500)' }}>
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label htmlFor="recurrencePattern">Frequency</label>
                   <select
