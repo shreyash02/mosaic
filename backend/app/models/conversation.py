@@ -124,7 +124,7 @@ class Conversation(Base):
 
     # Follow-up conversation relationships
     parent_conversation = relationship("Conversation", remote_side=[id], back_populates="follow_up_conversations", foreign_keys=[parent_conversation_id])
-    follow_up_conversations = relationship("Conversation", back_populates="parent_conversation", cascade="all, delete-orphan", foreign_keys="Conversation.parent_conversation_id")
+    follow_up_conversations = relationship("Conversation", back_populates="parent_conversation", foreign_keys="Conversation.parent_conversation_id")
 
     # Series relationships
     series = relationship("Series", back_populates="conversations", foreign_keys=[series_id])

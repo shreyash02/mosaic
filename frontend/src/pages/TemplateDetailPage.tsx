@@ -730,7 +730,7 @@ export default function TemplateDetailPage() {
             <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h2 style={styles.modalTitle}>Delete Template?</h2>
               <p style={styles.modalText}>
-                Are you sure you want to delete this template? This will also delete all instances created from this template. This action cannot be undone.
+                Are you sure you want to delete this template? Conversations created from this template will be preserved but will no longer be linked to it. This action cannot be undone.
               </p>
               <div style={styles.modalActions}>
                 <button
