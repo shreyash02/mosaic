@@ -5,6 +5,7 @@ import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import EmptyState from '../components/EmptyState';
 
 interface CollectionWithCount extends Series {
   conversationCount: number;
@@ -361,19 +362,20 @@ export default function CollectionsPage() {
         )}
 
         {collections.length === 0 ? (
-          <div style={styles.emptyState}>
-            <h3 style={{ color: colors.primary[900], marginBottom: spacing[2] }}>No collections yet</h3>
-            <p style={{ color: colors.primary[600], marginBottom: spacing[4] }}>
-              Collections help you group related conversations and analyze trends over time
-            </p>
-            <button
-              style={styles.primaryButton}
-              onClick={() => setShowCreateModal(true)}
-              className="collections-primary-btn"
-            >
-              + New Collection
-            </button>
-          </div>
+          <EmptyState
+            type="collections"
+            title="No collections yet"
+            description="Collections help you group related conversations and analyze trends over time"
+            action={
+              <button
+                style={styles.primaryButton}
+                onClick={() => setShowCreateModal(true)}
+                className="collections-primary-btn"
+              >
+                + New Collection
+              </button>
+            }
+          />
         ) : (
           <div className="collections-grid">
             {collections.map((collection) => {

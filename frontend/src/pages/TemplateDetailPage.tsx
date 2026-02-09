@@ -6,6 +6,7 @@ import { ConversationState, RecurrencePattern } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import EmptyState from '../components/EmptyState';
 
 const styles = {
   page: {
@@ -743,10 +744,12 @@ export default function TemplateDetailPage() {
                   </Link>
                 ))
             ) : (
-              <div style={styles.emptyState}>
-                No instances have been created from this template yet.<br />
-                Instances will be created automatically based on the schedule, or you can create one manually.
-              </div>
+              <EmptyState
+                type="conversations"
+                title="No instances yet"
+                description="Instances will be created automatically based on the schedule, or you can create one manually."
+                compact
+              />
             )}
           </div>
         </div>

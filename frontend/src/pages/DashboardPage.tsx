@@ -12,6 +12,7 @@ import {
   TrendingIcon,
   ChartIcon,
 } from '../components/icons';
+import EmptyState from '../components/EmptyState';
 
 const s = {
   page: {
@@ -468,23 +469,27 @@ export default function DashboardPage() {
           </Link>
         </div>
         {recentConversations.length === 0 ? (
-          <div style={{ ...s.card, ...s.emptyState }}>
-            <p style={{ marginBottom: spacing[4] }}>No conversations yet</p>
-            <Link to="/conversations/new" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: spacing[2],
-              backgroundColor: colors.primary[900],
-              color: colors.primary[50],
-              padding: `${spacing[3]} ${spacing[6]}`,
-              borderRadius: borders.radius.md,
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              textDecoration: 'none',
-            }}>
-              Create your first conversation
-            </Link>
-          </div>
+          <EmptyState
+            type="conversations"
+            title="No conversations yet"
+            description="Get started by creating your first conversation"
+            action={
+              <Link to="/conversations/new" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                backgroundColor: colors.primary[900],
+                color: colors.primary[50],
+                padding: `${spacing[3]} ${spacing[6]}`,
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                textDecoration: 'none',
+              }}>
+                Create your first conversation
+              </Link>
+            }
+          />
         ) : (
           <div style={s.recentGrid}>
             {recentConversations.map((conv) => (

@@ -7,6 +7,7 @@ import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import EmptyState from '../components/EmptyState';
 
 const styles = {
   page: {
@@ -883,19 +884,20 @@ export default function AnalysisPage() {
         <style>{hoverStyles}</style>
         <div style={styles.page}>
           <div style={styles.container}>
-            <div style={styles.emptyState}>
-              <h3 style={styles.emptyStateTitle}>Analysis Not Available</h3>
-              <p style={styles.emptyStateText}>
-                {error || 'No analysis has been run for this conversation yet.'}
-              </p>
-              <button
-                onClick={handleBackClick}
-                style={styles.buttonPrimary}
-                className="analysis-btn-primary"
-              >
-                {canAccessConversation ? 'Back to Conversation' : 'Back to Dashboard'}
-              </button>
-            </div>
+            <EmptyState
+              type="analysis"
+              title="Analysis Not Available"
+              description={error || 'No analysis has been run for this conversation yet.'}
+              action={
+                <button
+                  onClick={handleBackClick}
+                  style={styles.buttonPrimary}
+                  className="analysis-btn-primary"
+                >
+                  {canAccessConversation ? 'Back to Conversation' : 'Back to Dashboard'}
+                </button>
+              }
+            />
           </div>
         </div>
       </>

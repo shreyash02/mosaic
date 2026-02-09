@@ -16,6 +16,7 @@ import {
   SearchIcon,
   FilterIcon,
 } from '../components/icons';
+import EmptyState from '../components/EmptyState';
 import axios from 'axios';
 
 type DateRange = 'all' | '7' | '30' | '90';
@@ -1488,10 +1489,11 @@ export default function ConversationsPage() {
         invitationsLoading ? (
           <div style={s.loading}>Loading invitations...</div>
         ) : invitations.length === 0 ? (
-          <div style={s.emptyState}>
-            <h3 style={s.emptyTitle}>No pending invitations</h3>
-            <p style={s.emptyText}>You don't have any pending conversation invitations.</p>
-          </div>
+          <EmptyState
+            type="invites"
+            title="No pending invitations"
+            description="You don't have any pending conversation invitations."
+          />
         ) : (
           <>
             <p style={s.sectionLabel}>Pending Invitations</p>
@@ -1501,32 +1503,35 @@ export default function ConversationsPage() {
           </>
         )
       ) : actualConversations.length === 0 ? (
-        <div style={s.emptyState}>
-          {activeTab === 'owned' ? (
-            <>
-              <h3 style={s.emptyTitle}>No conversations in {currentWorkspaceName}</h3>
-              <p style={s.emptyText}>Create your first conversation in this workspace</p>
+        activeTab === 'owned' ? (
+          <EmptyState
+            type="conversations"
+            title={`No conversations in ${currentWorkspaceName}`}
+            description="Create your first conversation in this workspace"
+            action={
               <Link to="/conversations/new" style={s.buttonPrimary}>
                 + New Conversation
               </Link>
-            </>
-          ) : (
-            <>
-              <h3 style={s.emptyTitle}>No participated conversations</h3>
-              <p style={s.emptyText}>When you submit responses to conversations, they'll appear here.</p>
-            </>
-          )}
-        </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            type="responses"
+            title="No participated conversations"
+            description="When you submit responses to conversations, they'll appear here."
+          />
+        )
       ) : filteredConversations.length === 0 ? (
-        <div style={s.emptyState}>
-          <h3 style={s.emptyTitle}>No conversations found</h3>
-          <p style={s.emptyText}>
-            {searchQuery ? `No conversations match "${searchQuery}"` : 'No conversations match the selected filters'}
-          </p>
-          <button onClick={() => { clearFilters(); setSearchQuery(''); }} style={s.buttonSecondary}>
-            Clear Filters
-          </button>
-        </div>
+        <EmptyState
+          type="search"
+          title="No conversations found"
+          description={searchQuery ? `No conversations match "${searchQuery}"` : 'No conversations match the selected filters'}
+          action={
+            <button onClick={() => { clearFilters(); setSearchQuery(''); }} style={s.buttonSecondary}>
+              Clear Filters
+            </button>
+          }
+        />
       ) : viewMode === 'list' && activeTab === 'owned' ? (
         // List View
         <div style={{ overflowX: 'auto' }}>

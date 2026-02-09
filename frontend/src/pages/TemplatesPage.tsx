@@ -7,6 +7,7 @@ import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import { RefreshIcon } from '../components/icons';
+import EmptyState from '../components/EmptyState';
 
 const s = {
   page: {
@@ -250,15 +251,16 @@ export default function TemplatesPage() {
       {loading ? (
         <div style={s.loading}>Loading templates...</div>
       ) : templates.length === 0 ? (
-        <div style={s.emptyState}>
-          <h3 style={s.emptyTitle}>No templates yet</h3>
-          <p style={s.emptyText}>
-            Templates let you create reusable conversation configurations for recurring feedback cycles or one-off conversations.
-          </p>
-          <button onClick={handleCreateTemplate} style={s.buttonPrimary}>
-            Create Your First Template
-          </button>
-        </div>
+        <EmptyState
+          type="templates"
+          title="No templates yet"
+          description="Templates let you create reusable conversation configurations for recurring feedback cycles or one-off conversations."
+          action={
+            <button onClick={handleCreateTemplate} style={s.buttonPrimary}>
+              Create Your First Template
+            </button>
+          }
+        />
       ) : (
         <div className="templates-grid">
           {templates.map((template) => (
