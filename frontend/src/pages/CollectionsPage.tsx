@@ -311,6 +311,7 @@ export default function CollectionsPage() {
           }
           .collections-header button {
             width: 100%;
+            justify-content: center;
           }
           .collections-grid {
             grid-template-columns: 1fr;

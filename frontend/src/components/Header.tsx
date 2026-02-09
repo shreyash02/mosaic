@@ -26,6 +26,7 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileProfileRef = useRef<HTMLDivElement>(null);
+  const mobileMenuBtnRef = useRef<HTMLButtonElement>(null);
 
   const handleLogout = () => {
     logout();
@@ -43,7 +44,8 @@ export default function Header() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowOrgDropdown(false);
       }
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node) &&
+          mobileMenuBtnRef.current && !mobileMenuBtnRef.current.contains(event.target as Node)) {
         setMobileMenuOpen(false);
       }
       if (mobileProfileRef.current && !mobileProfileRef.current.contains(event.target as Node)) {
@@ -90,6 +92,7 @@ export default function Header() {
           <>
             {/* Mobile Menu Button - Left side */}
             <button
+              ref={mobileMenuBtnRef}
               className="mobile-menu-btn mobile-menu-btn-left"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"

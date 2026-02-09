@@ -211,6 +211,7 @@ export default function TemplatesPage() {
           }
           .templates-header button {
             width: 100%;
+            justify-content: center;
           }
           .templates-grid {
             grid-template-columns: 1fr;

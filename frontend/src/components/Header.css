@@ -335,12 +335,12 @@
 .mobile-menu-overlay {
   display: none;
   position: fixed;
-  top: 0;
+  top: var(--header-height);
   left: 0;
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 199;
+  z-index: 500;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -360,7 +360,7 @@
   height: calc(100vh - var(--header-height));
   background-color: white;
   box-shadow: none;
-  z-index: 201;
+  z-index: 1000;
   transform: translateX(-100%);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   overflow-y: auto;
