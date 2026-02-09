@@ -13,6 +13,8 @@ import {
 
 type ViewMode = 'tile' | 'list';
 type DateRange = 'all' | '7' | '30' | '90';
+type SortColumn = 'title' | 'status' | 'responses' | 'created';
+type SortDirection = 'asc' | 'desc';
 
 interface ConversationsListProps {
   conversations: ConversationListItem[];
@@ -225,6 +227,22 @@ const s = {
     letterSpacing: typography.letterSpacing.wide,
     borderBottom: '1px solid var(--color-primary-300)',
   },
+  thSortable: {
+    cursor: 'pointer',
+    userSelect: 'none' as const,
+    transition: 'color 150ms',
+  },
+  thSortableHover: {
+    color: 'var(--color-primary-700)',
+  },
+  sortIndicator: {
+    display: 'inline-flex',
+    marginLeft: spacing[1],
+    opacity: 0.5,
+  },
+  sortIndicatorActive: {
+    opacity: 1,
+  },
   tr: {
     borderBottom: '1px solid var(--color-primary-200)',
     transition: 'background-color 150ms',
@@ -352,6 +370,8 @@ export default function ConversationsList({
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('created');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -398,8 +418,30 @@ export default function ConversationsList({
       filtered = filtered.filter(c => isWithinDateRange(c.created_at, dateRange));
     }
 
-    return filtered;
-  }, [conversations, searchQuery, selectedStates, dateRange]);
+    // Sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortColumn) {
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'status':
+          comparison = a.state.localeCompare(b.state);
+          break;
+        case 'responses':
+          comparison = (a.unique_participants || 0) - (b.unique_participants || 0);
+          break;
+        case 'created':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [conversations, searchQuery, selectedStates, dateRange, sortColumn, sortDirection]);
 
   // Helper functions
   const getStateLabel = (state: ConversationState) => {
@@ -467,6 +509,32 @@ export default function ConversationsList({
   };
 
   const hasActiveFilters = selectedStates.length > 0 || dateRange !== 'all';
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to descending for dates/responses, ascending for text
+      setSortColumn(column);
+      setSortDirection(column === 'created' || column === 'responses' ? 'desc' : 'asc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    const isActive = sortColumn === column;
+    const isAsc = sortDirection === 'asc';
+
+    return (
+      <span style={merge(s.sortIndicator, isActive && s.sortIndicatorActive)}>
+        {isActive ? (
+          isAsc ? '↑' : '↓'
+        ) : (
+          '↕'
+        )}
+      </span>
+    );
+  };
 
   const allStates = [
     ConversationState.DRAFT,
@@ -794,11 +862,31 @@ export default function ConversationsList({
           <table style={s.table}>
             <thead style={s.tableHeader}>
               <tr>
-                <th style={s.th}>Title</th>
-                <th style={s.th}>Status</th>
-                <th style={s.th}>Responses</th>
+                <th
+                  style={merge(s.th, s.thSortable)}
+                  onClick={() => handleSort('title')}
+                >
+                  Title <SortIcon column="title" />
+                </th>
+                <th
+                  style={merge(s.th, s.thSortable)}
+                  onClick={() => handleSort('status')}
+                >
+                  Status <SortIcon column="status" />
+                </th>
+                <th
+                  style={merge(s.th, s.thSortable)}
+                  onClick={() => handleSort('responses')}
+                >
+                  Responses <SortIcon column="responses" />
+                </th>
                 {showCollectionColumn && <th style={s.th}>Collection</th>}
-                <th style={s.th}>Created</th>
+                <th
+                  style={merge(s.th, s.thSortable)}
+                  onClick={() => handleSort('created')}
+                >
+                  Created <SortIcon column="created" />
+                </th>
                 {showMenu && <th style={{ ...s.th, width: '40px' }}></th>}
               </tr>
             </thead>
