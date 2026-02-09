@@ -5,16 +5,18 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
+import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import { RefreshIcon } from '../components/icons';
 import EmptyState from '../components/EmptyState';
+import { SkeletonConversationGrid } from '../components/Skeleton';
 
+// Use CSS custom properties for dark mode support
 const s = {
   page: {
     maxWidth: '1200px',
     margin: '0 auto',
     padding: spacing[6],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     minHeight: 'calc(100vh - var(--header-height))',
   },
   header: {
@@ -31,20 +33,20 @@ const s = {
   pageTitle: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   pageSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
   },
   buttonPrimary: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -59,8 +61,8 @@ const s = {
     gap: spacing[4],
   },
   card: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[400]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    border: '1px solid var(--color-primary-400)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
     textDecoration: 'none',
@@ -78,7 +80,7 @@ const s = {
   cardTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
     lineHeight: typography.lineHeight.tight,
     flex: 1,
@@ -88,9 +90,9 @@ const s = {
   },
   templateBadge: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[700],
-    backgroundColor: colors.primary[200],
-    border: `1px solid ${colors.primary[400]}`,
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-200)',
+    border: '1px solid var(--color-primary-400)',
     padding: `${spacing[0.5]} ${spacing[3]}`,
     borderRadius: borders.radius.full,
     fontWeight: typography.fontWeight.semibold,
@@ -100,7 +102,7 @@ const s = {
     flexDirection: 'column' as const,
     gap: spacing[2],
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   emptyState: {
     textAlign: 'center' as const,
@@ -109,12 +111,12 @@ const s = {
   emptyTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   emptyText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[6],
   },
   loading: {
@@ -122,12 +124,12 @@ const s = {
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[16],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
   errorMessage: {
-    backgroundColor: colors.semantic.error.light,
-    color: colors.semantic.error.text,
+    backgroundColor: 'var(--color-error-light)',
+    color: 'var(--color-error)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     marginBottom: spacing[4],
@@ -138,14 +140,14 @@ const s = {
     alignItems: 'center',
     gap: spacing[1],
     fontSize: typography.fontSize.xs,
-    color: colors.semantic.info.text,
-    backgroundColor: colors.semantic.info.light,
+    color: 'var(--color-info)',
+    backgroundColor: 'var(--color-primary-100)',
     padding: `${spacing[1]} ${spacing[3]}`,
     borderRadius: borders.radius.full,
   },
   instanceCount: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontWeight: typography.fontWeight.medium,
   },
 };
@@ -194,7 +196,7 @@ export default function TemplatesPage() {
     <div style={s.page} className="templates-page">
       <style>{`
         .template-card:hover {
-          border-color: ${colors.primary[500]} !important;
+          border-color: var(--color-primary-500) !important;
           box-shadow: ${shadows.sm} !important;
         }
         .templates-header {
@@ -249,7 +251,7 @@ export default function TemplatesPage() {
 
       {/* Content */}
       {loading ? (
-        <div style={s.loading}>Loading templates...</div>
+        <SkeletonConversationGrid count={6} />
       ) : templates.length === 0 ? (
         <EmptyState
           type="templates"

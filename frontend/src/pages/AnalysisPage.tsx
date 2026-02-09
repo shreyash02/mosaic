@@ -8,6 +8,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
+import { SkeletonAnalysis } from '../components/Skeleton';
 
 const styles = {
   page: {
@@ -749,7 +750,7 @@ export default function AnalysisPage() {
         <style>{hoverStyles}</style>
         <div style={styles.page}>
           <div style={styles.container}>
-            <div style={styles.loading}>Loading analysis...</div>
+            <SkeletonAnalysis />
           </div>
         </div>
       </>

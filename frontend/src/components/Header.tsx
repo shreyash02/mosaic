@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useTheme, SunIcon, MoonIcon } from '../contexts/ThemeContext';
 import './Header.css';
 
 export default function Header() {
@@ -19,6 +20,7 @@ export default function Header() {
     currentOrgId,
     setCurrentOrganization
   } = useOrganization();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -209,6 +211,16 @@ export default function Header() {
               </Link>
             </nav>
 
+            {/* Theme Toggle - Desktop */}
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle desktop-theme-toggle"
+              aria-label={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
+              title={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {resolvedTheme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
+            </button>
+
             {/* Desktop User Info */}
             <div className="user-info desktop-user-info">
               <div className="user-details">
@@ -240,6 +252,11 @@ export default function Header() {
                     <span className="mobile-profile-name">{user.full_name}</span>
                     <span className="mobile-profile-email">{user.email}</span>
                   </div>
+                  <div className="mobile-profile-divider" />
+                  <button onClick={toggleTheme} className="mobile-theme-toggle">
+                    {resolvedTheme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
+                    <span>{resolvedTheme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+                  </button>
                   <div className="mobile-profile-divider" />
                   <button onClick={handleLogout} className="mobile-profile-logout">
                     Logout

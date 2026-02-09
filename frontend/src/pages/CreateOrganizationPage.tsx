@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationCreate } from '../types';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 
+// Use CSS custom properties for dark mode support
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -18,7 +19,7 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -31,18 +32,18 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: '1px solid var(--color-primary-200)',
     padding: spacing[8],
     boxShadow: shadows.sm,
   },
@@ -59,20 +60,20 @@ const styles = {
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   required: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginLeft: spacing[1],
   },
   input: {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
-    backgroundColor: 'white',
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
     transition: transitions.duration.normal,
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -81,10 +82,10 @@ const styles = {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
-    backgroundColor: 'white',
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
     transition: transitions.duration.normal,
     outline: 'none',
     resize: 'vertical' as const,
@@ -93,7 +94,7 @@ const styles = {
   },
   hint: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   actions: {
     display: 'flex',
@@ -105,8 +106,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -120,12 +121,12 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
-    backgroundColor: 'white',
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     cursor: 'pointer',
     transition: transitions.duration.normal,
     textDecoration: 'none',
@@ -135,9 +136,9 @@ const styles = {
     cursor: 'not-allowed',
   },
   error: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-error-light)',
+    border: '1px solid var(--color-error)',
+    color: 'var(--color-error)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -147,18 +148,11 @@ const styles = {
 
 const hoverStyles = `
   .create-org-back-link:hover {
-    color: ${colors.primary[900]};
+    color: var(--color-primary-900);
   }
   .create-org-input:focus {
-    border-color: ${colors.primary[500]};
-    box-shadow: 0 0 0 3px ${colors.primary[100]};
-  }
-  .create-org-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
-  }
-  .create-org-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px var(--color-primary-100);
   }
 `;
 
@@ -264,7 +258,6 @@ export default function CreateOrganizationPage() {
                     ...styles.buttonPrimary,
                     ...(loading || !name.trim() ? styles.buttonDisabled : {}),
                   }}
-                  className="create-org-btn-primary"
                   disabled={loading || !name.trim()}
                 >
                   {loading ? 'Creating...' : 'Create Organization'}
@@ -275,7 +268,6 @@ export default function CreateOrganizationPage() {
                     ...styles.buttonSecondary,
                     ...(loading ? styles.buttonDisabled : {}),
                   }}
-                  className="create-org-btn-secondary"
                   onClick={() => navigate('/organizations')}
                   disabled={loading}
                 >

@@ -525,6 +525,51 @@
   background-color: var(--color-primary-100);
 }
 
+/* Theme Toggle Button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-50);
+  color: var(--color-primary-700);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.theme-toggle:hover {
+  background-color: var(--color-primary-100);
+  border-color: var(--color-primary-500);
+  color: var(--color-primary-900);
+}
+
+.desktop-theme-toggle {
+  margin-right: var(--spacing-4);
+}
+
+/* Mobile theme toggle in profile dropdown */
+.mobile-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: none;
+  background-color: var(--color-primary-50);
+  color: var(--color-primary-800);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-normal);
+}
+
+.mobile-theme-toggle:hover {
+  background-color: var(--color-primary-100);
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   :root {
@@ -559,9 +604,10 @@
     display: block;
   }
 
-  /* Hide desktop nav and user info on mobile */
+  /* Hide desktop nav, user info, and theme toggle on mobile */
   .desktop-nav,
-  .desktop-user-info {
+  .desktop-user-info,
+  .desktop-theme-toggle {
     display: none !important;
   }
 
@@ -630,4 +676,196 @@
     width: 100%;
     max-width: 100%;
   }
+}
+
+/* =============================================================================
+   DARK MODE STYLES FOR HEADER
+   ============================================================================= */
+
+html.dark .app-header {
+  background-color: #1f2937;
+  border-bottom-color: #374151;
+}
+
+html.dark .logo-text {
+  color: #f3f4f6;
+}
+
+html.dark .nav-link {
+  color: #d1d5db;
+}
+
+html.dark .nav-link:hover {
+  color: #f3f4f6;
+  background-color: #374151;
+}
+
+html.dark .nav-link.active {
+  color: #f3f4f6;
+  background-color: #4b5563;
+}
+
+html.dark .user-name {
+  color: #f3f4f6;
+}
+
+html.dark .user-email {
+  color: #9ca3af;
+}
+
+html.dark .btn-logout {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+html.dark .btn-logout:hover {
+  background-color: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark .org-switcher-trigger {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+html.dark .org-switcher-trigger:hover {
+  background-color: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark .org-switcher .dropdown-arrow {
+  color: #9ca3af;
+}
+
+html.dark .org-switcher-dropdown {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .org-switcher-item {
+  color: #e5e7eb;
+}
+
+html.dark .org-switcher-item:hover {
+  background-color: #374151;
+  color: #f3f4f6;
+}
+
+html.dark .org-switcher-item.active {
+  background-color: #4b5563;
+  color: #f3f4f6;
+}
+
+html.dark .org-switcher-divider {
+  background-color: #374151;
+}
+
+html.dark .org-switcher-label {
+  color: #9ca3af;
+}
+
+html.dark .org-switcher-manage {
+  color: #60a5fa;
+}
+
+html.dark .org-switcher-manage:hover {
+  background-color: #374151;
+}
+
+html.dark .mobile-menu-btn {
+  color: #f3f4f6;
+}
+
+html.dark .mobile-menu-btn:hover {
+  background-color: #374151;
+}
+
+html.dark .mobile-menu {
+  background-color: #1f2937;
+}
+
+html.dark .mobile-nav-link {
+  color: #e5e7eb;
+}
+
+html.dark .mobile-nav-link:hover {
+  background-color: #374151;
+  color: #f3f4f6;
+}
+
+html.dark .mobile-menu-divider {
+  background-color: #374151;
+}
+
+html.dark .mobile-profile-btn {
+  color: #f3f4f6;
+}
+
+html.dark .mobile-profile-btn:hover {
+  background-color: #374151;
+}
+
+html.dark .mobile-profile-dropdown {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .mobile-profile-name {
+  color: #f3f4f6;
+}
+
+html.dark .mobile-profile-email {
+  color: #9ca3af;
+}
+
+html.dark .mobile-profile-divider {
+  background-color: #374151;
+}
+
+html.dark .mobile-profile-logout,
+html.dark .mobile-theme-toggle {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+html.dark .mobile-profile-logout:hover,
+html.dark .mobile-theme-toggle:hover {
+  background-color: #374151;
+}
+
+html.dark .theme-toggle {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+html.dark .theme-toggle:hover {
+  background-color: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark .btn-header-login {
+  color: #f3f4f6;
+}
+
+html.dark .btn-header-login:hover {
+  background-color: #374151;
+}
+
+html.dark .btn-header-signup {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+html.dark .btn-header-signup:hover {
+  background-color: #e5e7eb;
+}
+
+/* Dark mode for header on gradient backgrounds */
+html.dark .home-page .app-header,
+html.dark .auth-page .app-header {
+  background-color: rgba(31, 41, 55, 0.95);
+  border-bottom-color: rgba(55, 65, 81, 0.5);
 }

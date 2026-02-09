@@ -17,18 +17,19 @@ import {
   FilterIcon,
 } from '../components/icons';
 import EmptyState from '../components/EmptyState';
+import { SkeletonConversationGrid } from '../components/Skeleton';
 import axios from 'axios';
 
 type DateRange = 'all' | '7' | '30' | '90';
 type ViewMode = 'tile' | 'list';
 
-// Design tokens based styles
+// Design tokens based styles - using CSS custom properties for dark mode
 const s = {
   page: {
     maxWidth: '1200px',
     margin: '0 auto',
     padding: spacing[6],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     minHeight: 'calc(100vh - var(--header-height))',
   },
   // Header
@@ -46,12 +47,12 @@ const s = {
   pageTitle: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   pageSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
   },
   headerActions: {
@@ -63,8 +64,8 @@ const s = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -77,13 +78,13 @@ const s = {
     display: 'inline-flex',
     alignItems: 'center',
     backgroundColor: 'transparent',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     textDecoration: 'none',
-    border: `1px solid ${colors.primary[400]}`,
+    border: '1px solid var(--color-primary-400)',
     cursor: 'pointer',
   },
   buttonSmall: {
@@ -91,8 +92,8 @@ const s = {
     fontSize: typography.fontSize.xs,
   },
   buttonDanger: {
-    backgroundColor: colors.semantic.error.main,
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-error)',
+    color: 'var(--color-primary-50)',
     border: 'none',
   },
   // Stats cards
@@ -103,32 +104,32 @@ const s = {
     marginBottom: spacing[8],
   },
   statCard: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
   },
   statIcon: {
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginBottom: spacing[3],
   },
   statValue: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     lineHeight: 1,
     marginBottom: spacing[1],
   },
   statLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   // Tabs
   tabs: {
     display: 'flex',
     gap: spacing[1],
     marginBottom: spacing[6],
-    borderBottom: `1px solid ${colors.primary[300]}`,
+    borderBottom: '1px solid var(--color-primary-300)',
   },
   tab: {
     padding: `${spacing[3]} ${spacing[6]}`,
@@ -139,7 +140,7 @@ const s = {
     borderLeft: 'none',
     borderRight: 'none',
     borderBottom: '2px solid transparent',
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     cursor: 'pointer',
@@ -152,8 +153,8 @@ const s = {
     boxShadow: 'none',
   },
   tabActive: {
-    color: colors.primary[900],
-    borderBottom: `2px solid ${colors.primary[900]}`,
+    color: 'var(--color-primary-900)',
+    borderBottom: '2px solid var(--color-primary-900)',
   },
   tabCount: {
     display: 'inline-flex',
@@ -162,15 +163,15 @@ const s = {
     minWidth: '20px',
     height: '20px',
     padding: `0 ${spacing[2]}`,
-    backgroundColor: colors.primary[200],
-    color: colors.primary[600],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-600)',
     borderRadius: borders.radius.full,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
   },
   tabCountActive: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   // Search and filter bar
   toolbar: {
@@ -188,23 +189,23 @@ const s = {
     left: spacing[4],
     top: '50%',
     transform: 'translateY(-50%)',
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     pointerEvents: 'none' as const,
   },
   searchInput: {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     paddingLeft: spacing[12],
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     outline: 'none',
   },
   viewToggle: {
     display: 'flex',
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
     overflow: 'hidden',
   },
@@ -213,14 +214,14 @@ const s = {
     backgroundColor: 'transparent',
     border: 'none',
     cursor: 'pointer',
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   viewToggleButtonActive: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   filterButton: {
     display: 'flex',
@@ -228,16 +229,16 @@ const s = {
     gap: spacing[2],
     padding: `${spacing[3]} ${spacing[4]}`,
     backgroundColor: 'transparent',
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     cursor: 'pointer',
     fontWeight: typography.fontWeight.medium,
   },
   filterButtonActive: {
-    backgroundColor: colors.primary[100],
-    borderColor: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    borderColor: 'var(--color-primary-900)',
   },
   // Filter dropdown
   filterDropdownContainer: {
@@ -248,8 +249,8 @@ const s = {
     top: '100%',
     right: 0,
     marginTop: spacing[2],
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     boxShadow: shadows.lg,
     zIndex: 50,
@@ -262,7 +263,7 @@ const s = {
   filterSectionTitle: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     textTransform: 'uppercase' as const,
     letterSpacing: typography.letterSpacing.wide,
     marginBottom: spacing[2],
@@ -273,13 +274,13 @@ const s = {
     gap: spacing[2],
     padding: `${spacing[2]} 0`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     cursor: 'pointer',
   },
   filterCount: {
     marginLeft: 'auto',
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   // Section label
   sectionLabel: {
@@ -287,7 +288,7 @@ const s = {
     fontWeight: typography.fontWeight.medium,
     letterSpacing: typography.letterSpacing.wide,
     textTransform: 'uppercase' as const,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginBottom: spacing[4],
   },
   // Tile view - conversation grid
@@ -298,8 +299,8 @@ const s = {
   },
   // Tile card
   card: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
     textDecoration: 'none',
@@ -311,7 +312,7 @@ const s = {
     transform: 'none',
   },
   cardHover: {
-    borderColor: colors.primary[500],
+    borderColor: 'var(--color-primary-500)',
     boxShadow: shadows.sm,
   },
   cardHeader: {
@@ -325,7 +326,7 @@ const s = {
   cardTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
     lineHeight: typography.lineHeight.tight,
     flex: 1,
@@ -343,35 +344,35 @@ const s = {
   table: {
     width: '100%',
     borderCollapse: 'collapse' as const,
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     overflow: 'hidden',
   },
   tableHeader: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
   },
   th: {
     padding: `${spacing[4]} ${spacing[6]}`,
     textAlign: 'left' as const,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     textTransform: 'uppercase' as const,
     letterSpacing: typography.letterSpacing.wide,
-    borderBottom: `1px solid ${colors.primary[300]}`,
+    borderBottom: '1px solid var(--color-primary-300)',
   },
   tr: {
-    borderBottom: `1px solid ${colors.primary[200]}`,
+    borderBottom: '1px solid var(--color-primary-200)',
     transition: 'background-color 150ms',
   },
   trHover: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
   },
   td: {
     padding: `${spacing[4]} ${spacing[6]}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     verticalAlign: 'middle' as const,
   },
   tdTitle: {
@@ -390,11 +391,11 @@ const s = {
     height: '8px',
     borderRadius: borders.radius.full,
   },
-  statusDotDraft: { backgroundColor: colors.primary[400] },
-  statusDotActive: { backgroundColor: colors.primary[900] },
-  statusDotClosed: { backgroundColor: colors.primary[400] },
-  statusDotAnalyzing: { backgroundColor: colors.primary[500] },
-  statusDotAnalyzed: { backgroundColor: colors.primary[900] },
+  statusDotDraft: { backgroundColor: 'var(--color-primary-400)' },
+  statusDotActive: { backgroundColor: 'var(--color-primary-900)' },
+  statusDotClosed: { backgroundColor: 'var(--color-primary-400)' },
+  statusDotAnalyzing: { backgroundColor: 'var(--color-primary-500)' },
+  statusDotAnalyzed: { backgroundColor: 'var(--color-primary-900)' },
   // Badge variants for tile view
   statusBadgePill: {
     fontSize: typography.fontSize.xs,
@@ -404,24 +405,24 @@ const s = {
     whiteSpace: 'nowrap' as const,
   },
   statusDraft: {
-    backgroundColor: colors.primary[200],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-700)',
   },
   statusActive: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   statusClosed: {
-    backgroundColor: colors.primary[200],
-    color: colors.primary[600],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-600)',
   },
   statusAnalyzing: {
-    backgroundColor: colors.primary[300],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-300)',
+    color: 'var(--color-primary-700)',
   },
   statusAnalyzed: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   // Card meta
   cardMeta: {
@@ -1484,10 +1485,10 @@ export default function ConversationsPage() {
 
       {/* Content */}
       {loading && activeTab !== 'invitations' ? (
-        <div style={s.loading}>Loading conversations...</div>
+        <SkeletonConversationGrid count={6} />
       ) : activeTab === 'invitations' ? (
         invitationsLoading ? (
-          <div style={s.loading}>Loading invitations...</div>
+          <SkeletonConversationGrid count={3} />
         ) : invitations.length === 0 ? (
           <EmptyState
             type="invites"

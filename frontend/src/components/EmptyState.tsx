@@ -127,6 +127,7 @@ interface EmptyStateProps {
   compact?: boolean;
 }
 
+// Use CSS custom properties for dark mode support
 const styles = {
   container: {
     display: 'flex',
@@ -135,9 +136,9 @@ const styles = {
     justifyContent: 'center',
     textAlign: 'center' as const,
     padding: spacing[12],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
-    border: `2px dashed ${colors.primary[300]}`,
+    border: '2px dashed var(--color-primary-300)',
   },
   containerCompact: {
     padding: spacing[8],
@@ -149,13 +150,13 @@ const styles = {
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     margin: 0,
     marginBottom: spacing[2],
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     margin: 0,
     maxWidth: '400px',
     lineHeight: typography.lineHeight.relaxed,

@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import EmptyState from '../components/EmptyState';
+import { SkeletonConversationGrid } from '../components/Skeleton';
 
 interface CollectionWithCount extends Series {
   conversationCount: number;
@@ -31,10 +32,11 @@ export default function CollectionsPage() {
   const [analyzingCollectionId, setAnalyzingCollectionId] = useState<string | null>(null);
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
 
+  // Use CSS custom properties for dark mode support
   const styles = {
     page: {
       minHeight: 'calc(100vh - var(--header-height))',
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       padding: spacing[8],
     },
     container: {
@@ -50,21 +52,21 @@ export default function CollectionsPage() {
     title: {
       fontSize: typography.fontSize['3xl'],
       fontWeight: typography.fontWeight.bold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
       marginBottom: spacing[2],
     },
     description: {
       fontSize: typography.fontSize.base,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       margin: 0,
     },
     primaryButton: {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[50],
-      backgroundColor: colors.primary[900],
+      color: 'var(--color-primary-50)',
+      backgroundColor: 'var(--color-primary-900)',
       border: 'none',
       borderRadius: borders.radius.md,
       cursor: 'pointer',
@@ -74,9 +76,9 @@ export default function CollectionsPage() {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[700],
-      backgroundColor: colors.primary[50],
-      border: `${borders.width.thin} solid ${colors.primary[400]}`,
+      color: 'var(--color-primary-700)',
+      backgroundColor: 'var(--color-primary-50)',
+      border: `${borders.width.thin} solid var(--color-primary-400)`,
       borderRadius: borders.radius.md,
       cursor: 'pointer',
       transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
@@ -85,8 +87,8 @@ export default function CollectionsPage() {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[50],
-      backgroundColor: colors.semantic.error.main,
+      color: 'var(--color-primary-50)',
+      backgroundColor: 'var(--color-error)',
       border: 'none',
       borderRadius: borders.radius.md,
       cursor: 'pointer',
@@ -97,9 +99,9 @@ export default function CollectionsPage() {
       gap: spacing[6],
     },
     card: {
-      backgroundColor: colors.primary[50],
+      backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.lg,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid var(--color-primary-300)`,
       padding: spacing[6],
       cursor: 'pointer',
       transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
@@ -108,26 +110,26 @@ export default function CollectionsPage() {
     cardTitle: {
       fontSize: typography.fontSize.lg,
       fontWeight: typography.fontWeight.semibold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
     },
     cardDescription: {
       fontSize: typography.fontSize.sm,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       margin: `${spacing[2]} 0`,
       lineHeight: typography.lineHeight.relaxed,
     },
     cardMeta: {
       fontSize: typography.fontSize.sm,
-      color: colors.primary[500],
+      color: 'var(--color-primary-500)',
       marginTop: spacing[4],
     },
     emptyState: {
       textAlign: 'center' as const,
       padding: spacing[12],
-      backgroundColor: colors.primary[50],
+      backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.lg,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid var(--color-primary-300)`,
     },
     modal: {
       position: 'fixed' as const,
@@ -142,7 +144,7 @@ export default function CollectionsPage() {
       zIndex: 1000,
     },
     modalContent: {
-      backgroundColor: colors.primary[50],
+      backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.xl,
       padding: spacing[8],
       maxWidth: '500px',
@@ -153,30 +155,32 @@ export default function CollectionsPage() {
       width: '100%',
       padding: spacing[3],
       fontSize: typography.fontSize.sm,
-      border: `${borders.width.thin} solid ${colors.primary[400]}`,
+      border: `${borders.width.thin} solid var(--color-primary-400)`,
       borderRadius: borders.radius.md,
       marginTop: spacing[2],
+      backgroundColor: 'var(--color-primary-50)',
+      color: 'var(--color-primary-900)',
     },
     label: {
       display: 'block',
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
     },
     errorMessage: {
-      backgroundColor: colors.semantic.error.light,
-      border: `${borders.width.thin} solid ${colors.semantic.error.main}`,
+      backgroundColor: 'var(--color-error-light)',
+      border: `${borders.width.thin} solid var(--color-error)`,
       borderRadius: borders.radius.md,
       padding: spacing[4],
-      color: colors.semantic.error.text,
+      color: 'var(--color-error)',
       marginBottom: spacing[4],
     },
     successMessage: {
-      backgroundColor: colors.semantic.success.light,
-      border: `${borders.width.thin} solid ${colors.semantic.success.main}`,
+      backgroundColor: 'var(--color-success-light)',
+      border: `${borders.width.thin} solid var(--color-success)`,
       borderRadius: borders.radius.md,
       padding: spacing[4],
-      color: colors.semantic.success.text,
+      color: 'var(--color-success)',
       marginBottom: spacing[4],
     },
   };
@@ -286,9 +290,15 @@ export default function CollectionsPage() {
     return (
       <div style={styles.page}>
         <div style={styles.container}>
-          <div style={{ textAlign: 'center', padding: spacing[12], color: colors.primary[600] }}>
-            Loading collections...
-          </div>
+          <header style={styles.header}>
+            <div>
+              <h1 style={styles.title}>Collections</h1>
+              <p style={styles.description}>
+                Group related conversations to track trends over time
+              </p>
+            </div>
+          </header>
+          <SkeletonConversationGrid count={6} />
         </div>
       </div>
     );
@@ -330,11 +340,8 @@ export default function CollectionsPage() {
           }
         }
         .collections-card:hover {
-          border-color: ${colors.primary[500]};
+          border-color: var(--color-primary-500);
           box-shadow: ${shadows.sm};
-        }
-        .collections-primary-btn:hover {
-          background-color: ${colors.primary[800]};
         }
       `}</style>
       <div style={styles.container}>
@@ -348,7 +355,6 @@ export default function CollectionsPage() {
           <button
             style={styles.primaryButton}
             onClick={() => setShowCreateModal(true)}
-            className="collections-primary-btn"
           >
             + New Collection
           </button>
@@ -370,7 +376,6 @@ export default function CollectionsPage() {
               <button
                 style={styles.primaryButton}
                 onClick={() => setShowCreateModal(true)}
-                className="collections-primary-btn"
               >
                 + New Collection
               </button>
@@ -411,7 +416,7 @@ export default function CollectionsPage() {
                         border: 'none',
                         cursor: 'pointer',
                         padding: spacing[2],
-                        color: colors.primary[500],
+                        color: 'var(--color-primary-500)',
                       }}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -425,8 +430,8 @@ export default function CollectionsPage() {
                         position: 'absolute',
                         top: '100%',
                         right: 0,
-                        backgroundColor: colors.primary[50],
-                        border: `${borders.width.thin} solid ${colors.primary[300]}`,
+                        backgroundColor: 'var(--color-primary-50)',
+                        border: `${borders.width.thin} solid var(--color-primary-300)`,
                         borderRadius: borders.radius.md,
                         boxShadow: shadows.md,
                         minWidth: '150px',
@@ -444,7 +449,7 @@ export default function CollectionsPage() {
                             border: 'none',
                             cursor: 'pointer',
                             fontSize: typography.fontSize.sm,
-                            color: colors.primary[700],
+                            color: 'var(--color-primary-700)',
                           }}
                         >
                           {isAnalyzing ? 'Running...' : 'Run analysis'}
@@ -465,7 +470,7 @@ export default function CollectionsPage() {
                             border: 'none',
                             cursor: 'pointer',
                             fontSize: typography.fontSize.sm,
-                            color: colors.semantic.error.main,
+                            color: 'var(--color-error)',
                           }}
                         >
                           Delete
@@ -484,8 +489,8 @@ export default function CollectionsPage() {
       {showCreateModal && (
         <div style={styles.modal} onClick={() => !creating && setShowCreateModal(false)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ color: colors.primary[900], marginBottom: spacing[4] }}>Create New Collection</h2>
-            <p style={{ color: colors.primary[600], marginBottom: spacing[6] }}>
+            <h2 style={{ color: 'var(--color-primary-900)', marginBottom: spacing[4] }}>Create New Collection</h2>
+            <p style={{ color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
               Create a new collection to group related conversations together.
             </p>
 
@@ -518,7 +523,6 @@ export default function CollectionsPage() {
                 style={styles.secondaryButton}
                 onClick={() => setShowCreateModal(false)}
                 disabled={creating}
-                className="collections-secondary-btn"
               >
                 Cancel
               </button>
@@ -526,7 +530,6 @@ export default function CollectionsPage() {
                 style={{ ...styles.primaryButton, opacity: creating || !collectionName.trim() ? 0.6 : 1 }}
                 onClick={handleCreateCollection}
                 disabled={creating || !collectionName.trim()}
-                className="collections-primary-btn"
               >
                 {creating ? 'Creating...' : 'Create Collection'}
               </button>
@@ -539,11 +542,11 @@ export default function CollectionsPage() {
       {showDeleteModal && deleteCollectionId && (
         <div style={styles.modal} onClick={() => !deleting && setShowDeleteModal(false)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ color: colors.semantic.error.dark, marginBottom: spacing[4] }}>Delete Collection</h2>
-            <p style={{ color: colors.primary[600], marginBottom: spacing[4] }}>
+            <h2 style={{ color: 'var(--color-error)', marginBottom: spacing[4] }}>Delete Collection</h2>
+            <p style={{ color: 'var(--color-primary-600)', marginBottom: spacing[4] }}>
               Are you sure you want to delete <strong>{collections.find(c => c.id === deleteCollectionId)?.name}</strong>?
             </p>
-            <p style={{ color: colors.primary[600], marginBottom: spacing[6] }}>
+            <p style={{ color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
               This action cannot be undone. Conversations in this collection will remain but won't be grouped.
             </p>
 
@@ -552,7 +555,6 @@ export default function CollectionsPage() {
                 style={styles.secondaryButton}
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleting}
-                className="collections-secondary-btn"
               >
                 Cancel
               </button>
@@ -568,20 +570,6 @@ export default function CollectionsPage() {
         </div>
       )}
 
-      <style>{`
-        .collections-primary-btn:hover {
-          background-color: ${colors.primary[800]} !important;
-          box-shadow: ${shadows.sm} !important;
-        }
-        .collections-secondary-btn:hover {
-          background-color: ${colors.primary[100]} !important;
-          border-color: ${colors.primary[500]} !important;
-        }
-        .collections-card:hover {
-          border-color: ${colors.primary[500]} !important;
-          box-shadow: ${shadows.sm} !important;
-        }
-      `}</style>
     </div>
   );
 }

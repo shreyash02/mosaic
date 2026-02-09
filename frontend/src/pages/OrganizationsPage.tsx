@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Organization } from '../types';
-import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 interface OrganizationWithRole extends Organization {
@@ -17,10 +17,11 @@ export default function OrganizationsPage() {
 
   usePageTitle('Organizations');
 
+  // Use CSS custom properties for dark mode support
   const styles = {
     page: {
       minHeight: 'calc(100vh - var(--header-height))',
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       padding: spacing[8],
     },
     container: {
@@ -36,13 +37,13 @@ export default function OrganizationsPage() {
     title: {
       fontSize: typography.fontSize['3xl'],
       fontWeight: typography.fontWeight.bold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
       marginBottom: spacing[2],
     },
     description: {
       fontSize: typography.fontSize.base,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       margin: 0,
     },
     primaryButton: {
@@ -50,8 +51,8 @@ export default function OrganizationsPage() {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[50],
-      backgroundColor: colors.primary[900],
+      color: 'var(--color-primary-50)',
+      backgroundColor: 'var(--color-primary-900)',
       border: 'none',
       borderRadius: borders.radius.md,
       cursor: 'pointer',
@@ -63,9 +64,9 @@ export default function OrganizationsPage() {
       padding: `${spacing[2]} ${spacing[4]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[700],
-      backgroundColor: colors.primary[50],
-      border: `${borders.width.thin} solid ${colors.primary[400]}`,
+      color: 'var(--color-primary-700)',
+      backgroundColor: 'var(--color-primary-50)',
+      border: `${borders.width.thin} solid var(--color-primary-400)`,
       borderRadius: borders.radius.md,
       cursor: 'pointer',
       textDecoration: 'none',
@@ -76,9 +77,9 @@ export default function OrganizationsPage() {
       padding: `${spacing[2]} ${spacing[4]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       backgroundColor: 'transparent',
-      border: `${borders.width.thin} solid ${colors.primary[400]}`,
+      border: `${borders.width.thin} solid var(--color-primary-400)`,
       borderRadius: borders.radius.md,
       cursor: 'pointer',
       textDecoration: 'none',
@@ -90,9 +91,9 @@ export default function OrganizationsPage() {
       gap: spacing[6],
     },
     card: {
-      backgroundColor: colors.primary[50],
+      backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.lg,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid var(--color-primary-300)`,
       padding: spacing[6],
       transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
     },
@@ -105,7 +106,7 @@ export default function OrganizationsPage() {
     cardTitle: {
       fontSize: typography.fontSize.lg,
       fontWeight: typography.fontWeight.semibold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
     },
     badge: {
@@ -115,23 +116,23 @@ export default function OrganizationsPage() {
       borderRadius: borders.radius.full,
     },
     badgeAdmin: {
-      backgroundColor: colors.primary[900],
-      color: colors.primary[50],
+      backgroundColor: 'var(--color-primary-900)',
+      color: 'var(--color-primary-50)',
     },
     badgeMember: {
-      backgroundColor: colors.primary[200],
-      color: colors.primary[700],
+      backgroundColor: 'var(--color-primary-200)',
+      color: 'var(--color-primary-700)',
     },
     cardDescription: {
       fontSize: typography.fontSize.sm,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       margin: 0,
       marginBottom: spacing[4],
       lineHeight: typography.lineHeight.relaxed,
     },
     cardMeta: {
       fontSize: typography.fontSize.sm,
-      color: colors.primary[500],
+      color: 'var(--color-primary-500)',
       marginBottom: spacing[4],
     },
     cardActions: {
@@ -141,16 +142,16 @@ export default function OrganizationsPage() {
     emptyState: {
       textAlign: 'center' as const,
       padding: spacing[12],
-      backgroundColor: colors.primary[50],
+      backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.lg,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid var(--color-primary-300)`,
     },
     errorMessage: {
-      backgroundColor: colors.semantic.error.light,
-      border: `${borders.width.thin} solid ${colors.semantic.error.main}`,
+      backgroundColor: 'var(--color-error-light)',
+      border: `${borders.width.thin} solid var(--color-error)`,
       borderRadius: borders.radius.md,
       padding: spacing[4],
-      color: colors.semantic.error.text,
+      color: 'var(--color-error)',
       marginBottom: spacing[4],
     },
   };
@@ -201,7 +202,7 @@ export default function OrganizationsPage() {
     return (
       <div style={styles.page}>
         <div style={styles.container}>
-          <div style={{ textAlign: 'center', padding: spacing[12], color: colors.primary[600] }}>
+          <div style={{ textAlign: 'center', padding: spacing[12], color: 'var(--color-primary-600)' }}>
             Loading organizations...
           </div>
         </div>
@@ -245,14 +246,8 @@ export default function OrganizationsPage() {
           }
         }
         .orgs-card:hover {
-          border-color: ${colors.primary[500]};
+          border-color: var(--color-primary-500);
           box-shadow: ${shadows.sm};
-        }
-        .orgs-primary-btn:hover {
-          background-color: ${colors.primary[800]};
-        }
-        .orgs-secondary-btn:hover {
-          background-color: ${colors.primary[100]};
         }
       `}</style>
       <div style={styles.container}>
@@ -263,7 +258,7 @@ export default function OrganizationsPage() {
               Manage your organizations and collaborate with team members
             </p>
           </div>
-          <Link to="/organizations/new" style={styles.primaryButton} className="orgs-primary-btn">
+          <Link to="/organizations/new" style={styles.primaryButton}>
             + New Organization
           </Link>
         </header>
@@ -272,11 +267,11 @@ export default function OrganizationsPage() {
 
         {organizations.length === 0 ? (
           <div style={styles.emptyState}>
-            <h3 style={{ color: colors.primary[900], marginBottom: spacing[2] }}>No organizations yet</h3>
-            <p style={{ color: colors.primary[600], marginBottom: spacing[4] }}>
+            <h3 style={{ color: 'var(--color-primary-900)', marginBottom: spacing[2] }}>No organizations yet</h3>
+            <p style={{ color: 'var(--color-primary-600)', marginBottom: spacing[4] }}>
               Create your first organization to start collaborating with your team
             </p>
-            <Link to="/organizations/new" style={styles.primaryButton} className="orgs-primary-btn">
+            <Link to="/organizations/new" style={styles.primaryButton}>
               + New Organization
             </Link>
           </div>
@@ -306,7 +301,6 @@ export default function OrganizationsPage() {
                   <Link
                     to={`/organizations/${org.id}`}
                     style={styles.secondaryButton}
-                    className="orgs-secondary-btn"
                   >
                     View Organization
                   </Link>
@@ -314,7 +308,6 @@ export default function OrganizationsPage() {
                     <Link
                       to={`/organizations/${org.id}/settings`}
                       style={styles.outlineButton}
-                      className="orgs-outline-btn"
                     >
                       Settings
                     </Link>
@@ -326,23 +319,6 @@ export default function OrganizationsPage() {
         )}
       </div>
 
-      <style>{`
-        .orgs-primary-btn:hover {
-          background-color: ${colors.primary[800]} !important;
-          box-shadow: ${shadows.sm} !important;
-        }
-        .orgs-secondary-btn:hover {
-          background-color: ${colors.primary[100]} !important;
-          border-color: ${colors.primary[500]} !important;
-        }
-        .orgs-outline-btn:hover {
-          background-color: ${colors.primary[100]} !important;
-        }
-        .orgs-card:hover {
-          border-color: ${colors.primary[500]} !important;
-          box-shadow: ${shadows.sm} !important;
-        }
-      `}</style>
     </div>
   );
 }

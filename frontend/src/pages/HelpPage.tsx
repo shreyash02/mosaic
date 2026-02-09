@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 import { usePageTitle } from '../hooks/usePageTitle';
 
+// Use CSS custom properties for dark mode support
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -18,20 +19,20 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     lineHeight: typography.lineHeight.relaxed,
   },
   overviewCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: '1px solid var(--color-primary-200)',
     padding: spacing[8],
     marginBottom: spacing[8],
     boxShadow: shadows.sm,
@@ -39,25 +40,25 @@ const styles = {
   overviewTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[4],
   },
   overviewText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[6],
   },
   featuresTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   featuresList: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     lineHeight: 2,
     paddingLeft: spacing[5],
     margin: 0,
@@ -65,7 +66,7 @@ const styles = {
   sectionTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[5],
   },
   topicsGrid: {
@@ -75,9 +76,9 @@ const styles = {
     marginBottom: spacing[8],
   },
   topicCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: '1px solid var(--color-primary-200)',
     padding: spacing[5],
     textDecoration: 'none',
     color: 'inherit',
@@ -86,36 +87,36 @@ const styles = {
   },
   topicIcon: {
     marginBottom: spacing[4],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   topicTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
   topicDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     lineHeight: typography.lineHeight.relaxed,
   },
   supportCard: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
   },
   supportTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[4],
   },
   supportText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     marginBottom: spacing[5],
   },
   supportItems: {
@@ -131,16 +132,16 @@ const styles = {
   supportItemTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   supportItemText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     margin: 0,
   },
   link: {
-    color: colors.primary[700],
+    color: 'var(--color-info)',
     textDecoration: 'underline',
     fontWeight: typography.fontWeight.medium,
   },

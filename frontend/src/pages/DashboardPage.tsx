@@ -13,13 +13,15 @@ import {
   ChartIcon,
 } from '../components/icons';
 import EmptyState from '../components/EmptyState';
+import { SkeletonDashboard } from '../components/Skeleton';
 
+// Use CSS custom properties for dark mode support
 const s = {
   page: {
     maxWidth: '1200px',
     margin: '0 auto',
     padding: spacing[6],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     minHeight: 'calc(100vh - var(--header-height))',
   },
   header: {
@@ -28,13 +30,13 @@ const s = {
   pageTitle: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
     marginBottom: spacing[1],
   },
   pageSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
   },
   statsGrid: {
@@ -44,24 +46,24 @@ const s = {
     marginBottom: spacing[8],
   },
   statCard: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
   },
   statIcon: {
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   statValue: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     lineHeight: 1,
     marginBottom: spacing[1],
   },
   statLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   section: {
     marginBottom: spacing[8],
@@ -75,18 +77,18 @@ const s = {
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   viewAllLink: {
     fontSize: typography.fontSize.sm,
-    color: colors.interactive.link,
+    color: 'var(--color-info)',
     textDecoration: 'none',
     fontWeight: typography.fontWeight.medium,
   },
   card: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
   },
@@ -96,8 +98,8 @@ const s = {
     flexDirection: 'column' as const,
     alignItems: 'center',
     justifyContent: 'center',
-    color: colors.primary[400],
-    backgroundColor: colors.primary[100],
+    color: 'var(--color-primary-400)',
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
   },
   recentGrid: {
@@ -106,8 +108,8 @@ const s = {
     gap: spacing[4],
   },
   conversationCard: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
     padding: spacing[5],
     textDecoration: 'none',
@@ -118,12 +120,12 @@ const s = {
   cardTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   cardMeta: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   statusDot: {
     display: 'inline-block',
@@ -137,7 +139,7 @@ const s = {
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[16],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
   twoColumns: {
@@ -156,11 +158,11 @@ const s = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: `${spacing[3]} 0`,
-    borderBottom: `1px solid ${colors.primary[200]}`,
+    borderBottom: '1px solid var(--color-primary-200)',
   },
   breakdownLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     display: 'flex',
     alignItems: 'center',
     gap: spacing[2],
@@ -168,25 +170,25 @@ const s = {
   breakdownValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   progressBar: {
     height: '8px',
-    backgroundColor: colors.primary[200],
+    backgroundColor: 'var(--color-primary-200)',
     borderRadius: borders.radius.full,
     overflow: 'hidden',
     marginTop: spacing[2],
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primary[900],
+    backgroundColor: 'var(--color-primary-900)',
     borderRadius: borders.radius.full,
     transition: 'width 300ms ease',
   },
   emptyState: {
     textAlign: 'center' as const,
     padding: `${spacing[12]} ${spacing[6]}`,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
 };
 
@@ -268,7 +270,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div style={s.page}>
-        <div style={s.loading}>Loading dashboard...</div>
+        <div style={s.header}>
+          <h1 style={s.pageTitle}>{currentWorkspaceName}</h1>
+        </div>
+        <SkeletonDashboard />
       </div>
     );
   }
@@ -434,11 +439,11 @@ export default function DashboardPage() {
                 <li key={conv.id} style={{ ...s.breakdownItem, borderBottom: index === topConversations.length - 1 ? 'none' : undefined }}>
                   <Link
                     to={`/conversations/${conv.id}`}
-                    style={{ ...s.breakdownLabel, color: colors.primary[900], textDecoration: 'none', flex: 1 }}
+                    style={{ ...s.breakdownLabel, color: 'var(--color-primary-900)', textDecoration: 'none', flex: 1 }}
                   >
                     <span style={{
                       minWidth: '20px',
-                      color: colors.primary[500],
+                      color: 'var(--color-primary-500)',
                       fontSize: typography.fontSize.xs,
                     }}>
                       #{index + 1}
@@ -474,12 +479,12 @@ export default function DashboardPage() {
             title="No conversations yet"
             description="Get started by creating your first conversation"
             action={
-              <Link to="/conversations/new" style={{
+              <Link to="/conversations/new" className="btn-primary-action" style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: spacing[2],
-                backgroundColor: colors.primary[900],
-                color: colors.primary[50],
+                backgroundColor: 'var(--color-primary-900)',
+                color: 'var(--color-primary-50)',
                 padding: `${spacing[3]} ${spacing[6]}`,
                 borderRadius: borders.radius.md,
                 fontSize: typography.fontSize.sm,
@@ -516,12 +521,12 @@ export default function DashboardPage() {
       <div style={s.section}>
         <h3 style={{ ...s.sectionTitle, marginBottom: spacing[4] }}>Quick Actions</h3>
         <div className="dashboard-quick-actions">
-          <Link to="/conversations/new" style={{
+          <Link to="/conversations/new" className="btn-primary-action" style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: spacing[2],
-            backgroundColor: colors.primary[900],
-            color: colors.primary[50],
+            backgroundColor: 'var(--color-primary-900)',
+            color: 'var(--color-primary-50)',
             padding: `${spacing[3]} ${spacing[6]}`,
             borderRadius: borders.radius.md,
             fontSize: typography.fontSize.sm,
@@ -530,18 +535,18 @@ export default function DashboardPage() {
           }}>
             + New Conversation
           </Link>
-          <Link to="/templates" style={{
+          <Link to="/templates" className="btn-secondary-action" style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: spacing[2],
             backgroundColor: 'transparent',
-            color: colors.primary[900],
+            color: 'var(--color-primary-900)',
             padding: `${spacing[3]} ${spacing[6]}`,
             borderRadius: borders.radius.md,
             fontSize: typography.fontSize.sm,
             fontWeight: typography.fontWeight.medium,
             textDecoration: 'none',
-            border: `1px solid ${colors.primary[400]}`,
+            border: '1px solid var(--color-primary-400)',
           }}>
             View Templates
           </Link>

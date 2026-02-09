@@ -68,6 +68,495 @@
 }
 
 /* =============================================================================
+   DARK MODE THEME
+   ============================================================================= */
+
+html.dark {
+  /* Colors - Primary palette (inverted for dark mode) */
+  --color-primary-900: #f9fafb;
+  --color-primary-800: #f3f4f6;
+  --color-primary-700: #e5e7eb;
+  --color-primary-600: #d1d5db;
+  --color-primary-500: #9ca3af;
+  --color-primary-400: #6b7280;
+  --color-primary-300: #4b5563;
+  --color-primary-200: #374151;
+  --color-primary-100: #1f2937;
+  --color-primary-50: #111827;
+
+  /* Colors - Semantic (adjusted for dark mode) */
+  --color-error: #f87171;
+  --color-error-light: #450a0a;
+  --color-success: #4ade80;
+  --color-success-light: #052e16;
+  --color-warning: #fbbf24;
+  --color-info: #60a5fa;
+
+  /* Shadows (more subtle in dark mode) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+/* Dark mode body styles */
+html.dark body {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+/* Dark mode specific overrides */
+html.dark .App {
+  background-color: #111827;
+}
+
+html.dark .main-content {
+  background-color: #111827;
+}
+
+/* =============================================================================
+   DASHBOARD PAGE DARK MODE
+   ============================================================================= */
+
+/* Dashboard page background */
+html.dark .dashboard-page {
+  background-color: #111827 !important;
+}
+
+/* Dashboard stat cards */
+html.dark .dashboard-stat-card {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .dashboard-stat-card .stat-value {
+  color: #f3f4f6 !important;
+}
+
+html.dark .dashboard-stat-card .stat-label {
+  color: #9ca3af !important;
+}
+
+html.dark .dashboard-stat-card svg {
+  color: #9ca3af !important;
+}
+
+/* Dashboard cards (status breakdown, top conversations, etc.) */
+html.dark .dashboard-page > div > div[style*="background"] {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+/* Dashboard breakdown list items */
+html.dark .dashboard-page li[style*="border-bottom"] {
+  border-color: #374151 !important;
+}
+
+/* Dashboard card titles and section titles */
+html.dark .dashboard-page h3 {
+  color: #f3f4f6 !important;
+}
+
+/* Dashboard breakdown labels */
+html.dark .dashboard-page span[style*="color: rgb(74, 74, 90)"],
+html.dark .dashboard-page span[style*="color: #4a4a5a"] {
+  color: #d1d5db !important;
+}
+
+/* Dashboard breakdown values */
+html.dark .dashboard-page span[style*="font-weight: 600"],
+html.dark .dashboard-page span[style*="fontWeight: 600"] {
+  color: #f3f4f6 !important;
+}
+
+/* Dashboard page title and subtitle */
+html.dark .dashboard-page-title {
+  color: #f3f4f6 !important;
+}
+
+html.dark .dashboard-page p[style*="color"] {
+  color: #9ca3af !important;
+}
+
+/* Dashboard recent conversation cards */
+html.dark .dashboard-card {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .dashboard-card:hover {
+  border-color: #60a5fa !important;
+}
+
+/* Dashboard empty state text */
+html.dark .dashboard-page div[style*="text-align: center"] {
+  color: #9ca3af !important;
+}
+
+/* Dashboard view all link */
+html.dark .view-all-link {
+  color: #60a5fa !important;
+}
+
+/* Dashboard quick action buttons */
+html.dark .dashboard-quick-actions a[style*="background-color: transparent"] {
+  color: #f3f4f6 !important;
+  border-color: #4b5563 !important;
+}
+
+html.dark .dashboard-quick-actions a[style*="background-color: transparent"]:hover {
+  background-color: #374151 !important;
+}
+
+/* =============================================================================
+   PAGE-LEVEL DARK MODE OVERRIDES
+   ============================================================================= */
+
+/* All pages with white/light backgrounds */
+html.dark .conversations-page,
+html.dark .templates-page,
+html.dark .collections-page,
+html.dark .analysis-page {
+  background-color: #111827 !important;
+}
+
+/* Page titles */
+html.dark [class*="-page-title"],
+html.dark [class*="page-title"] {
+  color: #f3f4f6 !important;
+}
+
+/* Page subtitles */
+html.dark p[style*="color: rgb(107, 114, 128)"],
+html.dark p[style*="color: #6b7280"] {
+  color: #9ca3af !important;
+}
+
+/* Template/Collection/Conversation cards with inline styles */
+html.dark .template-card,
+html.dark .collection-card {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .template-card h3,
+html.dark .collection-card h3 {
+  color: #f3f4f6 !important;
+}
+
+html.dark .template-card span[style*="color"],
+html.dark .collection-card span[style*="color"] {
+  color: #9ca3af !important;
+}
+
+/* Badge styles */
+html.dark span[style*="background-color: rgb(243, 244, 246)"],
+html.dark span[style*="backgroundColor: rgb(243, 244, 246)"] {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+  color: #e5e7eb !important;
+}
+
+/* =============================================================================
+   EMPTY STATE DARK MODE
+   ============================================================================= */
+
+html.dark [class*="empty-state"],
+html.dark div[style*="border: 2px dashed"] {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark [class*="empty-state"] h3,
+html.dark [class*="empty-state"] h2 {
+  color: #f3f4f6 !important;
+}
+
+html.dark [class*="empty-state"] p {
+  color: #9ca3af !important;
+}
+
+html.dark [class*="empty-state"] svg {
+  color: #6b7280 !important;
+}
+
+/* =============================================================================
+   ORIGINAL CARDS AND PANELS
+   ============================================================================= */
+
+/* Cards and panels */
+html.dark .conversation-card,
+html.dark .organization-card,
+html.dark .info-panel,
+html.dark .questions-panel,
+html.dark .actions-panel,
+html.dark .analysis-preview,
+html.dark .conversation-form,
+html.dark .join-container,
+html.dark .auth-container,
+html.dark .modal-content,
+html.dark .theme-card,
+html.dark .analysis-summary-card,
+html.dark .verbatim-responses-section,
+html.dark .technical-details,
+html.dark .legal-content,
+html.dark .filter-bar,
+html.dark .org-tab-content {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .card-header h3,
+html.dark .page-header h1,
+html.dark .modal-content h2,
+html.dark h1,
+html.dark h2,
+html.dark h3 {
+  color: #f3f4f6;
+}
+
+/* Form elements */
+html.dark .form-group input,
+html.dark .form-group textarea,
+html.dark .form-group select,
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+html.dark .form-group input:focus,
+html.dark .form-group textarea:focus,
+html.dark .form-group select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+html.dark .form-group label {
+  color: #e5e7eb;
+}
+
+/* Buttons */
+html.dark .btn-secondary {
+  background-color: #374151;
+  color: #f3f4f6;
+  border-color: #4b5563;
+}
+
+html.dark .btn-secondary:hover:not(:disabled) {
+  background-color: #4b5563;
+}
+
+html.dark .btn-outline-secondary {
+  background-color: #1f2937;
+  color: #d1d5db;
+  border-color: #4b5563;
+}
+
+html.dark .btn-outline-secondary:hover:not(:disabled) {
+  background-color: #374151;
+  border-color: #6b7280;
+}
+
+/* Status badges */
+html.dark .status-draft {
+  background-color: #374151;
+  color: #d1d5db;
+}
+
+html.dark .status-active {
+  background-color: #064e3b;
+  color: #6ee7b7;
+}
+
+html.dark .status-closed {
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+
+/* Links */
+html.dark a {
+  color: #60a5fa;
+}
+
+html.dark a:hover {
+  color: #93c5fd;
+}
+
+/* Tables and lists */
+html.dark .info-item {
+  border-color: #374151;
+}
+
+html.dark .question-item {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+/* Empty state */
+html.dark .empty-state {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+/* Dashboard tabs */
+html.dark .dashboard-tabs {
+  border-color: #374151;
+}
+
+html.dark .tab-button {
+  color: #9ca3af;
+}
+
+html.dark .tab-button:hover {
+  color: #e5e7eb;
+  background-color: #1f2937;
+}
+
+html.dark .tab-button.active {
+  color: #60a5fa;
+  background-color: #1f2937;
+}
+
+/* Filter dropdowns */
+html.dark .filter-dropdown-toggle {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+html.dark .filter-dropdown-menu {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .filter-dropdown-header {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+html.dark .filter-dropdown-item:hover {
+  background-color: #374151;
+}
+
+/* Messages */
+html.dark .error-message {
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+
+html.dark .success-message {
+  background-color: #052e16;
+  color: #6ee7b7;
+  border-color: #064e3b;
+}
+
+/* Skeleton animations for dark mode */
+html.dark .skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+/* Feature cards on home page (keep light) */
+html.dark .features {
+  background-color: #1f2937;
+}
+
+html.dark .feature-card {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+html.dark .feature-card p {
+  color: #d1d5db;
+}
+
+/* Auth page dark mode */
+html.dark .auth-page {
+  background: #1f2937;
+}
+
+/* Home page hero section */
+html.dark .home-page {
+  background: #1f2937;
+}
+
+/* Legal pages */
+html.dark .legal-page {
+  background: #111827;
+}
+
+/* Response items */
+html.dark .response-item {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+/* Preview modal */
+html.dark .preview-modal {
+  background-color: #1f2937;
+}
+
+html.dark .preview-header {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+/* Question config */
+html.dark .question-config {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+/* Poll labels */
+html.dark .radio-label,
+html.dark .checkbox-label {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .radio-label:hover,
+html.dark .checkbox-label:hover {
+  background-color: #374151;
+}
+
+/* Conversation meta text */
+html.dark .conversation-meta {
+  color: #9ca3af;
+}
+
+html.dark .conversation-meta strong {
+  color: #f3f4f6;
+}
+
+/* Code displays */
+html.dark code {
+  background-color: #374151;
+  color: #f3f4f6;
+}
+
+html.dark .code-item {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .codes-list {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+/* Instance cards */
+html.dark .instance-card {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+html.dark .instance-card:hover {
+  border-color: #60a5fa;
+}
+
+/* =============================================================================
    GLOBAL STYLES
    ============================================================================= */
 

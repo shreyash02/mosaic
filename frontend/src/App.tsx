@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ConversationFormProvider } from './contexts/ConversationFormContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
@@ -59,9 +60,10 @@ import './App.css';
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <OrganizationProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <OrganizationProvider>
             <div className="App">
               <Header />
               <main className="main-content">
@@ -317,9 +319,10 @@ function App() {
               </Routes>
               </main>
             </div>
-          </OrganizationProvider>
-        </Router>
-      </AuthProvider>
+            </OrganizationProvider>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
