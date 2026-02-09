@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useConversationForm } from '../contexts/ConversationFormContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import SetupModeToggle from './SetupModeToggle';
+import { api } from '../services/api';
 import { colors, typography, spacing, borders, transitions } from '../styles/tokens';
 
 interface Step {
@@ -32,10 +35,111 @@ const EDIT_STEPS: Step[] = [
 export default function ConversationFormLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { formState, toggleMode } = useConversationForm();
+  const { formState, toggleMode, updateFormState, getStepPath } = useConversationForm();
+  const { currentOrgId } = useOrganization();
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftError, setDraftError] = useState('');
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Check if we're on the intent step
   const isIntentStep = location.pathname.includes('/intent');
+
+  const handleSaveAsDraft = async () => {
+    // Validate minimum required field
+    if (!formState.title.trim()) {
+      setDraftError('Please enter a title before saving');
+      return;
+    }
+
+    setSavingDraft(true);
+    setDraftError('');
+    setDraftSaved(false);
+
+    try {
+      // Get user's timezone
+      let userTimezone = 'UTC';
+      try {
+        userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (err) {
+        console.warn('Failed to detect timezone, using UTC:', err);
+      }
+
+      // Calculate total minutes (only for limited time)
+      const totalMinutes = formState.durationHours * 60 + formState.durationMinutes;
+
+      // Prepare conversation data with current form state
+      const conversationData = {
+        title: formState.title,
+        ...(formState.participantTitle.trim() && { participant_title: formState.participantTitle.trim() }),
+        description: formState.description,
+        ...(formState.headerImageUrl && { header_image_url: formState.headerImageUrl }),
+        anonymity_level: formState.anonymityLevel,
+        results_access: formState.resultsAccess,
+        show_verbatim_responses: formState.showVerbatimResponses,
+        invite_only: formState.inviteOnly,
+        timezone: userTimezone,
+        questions: formState.questions.filter(q => q.question_text.trim()), // Only include questions with text
+        // Duration only applies to limited-time conversations
+        ...(!formState.isLongRunning && totalMinutes > 0 && { duration_minutes: totalMinutes }),
+        ...(formState.scheduleActivation && formState.scheduledActivateAt && {
+          scheduled_activate_at: formState.scheduledActivateAt + ':00'
+        }),
+        ...(formState.isFollowUp && formState.parentConversationId && {
+          parent_conversation_id: formState.parentConversationId
+        }),
+        is_template: formState.createTemplate || false,
+        template_series_id: formState.createTemplate && formState.addToSeries && formState.selectedSeriesId
+          ? formState.selectedSeriesId
+          : undefined,
+        ...(formState.addToSeries && formState.selectedSeriesId && !formState.createTemplate && {
+          series_id: formState.selectedSeriesId
+        }),
+        ...(currentOrgId && { organization_id: currentOrgId }),
+        ...(formState.createTemplate && formState.enableRecurring && {
+          recurrence_pattern: formState.recurrencePattern,
+          ...(formState.nextInstanceDate && { next_instance_date: formState.nextInstanceDate + ':00' }),
+          ...(formState.recurrenceEndDate && { recurrence_end_date: formState.recurrenceEndDate + ':00' }),
+        }),
+        // Long-running feedback (continuous conversations)
+        ...(formState.isLongRunning && {
+          is_continuous: true,
+          analysis_interval: formState.analysisInterval,
+          analysis_timezone: userTimezone,
+        }),
+      };
+
+      // Ensure at least one question exists
+      if (conversationData.questions.length === 0) {
+        conversationData.questions = [
+          { id: crypto.randomUUID(), question_text: 'Question 1', question_type: 'text', question_order: 0, is_required: false }
+        ];
+      }
+
+      // Create or update conversation
+      let conversation;
+      if (formState.isEditMode && formState.conversationId) {
+        conversation = await api.updateConversation(formState.conversationId, conversationData);
+      } else {
+        conversation = await api.createConversation(conversationData);
+        // Update form state to reflect we're now editing an existing conversation
+        updateFormState({
+          isEditMode: true,
+          conversationId: conversation.id,
+        });
+        // Update URL to edit mode without navigating away
+        const currentStep = location.pathname.split('/').pop();
+        navigate(`/edit/conversation/${conversation.id}/${currentStep}`, { replace: true });
+      }
+
+      // Show success message
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 3000);
+    } catch (err: any) {
+      setDraftError(err.response?.data?.detail || 'Failed to save draft');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
 
   // Get visible steps based on mode (edit mode always uses edit steps, no intent)
   const allSteps = formState.isEditMode ? EDIT_STEPS : STEPS;
@@ -102,24 +206,86 @@ export default function ConversationFormLayout() {
           }}>
             {getTitle()}
           </h1>
-          <button
-            onClick={handleBack}
-            className="form-layout-cancel-btn"
-            style={{
-              padding: `${spacing[3]} ${spacing[6]}`,
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              color: colors.primary[700],
-              backgroundColor: colors.primary[50],
-              border: `${borders.width.thin} solid ${colors.primary[400]}`,
-              borderRadius: borders.radius.md,
-              cursor: 'pointer',
-              transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
-            }}
-          >
-            Cancel
-          </button>
+          <div style={{ display: 'flex', gap: spacing[3] }}>
+            <button
+              onClick={handleSaveAsDraft}
+              disabled={savingDraft}
+              className="form-layout-save-draft-btn"
+              style={{
+                padding: `${spacing[3]} ${spacing[6]}`,
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                color: colors.primary[50],
+                backgroundColor: colors.primary[900],
+                border: `${borders.width.thin} solid ${colors.primary[900]}`,
+                borderRadius: borders.radius.md,
+                cursor: savingDraft ? 'not-allowed' : 'pointer',
+                opacity: savingDraft ? 0.6 : 1,
+                transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
+              }}
+            >
+              {savingDraft ? 'Saving...' : 'Save as Draft'}
+            </button>
+            <button
+              onClick={handleBack}
+              className="form-layout-cancel-btn"
+              style={{
+                padding: `${spacing[3]} ${spacing[6]}`,
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                color: colors.primary[700],
+                backgroundColor: colors.primary[50],
+                border: `${borders.width.thin} solid ${colors.primary[400]}`,
+                borderRadius: borders.radius.md,
+                cursor: 'pointer',
+                transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
+
+        {/* Draft Error Message */}
+        {draftError && (
+          <div style={{
+            backgroundColor: colors.semantic.error.light,
+            border: `1px solid ${colors.semantic.error.main}`,
+            color: colors.semantic.error.text,
+            padding: `${spacing[3]} ${spacing[4]}`,
+            borderRadius: borders.radius.md,
+            marginBottom: spacing[6],
+            fontSize: typography.fontSize.sm,
+          }}>
+            {draftError}
+          </div>
+        )}
+
+        {/* Toast Notification */}
+        {draftSaved && (
+          <div style={{
+            position: 'fixed',
+            top: 'calc(var(--header-height) + 16px)',
+            right: spacing[6],
+            backgroundColor: colors.primary[900],
+            color: colors.primary[50],
+            padding: `${spacing[3]} ${spacing[5]}`,
+            borderRadius: borders.radius.md,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            animation: 'slideInRight 0.3s ease-out',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+            Draft saved
+          </div>
+        )}
 
         {/* Form Container */}
         <div style={{
@@ -185,7 +351,7 @@ export default function ConversationFormLayout() {
                     }}
                     onClick={() => {
                       if (isClickable) {
-                        navigate(`/create/conversation/${step.path}`);
+                        navigate(getStepPath(step.path));
                       }
                     }}
                   >
@@ -237,6 +403,20 @@ export default function ConversationFormLayout() {
 
       {/* Override styles for child components */}
       <style>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .form-layout-save-draft-btn:hover:not(:disabled) {
+          background-color: ${colors.primary[800]} !important;
+          border-color: ${colors.primary[800]} !important;
+        }
         .form-layout-cancel-btn:hover {
           background-color: ${colors.primary[100]} !important;
           border-color: ${colors.primary[500]} !important;

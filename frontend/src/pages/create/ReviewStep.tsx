@@ -10,7 +10,7 @@ import type { Series } from '../../types';
 
 export default function ReviewStep() {
   const navigate = useNavigate();
-  const { formState, updateFormState, resetForm } = useConversationForm();
+  const { formState, updateFormState, resetForm, getStepPath } = useConversationForm();
   const { currentOrgId } = useOrganization();
 
   const [loading, setLoading] = useState(false);
@@ -375,10 +375,8 @@ export default function ReviewStep() {
             // If creating from template, go back to template page
             if (formState.parentConversation?.is_template && formState.parentConversationId) {
               navigate(`/templates/${formState.parentConversationId}`);
-            } else if (formState.isEditMode && formState.conversationId) {
-              navigate(`/edit/conversation/${formState.conversationId}/timing`);
             } else {
-              navigate('/create/conversation/timing');
+              navigate(getStepPath('timing'));
             }
           }}
           className="btn btn-secondary"

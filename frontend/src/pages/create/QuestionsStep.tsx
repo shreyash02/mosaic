@@ -2,6 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { api } from '../../services/api';
+import CustomFileInput from '../../components/CustomFileInput';
+import CustomSelect from '../../components/CustomSelect';
+
+const QUESTION_TYPE_OPTIONS = [
+  { value: 'text', label: 'Text Response' },
+  { value: 'rating', label: 'Rating (0-10)' },
+  { value: 'single_choice', label: 'Single Choice' },
+  { value: 'multiple_choice', label: 'Multiple Choice' },
+];
 import {
   DndContext,
   closestCenter,
@@ -97,7 +106,7 @@ interface SortableQuestionProps {
   id: string;
   questionsCount: number;
   isExpanded: boolean;
-  children: React.ReactNode;
+  children: (dragHandleProps: { attributes: any; listeners: any } | null) => React.ReactNode;
 }
 
 function SortableQuestion({ id, questionsCount, isExpanded, children }: SortableQuestionProps) {
@@ -119,41 +128,47 @@ function SortableQuestion({ id, questionsCount, isExpanded, children }: Sortable
   const showDragHandle = questionsCount > 1;
 
   return (
-    <div ref={setNodeRef} style={{ ...style, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-      {showDragHandle && (
-        <div
-          {...attributes}
-          {...listeners}
-          aria-label="Drag to reorder question"
-          style={{
-            cursor: 'grab',
-            padding: '0.25rem',
-            color: '#718096',
-            flexShrink: 0,
-            marginTop: isExpanded ? '0.75rem' : '0.5rem',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z" fill="currentColor"/>
-            <path d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z" fill="currentColor"/>
-            <path d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z" fill="currentColor"/>
-            <path d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z" fill="currentColor"/>
-            <path d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z" fill="currentColor"/>
-            <path d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z" fill="currentColor"/>
-          </svg>
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }} className={isExpanded ? "question-item" : ""}>
-        {children}
+    <div ref={setNodeRef} style={style}>
+      <div style={{ display: 'flex', flexDirection: 'column' }} className={isExpanded ? "question-item" : ""}>
+        {children(showDragHandle ? { attributes, listeners } : null)}
       </div>
+    </div>
+  );
+}
+
+// Drag handle component to be used inside question cards
+function DragHandle({ attributes, listeners }: { attributes: any; listeners: any }) {
+  return (
+    <div
+      {...attributes}
+      {...listeners}
+      aria-label="Drag to reorder question"
+      style={{
+        cursor: 'grab',
+        padding: '0.25rem',
+        color: '#a0aec0',
+        display: 'flex',
+        alignItems: 'center',
+        marginRight: '0.25rem',
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+        <circle cx="3" cy="2" r="1.25" />
+        <circle cx="9" cy="2" r="1.25" />
+        <circle cx="3" cy="6" r="1.25" />
+        <circle cx="9" cy="6" r="1.25" />
+        <circle cx="3" cy="10" r="1.25" />
+        <circle cx="9" cy="10" r="1.25" />
+      </svg>
     </div>
   );
 }
 
 export default function QuestionsStep() {
   const navigate = useNavigate();
-  const { formState, updateFormState } = useConversationForm();
+  const { formState, updateFormState, getStepPath } = useConversationForm();
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState<Record<number, boolean>>({});
+  const [uploadResetKey, setUploadResetKey] = useState<Record<number, number>>({});
   const [error, setError] = useState('');
 
   const sensors = useSensors(
@@ -358,7 +373,8 @@ export default function QuestionsStep() {
       setError(err.response?.data?.detail || 'Failed to upload question image');
     } finally {
       setUploadingQuestionImage(prev => ({ ...prev, [questionIndex]: false }));
-      e.target.value = '';
+      // Increment reset key to force re-render of the file input
+      setUploadResetKey(prev => ({ ...prev, [questionIndex]: (prev[questionIndex] || 0) + 1 }));
     }
   };
 
@@ -376,7 +392,7 @@ export default function QuestionsStep() {
     }
 
     setError('');
-    navigate('/create/conversation/timing');
+    navigate(getStepPath('timing'));
   };
 
   const canContinue = formState.questions.length > 0 && formState.questions.every(q => q.question_text.trim());
@@ -385,16 +401,15 @@ export default function QuestionsStep() {
     <div className="conversation-form">
       {error && <div className="error-message">{error}</div>}
 
-      <div className="form-section">
-        <div className="section-header">
-          <h2>Questions</h2>
-          <button type="button" onClick={addQuestion} className="btn btn-secondary btn-small">
-            + Add Question
-          </button>
-        </div>
-        <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
-          Add the questions you want to ask respondents
-        </p>
+      <div className="section-header">
+        <h2>Questions</h2>
+        <button type="button" onClick={addQuestion} className="btn btn-secondary btn-small">
+          + Add Question
+        </button>
+      </div>
+      <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
+        Add the questions you want to ask respondents
+      </p>
 
         <DndContext
           sensors={sensors}
@@ -417,9 +432,12 @@ export default function QuestionsStep() {
                   questionsCount={formState.questions.length}
                   isExpanded={isExpanded}
                 >
+                  {(dragHandleProps) => (
+                  <>
                   {/* Collapsed Header */}
                   {!isExpanded && (
                     <div className="question-collapsed-header" onClick={() => toggleQuestion(index)}>
+                      {dragHandleProps && <DragHandle {...dragHandleProps} />}
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); toggleQuestion(index); }}
@@ -476,7 +494,8 @@ export default function QuestionsStep() {
                     <>
                       <div className="question-header" style={{ width: '100%', marginBottom: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {dragHandleProps && <DragHandle {...dragHandleProps} />}
                             <button
                               type="button"
                               onClick={() => toggleQuestion(index)}
@@ -519,16 +538,12 @@ export default function QuestionsStep() {
 
                       <div className="form-group">
                         <label>Question Type</label>
-                        <select
+                        <CustomSelect
                           value={question.question_type || 'text'}
-                          onChange={(e) => updateQuestionType(index, e.target.value)}
-                          style={{ width: '240px', paddingRight: '2.5rem' }}
-                        >
-                          <option value="text">Text Response</option>
-                          <option value="rating">Rating (0-10)</option>
-                          <option value="single_choice">Single Choice</option>
-                          <option value="multiple_choice">Multiple Choice</option>
-                        </select>
+                          options={QUESTION_TYPE_OPTIONS}
+                          onChange={(value) => updateQuestionType(index, value as string)}
+                          minWidth="200px"
+                        />
                       </div>
 
                       <div className="form-group">
@@ -566,17 +581,13 @@ export default function QuestionsStep() {
                           </div>
                         ) : (
                           <div>
-                            <input
-                              type="file"
+                            <CustomFileInput
+                              key={`question-image-${index}-${uploadResetKey[index] || 0}`}
                               accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                               onChange={(e) => handleQuestionImageUpload(e, index)}
                               disabled={uploadingQuestionImage[index]}
+                              label={uploadingQuestionImage[index] ? 'Uploading...' : 'Upload Image'}
                             />
-                            {uploadingQuestionImage[index] && (
-                              <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                                Uploading image...
-                              </p>
-                            )}
                           </div>
                         )}
                       </div>
@@ -649,12 +660,37 @@ export default function QuestionsStep() {
                       )}
                     </>
                   )}
+                  </>
+                  )}
                 </SortableQuestion>
               );
             })}
           </SortableContext>
         </DndContext>
-      </div>
+
+        {/* Add Question Button at Bottom */}
+        <button
+          type="button"
+          onClick={addQuestion}
+          className="btn btn-secondary"
+          style={{
+            width: '100%',
+            marginTop: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem',
+            border: '1px dashed #cbd5e0',
+            backgroundColor: 'transparent',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Question
+        </button>
 
       {/* Navigation */}
       <div className="form-actions" style={{
@@ -668,9 +704,9 @@ export default function QuestionsStep() {
           type="button"
           onClick={() => {
             if (formState.isGuidedMode) {
-              navigate('/create/conversation/details');
+              navigate(getStepPath('details'));
             } else {
-              navigate('/create/conversation/privacy');
+              navigate(getStepPath('privacy'));
             }
           }}
           className="btn btn-secondary"

@@ -142,7 +142,7 @@ const s = {
 
 export default function TimingStep() {
   const navigate = useNavigate();
-  const { formState, updateFormState } = useConversationForm();
+  const { formState, updateFormState, getStepPath } = useConversationForm();
 
   const isTemplate = formState.createTemplate;
 
@@ -468,14 +468,14 @@ export default function TimingStep() {
       }}>
         <button
           type="button"
-          onClick={() => navigate('/create/conversation/questions')}
+          onClick={() => navigate(getStepPath('questions'))}
           className="btn btn-secondary"
         >
           ← Back
         </button>
         <button
           type="button"
-          onClick={() => navigate('/create/conversation/review')}
+          onClick={() => navigate(getStepPath('review'))}
           className="btn btn-primary btn-large"
         >
           Next: Review →

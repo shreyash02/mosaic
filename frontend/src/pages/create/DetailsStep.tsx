@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { api } from '../../services/api';
+import { spacing } from '../../styles';
+import CustomFileInput, { CustomFileInputRef } from '../../components/CustomFileInput';
 
 export default function DetailsStep() {
   const navigate = useNavigate();
-  const { formState, updateFormState } = useConversationForm();
+  const { formState, updateFormState, getStepPath } = useConversationForm();
   const { currentOrgId, currentWorkspaceName } = useOrganization();
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<CustomFileInputRef>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,7 +46,7 @@ export default function DetailsStep() {
       setError(err.response?.data?.detail || 'Failed to upload image');
     } finally {
       setUploadingImage(false);
-      e.target.value = '';
+      fileInputRef.current?.clear();
     }
   };
 
@@ -58,10 +61,10 @@ export default function DetailsStep() {
     // Navigate based on mode
     if (formState.isGuidedMode) {
       // Guided mode skips privacy, goes to questions
-      navigate('/create/conversation/questions');
+      navigate(getStepPath('questions'));
     } else {
       // Manual mode goes to privacy
-      navigate('/create/conversation/privacy');
+      navigate(getStepPath('privacy'));
     }
   };
 
@@ -185,15 +188,15 @@ export default function DetailsStep() {
             </div>
           ) : (
             <div>
-              <input
-                type="file"
+              <CustomFileInput
+                ref={fileInputRef}
                 id="headerImage"
                 accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                 onChange={handleImageUpload}
                 disabled={uploadingImage}
-                style={{ marginBottom: '0.5rem' }}
+                label={uploadingImage ? 'Uploading...' : 'Upload Image'}
               />
-              <p className="form-help-text" style={{ marginTop: '0.5rem' }}>
+              <p className="form-help-text" style={{ marginTop: spacing[3] }}>
                 Or paste an image URL:
               </p>
               <input
@@ -205,12 +208,7 @@ export default function DetailsStep() {
               />
             </div>
           )}
-          {uploadingImage && (
-            <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-              Uploading image...
-            </p>
-          )}
-        </div>
+                  </div>
       </div>
 
       {/* Navigation */}
@@ -224,8 +222,15 @@ export default function DetailsStep() {
         <button
           type="button"
           onClick={() => {
-            if (formState.isGuidedMode) {
-              navigate('/create/conversation/intent');
+            if (formState.isEditMode) {
+              // In edit mode, go back to the conversation/template detail page
+              if (formState.createTemplate) {
+                navigate(`/templates/${formState.conversationId}`);
+              } else {
+                navigate(`/conversations/${formState.conversationId}`);
+              }
+            } else if (formState.isGuidedMode) {
+              navigate(getStepPath('intent'));
             } else {
               navigate('/dashboard');
             }

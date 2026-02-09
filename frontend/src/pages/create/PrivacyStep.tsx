@@ -4,7 +4,7 @@ import { AnonymityLevel, ResultsAccess } from '../../types';
 
 export default function PrivacyStep() {
   const navigate = useNavigate();
-  const { formState, updateFormState } = useConversationForm();
+  const { formState, updateFormState, getStepPath } = useConversationForm();
 
   return (
     <div className="conversation-form">
@@ -97,14 +97,14 @@ export default function PrivacyStep() {
       }}>
         <button
           type="button"
-          onClick={() => navigate('/create/conversation/details')}
+          onClick={() => navigate(getStepPath('details'))}
           className="btn btn-secondary"
         >
           ← Back
         </button>
         <button
           type="button"
-          onClick={() => navigate('/create/conversation/questions')}
+          onClick={() => navigate(getStepPath('questions'))}
           className="btn btn-primary btn-large"
         >
           Next: Questions →

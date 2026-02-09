@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation, type AnalysisInterval } from '../types';
 import { IntentType, INTENT_PRESETS } from '../types/intentPresets';
 
@@ -68,6 +68,7 @@ interface ConversationFormContextType {
   applyIntentPreset: (intent: IntentType) => void;
   toggleMode: () => void;
   loadConversation: (conversation: Conversation) => void;
+  getStepPath: (step: string) => string;
 }
 
 const ConversationFormContext = createContext<ConversationFormContextType | undefined>(undefined);
@@ -184,7 +185,14 @@ export function ConversationFormProvider({
     }));
   };
 
-  const loadConversation = (conversation: Conversation) => {
+  const getStepPath = (step: string): string => {
+    if (formState.isEditMode && formState.conversationId) {
+      return `/edit/conversation/${formState.conversationId}/${step}`;
+    }
+    return `/create/conversation/${step}`;
+  };
+
+  const loadConversation = useCallback((conversation: Conversation) => {
     // Convert conversation to form state
     const durationHours = conversation.duration_minutes ? Math.floor(conversation.duration_minutes / 60) : 48;
     const durationMinutes = conversation.duration_minutes ? conversation.duration_minutes % 60 : 0;
@@ -236,7 +244,7 @@ export function ConversationFormProvider({
       selectedSeriesId: conversation.series_id || conversation.template_series_id || '',
       createTemplate: conversation.is_template,
     });
-  };
+  }, []);
 
   return (
     <ConversationFormContext.Provider
@@ -247,6 +255,7 @@ export function ConversationFormProvider({
         applyIntentPreset,
         toggleMode,
         loadConversation,
+        getStepPath,
       }}
     >
       {children}
