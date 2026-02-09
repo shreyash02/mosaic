@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { SeriesWithConversations, ConversationListItem, CollectionAnalysis } from '../types';
-import { ConversationState } from '../types';
-import { formatDateShort } from '../utils/formatting';
+import type { SeriesWithConversations, CollectionAnalysis } from '../types';
 import TrendChart from '../components/TrendChart';
+import ConversationsList from '../components/ConversationsList';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
@@ -176,79 +175,6 @@ const styles = {
     fontWeight: typography.fontWeight.bold,
     color: 'var(--color-primary-900)',
   },
-  conversationGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: spacing[4],
-  },
-  conversationCard: {
-    backgroundColor: 'white',
-    borderRadius: borders.radius.lg,
-    border: `1px solid ${'var(--color-primary-200)'}`,
-    padding: spacing[5],
-    cursor: 'pointer',
-    transition: transitions.duration.normal,
-  },
-  conversationHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing[3],
-    marginBottom: spacing[3],
-  },
-  conversationTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: 'var(--color-primary-900)',
-    margin: 0,
-  },
-  badge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: `${spacing[1]} ${spacing[2]}`,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium,
-    borderRadius: borders.radius.full,
-    whiteSpace: 'nowrap' as const,
-  },
-  badgeDraft: {
-    backgroundColor: 'var(--color-primary-100)',
-    color: 'var(--color-primary-600)',
-  },
-  badgeActive: {
-    backgroundColor: 'var(--color-primary-900)',
-    color: 'var(--color-primary-50)',
-  },
-  badgeClosed: {
-    backgroundColor: 'var(--color-primary-200)',
-    color: 'var(--color-primary-700)',
-  },
-  badgeAnalyzed: {
-    backgroundColor: 'var(--color-primary-800)',
-    color: 'var(--color-primary-50)',
-  },
-  conversationMeta: {
-    fontSize: typography.fontSize.xs,
-    color: 'var(--color-primary-500)',
-  },
-  emptyState: {
-    textAlign: 'center' as const,
-    padding: `${spacing[12]} ${spacing[6]}`,
-    backgroundColor: 'white',
-    borderRadius: borders.radius.lg,
-    border: `1px solid ${'var(--color-primary-200)'}`,
-  },
-  emptyStateTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: 'var(--color-primary-900)',
-    marginBottom: spacing[2],
-  },
-  emptyStateText: {
-    fontSize: typography.fontSize.sm,
-    color: 'var(--color-primary-500)',
-    marginBottom: spacing[4],
-  },
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
@@ -299,6 +225,18 @@ const styles = {
     display: 'flex',
     gap: spacing[3],
     justifyContent: 'flex-end',
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: `${spacing[12]} ${spacing[6]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.lg,
+    border: '1px solid var(--color-primary-200)',
+  },
+  emptyStateText: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-500)',
+    marginBottom: spacing[4],
   },
 };
 
@@ -401,38 +339,6 @@ export default function CollectionDetailPage() {
       setShowDeleteModal(false);
     } finally {
       setDeleting(false);
-    }
-  };
-
-  const getStateLabel = (state: ConversationState) => {
-    switch (state) {
-      case ConversationState.DRAFT:
-        return 'Draft';
-      case ConversationState.ACTIVE:
-        return 'Active';
-      case ConversationState.CLOSED:
-        return 'Closed';
-      case ConversationState.ANALYZED:
-        return 'Analyzed';
-      case ConversationState.DELETED:
-        return 'Deleted';
-      default:
-        return state;
-    }
-  };
-
-  const getBadgeStyle = (state: ConversationState) => {
-    switch (state) {
-      case ConversationState.DRAFT:
-        return { ...styles.badge, ...styles.badgeDraft };
-      case ConversationState.ACTIVE:
-        return { ...styles.badge, ...styles.badgeActive };
-      case ConversationState.CLOSED:
-        return { ...styles.badge, ...styles.badgeClosed };
-      case ConversationState.ANALYZED:
-        return { ...styles.badge, ...styles.badgeAnalyzed };
-      default:
-        return styles.badge;
     }
   };
 
@@ -588,37 +494,10 @@ export default function CollectionDetailPage() {
           {/* Conversations Section */}
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Conversations</h2>
-
-            {collection.conversations.length === 0 ? (
-              <div style={styles.emptyState}>
-                <h3 style={styles.emptyStateTitle}>No conversations in this collection</h3>
-                <p style={styles.emptyStateText}>Conversations added to this collection will appear here</p>
-              </div>
-            ) : (
-              <div style={styles.conversationGrid}>
-                {collection.conversations.map((conv: ConversationListItem) => (
-                  <div
-                    key={conv.id}
-                    style={styles.conversationCard}
-                    className="collection-conversation-card"
-                    onClick={() => navigate(`/conversations/${conv.id}`)}
-                  >
-                    <div style={styles.conversationHeader}>
-                      <h3 style={styles.conversationTitle}>{conv.title}</h3>
-                      <span style={getBadgeStyle(conv.state)}>
-                        {getStateLabel(conv.state)}
-                      </span>
-                    </div>
-                    <div style={styles.conversationMeta}>
-                      <span>Created {formatDateShort(conv.created_at)}</span>
-                      {conv.activated_at && (
-                        <span> · Activated {formatDateShort(conv.activated_at)}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ConversationsList
+              conversations={collection.conversations}
+              showMenu={false}
+            />
           </section>
         </div>
 
