@@ -17,6 +17,7 @@ import TemplatesPage from './pages/TemplatesPage';
 // Multi-step conversation creation
 import ConversationFormLayout from './components/ConversationFormLayout';
 import EditConversationLoader from './components/EditConversationLoader';
+import LegacyEditRedirect from './components/LegacyEditRedirect';
 import TemplateConversationLoader from './components/TemplateConversationLoader';
 import IntentStep from './pages/create/IntentStep';
 import DetailsStep from './pages/create/DetailsStep';
@@ -148,7 +149,7 @@ function App() {
             {/* Legacy edit route - redirect to new flow */}
             <Route
               path="/conversations/:id/edit"
-              element={<Navigate to={`/edit/conversation/${window.location.pathname.split('/')[2]}/details`} replace />}
+              element={<LegacyEditRedirect />}
             />
 
             {/* Create conversation from template */}
@@ -211,7 +212,7 @@ function App() {
             {/* Legacy template edit route - redirect to new flow */}
             <Route
               path="/templates/:id/edit"
-              element={<Navigate to={`/edit/conversation/${window.location.pathname.split('/')[2]}/details`} replace />}
+              element={<LegacyEditRedirect />}
             />
 
             <Route

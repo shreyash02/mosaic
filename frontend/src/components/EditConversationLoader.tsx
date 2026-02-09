@@ -24,7 +24,12 @@ export default function EditConversationLoader({ children }: { children: React.R
         setLoading(false);
       } catch (err: any) {
         console.error('Failed to load conversation:', err);
-        setError(err.response?.data?.detail || 'Failed to load conversation');
+        const detail = err.response?.data?.detail;
+        // Handle both string errors and Pydantic validation error arrays
+        const errorMessage = typeof detail === 'string'
+          ? detail
+          : 'Failed to load conversation';
+        setError(errorMessage);
         setLoading(false);
         // Redirect to dashboard after showing error
         setTimeout(() => navigate('/dashboard'), 2000);
