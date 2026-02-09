@@ -151,11 +151,14 @@ export default function Header() {
               <Link to="/dashboard" className="nav-link">
                 Dashboard
               </Link>
+              <Link to="/conversations" className="nav-link">
+                Conversations
+              </Link>
+              <Link to="/templates" className="nav-link">
+                Templates
+              </Link>
               <Link to="/collections" className="nav-link">
                 Collections
-              </Link>
-              <Link to="/organizations" className="nav-link">
-                Organizations
               </Link>
               <Link to="/help" className="nav-link">
                 Help

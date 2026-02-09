@@ -20,8 +20,8 @@ export interface IntentPreset {
 export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
   personal_feedback: {
     id: 'personal_feedback',
-    label: 'Personal Feedback',
-    description: 'Collect feedback for yourself',
+    label: 'Personal feedback',
+    description: 'Collect confidential input from individuals',
     icon: '📥',
     emoji: '📥',
     settings: {
@@ -31,16 +31,15 @@ export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
       invite_only: true,
     },
     explanation: [
-      'Only you can see results',
-      'Responses are anonymous to you',
-      'Individual responses visible',
-      'Invite-only access',
+      'Platform-tracked',
+      'Results visible to: creator only',
+      'Invite-only',
     ],
   },
   team_collaboration: {
     id: 'team_collaboration',
-    label: 'Team Collaboration',
-    description: 'Discuss and share together',
+    label: 'Team collaboration',
+    description: 'Share feedback openly within your team',
     icon: '🤝',
     emoji: '🤝',
     settings: {
@@ -50,16 +49,15 @@ export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
       invite_only: true,
     },
     explanation: [
-      'All respondents can see results',
-      'Responses are anonymous to facilitator',
-      'Individual responses visible',
-      'Invite-only access',
+      'Revealable identity',
+      'Results visible to: all participants',
+      'Invite-only',
     ],
   },
   anonymous_survey: {
     id: 'anonymous_survey',
-    label: 'Anonymous Survey',
-    description: 'Completely anonymous responses',
+    label: 'Anonymous survey',
+    description: 'Gather honest opinions without identity tracking',
     icon: '🔒',
     emoji: '🔒',
     settings: {
@@ -69,16 +67,15 @@ export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
       invite_only: true,
     },
     explanation: [
-      'Only you can see results',
-      'Fully anonymous (no tracking)',
-      'Only AI summaries visible',
-      'Invite-only access',
+      'Fully anonymous',
+      'Results visible to: creator only',
+      'Invite-only',
     ],
   },
   public_poll: {
     id: 'public_poll',
-    label: 'Public Poll',
-    description: 'Share results with everyone',
+    label: 'Public poll',
+    description: 'Open survey anyone can respond to',
     icon: '🌐',
     emoji: '🌐',
     settings: {
@@ -88,10 +85,9 @@ export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
       invite_only: false,
     },
     explanation: [
-      'Anyone with link can see results',
-      'Responses are anonymous',
-      'Individual responses visible',
-      'Open access (no invitation needed)',
+      'Fully anonymous',
+      'Results visible to: anyone with link',
+      'Open to anyone',
     ],
   },
   custom: {

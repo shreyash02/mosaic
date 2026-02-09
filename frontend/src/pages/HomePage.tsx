@@ -23,7 +23,6 @@ const styles = {
     maxWidth: '720px',
     margin: '0 auto',
     padding: `${spacing[16]} ${spacing[6]} ${spacing[12]}`,
-    paddingTop: 'calc(4rem + 80px)', // Account for header
   },
   heroTitle: {
     fontSize: typography.fontSize['4xl'],

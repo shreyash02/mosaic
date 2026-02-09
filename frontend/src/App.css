@@ -54,6 +54,14 @@ h3 {
   overflow-x: hidden;
 }
 
+/* Main content area - automatically accounts for fixed header */
+.main-content {
+  padding-top: var(--header-height);
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Loading & Error States */
 .loading {
   display: flex;
@@ -372,12 +380,11 @@ h3 {
 
 /* Auth Pages */
 .auth-page {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--header-height));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  padding-top: calc(2rem + 80px);
   background: #81aebb;
 }
 
@@ -492,7 +499,6 @@ h3 {
 .hero {
   text-align: center;
   padding: 4rem 2rem;
-  padding-top: calc(4rem + 80px);
   max-width: 900px;
   margin: 0 auto;
 }
@@ -603,7 +609,7 @@ h3 {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  padding-top: calc(0.5rem + 80px);
+  padding-top: 0.5rem;
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -1251,7 +1257,6 @@ h3 {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
-  padding-top: calc(2rem + 80px);
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -1261,7 +1266,6 @@ h3 {
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
-  padding-top: calc(2rem + 80px);
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -2131,10 +2135,9 @@ h3 {
 
 /* Legal Pages */
 .legal-page {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--header-height));
   background: #f5f7fa;
   padding: 2rem;
-  padding-top: calc(2rem + 80px);
 }
 
 .legal-container {
@@ -2222,7 +2225,6 @@ h3 {
   .conversation-detail-page {
     max-width: 100%;
     padding: 1rem;
-    padding-top: calc(1rem + 80px);
   }
 
   .dashboard-header,
@@ -2310,7 +2312,6 @@ h3 {
 
   .legal-page {
     padding: 1rem;
-    padding-top: calc(1rem + 80px);
   }
 
   .legal-content {
@@ -2325,7 +2326,6 @@ h3 {
   .create-conversation-page {
     max-width: 100%;
     padding: 1rem;
-    padding-top: calc(1rem + 80px);
   }
 
   .conversation-form {

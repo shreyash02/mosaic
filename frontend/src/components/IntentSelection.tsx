@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import IntentSelectionCard from './IntentSelectionCard';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { GearIcon } from './icons';
+import { colors, typography, spacing, transitions } from '../styles/tokens';
 
 interface IntentSelectionProps {
   selectedIntent: IntentType | null;
@@ -15,40 +17,86 @@ export default function IntentSelection({
   onContinue,
   onSwitchToManual,
 }: IntentSelectionProps) {
+  // Only show the 4 main intents (not custom)
   const intents: IntentType[] = [
     'personal_feedback',
     'team_collaboration',
     'anonymous_survey',
     'public_poll',
-    'custom',
   ];
 
+  const handleCardSelect = (intentId: IntentType) => {
+    onSelectIntent(intentId);
+    // Auto-continue when selecting a card
+    setTimeout(() => {
+      onContinue();
+    }, 150);
+  };
+
   return (
-    <div className="intent-selection" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{
+      minHeight: 'calc(100vh - var(--header-height))',
+      backgroundColor: colors.primary[100],
+      padding: `${spacing[6]} ${spacing[8]}`,
+    }}>
+      {/* Back to dashboard link */}
+      <div style={{
+        maxWidth: '900px',
+        margin: '0 auto',
+        marginBottom: spacing[8],
+      }}>
+        <Link
+          to="/dashboard"
+          className="back-to-dashboard-link"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            color: colors.primary[900],
+            textDecoration: 'none',
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            transition: `color ${transitions.duration.normal} ${transitions.timing.ease}`,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back to dashboard
+        </Link>
+      </div>
+
       {/* Header */}
-      <div style={{ marginBottom: spacing[8], textAlign: 'center' }}>
-        <h2 style={{
+      <div style={{
+        textAlign: 'center',
+        marginBottom: spacing[10],
+      }}>
+        <h1 style={{
           fontSize: typography.fontSize['2xl'],
           fontWeight: typography.fontWeight.bold,
-          marginBottom: spacing[2],
           color: colors.primary[900],
+          margin: 0,
+          marginBottom: spacing[2],
         }}>
-          What's your goal?
-        </h2>
+          What type of conversation do you want to create?
+        </h1>
         <p style={{
           fontSize: typography.fontSize.base,
           color: colors.primary[600],
+          margin: 0,
         }}>
-          Choose the option that best describes what you want to accomplish
+          We'll configure the privacy settings based on your choice
         </p>
       </div>
 
-      {/* Intent Cards Grid */}
+      {/* Intent Cards Grid - 2x2 */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: spacing[6],
-        marginBottom: spacing[8],
+        maxWidth: '900px',
+        margin: '0 auto',
+        marginBottom: spacing[10],
       }}>
         {intents.map((intentId) => {
           const intent = INTENT_PRESETS[intentId];
@@ -57,69 +105,53 @@ export default function IntentSelection({
               key={intentId}
               intent={intent}
               selected={selectedIntent === intentId}
-              onSelect={() => onSelectIntent(intentId)}
+              onSelect={() => handleCardSelect(intentId)}
             />
           );
         })}
       </div>
 
-      {/* Actions */}
+      {/* Manual configuration link */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: spacing[4],
-        paddingTop: spacing[4],
-        borderTop: `${borders.width.thin} solid ${colors.primary[300]}`,
+        textAlign: 'center',
       }}>
         <button
           type="button"
           onClick={onSwitchToManual}
-          className="intent-btn-secondary"
+          className="manual-config-link"
           style={{
-            padding: `${spacing[3]} ${spacing[6]}`,
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            color: colors.primary[700],
-            backgroundColor: colors.primary[50],
-            border: `${borders.width.thin} solid ${colors.primary[400]}`,
-            borderRadius: borders.radius.md,
-            cursor: 'pointer',
-            transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
-          }}
-        >
-          Switch to Manual Setup
-        </button>
-        <button
-          type="button"
-          onClick={onContinue}
-          disabled={!selectedIntent}
-          className="intent-btn-primary"
-          style={{
-            padding: `${spacing[3]} ${spacing[8]}`,
-            fontSize: typography.fontSize.base,
-            fontWeight: typography.fontWeight.medium,
-            color: colors.primary[50],
-            backgroundColor: selectedIntent ? colors.primary[900] : colors.primary[400],
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            color: colors.primary[600],
+            backgroundColor: 'transparent',
             border: 'none',
-            borderRadius: borders.radius.md,
-            cursor: selectedIntent ? 'pointer' : 'not-allowed',
-            transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.normal,
+            cursor: 'pointer',
+            padding: spacing[2],
+            transition: `color ${transitions.duration.normal} ${transitions.timing.ease}`,
           }}
         >
-          Continue
+          <GearIcon size={16} />
+          I want to configure everything manually
         </button>
       </div>
 
       {/* Hover styles */}
       <style>{`
-        .intent-btn-secondary:hover {
-          background-color: ${colors.primary[100]} !important;
-          border-color: ${colors.primary[500]} !important;
+        .back-to-dashboard-link:hover {
+          color: ${colors.primary[700]} !important;
         }
-        .intent-btn-primary:not(:disabled):hover {
-          background-color: ${colors.primary[800]} !important;
-          box-shadow: ${shadows.sm} !important;
+        .manual-config-link:hover {
+          color: ${colors.primary[900]} !important;
+        }
+
+        /* Responsive: stack cards on smaller screens */
+        @media (max-width: 768px) {
+          .intent-selection-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
     </div>

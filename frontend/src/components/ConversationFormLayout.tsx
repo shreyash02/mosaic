@@ -34,6 +34,9 @@ export default function ConversationFormLayout() {
   const location = useLocation();
   const { formState, toggleMode } = useConversationForm();
 
+  // Check if we're on the intent step
+  const isIntentStep = location.pathname.includes('/intent');
+
   // Get visible steps based on mode (edit mode always uses edit steps, no intent)
   const allSteps = formState.isEditMode ? EDIT_STEPS : STEPS;
   const visibleSteps = allSteps.filter(step => {
@@ -60,6 +63,11 @@ export default function ConversationFormLayout() {
     if (formState.isFollowUp) return 'Create Follow-up Conversation';
     return 'Create New Conversation';
   };
+
+  // Intent step has its own full-page layout
+  if (isIntentStep) {
+    return <Outlet />;
+  }
 
   return (
     <div className="new-design-wrapper" style={{

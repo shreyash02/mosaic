@@ -15,9 +15,8 @@ const s = {
     maxWidth: '1000px',
     margin: '0 auto',
     padding: spacing[6],
-    paddingTop: 'calc(2rem + 80px)',
     backgroundColor: colors.primary[50],
-    minHeight: '100vh',
+    minHeight: 'calc(100vh - var(--header-height))',
   },
   // Back button
   backButton: {

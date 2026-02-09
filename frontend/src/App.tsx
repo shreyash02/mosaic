@@ -11,6 +11,8 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import ConversationsPage from './pages/ConversationsPage';
+import TemplatesPage from './pages/TemplatesPage';
 
 // Multi-step conversation creation
 import ConversationFormLayout from './components/ConversationFormLayout';
@@ -59,7 +61,8 @@ function App() {
           <OrganizationProvider>
             <div className="App">
               <Header />
-            <Routes>
+              <main className="main-content">
+              <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -72,6 +75,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/conversations"
+              element={
+                <ProtectedRoute>
+                  <ConversationsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/templates"
+              element={
+                <ProtectedRoute>
+                  <TemplatesPage />
                 </ProtectedRoute>
               }
             />
@@ -260,7 +281,8 @@ function App() {
             <Route path="/help/follow-ups" element={<FollowUpsHelp />} />
             <Route path="/help/recurring-conversations" element={<RecurringConversationsHelp />} />
             <Route path="/help/organizations" element={<OrganizationsHelp />} />
-            </Routes>
+              </Routes>
+              </main>
             </div>
           </OrganizationProvider>
         </Router>
