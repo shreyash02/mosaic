@@ -75,7 +75,7 @@ const styles = {
     alignItems: 'center',
     gap: spacing[2],
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -112,7 +112,7 @@ const styles = {
     marginBottom: spacing[4],
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
@@ -157,7 +157,7 @@ const styles = {
     marginBottom: spacing[6],
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[4],
@@ -202,7 +202,7 @@ const styles = {
     padding: spacing[4],
   },
   modal: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     padding: spacing[6],
     maxWidth: '400px',
