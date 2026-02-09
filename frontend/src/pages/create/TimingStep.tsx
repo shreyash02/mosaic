@@ -158,6 +158,25 @@ export default function TimingStep() {
 
   return (
     <div className="conversation-form">
+      <style>{`
+        @media (max-width: 768px) {
+          .timing-radio-option {
+            padding: ${spacing[3]} !important;
+            border: none !important;
+            border-bottom: 1px solid var(--color-primary-200) !important;
+            border-radius: 0 !important;
+          }
+          .timing-radio-option:last-child {
+            border-bottom: none !important;
+          }
+          .timing-radio-content {
+            padding-left: 0 !important;
+            border-top: none !important;
+            margin-top: ${spacing[2]} !important;
+            padding-top: 0 !important;
+          }
+        }
+      `}</style>
       <div className="form-section">
         <h2>Timing Settings</h2>
         <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
@@ -171,6 +190,7 @@ export default function TimingStep() {
           <div style={s.radioGroup}>
             {/* Limited Time Option */}
             <div
+              className="timing-radio-option"
               style={{
                 ...s.radioOption,
                 ...(formState.isLongRunning ? {} : s.radioOptionSelected),
@@ -193,7 +213,7 @@ export default function TimingStep() {
               </p>
 
               {!formState.isLongRunning && (
-                <div style={s.radioContent}>
+                <div className="timing-radio-content" style={s.radioContent}>
                   {/* Duration inputs */}
                   <div className="form-group" style={{ marginBottom: spacing[4] }}>
                     <label style={{ ...s.scheduleLabel, marginBottom: spacing[2] }}>
@@ -278,6 +298,7 @@ export default function TimingStep() {
 
             {/* Long-running Option */}
             <div
+              className="timing-radio-option"
               style={{
                 ...s.radioOption,
                 ...(formState.isLongRunning ? s.radioOptionSelected : {}),
@@ -300,7 +321,7 @@ export default function TimingStep() {
               </p>
 
               {formState.isLongRunning && (
-                <div style={s.radioContent}>
+                <div className="timing-radio-content" style={s.radioContent}>
                   {/* Analysis interval */}
                   <div style={s.scheduleGrid}>
                     <div style={s.scheduleField}>

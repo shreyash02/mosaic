@@ -35,12 +35,26 @@ export default function ConfigurationSummary({
 
   return (
     <div className="form-section">
-      <div style={{
-        backgroundColor: colors.primary[100],
-        padding: spacing[6],
-        borderRadius: borders.radius.lg,
-        border: `${borders.width.thin} solid ${colors.primary[300]}`,
-      }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .config-summary-box {
+            padding: ${spacing[3]} 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background-color: transparent !important;
+            border-bottom: 1px solid var(--color-primary-200) !important;
+          }
+        }
+      `}</style>
+      <div
+        className="config-summary-box"
+        style={{
+          backgroundColor: colors.primary[100],
+          padding: spacing[6],
+          borderRadius: borders.radius.lg,
+          border: `${borders.width.thin} solid ${colors.primary[300]}`,
+        }}
+      >
         {/* Header */}
         <div style={{ marginBottom: isExpanded ? spacing[6] : 0 }}>
           <div style={{

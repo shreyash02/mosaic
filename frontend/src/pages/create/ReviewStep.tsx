@@ -210,6 +210,24 @@ export default function ReviewStep() {
 
   return (
     <div className="conversation-form">
+      <style>{`
+        @media (max-width: 768px) {
+          .review-summary-box {
+            padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background-color: transparent !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding-bottom: 1rem !important;
+          }
+          .conversation-form .checkbox-label {
+            border: none !important;
+            border-radius: 0 !important;
+            background-color: transparent !important;
+            padding: 0.5rem 0 !important;
+          }
+        }
+      `}</style>
       {error && <div className="error-message">{error}</div>}
 
       <div className="form-section">
@@ -219,13 +237,16 @@ export default function ReviewStep() {
         </p>
 
         {/* Summary */}
-        <div style={{
-          backgroundColor: '#f7fafc',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          border: '1px solid #e2e8f0',
-          marginBottom: '1.5rem',
-        }}>
+        <div
+          className="review-summary-box"
+          style={{
+            backgroundColor: '#f7fafc',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            marginBottom: '1.5rem',
+          }}
+        >
           <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#2d3748', marginBottom: '1rem' }}>
             Summary
           </h3>

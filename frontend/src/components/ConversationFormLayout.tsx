@@ -192,12 +192,15 @@ export default function ConversationFormLayout() {
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: spacing[8],
-        }}>
+        <div
+          className="form-layout-header"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: spacing[8],
+          }}
+        >
           <h1 style={{
             fontSize: typography.fontSize['3xl'],
             fontWeight: typography.fontWeight.bold,
@@ -206,7 +209,7 @@ export default function ConversationFormLayout() {
           }}>
             {getTitle()}
           </h1>
-          <div style={{ display: 'flex', gap: spacing[3] }}>
+          <div className="form-layout-header-buttons" style={{ display: 'flex', gap: spacing[3] }}>
             <button
               onClick={handleSaveAsDraft}
               disabled={savingDraft}
@@ -288,12 +291,15 @@ export default function ConversationFormLayout() {
         )}
 
         {/* Form Container */}
-        <div style={{
-          backgroundColor: formState.createTemplate ? 'transparent' : 'var(--color-primary-50)',
-          borderRadius: formState.createTemplate ? 0 : borders.radius.xl,
-          border: formState.createTemplate ? 'none' : `${borders.width.thin} solid var(--color-primary-300)`,
-          padding: formState.createTemplate ? 0 : spacing[8],
-        }}>
+        <div
+          className="form-layout-container"
+          style={{
+            backgroundColor: formState.createTemplate ? 'transparent' : 'var(--color-primary-50)',
+            borderRadius: formState.createTemplate ? 0 : borders.radius.xl,
+            border: formState.createTemplate ? 'none' : `${borders.width.thin} solid var(--color-primary-300)`,
+            padding: formState.createTemplate ? 0 : spacing[8],
+          }}
+        >
           {/* Mode Toggle (only shown in create mode, not edit) */}
           {!formState.isEditMode && (
             <SetupModeToggle
@@ -303,11 +309,14 @@ export default function ConversationFormLayout() {
           )}
 
           {/* Progress Indicator */}
-          <div style={{
-            maxWidth: '700px',
-            margin: '0 auto',
-            marginBottom: spacing[8],
-          }}>
+          <div
+            className="form-layout-progress"
+            style={{
+              maxWidth: '700px',
+              margin: '0 auto',
+              marginBottom: spacing[8],
+            }}
+          >
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -356,21 +365,24 @@ export default function ConversationFormLayout() {
                     }}
                   >
                     {/* Circle */}
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: borders.radius.full,
-                      backgroundColor: isCompleted || isActive ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
-                      border: `2px solid ${isCompleted || isActive ? 'var(--color-primary-900)' : 'var(--color-primary-400)'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: typography.fontWeight.semibold,
-                      fontSize: typography.fontSize.sm,
-                      color: isCompleted || isActive ? 'var(--color-primary-50)' : 'var(--color-primary-500)',
-                      transition: `all ${transitions.duration.slow} ${transitions.timing.ease}`,
-                      marginBottom: spacing[2],
-                    }}>
+                    <div
+                      className="form-layout-step-circle"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: borders.radius.full,
+                        backgroundColor: isCompleted || isActive ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                        border: `2px solid ${isCompleted || isActive ? 'var(--color-primary-900)' : 'var(--color-primary-400)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: typography.fontWeight.semibold,
+                        fontSize: typography.fontSize.sm,
+                        color: isCompleted || isActive ? 'var(--color-primary-50)' : 'var(--color-primary-500)',
+                        transition: `all ${transitions.duration.slow} ${transitions.timing.ease}`,
+                        marginBottom: spacing[2],
+                      }}
+                    >
                       {isCompleted ? (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
@@ -379,13 +391,16 @@ export default function ConversationFormLayout() {
                     </div>
 
                     {/* Label */}
-                    <div style={{
-                      fontSize: typography.fontSize.xs,
-                      fontWeight: isActive ? typography.fontWeight.semibold : typography.fontWeight.normal,
-                      color: isActive ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                    }}>
+                    <div
+                      className="form-layout-step-label"
+                      style={{
+                        fontSize: typography.fontSize.xs,
+                        fontWeight: isActive ? typography.fontWeight.semibold : typography.fontWeight.normal,
+                        color: isActive ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {step.label}
                     </div>
                   </div>
@@ -507,6 +522,57 @@ export default function ConversationFormLayout() {
         /* Borders */
         .new-design-wrapper .form-actions {
           border-top-color: var(--color-primary-200) !important;
+        }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+          .new-design-wrapper {
+            padding: ${spacing[4]} !important;
+          }
+          .form-layout-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: ${spacing[4]} !important;
+          }
+          .form-layout-header h1 {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+          .form-layout-header-buttons {
+            width: 100%;
+            flex-direction: row !important;
+          }
+          .form-layout-header-buttons button {
+            flex: 1;
+            padding: ${spacing[2]} ${spacing[3]} !important;
+            font-size: ${typography.fontSize.xs} !important;
+          }
+          .form-layout-container {
+            padding: ${spacing[3]} !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background-color: transparent !important;
+          }
+          .form-layout-progress {
+            margin-bottom: ${spacing[6]} !important;
+          }
+          .form-layout-step-label {
+            display: none !important;
+          }
+          .form-layout-step-circle {
+            width: 28px !important;
+            height: 28px !important;
+            font-size: ${typography.fontSize.xs} !important;
+          }
+          .new-design-wrapper .form-actions {
+            flex-direction: column !important;
+            gap: ${spacing[3]} !important;
+          }
+          .new-design-wrapper .form-actions button,
+          .new-design-wrapper .form-actions a {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+          }
         }
       `}</style>
     </div>

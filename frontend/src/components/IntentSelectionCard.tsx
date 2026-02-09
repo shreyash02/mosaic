@@ -113,6 +113,11 @@ export default function IntentSelectionCard({ intent, selected, onSelect }: Inte
           border-color: var(--color-primary-400) !important;
           box-shadow: ${shadows.sm} !important;
         }
+        @media (max-width: 768px) {
+          .intent-card-new {
+            padding: ${spacing[4]} !important;
+          }
+        }
       `}</style>
     </button>
   );

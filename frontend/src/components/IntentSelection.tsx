@@ -34,11 +34,14 @@ export default function IntentSelection({
   };
 
   return (
-    <div style={{
-      minHeight: 'calc(100vh - var(--header-height))',
-      backgroundColor: 'var(--color-primary-100)',
-      padding: `${spacing[6]} ${spacing[8]}`,
-    }}>
+    <div
+      className="intent-selection-page"
+      style={{
+        minHeight: 'calc(100vh - var(--header-height))',
+        backgroundColor: 'var(--color-primary-100)',
+        padding: `${spacing[6]} ${spacing[8]}`,
+      }}
+    >
       {/* Back to dashboard link */}
       <div style={{
         maxWidth: '900px',
@@ -90,14 +93,17 @@ export default function IntentSelection({
       </div>
 
       {/* Intent Cards Grid - 2x2 */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: spacing[6],
-        maxWidth: '900px',
-        margin: '0 auto',
-        marginBottom: spacing[10],
-      }}>
+      <div
+        className="intent-selection-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: spacing[6],
+          maxWidth: '900px',
+          margin: '0 auto',
+          marginBottom: spacing[10],
+        }}
+      >
         {intents.map((intentId) => {
           const intent = INTENT_PRESETS[intentId];
           return (
@@ -149,8 +155,12 @@ export default function IntentSelection({
 
         /* Responsive: stack cards on smaller screens */
         @media (max-width: 768px) {
+          .intent-selection-page {
+            padding: ${spacing[4]} ${spacing[4]} !important;
+          }
           .intent-selection-grid {
             grid-template-columns: 1fr !important;
+            gap: ${spacing[4]} !important;
           }
         }
       `}</style>

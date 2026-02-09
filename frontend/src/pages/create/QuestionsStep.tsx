@@ -169,6 +169,7 @@ export default function QuestionsStep() {
   const { formState, updateFormState, getStepPath } = useConversationForm();
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState<Record<number, boolean>>({});
   const [uploadResetKey, setUploadResetKey] = useState<Record<number, number>>({});
+  const [showFileInput, setShowFileInput] = useState<Record<number, boolean>>({});
   const [error, setError] = useState('');
 
   const sensors = useSensors(
@@ -373,6 +374,7 @@ export default function QuestionsStep() {
       setError(err.response?.data?.detail || 'Failed to upload question image');
     } finally {
       setUploadingQuestionImage(prev => ({ ...prev, [questionIndex]: false }));
+      setShowFileInput(prev => ({ ...prev, [questionIndex]: false }));
       // Increment reset key to force re-render of the file input
       setUploadResetKey(prev => ({ ...prev, [questionIndex]: (prev[questionIndex] || 0) + 1 }));
     }
@@ -422,7 +424,6 @@ export default function QuestionsStep() {
           >
             {formState.questions.map((question, index) => {
               const isExpanded = formState.expandedQuestions.has(index);
-              const questionText = question.question_text || 'Untitled question';
               const questionType = getQuestionTypeLabel(question.question_type);
 
               return (
@@ -436,56 +437,56 @@ export default function QuestionsStep() {
                   <>
                   {/* Collapsed Header */}
                   {!isExpanded && (
-                    <div className="question-collapsed-header" onClick={() => toggleQuestion(index)}>
-                      {dragHandleProps && <DragHandle {...dragHandleProps} />}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleQuestion(index); }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: '0.25rem',
-                          cursor: 'pointer',
-                          color: 'var(--color-primary-600)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          marginRight: '0.5rem',
-                        }}
-                        aria-label="Expand question"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                        <span style={{ color: 'var(--color-primary-600)', fontWeight: 500 }}>Question {index + 1}</span>
-                        <span style={{ color: 'var(--color-primary-500)' }}>·</span>
-                        <span style={{ color: 'var(--color-info)', fontSize: '0.9rem' }}>{questionType}</span>
-                        <span style={{ color: 'var(--color-primary-500)' }}>·</span>
-                        <span style={{ color: 'var(--color-primary-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                          {questionText}
-                        </span>
+                    <div className="question-collapsed-header" onClick={() => toggleQuestion(index)} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                      {/* Row 1: drag handle, collapse, question number, delete */}
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {dragHandleProps && <DragHandle {...dragHandleProps} />}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleQuestion(index); }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '0.25rem',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary-600)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginRight: '0.5rem',
+                            flexShrink: 0,
+                          }}
+                          aria-label="Expand question"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <span style={{ color: 'var(--color-primary-600)', fontWeight: 500, flex: 1 }}>Question {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeQuestion(index); }}
+                          className="btn-delete-question"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '0.25rem',
+                            cursor: 'pointer',
+                            color: 'var(--color-error)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                          }}
+                          aria-label="Delete question"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeQuestion(index); }}
-                        className="btn-delete-question"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: '0.25rem',
-                          cursor: 'pointer',
-                          color: 'var(--color-error)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          marginLeft: '0.5rem',
-                        }}
-                        aria-label="Delete question"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
+                      {/* Row 2: question type */}
+                      <div style={{ paddingLeft: '2.5rem', marginTop: '0.25rem' }}>
+                        <span style={{ color: 'var(--color-info)', fontSize: '0.875rem' }}>{questionType}</span>
+                      </div>
                     </div>
                   )}
 
@@ -493,47 +494,47 @@ export default function QuestionsStep() {
                   {isExpanded && (
                     <>
                       <div className="question-header" style={{ width: '100%', marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            {dragHandleProps && <DragHandle {...dragHandleProps} />}
-                            <button
-                              type="button"
-                              onClick={() => toggleQuestion(index)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: '0.25rem',
-                                cursor: 'pointer',
-                                color: 'var(--color-primary-600)',
-                                display: 'flex',
-                                alignItems: 'center',
-                              }}
-                              aria-label="Collapse question"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M18 15l-6-6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
+                        {/* Row 1: drag handle, collapse, title, remove button */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          {dragHandleProps && <DragHandle {...dragHandleProps} />}
+                          <button
+                            type="button"
+                            onClick={() => toggleQuestion(index)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '0.25rem',
+                              cursor: 'pointer',
+                              color: 'var(--color-primary-600)',
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            aria-label="Collapse question"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M18 15l-6-6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                          <span className="question-number" style={{ fontWeight: 600, color: 'var(--color-primary-900)', flex: 1 }}>Question {index + 1}</span>
+                          {formState.questions.length > 1 && (
+                            <button type="button" onClick={() => removeQuestion(index)} className="btn-remove">
+                              Remove
                             </button>
-                            <span className="question-number">Question {index + 1}</span>
-                            {formState.questions.length > 1 && (
-                              <button type="button" onClick={() => removeQuestion(index)} className="btn-remove">
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                          <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none' }}>
-                            <input
-                              type="checkbox"
-                              checked={question.is_required || false}
-                              onChange={(e) => {
-                                const newQuestions = [...formState.questions];
-                                newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
-                                updateFormState({ questions: newQuestions });
-                              }}
-                            />
-                            <span>Required</span>
-                          </label>
+                          )}
                         </div>
+                        {/* Row 2: Required checkbox */}
+                        <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '2.5rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={question.is_required || false}
+                            onChange={(e) => {
+                              const newQuestions = [...formState.questions];
+                              newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
+                              updateFormState({ questions: newQuestions });
+                            }}
+                          />
+                          <span>Required</span>
+                        </label>
                       </div>
 
                       <div className="form-group">
@@ -559,36 +560,72 @@ export default function QuestionsStep() {
                       </div>
 
                       {/* Question Image */}
-                      <div className="form-group">
-                        <label>Question Image (optional)</label>
+                      <div className="form-group" style={{ marginBottom: '0.5rem' }}>
                         {question.question_image_url ? (
-                          <div style={{ marginTop: '0.5rem' }}>
-                            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '0.5rem' }}>
-                              <img
-                                src={question.question_image_url}
-                                alt="Question image"
-                                style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid var(--color-primary-300)' }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeQuestionImage(index)}
-                                className="btn btn-secondary btn-small"
-                                style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-                              >
-                                Remove
-                              </button>
-                            </div>
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <img
+                              src={question.question_image_url}
+                              alt="Question image"
+                              style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid var(--color-primary-300)' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeQuestionImage(index)}
+                              className="btn btn-secondary btn-small"
+                              style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
+                            >
+                              Remove
+                            </button>
                           </div>
-                        ) : (
-                          <div>
+                        ) : showFileInput[index] ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <CustomFileInput
                               key={`question-image-${index}-${uploadResetKey[index] || 0}`}
                               accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                               onChange={(e) => handleQuestionImageUpload(e, index)}
                               disabled={uploadingQuestionImage[index]}
-                              label={uploadingQuestionImage[index] ? 'Uploading...' : 'Upload Image'}
+                              label={uploadingQuestionImage[index] ? 'Uploading...' : 'Choose Image'}
                             />
+                            {!uploadingQuestionImage[index] && (
+                              <button
+                                type="button"
+                                onClick={() => setShowFileInput(prev => ({ ...prev, [index]: false }))}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: 'var(--color-primary-600)',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem',
+                                  padding: 0,
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            )}
                           </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setShowFileInput(prev => ({ ...prev, [index]: true }))}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--color-info)',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              padding: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            Add image
+                          </button>
                         )}
                       </div>
 
