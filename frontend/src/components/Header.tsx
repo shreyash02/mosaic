@@ -73,6 +73,10 @@ export default function Header() {
       <div className="header-content">
         <Link to="/dashboard" className="logo-link">
           <div className="logo">
+            <svg className="logo-icon" width="28" height="28" viewBox="0 0 100 100">
+              <rect width="100" height="100" rx="8" fill="#1a1a1a"/>
+              <text x="50" y="70" fontFamily="Arial, sans-serif" fontSize="60" fontWeight="bold" fill="white" textAnchor="middle">M</text>
+            </svg>
             <span className="logo-text">Mosaic</span>
           </div>
         </Link>

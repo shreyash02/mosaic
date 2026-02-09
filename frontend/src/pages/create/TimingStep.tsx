@@ -3,6 +3,14 @@ import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { RecurrencePattern, type AnalysisInterval } from '../../types';
 import { formatDateForDateTimeLocal } from '../../utils/formatting';
 import { colors, typography, spacing, borders } from '../../styles';
+import CustomSelect from '../../components/CustomSelect';
+
+const INTERVAL_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Monthly' },
+];
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday' },
@@ -14,10 +22,35 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Saturday' },
 ];
 
-const TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
-  const hour = i.toString().padStart(2, '0');
-  return { value: `${hour}:00`, label: `${hour}:00` };
+const HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => {
+  const hour = i === 0 ? 12 : i;
+  return { value: hour, label: `${hour}:00` };
 });
+
+const PERIOD_OPTIONS = [
+  { value: 'AM', label: 'AM' },
+  { value: 'PM', label: 'PM' },
+];
+
+// Convert 24-hour time string to 12-hour components
+const parse24HourTime = (time: string): { hour: number; period: 'AM' | 'PM' } => {
+  const hour24 = parseInt(time.split(':')[0], 10);
+  if (hour24 === 0) return { hour: 12, period: 'AM' };
+  if (hour24 === 12) return { hour: 12, period: 'PM' };
+  if (hour24 > 12) return { hour: hour24 - 12, period: 'PM' };
+  return { hour: hour24, period: 'AM' };
+};
+
+// Convert 12-hour components to 24-hour time string
+const to24HourTime = (hour: number, period: 'AM' | 'PM'): string => {
+  let hour24: number;
+  if (period === 'AM') {
+    hour24 = hour === 12 ? 0 : hour;
+  } else {
+    hour24 = hour === 12 ? 12 : hour + 12;
+  }
+  return `${hour24.toString().padStart(2, '0')}:00`;
+};
 
 const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
   value: i + 1,
@@ -92,13 +125,6 @@ const s = {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     color: colors.primary[700],
-  },
-  scheduleSelect: {
-    padding: `${spacing[2]} ${spacing[3]}`,
-    borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
-    fontSize: typography.fontSize.sm,
-    minWidth: '120px',
   },
   infoBox: {
     background: colors.primary[100],
@@ -277,68 +303,71 @@ export default function TimingStep() {
                   {/* Analysis interval */}
                   <div style={s.scheduleGrid}>
                     <div style={s.scheduleField}>
-                      <label htmlFor="analysisInterval" style={s.scheduleLabel}>
+                      <label style={s.scheduleLabel}>
                         Run analysis
                       </label>
-                      <select
+                      <CustomSelect
                         id="analysisInterval"
                         value={formState.analysisInterval}
-                        onChange={(e) => {
-                          const interval = e.target.value as AnalysisInterval;
+                        options={INTERVAL_OPTIONS}
+                        onChange={(value) => {
+                          const interval = value as AnalysisInterval;
                           updateFormState({
                             analysisInterval: interval,
                             // Reset day when changing interval
-                            analysisScheduleDay: interval === 'monthly' ? 1 : 1, // Monday for weekly, 1st for monthly
+                            analysisScheduleDay: interval === 'monthly' ? 1 : 1,
                           });
                         }}
-                        style={s.scheduleSelect}
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="biweekly">Every 2 weeks</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
+                        minWidth="160px"
+                      />
                     </div>
 
                     {/* Day selector - only for weekly/biweekly/monthly */}
                     {formState.analysisInterval !== 'daily' && (
                       <div style={s.scheduleField}>
-                        <label htmlFor="analysisScheduleDay" style={s.scheduleLabel}>
+                        <label style={s.scheduleLabel}>
                           {formState.analysisInterval === 'monthly' ? 'On day' : 'On'}
                         </label>
-                        <select
+                        <CustomSelect
                           id="analysisScheduleDay"
                           value={formState.analysisScheduleDay}
-                          onChange={(e) => updateFormState({ analysisScheduleDay: parseInt(e.target.value) })}
-                          style={s.scheduleSelect}
-                        >
-                          {formState.analysisInterval === 'monthly'
-                            ? DAYS_OF_MONTH.map((d) => (
-                                <option key={d.value} value={d.value}>{d.label}</option>
-                              ))
-                            : DAYS_OF_WEEK.map((d) => (
-                                <option key={d.value} value={d.value}>{d.label}</option>
-                              ))
-                          }
-                        </select>
+                          options={formState.analysisInterval === 'monthly' ? DAYS_OF_MONTH : DAYS_OF_WEEK}
+                          onChange={(value) => updateFormState({ analysisScheduleDay: value as number })}
+                          minWidth="140px"
+                        />
                       </div>
                     )}
 
-                    {/* Time selector */}
+                    {/* Time selector - hour */}
                     <div style={s.scheduleField}>
-                      <label htmlFor="analysisScheduleTime" style={s.scheduleLabel}>
+                      <label style={s.scheduleLabel}>
                         At
                       </label>
-                      <select
-                        id="analysisScheduleTime"
-                        value={formState.analysisScheduleTime}
-                        onChange={(e) => updateFormState({ analysisScheduleTime: e.target.value })}
-                        style={s.scheduleSelect}
-                      >
-                        {TIME_OPTIONS.map((t) => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
+                      <CustomSelect
+                        id="analysisScheduleHour"
+                        value={parse24HourTime(formState.analysisScheduleTime).hour}
+                        options={HOUR_OPTIONS}
+                        onChange={(value) => {
+                          const { period } = parse24HourTime(formState.analysisScheduleTime);
+                          updateFormState({ analysisScheduleTime: to24HourTime(value as number, period) });
+                        }}
+                        minWidth="100px"
+                      />
+                    </div>
+
+                    {/* Time selector - AM/PM */}
+                    <div style={s.scheduleField}>
+                      <label style={s.scheduleLabel}>&nbsp;</label>
+                      <CustomSelect
+                        id="analysisSchedulePeriod"
+                        value={parse24HourTime(formState.analysisScheduleTime).period}
+                        options={PERIOD_OPTIONS}
+                        onChange={(value) => {
+                          const { hour } = parse24HourTime(formState.analysisScheduleTime);
+                          updateFormState({ analysisScheduleTime: to24HourTime(hour, value as 'AM' | 'PM') });
+                        }}
+                        minWidth="80px"
+                      />
                     </div>
                   </div>
 
