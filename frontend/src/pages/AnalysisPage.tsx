@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Analysis, Conversation, ResponseWithQuestion } from '../types';
+import { usePageTitle } from '../hooks/usePageTitle';
+import type { Analysis, Conversation, ResponseWithQuestion, PeriodicAnalysis } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
@@ -455,6 +456,110 @@ const styles = {
     color: colors.primary[500],
     fontStyle: 'italic',
   },
+  // Periodic analyses list styles
+  periodicHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[6],
+    flexWrap: 'wrap' as const,
+    gap: spacing[4],
+  },
+  periodicInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[4],
+  },
+  continuousBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    backgroundColor: colors.primary[200],
+    color: colors.primary[700],
+    borderRadius: borders.radius.full,
+  },
+  intervalText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  periodicList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[4],
+  },
+  periodicCard: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${colors.primary[200]}`,
+    padding: spacing[5],
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    cursor: 'pointer',
+    transition: `border-color ${transitions.duration.normal}, box-shadow ${transitions.duration.normal}`,
+    textDecoration: 'none',
+    color: 'inherit',
+  },
+  periodicCardContent: {
+    flex: 1,
+  },
+  periodLabel: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary[900],
+    marginBottom: spacing[1],
+  },
+  periodMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[4],
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[600],
+  },
+  periodDate: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  responsesBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[2]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    backgroundColor: colors.primary[100],
+    color: colors.primary[700],
+    borderRadius: borders.radius.md,
+  },
+  viewArrow: {
+    color: colors.primary[400],
+    marginLeft: spacing[3],
+  },
+  emptyPeriodic: {
+    textAlign: 'center' as const,
+    padding: spacing[12],
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `2px dashed ${colors.primary[300]}`,
+  },
+  triggerButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: colors.primary[900],
+    color: colors.primary[50],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
 };
 
 const hoverStyles = `
@@ -467,6 +572,10 @@ const hoverStyles = `
   .analysis-btn-secondary:hover:not(:disabled) {
     background-color: ${colors.primary[50]};
     border-color: ${colors.primary[400]};
+  }
+  .periodic-card:hover {
+    border-color: ${colors.primary[400]} !important;
+    box-shadow: ${shadows.sm} !important;
   }
 `;
 
@@ -482,6 +591,11 @@ export default function AnalysisPage() {
   const [groupBy, setGroupBy] = useState<'question' | 'responder'>('question');
   const [canAccessConversation, setCanAccessConversation] = useState<boolean | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [fullConversation, setFullConversation] = useState<Conversation | null>(null);
+  const [periodicAnalyses, setPeriodicAnalyses] = useState<PeriodicAnalysis[]>([]);
+  const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
+
+  usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
 
   useEffect(() => {
     if (id) {
@@ -493,8 +607,19 @@ export default function AnalysisPage() {
   const checkConversationAccess = async () => {
     if (!id) return;
     try {
-      await api.getConversation(id);
+      const convData = await api.getConversation(id);
       setCanAccessConversation(true);
+      setFullConversation(convData);
+
+      // If continuous, load periodic analyses
+      if (convData.is_continuous) {
+        try {
+          const periodicData = await api.listPeriodicAnalyses(id);
+          setPeriodicAnalyses(periodicData.items || []);
+        } catch (err) {
+          console.error('Failed to load periodic analyses:', err);
+        }
+      }
     } catch (err: any) {
       if (err.response?.status === 404 || err.response?.status === 403) {
         setCanAccessConversation(false);
@@ -597,6 +722,26 @@ export default function AnalysisPage() {
     }
   };
 
+  const handleTriggerAnalysis = async () => {
+    if (!id || triggeringAnalysis) return;
+    setTriggeringAnalysis(true);
+    try {
+      await api.triggerPeriodicAnalysis(id);
+      // Reload periodic analyses
+      const periodicData = await api.listPeriodicAnalyses(id);
+      setPeriodicAnalyses(periodicData.items || []);
+    } catch (err) {
+      console.error('Failed to trigger analysis:', err);
+    } finally {
+      setTriggeringAnalysis(false);
+    }
+  };
+
+  const formatPeriodDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   if (loading) {
     return (
       <>
@@ -632,6 +777,100 @@ export default function AnalysisPage() {
                 Back to Dashboard
               </button>
             </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // For continuous conversations, show periodic analyses list
+  if (fullConversation?.is_continuous) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <header style={styles.header}>
+              <div style={styles.headerInfo}>
+                <button
+                  onClick={handleBackClick}
+                  style={styles.backLink}
+                  className="analysis-back-link"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 12L6 8L10 4" />
+                  </svg>
+                  Back to Conversation
+                </button>
+                <h1 style={styles.title}>Analysis History</h1>
+                <p style={styles.subtitle}>{fullConversation.title}</p>
+              </div>
+              <button
+                onClick={handleTriggerAnalysis}
+                style={{
+                  ...styles.triggerButton,
+                  ...(triggeringAnalysis ? styles.buttonDisabled : {}),
+                }}
+                className="analysis-btn-primary"
+                disabled={triggeringAnalysis}
+              >
+                {triggeringAnalysis ? 'Running...' : 'Run Analysis Now'}
+              </button>
+            </header>
+
+            <div style={styles.periodicHeader}>
+              <div style={styles.periodicInfo}>
+                <span style={styles.continuousBadge}>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8z"/>
+                    <path fillRule="evenodd" d="M8 3.25a.75.75 0 01.75.75v4.25h3.25a.75.75 0 010 1.5H8a.75.75 0 01-.75-.75V4a.75.75 0 01.75-.75z"/>
+                  </svg>
+                  Continuous
+                </span>
+                <span style={styles.intervalText}>
+                  {fullConversation.analysis_interval?.charAt(0).toUpperCase()}
+                  {fullConversation.analysis_interval?.slice(1)} analysis
+                </span>
+              </div>
+            </div>
+
+            {periodicAnalyses.length === 0 ? (
+              <div style={styles.emptyPeriodic}>
+                <h3 style={styles.emptyStateTitle}>No Analysis Yet</h3>
+                <p style={styles.emptyStateText}>
+                  No periodic analyses have been run for this conversation yet.
+                  Click "Run Analysis Now" to generate the first one.
+                </p>
+              </div>
+            ) : (
+              <div style={styles.periodicList}>
+                {periodicAnalyses.map((pa) => (
+                  <Link
+                    key={pa.id}
+                    to={`/conversations/${id}/analysis/${encodeURIComponent(pa.period_label)}`}
+                    style={styles.periodicCard}
+                    className="periodic-card"
+                  >
+                    <div style={styles.periodicCardContent}>
+                      <div style={styles.periodLabel}>{pa.period_label}</div>
+                      <div style={styles.periodMeta}>
+                        <span style={styles.periodDate}>
+                          {formatPeriodDate(pa.period_start)} — {formatPeriodDate(pa.period_end)}
+                        </span>
+                        <span style={styles.responsesBadge}>
+                          {pa.total_responses_analyzed || 0} responses
+                        </span>
+                      </div>
+                    </div>
+                    <span style={styles.viewArrow}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </>

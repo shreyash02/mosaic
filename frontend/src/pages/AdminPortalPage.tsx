@@ -8,6 +8,7 @@ import type {
   AdminAnalysisInfo,
   AdminOrganizationInfo,
 } from '../types';
+import { usePageTitle } from '../hooks/usePageTitle';
 import './AdminPortalPage.css';
 
 type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'test-tools';
@@ -18,6 +19,8 @@ export default function AdminPortalPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  usePageTitle('Admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

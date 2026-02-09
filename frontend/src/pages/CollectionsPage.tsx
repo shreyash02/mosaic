@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 interface CollectionWithCount extends Series {
   conversationCount: number;
@@ -18,6 +19,8 @@ export default function CollectionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [collectionName, setCollectionName] = useState('');
   const [collectionDescription, setCollectionDescription] = useState('');
+
+  usePageTitle('Collections');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);

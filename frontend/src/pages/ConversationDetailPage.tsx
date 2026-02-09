@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Series } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
@@ -539,6 +540,8 @@ export default function ConversationDetailPage() {
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
   const [updatingSeries, setUpdatingSeries] = useState(false);
 
+  usePageTitle(conversation?.title);
+
   useEffect(() => {
     if (id) {
       loadConversation();
@@ -915,6 +918,15 @@ export default function ConversationDetailPage() {
               Recurring
             </span>
           )}
+          {conversation.is_continuous && (
+            <span style={s.templateBadge}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8z"/>
+                <path fillRule="evenodd" d="M8 3.25a.75.75 0 01.75.75v4.25h3.25a.75.75 0 010 1.5H8a.75.75 0 01-.75-.75V4a.75.75 0 01.75-.75z"/>
+              </svg>
+              Continuous
+            </span>
+          )}
         </div>
         {conversation.description && (
           <p style={s.description}>{conversation.description}</p>
@@ -948,13 +960,20 @@ export default function ConversationDetailPage() {
         )}
 
         {conversation.state === ConversationState.ACTIVE && (
-          <button
-            onClick={handleClose}
-            style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
-            disabled={actionLoading}
-          >
-            Close Conversation
-          </button>
+          <>
+            <button
+              onClick={handleClose}
+              style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
+              disabled={actionLoading}
+            >
+              Close Conversation
+            </button>
+            {conversation.is_continuous && (
+              <Link to={`/conversations/${id}/analysis`} style={s.buttonSecondary}>
+                View Analysis
+              </Link>
+            )}
+          </>
         )}
 
         {conversation.state === ConversationState.CLOSED && (
@@ -1278,6 +1297,24 @@ export default function ConversationDetailPage() {
                 <span style={s.infoLabel}>Closed</span>
                 <span style={s.infoValue}>{formatDate(conversation.closed_at, conversation.timezone)}</span>
               </div>
+            )}
+
+            {conversation.is_continuous && (
+              <>
+                <div style={s.infoItem}>
+                  <span style={s.infoLabel}>Analysis</span>
+                  <span style={s.infoValue}>
+                    {conversation.analysis_interval?.charAt(0).toUpperCase()}
+                    {conversation.analysis_interval?.slice(1)}
+                  </span>
+                </div>
+                {conversation.next_analysis_at && (
+                  <div style={s.infoItem}>
+                    <span style={s.infoLabel}>Next Analysis</span>
+                    <span style={s.infoValue}>{formatDate(conversation.next_analysis_at, conversation.timezone)}</span>
+                  </div>
+                )}
+              </>
             )}
 
             <div style={merge(s.infoItem, s.infoItemLast)}>

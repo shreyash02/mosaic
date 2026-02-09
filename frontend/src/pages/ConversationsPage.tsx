@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem, ConversationInvitationWithConversation, Series } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
@@ -616,6 +617,8 @@ export default function ConversationsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
+
+  usePageTitle('Conversations');
   const [actionLoading, setActionLoading] = useState(false);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tile');

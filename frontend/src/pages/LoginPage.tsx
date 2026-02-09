@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
@@ -167,6 +168,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  usePageTitle('Login');
 
   useEffect(() => {
     const oauthError = searchParams.get('error');

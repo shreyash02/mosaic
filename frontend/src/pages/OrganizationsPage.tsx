@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Organization } from '../types';
 import { colors, typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 interface OrganizationWithRole extends Organization {
   userRole?: 'admin' | 'member';
@@ -13,6 +14,8 @@ export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  usePageTitle('Organizations');
 
   const styles = {
     page: {

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const styles = {
   page: {
@@ -157,6 +158,8 @@ const hoverStyles = `
 `;
 
 export default function HelpPage() {
+  usePageTitle('Help');
+
   const getIcon = (iconName: string) => {
     const icons: Record<string, JSX.Element> = {
       'create': (

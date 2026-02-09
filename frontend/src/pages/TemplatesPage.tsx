@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -154,6 +155,8 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  usePageTitle('Templates');
 
   const loadTemplates = useCallback(async () => {
     try {

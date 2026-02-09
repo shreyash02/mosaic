@@ -7,6 +7,7 @@ import { formatDate, formatRelativeTime } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
@@ -570,6 +571,8 @@ export default function JoinPage() {
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const [showDraftRestoredNotice, setShowDraftRestoredNotice] = useState(false);
   const [draftSaveError, setDraftSaveError] = useState<string | null>(null);
+
+  usePageTitle(conversation?.title || 'Join');
 
   const handleDraftLoaded = useCallback((draftResponses: ResponseItem[], revealConsentValue: boolean) => {
     setResponses(prev => {

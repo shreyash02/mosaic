@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem } from '../types';
 import { ConversationState } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -202,6 +203,8 @@ export default function DashboardPage() {
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  usePageTitle('Dashboard');
 
   useEffect(() => {
     const loadData = async () => {

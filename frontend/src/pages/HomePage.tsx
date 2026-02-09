@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePageTitle } from '../hooks/usePageTitle';
 import {
   ShieldIcon,
   RefreshIcon,
@@ -270,6 +271,7 @@ const steps = [
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth();
+  usePageTitle(); // Landing page shows just "Mosaic"
 
   return (
     <>
