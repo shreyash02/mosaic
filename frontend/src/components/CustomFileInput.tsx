@@ -1,5 +1,5 @@
 import { useRef, useImperativeHandle, forwardRef } from 'react';
-import { colors, typography, spacing, borders, transitions } from '../styles';
+import { typography, spacing, borders, transitions } from '../styles';
 
 interface CustomFileInputProps {
   id?: string;
@@ -24,12 +24,12 @@ const styles = {
     alignItems: 'center',
     gap: spacing[2],
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: colors.primary[50],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: `all ${transitions.duration.normal}`,
   },
@@ -48,8 +48,8 @@ const styles = {
 
 const hoverStyles = `
   .custom-file-input-btn:hover:not(:disabled) {
-    background-color: ${colors.primary[100]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-100)'};
+    border-color: ${'var(--color-primary-400)'};
   }
 `;
 

@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationWithMembers } from '../types';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -18,7 +18,7 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -31,18 +31,18 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[8],
     boxShadow: shadows.sm,
     marginBottom: spacing[6],
@@ -50,20 +50,20 @@ const styles = {
   cardDanger: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[400]}`,
+    border: `1px solid ${'var(--color-primary-400)'}`,
     padding: spacing[8],
     boxShadow: shadows.sm,
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   sectionTitleDanger: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[3],
   },
   form: {
@@ -79,20 +79,20 @@ const styles = {
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   required: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginLeft: spacing[1],
   },
   input: {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     backgroundColor: 'white',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     transition: transitions.duration.normal,
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -101,10 +101,10 @@ const styles = {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     backgroundColor: 'white',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     transition: transitions.duration.normal,
     outline: 'none',
     resize: 'vertical' as const,
@@ -113,7 +113,7 @@ const styles = {
   },
   hint: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   actions: {
     display: 'flex',
@@ -125,8 +125,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -141,11 +141,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
     textDecoration: 'none',
@@ -156,11 +156,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
     backgroundColor: 'transparent',
-    color: colors.semantic.error.main,
+    color: 'var(--color-error)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.semantic.error.main}`,
+    border: `1px solid ${'var(--color-error)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -170,23 +170,23 @@ const styles = {
   },
   dangerText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[4],
   },
   error: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     marginBottom: spacing[4],
   },
   success: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[400]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-400)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -195,7 +195,7 @@ const styles = {
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   modalOverlay: {
     position: 'fixed' as const,
@@ -221,18 +221,18 @@ const styles = {
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   modalText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[4],
   },
   modalConfirmText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontWeight: typography.fontWeight.medium,
     marginBottom: spacing[3],
   },
@@ -240,10 +240,10 @@ const styles = {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     backgroundColor: 'white',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[6],
     boxSizing: 'border-box' as const,
   },
@@ -256,21 +256,21 @@ const styles = {
 
 const hoverStyles = `
   .org-settings-back-link:hover {
-    color: ${colors.primary[900]};
+    color: ${'var(--color-primary-900)'};
   }
   .org-settings-input:focus {
-    border-color: ${colors.primary[500]};
-    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    border-color: ${'var(--color-primary-500)'};
+    box-shadow: 0 0 0 3px ${'var(--color-primary-100)'};
   }
   .org-settings-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .org-settings-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .org-settings-btn-danger:hover:not(:disabled) {
-    background-color: ${colors.primary[700]};
+    background-color: ${'var(--color-primary-700)'};
   }
 `;
 

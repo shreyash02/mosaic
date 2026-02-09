@@ -1,5 +1,5 @@
 import { Component, ReactNode } from 'react';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 interface Props {
   children: ReactNode;
@@ -13,7 +13,7 @@ interface State {
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
     display: 'flex',
     alignItems: 'center',
@@ -27,7 +27,7 @@ const styles = {
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[8],
     boxShadow: shadows.md,
   },
@@ -35,7 +35,7 @@ const styles = {
     width: '64px',
     height: '64px',
     borderRadius: borders.radius.full,
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -45,18 +45,18 @@ const styles = {
   icon: {
     width: '32px',
     height: '32px',
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
     marginBottom: spacing[3],
   },
   description: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
     margin: 0,
     marginBottom: spacing[6],
@@ -67,8 +67,8 @@ const styles = {
     justifyContent: 'center',
     gap: spacing[2],
     padding: `${spacing[3]} ${spacing[5]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -80,7 +80,7 @@ const styles = {
 
 const hoverStyles = `
   .error-boundary-btn:hover {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
 `;
 

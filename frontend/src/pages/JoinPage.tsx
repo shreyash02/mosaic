@@ -8,12 +8,12 @@ import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
     display: 'flex',
     justifyContent: 'center',
@@ -34,25 +34,25 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
   },
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
   description: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     lineHeight: typography.lineHeight.relaxed,
   },
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
     marginBottom: spacing[5],
     boxShadow: shadows.sm,
@@ -60,14 +60,14 @@ const styles = {
   cardCentered: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[8],
     textAlign: 'center' as const,
     boxShadow: shadows.sm,
   },
   privacyCard: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[200]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.lg,
     padding: spacing[5],
     marginBottom: spacing[5],
@@ -82,7 +82,7 @@ const styles = {
     marginLeft: spacing[2],
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   privacyItem: {
     marginBottom: spacing[3],
@@ -91,13 +91,13 @@ const styles = {
   privacyLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     display: 'block',
     marginBottom: spacing[1],
   },
   privacyText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -108,14 +108,14 @@ const styles = {
     display: 'block',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     marginBottom: spacing[2],
   },
   input: {
     width: '100%',
     padding: spacing[3],
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     boxSizing: 'border-box' as const,
     transition: transitions.duration.normal,
@@ -125,7 +125,7 @@ const styles = {
     padding: spacing[3],
     fontSize: typography.fontSize.base,
     fontFamily: 'inherit',
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     resize: 'vertical' as const,
     boxSizing: 'border-box' as const,
@@ -133,7 +133,7 @@ const styles = {
   },
   charCount: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginTop: spacing[1],
     textAlign: 'right' as const,
   },
@@ -142,8 +142,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[6]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -158,11 +158,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[5]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -171,18 +171,18 @@ const styles = {
     cursor: 'not-allowed',
   },
   error: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     marginBottom: spacing[4],
   },
   success: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[400]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-400)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -191,7 +191,7 @@ const styles = {
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   successState: {
     textAlign: 'center' as const,
@@ -200,34 +200,34 @@ const styles = {
   successTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[3],
   },
   successText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     marginBottom: spacing[2],
   },
   resultsBox: {
     marginTop: spacing[5],
     padding: spacing[5],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     textAlign: 'left' as const,
   },
   resultsTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
   resultsText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     marginBottom: spacing[3],
   },
@@ -235,11 +235,11 @@ const styles = {
     backgroundColor: 'white',
     padding: spacing[3],
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     fontFamily: 'monospace',
     fontSize: typography.fontSize.sm,
     wordBreak: 'break-all' as const,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     marginBottom: spacing[3],
   },
   trustScreen: {
@@ -249,8 +249,8 @@ const styles = {
     textAlign: 'center' as const,
   },
   trustCard: {
-    backgroundColor: colors.primary[50],
-    border: `2px solid ${colors.primary[400]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: `2px solid ${'var(--color-primary-400)'}`,
     borderRadius: borders.radius.xl,
     padding: spacing[6],
     marginBottom: spacing[6],
@@ -259,16 +259,16 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     marginBottom: spacing[5],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   trustTitle: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
   },
   trustText: {
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     fontSize: typography.fontSize.base,
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[5],
@@ -284,31 +284,31 @@ const styles = {
     marginBottom: spacing[4],
   },
   trustDetailLabel: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     display: 'block',
     marginBottom: spacing[1],
     fontWeight: typography.fontWeight.semibold,
   },
   trustDetailText: {
     margin: 0,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
   conflictCard: {
-    backgroundColor: colors.primary[100],
-    border: `2px solid ${colors.primary[500]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    border: `2px solid ${'var(--color-primary-500)'}`,
     borderRadius: borders.radius.xl,
     padding: spacing[6],
     marginBottom: spacing[4],
   },
   conflictTitle: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
   },
   conflictText: {
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     fontSize: typography.fontSize.base,
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[5],
@@ -319,7 +319,7 @@ const styles = {
     borderRadius: borders.radius.md,
     padding: spacing[5],
     marginBottom: spacing[5],
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
   },
   conflictButtons: {
     display: 'flex',
@@ -328,7 +328,7 @@ const styles = {
   },
   conflictHint: {
     margin: `0 0 ${spacing[2]} 0`,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     fontSize: typography.fontSize.sm,
     fontStyle: 'italic',
   },
@@ -337,7 +337,7 @@ const styles = {
   },
   ratingSlider: {
     width: '100%',
-    accentColor: colors.primary[900],
+    accentColor: 'var(--color-primary-900)',
   },
   ratingValue: {
     display: 'flex',
@@ -349,18 +349,18 @@ const styles = {
   ratingNumber: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   ratingRange: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   pollInput: {
     marginTop: spacing[3],
   },
   pollInstruction: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[3],
   },
   radioOption: {
@@ -372,7 +372,7 @@ const styles = {
     gap: spacing[2],
     padding: spacing[3],
     backgroundColor: 'white',
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     cursor: 'pointer',
     transition: transitions.duration.normal,
@@ -383,14 +383,14 @@ const styles = {
     gap: spacing[3],
     marginTop: spacing[5],
     padding: spacing[4],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
   },
   checkbox: {
     marginTop: '2px',
     width: '18px',
     height: '18px',
-    accentColor: colors.primary[900],
+    accentColor: 'var(--color-primary-900)',
   },
   draftStatus: {
     display: 'flex',
@@ -398,10 +398,10 @@ const styles = {
     justifyContent: 'space-between',
     marginBottom: spacing[4],
     padding: spacing[3],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   draftIndicator: {
     display: 'inline-block',
@@ -416,13 +416,13 @@ const styles = {
     justifyContent: 'flex-end',
   },
   closeNotice: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
     padding: spacing[3],
     marginBottom: spacing[4],
     textAlign: 'center' as const,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   modalOverlay: {
     position: 'fixed' as const,
@@ -448,12 +448,12 @@ const styles = {
   modalTitle: {
     marginTop: 0,
     marginBottom: spacing[4],
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
   },
   modalInstructions: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     padding: spacing[4],
     marginBottom: spacing[5],
@@ -491,7 +491,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   questionImage: {
     marginTop: spacing[2],
@@ -502,7 +502,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     cursor: 'pointer',
   },
   draftNotice: {
@@ -510,30 +510,30 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing[3],
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     marginBottom: spacing[4],
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
   },
 };
 
 const hoverStyles = `
   .join-input:focus {
-    border-color: ${colors.primary[500]};
-    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    border-color: ${'var(--color-primary-500)'};
+    box-shadow: 0 0 0 3px ${'var(--color-primary-100)'};
     outline: none;
   }
   .join-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .join-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .join-radio-label:hover {
-    border-color: ${colors.primary[400]};
-    background-color: ${colors.primary[50]};
+    border-color: ${'var(--color-primary-400)'};
+    background-color: ${'var(--color-primary-50)'};
   }
 `;
 
@@ -1089,10 +1089,10 @@ export default function JoinPage() {
                 </p>
 
                 <div style={styles.conflictInfo}>
-                  <p style={{ margin: `0 0 ${spacing[3]} 0`, color: colors.primary[800], lineHeight: typography.lineHeight.relaxed }}>
+                  <p style={{ margin: `0 0 ${spacing[3]} 0`, color: 'var(--color-primary-800)', lineHeight: typography.lineHeight.relaxed }}>
                     <strong>To protect your privacy:</strong> Your responses cannot be linked to your account in any way. You must respond without being logged in.
                   </p>
-                  <p style={{ margin: 0, color: colors.primary[800], lineHeight: typography.lineHeight.relaxed }}>
+                  <p style={{ margin: 0, color: 'var(--color-primary-800)', lineHeight: typography.lineHeight.relaxed }}>
                     <strong>Choose an option below</strong> to proceed anonymously:
                   </p>
                 </div>
@@ -1127,10 +1127,10 @@ export default function JoinPage() {
                   )}
 
                   <div style={styles.modalInstructions}>
-                    <p style={{ margin: `0 0 ${spacing[3]} 0`, color: colors.primary[700], fontWeight: typography.fontWeight.semibold }}>
+                    <p style={{ margin: `0 0 ${spacing[3]} 0`, color: 'var(--color-primary-700)', fontWeight: typography.fontWeight.semibold }}>
                       Follow these steps:
                     </p>
-                    <ol style={{ margin: 0, paddingLeft: spacing[5], color: colors.primary[600], lineHeight: 1.8 }}>
+                    <ol style={{ margin: 0, paddingLeft: spacing[5], color: 'var(--color-primary-600)', lineHeight: 1.8 }}>
                       <li>Open an incognito/private browser window</li>
                       <li>{linkCopied ? 'Paste the link (Ctrl+V or Cmd+V)' : 'Copy and paste the URL'}</li>
                       <li>Respond to the conversation anonymously</li>
@@ -1245,7 +1245,7 @@ export default function JoinPage() {
               <div style={styles.successState}>
                 <h2 style={styles.successTitle}>Thank You!</h2>
                 <p style={styles.successText}>Your response has been submitted successfully.</p>
-                <p style={{ ...styles.successText, color: colors.primary[500] }}>
+                <p style={{ ...styles.successText, color: 'var(--color-primary-500)' }}>
                   Your feedback will help improve the conversation.
                 </p>
 
@@ -1372,7 +1372,7 @@ export default function JoinPage() {
                 </button>
 
                 {!canProceedFromTrustScreen && (
-                  <p style={{ marginTop: spacing[3], color: colors.primary[500], fontSize: typography.fontSize.sm }}>
+                  <p style={{ marginTop: spacing[3], color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
                     Please take a moment to review the privacy settings above.
                   </p>
                 )}
@@ -1438,7 +1438,7 @@ export default function JoinPage() {
                 <button
                   type="button"
                   onClick={() => setShowDraftRestoredNotice(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.primary[600], fontSize: typography.fontSize.lg, padding: 0, lineHeight: 1 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary-600)', fontSize: typography.fontSize.lg, padding: 0, lineHeight: 1 }}
                 >
                   ×
                 </button>
@@ -1452,7 +1452,7 @@ export default function JoinPage() {
                 <div key={question.id} style={styles.card}>
                   <label style={{ ...styles.label, fontSize: typography.fontSize.base }}>
                     {index + 1}. {question.question_text}
-                    {question.is_required && <span style={{ color: colors.primary[600], marginLeft: '4px' }}>*</span>}
+                    {question.is_required && <span style={{ color: 'var(--color-primary-600)', marginLeft: '4px' }}>*</span>}
                   </label>
 
                   {question.question_image_url && (
@@ -1511,7 +1511,7 @@ export default function JoinPage() {
                               value={choice.id}
                               checked={response?.response_data?.selected === choice.id}
                               onChange={(e) => updatePollResponse(question.id, e.target.value)}
-                              style={{ accentColor: colors.primary[900] }}
+                              style={{ accentColor: 'var(--color-primary-900)' }}
                             />
                             <span>{choice.label}</span>
                           </label>
@@ -1542,7 +1542,7 @@ export default function JoinPage() {
                                   updatePollResponse(question.id, newSelected);
                                 }
                               }}
-                              style={{ accentColor: colors.primary[900] }}
+                              style={{ accentColor: 'var(--color-primary-900)' }}
                             />
                             <span>{choice.label}</span>
                           </label>
@@ -1563,7 +1563,7 @@ export default function JoinPage() {
                   onChange={(e) => setRevealConsent(e.target.checked)}
                   style={styles.checkbox}
                 />
-                <label htmlFor="revealConsent" style={{ fontSize: typography.fontSize.sm, color: colors.primary[700] }}>
+                <label htmlFor="revealConsent" style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>
                   I consent to revealing my identity with my responses
                 </label>
               </div>
@@ -1590,7 +1590,7 @@ export default function JoinPage() {
                   </>
                 )}
                 {!isDraftSaving && !draftLastSavedAt && !hasUnsavedChanges && (
-                  <span style={{ color: colors.primary[400] }}>Your progress will be saved automatically</span>
+                  <span style={{ color: 'var(--color-primary-400)' }}>Your progress will be saved automatically</span>
                 )}
               </div>
               {draftSaveError && <span style={{ color: '#e53e3e', fontSize: typography.fontSize.xs }}>{draftSaveError}</span>}

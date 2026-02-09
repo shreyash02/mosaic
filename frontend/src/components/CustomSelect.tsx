@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { colors, typography, spacing, borders, shadows } from '../styles';
+import { typography, spacing, borders, shadows } from '../styles';
 
 interface Option {
   value: string | number;
@@ -27,23 +27,23 @@ const s = {
     gap: spacing[3],
     padding: `${spacing[3]} ${spacing[4]}`,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[900],
-    backgroundColor: colors.primary[50],
+    color: 'var(--color-primary-900)',
+    backgroundColor: 'var(--color-primary-50)',
     cursor: 'pointer',
     transition: 'border-color 150ms, box-shadow 150ms',
     minWidth: '140px',
   },
   triggerOpen: {
-    borderColor: colors.primary[500],
-    boxShadow: `0 0 0 2px ${colors.primary[100]}`,
+    borderColor: 'var(--color-primary-500)',
+    boxShadow: `0 0 0 2px ${'var(--color-primary-100)'}`,
   },
   chevron: {
     width: '16px',
     height: '16px',
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     transition: 'transform 150ms',
     flexShrink: 0,
   },
@@ -57,7 +57,7 @@ const s = {
     right: 0,
     marginTop: spacing[1],
     backgroundColor: 'white',
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     boxShadow: shadows.lg,
     zIndex: 50,
@@ -70,18 +70,18 @@ const s = {
     gap: spacing[2],
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     cursor: 'pointer',
     transition: 'background-color 100ms',
   },
   optionSelected: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     fontWeight: typography.fontWeight.medium,
   },
   checkIcon: {
     width: '16px',
     height: '16px',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   optionLabel: {
     flex: 1,
@@ -130,10 +130,10 @@ export default function CustomSelect({
     <div ref={containerRef} style={s.container}>
       <style>{`
         .custom-select-trigger:hover {
-          border-color: ${colors.primary[400]};
+          border-color: ${'var(--color-primary-400)'};
         }
         .custom-select-option:hover {
-          background-color: ${colors.primary[50]};
+          background-color: ${'var(--color-primary-50)'};
         }
       `}</style>
       <button

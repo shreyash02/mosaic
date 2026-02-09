@@ -5,13 +5,13 @@ import type { Conversation, ConversationListItem } from '../types';
 import { ConversationState, RecurrencePattern } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
 
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -22,7 +22,7 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -50,7 +50,7 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   badge: {
@@ -62,21 +62,21 @@ const styles = {
     borderRadius: borders.radius.full,
   },
   badgeDraft: {
-    backgroundColor: colors.primary[200],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-700)',
   },
   badgePublished: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   badgeTemplate: {
-    backgroundColor: colors.primary[100],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
     gap: spacing[1],
   },
   description: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
   headerActions: {
@@ -89,8 +89,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -105,11 +105,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
     textDecoration: 'none',
@@ -120,11 +120,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
     backgroundColor: 'transparent',
-    color: colors.semantic.error.main,
+    color: 'var(--color-error)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.semantic.error.main}`,
+    border: `1px solid ${'var(--color-error)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -133,9 +133,9 @@ const styles = {
     cursor: 'not-allowed',
   },
   infoMessage: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[800],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-800)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -150,13 +150,13 @@ const styles = {
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
   },
   cardTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   infoItem: {
@@ -165,7 +165,7 @@ const styles = {
     alignItems: 'center',
     paddingBottom: spacing[3],
     marginBottom: spacing[3],
-    borderBottom: `1px solid ${colors.primary[100]}`,
+    borderBottom: `1px solid ${'var(--color-primary-100)'}`,
   },
   infoItemLast: {
     display: 'flex',
@@ -177,12 +177,12 @@ const styles = {
   },
   infoLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontWeight: typography.fontWeight.medium,
   },
   infoValue: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     fontWeight: typography.fontWeight.medium,
   },
   questionItem: {
@@ -190,7 +190,7 @@ const styles = {
     gap: spacing[3],
     paddingBottom: spacing[3],
     marginBottom: spacing[3],
-    borderBottom: `1px solid ${colors.primary[100]}`,
+    borderBottom: `1px solid ${'var(--color-primary-100)'}`,
   },
   questionItemLast: {
     display: 'flex',
@@ -202,7 +202,7 @@ const styles = {
   questionNumber: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[400],
+    color: 'var(--color-primary-400)',
     minWidth: '24px',
   },
   questionContent: {
@@ -210,18 +210,18 @@ const styles = {
   },
   questionText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[1],
   },
   questionType: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     textTransform: 'capitalize' as const,
   },
   instanceCard: {
     display: 'block',
     padding: spacing[4],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     marginBottom: spacing[3],
     textDecoration: 'none',
@@ -236,11 +236,11 @@ const styles = {
   instanceTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   instanceMeta: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     display: 'flex',
     flexWrap: 'wrap' as const,
     gap: spacing[3],
@@ -248,19 +248,19 @@ const styles = {
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
     lineHeight: typography.lineHeight.relaxed,
   },
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   error: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -290,12 +290,12 @@ const styles = {
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   modalText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[6],
   },
@@ -308,20 +308,20 @@ const styles = {
 
 const hoverStyles = `
   .template-back-link:hover {
-    color: ${colors.primary[900]};
+    color: ${'var(--color-primary-900)'};
   }
   .template-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .template-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .template-btn-danger:hover:not(:disabled) {
-    background-color: ${colors.primary[100]};
+    background-color: ${'var(--color-primary-100)'};
   }
   .template-instance-card:hover {
-    background-color: ${colors.primary[100]};
+    background-color: ${'var(--color-primary-100)'};
   }
 `;
 
@@ -481,7 +481,7 @@ export default function TemplateDetailPage() {
           <div style={styles.container}>
             <div style={styles.card}>
               <h2 style={{ ...styles.cardTitle, marginBottom: spacing[2] }}>Template Not Found</h2>
-              <p style={{ color: colors.primary[500], marginBottom: spacing[4] }}>
+              <p style={{ color: 'var(--color-primary-500)', marginBottom: spacing[4] }}>
                 This template doesn't exist or you don't have access to it.
               </p>
               <button
@@ -588,7 +588,7 @@ export default function TemplateDetailPage() {
                     Publish Template
                   </button>
                   {!canPublish && (
-                    <span style={{ fontSize: typography.fontSize.xs, color: colors.semantic.error.main }}>
+                    <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-error)' }}>
                       {publishBlockers.join(' • ')}
                     </span>
                   )}
@@ -704,7 +704,7 @@ export default function TemplateDetailPage() {
                   </div>
                 ))
             ) : (
-              <p style={{ color: colors.primary[500], fontSize: typography.fontSize.sm }}>
+              <p style={{ color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
                 No questions defined
               </p>
             )}

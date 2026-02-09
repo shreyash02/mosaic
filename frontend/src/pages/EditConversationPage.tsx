@@ -5,7 +5,7 @@ import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, 
 import { convertUTCToLocalDateTimeString, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 import {
   DndContext,
   closestCenter,
@@ -27,7 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -45,26 +45,26 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
     marginBottom: spacing[6],
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[4],
   },
   sectionDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[5],
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -75,14 +75,14 @@ const styles = {
     display: 'block',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     marginBottom: spacing[2],
   },
   input: {
     width: '100%',
     padding: spacing[3],
     fontSize: typography.fontSize.sm,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     boxSizing: 'border-box' as const,
     transition: transitions.duration.normal,
@@ -92,7 +92,7 @@ const styles = {
     padding: spacing[3],
     fontSize: typography.fontSize.sm,
     fontFamily: 'inherit',
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     resize: 'vertical' as const,
     boxSizing: 'border-box' as const,
@@ -102,7 +102,7 @@ const styles = {
     width: '100%',
     padding: spacing[3],
     fontSize: typography.fontSize.sm,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     backgroundColor: 'white',
     cursor: 'pointer',
@@ -110,7 +110,7 @@ const styles = {
   },
   helpText: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginTop: spacing[1],
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -124,20 +124,20 @@ const styles = {
     marginTop: '2px',
     width: '16px',
     height: '16px',
-    accentColor: colors.primary[900],
+    accentColor: 'var(--color-primary-900)',
   },
   checkboxLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   buttonPrimary: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[5]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -152,11 +152,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
     textDecoration: 'none',
@@ -170,18 +170,18 @@ const styles = {
     cursor: 'not-allowed',
   },
   error: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     marginBottom: spacing[4],
   },
   questionCard: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[4],
     marginBottom: spacing[3],
   },
@@ -194,14 +194,14 @@ const styles = {
   questionNumber: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   collapsedHeader: {
     display: 'flex',
     alignItems: 'center',
     padding: `${spacing[3]} ${spacing[4]}`,
     backgroundColor: 'white',
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     cursor: 'pointer',
     marginBottom: spacing[2],
@@ -214,12 +214,12 @@ const styles = {
     padding: spacing[2],
     backgroundColor: 'white',
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
   },
   dragHandle: {
     cursor: 'grab',
     padding: spacing[1],
-    color: colors.primary[400],
+    color: 'var(--color-primary-400)',
     display: 'flex',
     alignItems: 'center',
     background: 'none',
@@ -228,7 +228,7 @@ const styles = {
   removeButton: {
     background: 'none',
     border: 'none',
-    color: colors.primary[400],
+    color: 'var(--color-primary-400)',
     cursor: 'pointer',
     padding: spacing[1],
     fontSize: typography.fontSize.lg,
@@ -248,13 +248,13 @@ const styles = {
     width: '80px',
     padding: spacing[2],
     fontSize: typography.fontSize.sm,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     textAlign: 'center' as const,
   },
   durationLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   imagePreview: {
     position: 'relative' as const,
@@ -265,7 +265,7 @@ const styles = {
     maxWidth: '100%',
     maxHeight: '200px',
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
   },
   removeImageButton: {
     position: 'absolute' as const,
@@ -275,7 +275,7 @@ const styles = {
   },
   seriesSection: {
     paddingLeft: spacing[4],
-    borderLeft: `3px solid ${colors.primary[400]}`,
+    borderLeft: `3px solid ${'var(--color-primary-400)'}`,
     marginTop: spacing[3],
   },
   formActions: {
@@ -310,13 +310,13 @@ const styles = {
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
   modalDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[5],
   },
   modalActions: {
@@ -328,30 +328,30 @@ const styles = {
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[8],
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
   },
   emptyStateTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   emptyStateText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[4],
   },
   infoMessage: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[800],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-800)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -361,25 +361,25 @@ const styles = {
 
 const hoverStyles = `
   .edit-input:focus {
-    border-color: ${colors.primary[500]};
-    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    border-color: ${'var(--color-primary-500)'};
+    box-shadow: 0 0 0 3px ${'var(--color-primary-100)'};
     outline: none;
   }
   .edit-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .edit-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .edit-collapsed-header:hover {
-    background-color: ${colors.primary[50]};
+    background-color: ${'var(--color-primary-50)'};
   }
   .edit-drag-handle:hover {
-    color: ${colors.primary[600]};
+    color: ${'var(--color-primary-600)'};
   }
   .edit-remove-btn:hover {
-    color: ${colors.primary[900]};
+    color: ${'var(--color-primary-900)'};
   }
 `;
 
@@ -434,7 +434,7 @@ function SortablePollOption({
           <path d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z" />
         </svg>
       </button>
-      <span style={{ color: colors.primary[500], fontSize: typography.fontSize.sm }}>{choiceIndex + 1}.</span>
+      <span style={{ color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>{choiceIndex + 1}.</span>
       <input
         type="text"
         value={choice.label}
@@ -1221,7 +1221,7 @@ export default function EditConversationPage() {
                   </div>
                 )}
                 {uploadingImage && (
-                  <p style={{ color: colors.primary[600], fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
+                  <p style={{ color: 'var(--color-primary-600)', fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
                     Uploading image...
                   </p>
                 )}
@@ -1648,17 +1648,17 @@ export default function EditConversationPage() {
                             className="edit-collapsed-header"
                             onClick={() => toggleQuestion(index)}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: spacing[2], color: colors.primary[400] }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: spacing[2], color: 'var(--color-primary-400)' }}>
                               <path d="M6 9l6 6 6-6" />
                             </svg>
                             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flex: 1, minWidth: 0 }}>
-                              <span style={{ color: colors.primary[600], fontWeight: typography.fontWeight.medium, fontSize: typography.fontSize.sm }}>
+                              <span style={{ color: 'var(--color-primary-600)', fontWeight: typography.fontWeight.medium, fontSize: typography.fontSize.sm }}>
                                 Question {index + 1}
                               </span>
-                              <span style={{ color: colors.primary[300] }}>·</span>
-                              <span style={{ color: colors.primary[500], fontSize: typography.fontSize.xs }}>{questionType}</span>
-                              <span style={{ color: colors.primary[300] }}>·</span>
-                              <span style={{ color: colors.primary[700], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, fontSize: typography.fontSize.sm }}>
+                              <span style={{ color: 'var(--color-primary-300)' }}>·</span>
+                              <span style={{ color: 'var(--color-primary-500)', fontSize: typography.fontSize.xs }}>{questionType}</span>
+                              <span style={{ color: 'var(--color-primary-300)' }}>·</span>
+                              <span style={{ color: 'var(--color-primary-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, fontSize: typography.fontSize.sm }}>
                                 {questionText}
                               </span>
                             </div>
@@ -1669,7 +1669,7 @@ export default function EditConversationPage() {
                                   e.stopPropagation();
                                   removeQuestion(index);
                                 }}
-                                style={{ ...styles.removeButton, color: colors.primary[400] }}
+                                style={{ ...styles.removeButton, color: 'var(--color-primary-400)' }}
                                 className="edit-remove-btn"
                               >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1688,7 +1688,7 @@ export default function EditConversationPage() {
                                 <button
                                   type="button"
                                   onClick={() => toggleQuestion(index)}
-                                  style={{ background: 'none', border: 'none', padding: spacing[1], cursor: 'pointer', color: colors.primary[400], display: 'flex' }}
+                                  style={{ background: 'none', border: 'none', padding: spacing[1], cursor: 'pointer', color: 'var(--color-primary-400)', display: 'flex' }}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M18 15l-6-6-6 6" />
@@ -1699,7 +1699,7 @@ export default function EditConversationPage() {
                                   <button
                                     type="button"
                                     onClick={() => removeQuestion(index)}
-                                    style={{ ...styles.buttonSecondary, ...styles.buttonSmall, color: colors.primary[600] }}
+                                    style={{ ...styles.buttonSecondary, ...styles.buttonSmall, color: 'var(--color-primary-600)' }}
                                     className="edit-btn-secondary"
                                   >
                                     Remove
@@ -1718,7 +1718,7 @@ export default function EditConversationPage() {
                                   }}
                                   style={styles.checkbox}
                                 />
-                                <label htmlFor={`required-${index}`} style={{ fontSize: typography.fontSize.sm, color: colors.primary[600] }}>
+                                <label htmlFor={`required-${index}`} style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
                                   Required
                                 </label>
                               </div>
@@ -1778,7 +1778,7 @@ export default function EditConversationPage() {
                                     disabled={uploadingQuestionImage[index]}
                                   />
                                   {uploadingQuestionImage[index] && (
-                                    <p style={{ color: colors.primary[600], fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
+                                    <p style={{ color: 'var(--color-primary-600)', fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
                                       Uploading image...
                                     </p>
                                   )}

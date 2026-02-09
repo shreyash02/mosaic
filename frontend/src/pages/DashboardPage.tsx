@@ -6,7 +6,7 @@ import type { ConversationListItem } from '../types';
 import { ConversationState } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
-import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
+import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import {
   MessageIcon,
   UsersIcon,
@@ -196,11 +196,11 @@ const s = {
 
 const getStatusColor = (state: ConversationState): string => {
   switch (state) {
-    case ConversationState.ACTIVE: return colors.primary[900];
-    case ConversationState.DRAFT: return colors.primary[400];
-    case ConversationState.ANALYZING: return colors.primary[500];
-    case ConversationState.ANALYZED: return colors.primary[900];
-    default: return colors.primary[400];
+    case ConversationState.ACTIVE: return 'var(--color-primary-900)';
+    case ConversationState.DRAFT: return 'var(--color-primary-400)';
+    case ConversationState.ANALYZING: return 'var(--color-primary-500)';
+    case ConversationState.ANALYZED: return 'var(--color-primary-900)';
+    default: return 'var(--color-primary-400)';
   }
 };
 
@@ -292,7 +292,7 @@ export default function DashboardPage() {
     <div style={s.page} className="dashboard-page">
       <style>{`
         .dashboard-card:hover {
-          border-color: ${colors.primary[500]} !important;
+          border-color: ${'var(--color-primary-500)'} !important;
           box-shadow: ${shadows.sm} !important;
         }
         .view-all-link:hover {
@@ -409,28 +409,28 @@ export default function DashboardPage() {
           <ul style={s.breakdownList}>
             <li style={s.breakdownItem}>
               <span style={s.breakdownLabel}>
-                <span style={{ ...s.statusDot, backgroundColor: colors.semantic.success.main }} />
+                <span style={{ ...s.statusDot, backgroundColor: 'var(--color-success)' }} />
                 Active
               </span>
               <span style={s.breakdownValue}>{stats.active}</span>
             </li>
             <li style={s.breakdownItem}>
               <span style={s.breakdownLabel}>
-                <span style={{ ...s.statusDot, backgroundColor: colors.semantic.warning.main }} />
+                <span style={{ ...s.statusDot, backgroundColor: 'var(--color-warning)' }} />
                 Draft
               </span>
               <span style={s.breakdownValue}>{stats.draft}</span>
             </li>
             <li style={s.breakdownItem}>
               <span style={s.breakdownLabel}>
-                <span style={{ ...s.statusDot, backgroundColor: colors.primary[400] }} />
+                <span style={{ ...s.statusDot, backgroundColor: 'var(--color-primary-400)' }} />
                 Closed
               </span>
               <span style={s.breakdownValue}>{stats.closed}</span>
             </li>
             <li style={{ ...s.breakdownItem, borderBottom: 'none' }}>
               <span style={s.breakdownLabel}>
-                <span style={{ ...s.statusDot, backgroundColor: colors.semantic.info.main }} />
+                <span style={{ ...s.statusDot, backgroundColor: 'var(--color-info)' }} />
                 Analyzed
               </span>
               <span style={s.breakdownValue}>{stats.analyzed}</span>

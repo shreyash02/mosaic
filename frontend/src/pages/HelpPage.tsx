@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // Use CSS custom properties for dark mode support
@@ -149,12 +149,12 @@ const styles = {
 
 const hoverStyles = `
   .help-topic-card:hover {
-    border-color: ${colors.primary[400]};
+    border-color: ${'var(--color-primary-400)'};
     box-shadow: ${shadows.md};
     transform: translateY(-2px);
   }
   .help-link:hover {
-    color: ${colors.primary[900]};
+    color: ${'var(--color-primary-900)'};
   }
 `;
 

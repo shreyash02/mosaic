@@ -6,14 +6,14 @@ import type { Analysis, Conversation, ResponseWithQuestion, PeriodicAnalysis } f
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
 import { SkeletonAnalysis } from '../components/Skeleton';
 
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -35,7 +35,7 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -49,19 +49,19 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
   },
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
     marginBottom: spacing[6],
     boxShadow: shadows.sm,
@@ -69,13 +69,13 @@ const styles = {
   cardTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[4],
   },
   summaryText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     lineHeight: typography.lineHeight.relaxed,
     margin: 0,
   },
@@ -85,7 +85,7 @@ const styles = {
     gap: spacing[4],
     marginTop: spacing[5],
     paddingTop: spacing[5],
-    borderTop: `1px solid ${colors.primary[100]}`,
+    borderTop: `1px solid ${'var(--color-primary-100)'}`,
   },
   metaItem: {
     textAlign: 'center' as const,
@@ -94,7 +94,7 @@ const styles = {
     display: 'block',
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     textTransform: 'uppercase' as const,
     letterSpacing: typography.letterSpacing.wide,
     marginBottom: spacing[1],
@@ -102,32 +102,32 @@ const styles = {
   metaValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   insightItem: {
     padding: spacing[4],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     marginBottom: spacing[3],
-    borderLeft: `4px solid ${colors.primary[400]}`,
+    borderLeft: `4px solid ${'var(--color-primary-400)'}`,
   },
   insightTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
   insightDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     margin: 0,
     lineHeight: typography.lineHeight.relaxed,
   },
   questionCard: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
     marginBottom: spacing[4],
   },
@@ -137,7 +137,7 @@ const styles = {
   questionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginTop: 0,
     marginBottom: spacing[2],
   },
@@ -153,15 +153,15 @@ const styles = {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.full,
-    backgroundColor: colors.primary[100],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
   },
   responseCount: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   themeCard: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     padding: spacing[4],
     marginBottom: spacing[3],
@@ -175,19 +175,19 @@ const styles = {
   themeName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   frequencyBadge: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[600],
-    backgroundColor: colors.primary[200],
+    color: 'var(--color-primary-600)',
+    backgroundColor: 'var(--color-primary-200)',
     padding: `${spacing[1]} ${spacing[2]}`,
     borderRadius: borders.radius.full,
   },
   themeSummary: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     lineHeight: typography.lineHeight.relaxed,
     margin: 0,
   },
@@ -196,7 +196,7 @@ const styles = {
     borderRadius: borders.radius.md,
     padding: spacing[3],
     marginTop: spacing[3],
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
   },
   perspectiveHeader: {
     display: 'flex',
@@ -207,15 +207,15 @@ const styles = {
   perspectiveName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
   },
   perspectiveCount: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   perspectiveSummary: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
   },
   keyPointsList: {
@@ -224,7 +224,7 @@ const styles = {
   },
   keyPoint: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     marginBottom: spacing[1],
   },
   ratingDisplay: {
@@ -239,17 +239,17 @@ const styles = {
   averageValue: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   averageScale: {
     fontSize: typography.fontSize.lg,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   ratingRange: {
     display: 'flex',
     gap: spacing[4],
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   distributionBar: {
     display: 'flex',
@@ -261,26 +261,26 @@ const styles = {
     width: '24px',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     textAlign: 'right' as const,
   },
   barContainer: {
     flex: 1,
     height: '20px',
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.full,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    backgroundColor: colors.primary[600],
+    backgroundColor: 'var(--color-primary-600)',
     borderRadius: borders.radius.full,
     transition: 'width 0.3s ease',
   },
   countLabel: {
     width: '30px',
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   pollResultItem: {
     marginBottom: spacing[3],
@@ -294,16 +294,16 @@ const styles = {
   choiceLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
   },
   choiceStats: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   verbatimSection: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
     marginBottom: spacing[6],
   },
@@ -316,36 +316,36 @@ const styles = {
   sectionTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   sectionDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     marginTop: spacing[1],
   },
   groupSelect: {
     padding: `${spacing[2]} ${spacing[3]}`,
     fontSize: typography.fontSize.sm,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     backgroundColor: 'white',
   },
   questionGroup: {
     marginBottom: spacing[5],
     paddingBottom: spacing[5],
-    borderBottom: `1px solid ${colors.primary[100]}`,
+    borderBottom: `1px solid ${'var(--color-primary-100)'}`,
   },
   questionGroupTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     marginTop: 0,
     marginBottom: spacing[3],
   },
   responseItem: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     padding: spacing[4],
     marginBottom: spacing[3],
@@ -359,20 +359,20 @@ const styles = {
   responseNumber: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   responseDate: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   responseContent: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     lineHeight: typography.lineHeight.relaxed,
     margin: 0,
   },
   technicalDetails: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     padding: spacing[5],
     marginTop: spacing[6],
@@ -390,21 +390,21 @@ const styles = {
   detailLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     textTransform: 'uppercase' as const,
     letterSpacing: typography.letterSpacing.wide,
   },
   detailValue: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
   },
   buttonPrimary: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -418,11 +418,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
@@ -433,29 +433,29 @@ const styles = {
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[8],
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
   },
   emptyStateTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   emptyStateText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[4],
   },
   noAnalysis: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontStyle: 'italic',
   },
   // Periodic analyses list styles
@@ -479,13 +479,13 @@ const styles = {
     padding: `${spacing[1]} ${spacing[3]}`,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    backgroundColor: colors.primary[200],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-700)',
     borderRadius: borders.radius.full,
   },
   intervalText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   periodicList: {
     display: 'flex',
@@ -495,7 +495,7 @@ const styles = {
   periodicCard: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
     display: 'flex',
     justifyContent: 'space-between',
@@ -511,7 +511,7 @@ const styles = {
   periodLabel: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[1],
   },
   periodMeta: {
@@ -519,7 +519,7 @@ const styles = {
     alignItems: 'center',
     gap: spacing[4],
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   periodDate: {
     display: 'flex',
@@ -533,12 +533,12 @@ const styles = {
     padding: `${spacing[1]} ${spacing[2]}`,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    backgroundColor: colors.primary[100],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
     borderRadius: borders.radius.md,
   },
   viewArrow: {
-    color: colors.primary[400],
+    color: 'var(--color-primary-400)',
     marginLeft: spacing[3],
   },
   emptyPeriodic: {
@@ -546,15 +546,15 @@ const styles = {
     padding: spacing[12],
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `2px dashed ${colors.primary[300]}`,
+    border: `2px dashed ${'var(--color-primary-300)'}`,
   },
   triggerButton: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -566,17 +566,17 @@ const styles = {
 
 const hoverStyles = `
   .analysis-back-link:hover {
-    color: ${colors.primary[900]};
+    color: ${'var(--color-primary-900)'};
   }
   .analysis-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .analysis-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .periodic-card:hover {
-    border-color: ${colors.primary[400]} !important;
+    border-color: ${'var(--color-primary-400)'} !important;
     box-shadow: ${shadows.sm} !important;
   }
 `;
@@ -992,7 +992,7 @@ export default function AnalysisPage() {
                   {/* Text Question Analysis */}
                   {qa.question_type === 'text' && qa.themes && qa.themes.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[3] }}>Themes</h4>
+                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginBottom: spacing[3] }}>Themes</h4>
                       {qa.themes.map((theme, themeIndex) => (
                         <div key={themeIndex} style={styles.themeCard}>
                           <div style={styles.themeHeader}>
@@ -1003,7 +1003,7 @@ export default function AnalysisPage() {
 
                           {theme.perspectives && theme.perspectives.length > 0 && (
                             <div>
-                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colors.primary[600], marginTop: spacing[3], marginBottom: spacing[2] }}>Perspectives</h5>
+                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-600)', marginTop: spacing[3], marginBottom: spacing[2] }}>Perspectives</h5>
                               {theme.perspectives.map((perspective, perspectiveIndex) => (
                                 <div key={perspectiveIndex} style={styles.perspectiveItem}>
                                   <div style={styles.perspectiveHeader}>
@@ -1018,7 +1018,7 @@ export default function AnalysisPage() {
 
                           {theme.key_points && theme.key_points.length > 0 && (
                             <div>
-                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colors.primary[600], marginTop: spacing[3], marginBottom: spacing[2] }}>Key Points</h5>
+                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-600)', marginTop: spacing[3], marginBottom: spacing[2] }}>Key Points</h5>
                               <ul style={styles.keyPointsList}>
                                 {theme.key_points.map((point, pointIndex) => (
                                   <li key={pointIndex} style={styles.keyPoint}>{point}</li>
@@ -1045,7 +1045,7 @@ export default function AnalysisPage() {
                         </div>
                       </div>
 
-                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[3] }}>Distribution</h4>
+                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginBottom: spacing[3] }}>Distribution</h4>
                       {Object.entries(qa.rating_stats.distribution)
                         .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
                         .map(([rating, count]) => {
@@ -1066,7 +1066,7 @@ export default function AnalysisPage() {
                   {/* Poll Question Analysis */}
                   {(qa.question_type === 'single_choice' || qa.question_type === 'multiple_choice') && qa.poll_stats && (
                     <div>
-                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[3] }}>Results</h4>
+                      <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginBottom: spacing[3] }}>Results</h4>
                       {qa.poll_stats.choices
                         .sort((a, b) => b.count - a.count)
                         .map((choice) => (
@@ -1088,7 +1088,7 @@ export default function AnalysisPage() {
                     <div>
                       {qa.summary ? (
                         <div>
-                          <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.primary[700], marginBottom: spacing[2] }}>Summary</h4>
+                          <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginBottom: spacing[2] }}>Summary</h4>
                           <p style={styles.summaryText}>{qa.summary}</p>
                         </div>
                       ) : (
@@ -1112,7 +1112,7 @@ export default function AnalysisPage() {
                   <p style={styles.sectionDescription}>All responses submitted by participants.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                  <label htmlFor="groupBy" style={{ fontSize: typography.fontSize.sm, color: colors.primary[600] }}>Group by:</label>
+                  <label htmlFor="groupBy" style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Group by:</label>
                   <select
                     id="groupBy"
                     value={groupBy}

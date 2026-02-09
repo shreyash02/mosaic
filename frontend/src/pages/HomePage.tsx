@@ -9,13 +9,13 @@ import {
   UsersIcon,
   ClockIcon,
 } from '../components/icons';
-import { colors, typography, spacing, borders } from '../styles';
+import { typography, spacing, borders } from '../styles';
 
 const styles = {
   page: {
     minHeight: '100vh',
-    backgroundColor: colors.primary[50],
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
     fontFamily: typography.fontFamily.sans,
   },
 
@@ -28,13 +28,13 @@ const styles = {
   heroTitle: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
     lineHeight: typography.lineHeight.tight,
   },
   heroSubtitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[8],
     lineHeight: typography.lineHeight.relaxed,
     maxWidth: '600px',
@@ -48,8 +48,8 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -64,13 +64,13 @@ const styles = {
     alignItems: 'center',
     gap: spacing[2],
     backgroundColor: 'transparent',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     textDecoration: 'none',
-    border: `1px solid ${colors.primary[400]}`,
+    border: `1px solid ${'var(--color-primary-400)'}`,
     cursor: 'pointer',
     transition: 'background-color 200ms',
   },
@@ -78,7 +78,7 @@ const styles = {
   // Section divider
   divider: {
     height: '1px',
-    backgroundColor: colors.primary[300],
+    backgroundColor: 'var(--color-primary-300)',
     maxWidth: '900px',
     margin: `0 auto`,
   },
@@ -94,7 +94,7 @@ const styles = {
     fontWeight: typography.fontWeight.medium,
     letterSpacing: typography.letterSpacing.wide,
     textTransform: 'uppercase' as const,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginBottom: spacing[8],
   },
   featuresGrid: {
@@ -109,7 +109,7 @@ const styles = {
   iconContainer: {
     width: '40px',
     height: '40px',
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
     display: 'flex',
     alignItems: 'center',
@@ -119,12 +119,12 @@ const styles = {
   featureTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   featureDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
 
@@ -146,8 +146,8 @@ const styles = {
   stepNumber: {
     width: '28px',
     height: '28px',
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     borderRadius: borders.radius.full,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -162,19 +162,19 @@ const styles = {
   stepTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   stepDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
     maxWidth: '500px',
   },
 
   // Footer
   footer: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     padding: `${spacing[6]} ${spacing[6]}`,
     marginTop: spacing[16],
   },
@@ -193,17 +193,17 @@ const styles = {
   footerLogo: {
     width: '20px',
     height: '20px',
-    backgroundColor: colors.primary[900],
+    backgroundColor: 'var(--color-primary-900)',
     borderRadius: borders.radius.sm,
   },
   footerName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   footerCopyright: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
 };
 

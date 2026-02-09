@@ -6,7 +6,7 @@ import type { ConversationListItem, ConversationInvitationWithConversation, Seri
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
+import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import {
   MessageIcon,
   UsersIcon,
@@ -430,12 +430,12 @@ const s = {
     justifyContent: 'space-between',
     alignItems: 'center',
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginTop: spacing[2],
   },
   cardMetaValue: {
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   // Menu
   menuButton: {
@@ -448,7 +448,7 @@ const s = {
     border: 'none',
     borderRadius: borders.radius.md,
     cursor: 'pointer',
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     transition: 'background-color 150ms',
   },
   menuDropdown: {
@@ -456,8 +456,8 @@ const s = {
     top: '100%',
     right: 0,
     marginTop: spacing[1],
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     boxShadow: shadows.md,
     minWidth: '120px',
@@ -469,14 +469,14 @@ const s = {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     backgroundColor: 'transparent',
     border: 'none',
     textAlign: 'left' as const,
     cursor: 'pointer',
   },
   menuItemDanger: {
-    color: colors.semantic.error.main,
+    color: 'var(--color-error)',
   },
   // Empty state
   emptyState: {
@@ -486,12 +486,12 @@ const s = {
   emptyTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   emptyText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[6],
   },
   // Modal
@@ -505,7 +505,7 @@ const s = {
     zIndex: 100,
   },
   modalContent: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.xl,
     padding: spacing[8],
     maxWidth: '400px',
@@ -515,12 +515,12 @@ const s = {
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   modalText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[6],
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -531,14 +531,14 @@ const s = {
   },
   // Template card
   templateCard: {
-    borderColor: colors.primary[400],
-    backgroundColor: colors.primary[100],
+    borderColor: 'var(--color-primary-400)',
+    backgroundColor: 'var(--color-primary-100)',
   },
   templateBadge: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[700],
-    backgroundColor: colors.primary[200],
-    border: `1px solid ${colors.primary[400]}`,
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-200)',
+    border: `1px solid ${'var(--color-primary-400)'}`,
     padding: `${spacing[0.5]} ${spacing[3]}`,
     borderRadius: borders.radius.full,
     fontWeight: typography.fontWeight.semibold,
@@ -549,8 +549,8 @@ const s = {
     display: 'inline-block',
     padding: `${spacing[1]} ${spacing[3]}`,
     fontSize: typography.fontSize.xs,
-    color: colors.primary[600],
-    backgroundColor: colors.primary[100],
+    color: 'var(--color-primary-600)',
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.sm,
     fontWeight: typography.fontWeight.medium,
     marginBottom: spacing[3],
@@ -558,7 +558,7 @@ const s = {
   // Divider
   divider: {
     height: '1px',
-    backgroundColor: colors.primary[200],
+    backgroundColor: 'var(--color-primary-200)',
     margin: `${spacing[8]} 0`,
   },
   // Loading
@@ -567,13 +567,13 @@ const s = {
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[16],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
   // Error
   errorMessage: {
-    backgroundColor: colors.semantic.error.light,
-    color: colors.semantic.error.text,
+    backgroundColor: 'var(--color-error-light)',
+    color: 'var(--color-error-text)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     marginBottom: spacing[4],
@@ -581,17 +581,17 @@ const s = {
   },
   // Follow-up
   followUpArrow: {
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginRight: spacing[2],
   },
   // Group header
   groupHeader: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
     paddingBottom: spacing[2],
-    borderBottom: `1px solid ${colors.primary[300]}`,
+    borderBottom: `1px solid ${'var(--color-primary-300)'}`,
     display: 'flex',
     alignItems: 'center',
     gap: spacing[2],
@@ -1044,11 +1044,11 @@ export default function ConversationsPage() {
         </td>
         <td style={s.td}>
           {collection ? (
-            <Link to={`/collections/${collection.id}`} style={{ color: colors.primary[900], textDecoration: 'none' }}>
+            <Link to={`/collections/${collection.id}`} style={{ color: 'var(--color-primary-900)', textDecoration: 'none' }}>
               {collection.name}
             </Link>
           ) : (
-            <span style={{ color: colors.primary[400] }}>—</span>
+            <span style={{ color: 'var(--color-primary-400)' }}>—</span>
           )}
         </td>
         <td style={s.td}>
@@ -1105,7 +1105,7 @@ export default function ConversationsPage() {
         <div style={s.cardMeta}>
           <span>Responded {formatDateShort(conversation.created_at, conversation.timezone)}</span>
           {conversation.state === ConversationState.ANALYZED && (
-            <span style={{ color: colors.interactive.link, fontWeight: typography.fontWeight.medium }}>
+            <span style={{ color: 'var(--color-info)', fontWeight: typography.fontWeight.medium }}>
               View results →
             </span>
           )}
@@ -1138,7 +1138,7 @@ export default function ConversationsPage() {
         <div style={s.cardMeta}>
           <span>Invited {formatDateShort(invitation.created_at, conversation.timezone)}</span>
           {conversation.state === ConversationState.ACTIVE && (
-            <span style={{ color: colors.interactive.link, fontWeight: typography.fontWeight.medium }}>
+            <span style={{ color: 'var(--color-info)', fontWeight: typography.fontWeight.medium }}>
               Participate →
             </span>
           )}
@@ -1159,7 +1159,7 @@ export default function ConversationsPage() {
       <style>{`
         .dashboard-card-new:hover,
         .dashboard-template-card:hover {
-          border-color: ${colors.primary[500]} !important;
+          border-color: ${'var(--color-primary-500)'} !important;
           box-shadow: ${shadows.sm} !important;
         }
         .conversations-header {
@@ -1178,7 +1178,7 @@ export default function ConversationsPage() {
           display: flex;
           gap: ${spacing[1]};
           margin-bottom: ${spacing[6]};
-          border-bottom: 1px solid ${colors.primary[300]};
+          border-bottom: 1px solid ${'var(--color-primary-300)'};
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
         }
@@ -1387,8 +1387,8 @@ export default function ConversationsPage() {
               Filter
               {hasActiveFilters && (
                 <span style={{
-                  backgroundColor: colors.primary[900],
-                  color: colors.primary[50],
+                  backgroundColor: 'var(--color-primary-900)',
+                  color: 'var(--color-primary-50)',
                   borderRadius: borders.radius.full,
                   padding: `0 ${spacing[2]}`,
                   fontSize: typography.fontSize.xs,

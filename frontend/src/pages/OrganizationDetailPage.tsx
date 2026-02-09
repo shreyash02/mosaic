@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import type { OrganizationWithMembers, ConversationListItem, Series } from '../types';
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 
 type TabType = 'conversations' | 'members';
 
@@ -23,7 +23,7 @@ export default function OrganizationDetailPage() {
   const styles = {
     page: {
       minHeight: 'calc(100vh - var(--header-height))',
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       padding: spacing[8],
     },
     container: {
@@ -45,7 +45,7 @@ export default function OrganizationDetailPage() {
     title: {
       fontSize: typography.fontSize['3xl'],
       fontWeight: typography.fontWeight.bold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
     },
     badge: {
@@ -55,16 +55,16 @@ export default function OrganizationDetailPage() {
       borderRadius: borders.radius.full,
     },
     badgeAdmin: {
-      backgroundColor: colors.primary[900],
-      color: colors.primary[50],
+      backgroundColor: 'var(--color-primary-900)',
+      color: 'var(--color-primary-50)',
     },
     badgeMember: {
-      backgroundColor: colors.primary[200],
-      color: colors.primary[700],
+      backgroundColor: 'var(--color-primary-200)',
+      color: 'var(--color-primary-700)',
     },
     description: {
       fontSize: typography.fontSize.base,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       margin: 0,
     },
     headerActions: {
@@ -76,8 +76,8 @@ export default function OrganizationDetailPage() {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[50],
-      backgroundColor: colors.primary[900],
+      color: 'var(--color-primary-50)',
+      backgroundColor: 'var(--color-primary-900)',
       border: 'none',
       borderRadius: borders.radius.md,
       cursor: 'pointer',
@@ -89,9 +89,9 @@ export default function OrganizationDetailPage() {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[700],
-      backgroundColor: colors.primary[50],
-      border: `${borders.width.thin} solid ${colors.primary[400]}`,
+      color: 'var(--color-primary-700)',
+      backgroundColor: 'var(--color-primary-50)',
+      border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
       borderRadius: borders.radius.md,
       cursor: 'pointer',
       textDecoration: 'none',
@@ -102,9 +102,9 @@ export default function OrganizationDetailPage() {
       padding: `${spacing[3]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       backgroundColor: 'transparent',
-      border: `${borders.width.thin} solid ${colors.primary[400]}`,
+      border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
       borderRadius: borders.radius.md,
       cursor: 'pointer',
       textDecoration: 'none',
@@ -114,7 +114,7 @@ export default function OrganizationDetailPage() {
       display: 'flex',
       gap: spacing[1],
       marginBottom: spacing[6],
-      backgroundColor: colors.primary[200],
+      backgroundColor: 'var(--color-primary-200)',
       padding: spacing[1],
       borderRadius: borders.radius.md,
       width: 'fit-content',
@@ -123,7 +123,7 @@ export default function OrganizationDetailPage() {
       padding: `${spacing[2]} ${spacing[6]}`,
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.medium,
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
       backgroundColor: 'transparent',
       border: 'none',
       borderRadius: borders.radius.sm,
@@ -131,14 +131,14 @@ export default function OrganizationDetailPage() {
       transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
     },
     tabActive: {
-      backgroundColor: colors.primary[50],
-      color: colors.primary[900],
+      backgroundColor: 'var(--color-primary-50)',
+      color: 'var(--color-primary-900)',
       boxShadow: shadows.sm,
     },
     content: {
-      backgroundColor: colors.primary[50],
+      backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.lg,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid ${'var(--color-primary-300)'}`,
       padding: spacing[6],
     },
     sectionHeader: {
@@ -150,7 +150,7 @@ export default function OrganizationDetailPage() {
     sectionTitle: {
       fontSize: typography.fontSize.xl,
       fontWeight: typography.fontWeight.semibold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
     },
     grid: {
@@ -160,9 +160,9 @@ export default function OrganizationDetailPage() {
     },
     card: {
       display: 'block',
-      backgroundColor: colors.primary[100],
+      backgroundColor: 'var(--color-primary-100)',
       borderRadius: borders.radius.md,
-      border: `${borders.width.thin} solid ${colors.primary[300]}`,
+      border: `${borders.width.thin} solid ${'var(--color-primary-300)'}`,
       padding: spacing[4],
       textDecoration: 'none',
       transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
@@ -170,7 +170,7 @@ export default function OrganizationDetailPage() {
     cardTitle: {
       fontSize: typography.fontSize.base,
       fontWeight: typography.fontWeight.semibold,
-      color: colors.primary[900],
+      color: 'var(--color-primary-900)',
       margin: 0,
       marginBottom: spacing[2],
     },
@@ -185,14 +185,14 @@ export default function OrganizationDetailPage() {
       display: 'inline-block',
       padding: `${spacing[1]} ${spacing[2]}`,
       fontSize: typography.fontSize.xs,
-      color: colors.primary[600],
-      backgroundColor: colors.primary[200],
+      color: 'var(--color-primary-600)',
+      backgroundColor: 'var(--color-primary-200)',
       borderRadius: borders.radius.sm,
       marginBottom: spacing[2],
     },
     cardMeta: {
       fontSize: typography.fontSize.sm,
-      color: colors.primary[500],
+      color: 'var(--color-primary-500)',
     },
     table: {
       width: '100%',
@@ -203,46 +203,46 @@ export default function OrganizationDetailPage() {
       textAlign: 'left' as const,
       fontWeight: typography.fontWeight.medium,
       fontSize: typography.fontSize.sm,
-      color: colors.primary[700],
-      borderBottom: `2px solid ${colors.primary[300]}`,
+      color: 'var(--color-primary-700)',
+      borderBottom: `2px solid ${'var(--color-primary-300)'}`,
     },
     td: {
       padding: spacing[4],
       fontSize: typography.fontSize.sm,
-      color: colors.primary[700],
-      borderBottom: `${borders.width.thin} solid ${colors.primary[200]}`,
+      color: 'var(--color-primary-700)',
+      borderBottom: `${borders.width.thin} solid ${'var(--color-primary-200)'}`,
     },
     emptyState: {
       textAlign: 'center' as const,
       padding: spacing[8],
-      color: colors.primary[600],
+      color: 'var(--color-primary-600)',
     },
     errorMessage: {
-      backgroundColor: colors.semantic.error.light,
-      border: `${borders.width.thin} solid ${colors.semantic.error.main}`,
+      backgroundColor: 'var(--color-error-light)',
+      border: `${borders.width.thin} solid ${'var(--color-error)'}`,
       borderRadius: borders.radius.md,
       padding: spacing[4],
-      color: colors.semantic.error.text,
+      color: 'var(--color-error-text)',
       marginBottom: spacing[4],
     },
     successMessage: {
-      backgroundColor: colors.semantic.success.light,
-      border: `${borders.width.thin} solid ${colors.semantic.success.main}`,
+      backgroundColor: 'var(--color-success-light)',
+      border: `${borders.width.thin} solid ${'var(--color-success)'}`,
       borderRadius: borders.radius.md,
       padding: spacing[4],
-      color: colors.semantic.success.text,
+      color: 'var(--color-success-text)',
       marginBottom: spacing[4],
     },
   };
 
   const getStatusStyles = (state: ConversationState) => {
     const statusColors: Record<ConversationState, { bg: string; text: string }> = {
-      [ConversationState.DRAFT]: { bg: colors.primary[200], text: colors.primary[700] },
-      [ConversationState.ACTIVE]: { bg: colors.primary[900], text: colors.primary[50] },
-      [ConversationState.CLOSED]: { bg: colors.primary[300], text: colors.primary[700] },
-      [ConversationState.ANALYZING]: { bg: colors.primary[300], text: colors.primary[700] },
-      [ConversationState.ANALYZED]: { bg: colors.primary[900], text: colors.primary[50] },
-      [ConversationState.DELETED]: { bg: colors.primary[200], text: colors.primary[600] },
+      [ConversationState.DRAFT]: { bg: 'var(--color-primary-200)', text: 'var(--color-primary-700)' },
+      [ConversationState.ACTIVE]: { bg: 'var(--color-primary-900)', text: 'var(--color-primary-50)' },
+      [ConversationState.CLOSED]: { bg: 'var(--color-primary-300)', text: 'var(--color-primary-700)' },
+      [ConversationState.ANALYZING]: { bg: 'var(--color-primary-300)', text: 'var(--color-primary-700)' },
+      [ConversationState.ANALYZED]: { bg: 'var(--color-primary-900)', text: 'var(--color-primary-50)' },
+      [ConversationState.DELETED]: { bg: 'var(--color-primary-200)', text: 'var(--color-primary-600)' },
     };
     return statusColors[state] || statusColors[ConversationState.DRAFT];
   };
@@ -345,7 +345,7 @@ export default function OrganizationDetailPage() {
     return (
       <div style={styles.page}>
         <div style={styles.container}>
-          <div style={{ textAlign: 'center', padding: spacing[12], color: colors.primary[600] }}>
+          <div style={{ textAlign: 'center', padding: spacing[12], color: 'var(--color-primary-600)' }}>
             Loading organization...
           </div>
         </div>
@@ -443,7 +443,7 @@ export default function OrganizationDetailPage() {
 
               {conversations.length === 0 ? (
                 <div style={styles.emptyState}>
-                  <h3 style={{ color: colors.primary[900], marginBottom: spacing[2] }}>No conversations yet</h3>
+                  <h3 style={{ color: 'var(--color-primary-900)', marginBottom: spacing[2] }}>No conversations yet</h3>
                   <p style={{ marginBottom: spacing[4] }}>Create your first conversation for this organization</p>
                   <Link
                     to="/conversations/new"
@@ -514,16 +514,16 @@ export default function OrganizationDetailPage() {
                     return (
                       <tr key={member.id}>
                         <td style={styles.td}>
-                          <div style={{ fontWeight: typography.fontWeight.medium, color: colors.primary[900] }}>
+                          <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                             {member.user?.full_name || member.user?.email}
                             {isCreator && (
-                              <span style={{ marginLeft: spacing[2], color: colors.primary[500], fontSize: typography.fontSize.xs }}>
+                              <span style={{ marginLeft: spacing[2], color: 'var(--color-primary-500)', fontSize: typography.fontSize.xs }}>
                                 (Creator)
                               </span>
                             )}
                           </div>
                           {member.user?.full_name && member.user?.email && (
-                            <div style={{ color: colors.primary[500], fontSize: typography.fontSize.xs }}>
+                            <div style={{ color: 'var(--color-primary-500)', fontSize: typography.fontSize.xs }}>
                               {member.user.email}
                             </div>
                           )}
@@ -542,7 +542,7 @@ export default function OrganizationDetailPage() {
                             {!isCreator && (
                               <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
                                 {updatingMemberId === member.user_id ? (
-                                  <span style={{ color: colors.primary[500] }}>Updating...</span>
+                                  <span style={{ color: 'var(--color-primary-500)' }}>Updating...</span>
                                 ) : (
                                   <>
                                     <select
@@ -552,9 +552,9 @@ export default function OrganizationDetailPage() {
                                       style={{
                                         padding: `${spacing[1]} ${spacing[2]}`,
                                         fontSize: typography.fontSize.sm,
-                                        border: `${borders.width.thin} solid ${colors.primary[400]}`,
+                                        border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
                                         borderRadius: borders.radius.sm,
-                                        backgroundColor: colors.primary[50],
+                                        backgroundColor: 'var(--color-primary-50)',
                                       }}
                                     >
                                       <option value="member">Member</option>
@@ -566,9 +566,9 @@ export default function OrganizationDetailPage() {
                                       style={{
                                         padding: `${spacing[1]} ${spacing[3]}`,
                                         fontSize: typography.fontSize.sm,
-                                        color: colors.semantic.error.main,
+                                        color: 'var(--color-error)',
                                         backgroundColor: 'transparent',
-                                        border: `${borders.width.thin} solid ${colors.semantic.error.main}`,
+                                        border: `${borders.width.thin} solid ${'var(--color-error)'}`,
                                         borderRadius: borders.radius.sm,
                                         cursor: 'pointer',
                                       }}
@@ -593,18 +593,18 @@ export default function OrganizationDetailPage() {
 
       <style>{`
         .org-detail-primary-btn:hover {
-          background-color: ${colors.primary[800]} !important;
+          background-color: ${'var(--color-primary-800)'} !important;
           box-shadow: ${shadows.sm} !important;
         }
         .org-detail-secondary-btn:hover {
-          background-color: ${colors.primary[100]} !important;
-          border-color: ${colors.primary[500]} !important;
+          background-color: ${'var(--color-primary-100)'} !important;
+          border-color: ${'var(--color-primary-500)'} !important;
         }
         .org-detail-outline-btn:hover {
-          background-color: ${colors.primary[100]} !important;
+          background-color: ${'var(--color-primary-100)'} !important;
         }
         .org-detail-card:hover {
-          border-color: ${colors.primary[500]} !important;
+          border-color: ${'var(--color-primary-500)'} !important;
           box-shadow: ${shadows.sm} !important;
         }
       `}</style>

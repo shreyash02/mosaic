@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { colors, typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
   page: {
@@ -11,7 +11,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[4],
   },
   container: {
@@ -25,7 +25,7 @@ const styles = {
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     textAlign: 'center' as const,
     marginBottom: spacing[6],
   },
@@ -42,16 +42,16 @@ const styles = {
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
   },
   input: {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.base,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     backgroundColor: 'white',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     transition: transitions.duration.normal,
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -59,8 +59,8 @@ const styles = {
   button: {
     width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
     border: 'none',
@@ -82,12 +82,12 @@ const styles = {
   dividerLine: {
     flex: 1,
     height: '1px',
-    backgroundColor: colors.primary[200],
+    backgroundColor: 'var(--color-primary-200)',
   },
   dividerText: {
     padding: `0 ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   googleButton: {
     width: '100%',
@@ -97,10 +97,10 @@ const styles = {
     gap: spacing[3],
     padding: `${spacing[3]} ${spacing[4]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     cursor: 'pointer',
     transition: transitions.duration.normal,
@@ -109,10 +109,10 @@ const styles = {
     textAlign: 'center' as const,
     marginTop: spacing[6],
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   linkAnchor: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     fontWeight: typography.fontWeight.medium,
     textDecoration: 'none',
   },
@@ -120,22 +120,22 @@ const styles = {
     textAlign: 'center' as const,
     marginTop: spacing[6],
     paddingTop: spacing[6],
-    borderTop: `1px solid ${colors.primary[200]}`,
+    borderTop: `1px solid ${'var(--color-primary-200)'}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   footerLink: {
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textDecoration: 'none',
   },
   footerSeparator: {
     margin: `0 ${spacing[3]}`,
-    color: colors.primary[300],
+    color: 'var(--color-primary-300)',
   },
   errorMessage: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[3],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -145,15 +145,15 @@ const styles = {
 
 const hoverStyles = `
   .login-input-new:focus {
-    border-color: ${colors.primary[500]};
-    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    border-color: ${'var(--color-primary-500)'};
+    box-shadow: 0 0 0 3px ${'var(--color-primary-100)'};
   }
   .login-button-new:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .login-google-new:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .login-link-new:hover {
     text-decoration: underline;

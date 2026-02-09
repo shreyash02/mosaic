@@ -7,7 +7,7 @@ import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, shadows, mediaQueries } from '../styles';
+import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import QRCode from 'qrcode';
 
 // Design tokens based styles
@@ -16,7 +16,7 @@ const s = {
     maxWidth: '1000px',
     margin: '0 auto',
     padding: spacing[6],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     minHeight: 'calc(100vh - var(--header-height))',
   },
   // Back button
@@ -24,7 +24,7 @@ const s = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     textDecoration: 'none',
@@ -48,12 +48,12 @@ const s = {
   pageTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     margin: 0,
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -62,7 +62,7 @@ const s = {
     borderRadius: borders.radius.lg,
     overflow: 'hidden',
     maxHeight: '300px',
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
   },
   // Status badges
   statusBadge: {
@@ -76,29 +76,29 @@ const s = {
     letterSpacing: typography.letterSpacing.wide,
   },
   statusDraft: {
-    backgroundColor: colors.primary[200],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-700)',
   },
   statusActive: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   statusClosed: {
-    backgroundColor: colors.primary[200],
-    color: colors.primary[600],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-600)',
   },
   statusAnalyzing: {
-    backgroundColor: colors.primary[300],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-300)',
+    color: 'var(--color-primary-700)',
   },
   statusAnalyzed: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   continuousBadge: {
-    backgroundColor: colors.primary[100],
-    color: colors.primary[700],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
   },
   orgBadge: {
     display: 'inline-flex',
@@ -108,8 +108,8 @@ const s = {
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    backgroundColor: colors.primary[100],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
     textDecoration: 'none',
   },
   templateBadge: {
@@ -120,8 +120,8 @@ const s = {
     borderRadius: borders.radius.full,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    backgroundColor: colors.primary[200],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-700)',
   },
   // Actions bar
   actionsBar: {
@@ -130,7 +130,7 @@ const s = {
     gap: spacing[3],
     marginBottom: spacing[6],
     padding: spacing[4],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
   },
   // Buttons
@@ -138,8 +138,8 @@ const s = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     padding: `${spacing[2]} ${spacing[4]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -153,28 +153,28 @@ const s = {
     alignItems: 'center',
     gap: spacing[2],
     backgroundColor: 'transparent',
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     padding: `${spacing[2]} ${spacing[4]}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     textDecoration: 'none',
-    border: `1px solid ${colors.primary[400]}`,
+    border: `1px solid ${'var(--color-primary-400)'}`,
     cursor: 'pointer',
   },
   buttonDanger: {
     backgroundColor: 'transparent',
-    color: colors.semantic.error.main,
-    border: `1px solid ${colors.semantic.error.main}`,
+    color: 'var(--color-error)',
+    border: `1px solid ${'var(--color-error)'}`,
   },
   buttonSuccess: {
-    backgroundColor: colors.semantic.success.main,
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-success)',
+    color: 'var(--color-primary-50)',
     border: 'none',
   },
   buttonWarning: {
-    backgroundColor: colors.semantic.warning.main,
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-warning)',
+    color: 'var(--color-primary-50)',
     border: 'none',
   },
   buttonDisabled: {
@@ -199,18 +199,18 @@ const s = {
   },
   // Cards/Panels
   card: {
-    backgroundColor: colors.primary[50],
-    border: `1px solid ${colors.primary[300]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.lg,
     padding: spacing[6],
   },
   cardTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
     paddingBottom: spacing[3],
-    borderBottom: `1px solid ${colors.primary[200]}`,
+    borderBottom: `1px solid ${'var(--color-primary-200)'}`,
   },
   // Info items
   infoItem: {
@@ -218,7 +218,7 @@ const s = {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: `${spacing[3]} 0`,
-    borderBottom: `1px solid ${colors.primary[200]}`,
+    borderBottom: `1px solid ${'var(--color-primary-200)'}`,
   },
   infoItemLast: {
     borderBottom: 'none',
@@ -226,11 +226,11 @@ const s = {
   infoLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   infoValue: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     textAlign: 'right' as const,
   },
   // Questions list
@@ -238,15 +238,15 @@ const s = {
     display: 'flex',
     gap: spacing[3],
     padding: spacing[4],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
     marginBottom: spacing[3],
   },
   questionNumber: {
     width: '24px',
     height: '24px',
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     borderRadius: borders.radius.full,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
@@ -257,19 +257,19 @@ const s = {
   },
   questionText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     lineHeight: typography.lineHeight.relaxed,
   },
   // Share section
   shareSection: {
     padding: spacing[4],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
     marginBottom: spacing[4],
   },
   shareDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[3],
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -282,7 +282,7 @@ const s = {
   codesSection: {
     marginTop: spacing[4],
     padding: spacing[4],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
   },
   codesForm: {
@@ -293,7 +293,7 @@ const s = {
   codeInput: {
     width: '80px',
     padding: `${spacing[2]} ${spacing[3]}`,
-    border: `1px solid ${colors.primary[400]}`,
+    border: `1px solid ${'var(--color-primary-400)'}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
   },
@@ -304,16 +304,16 @@ const s = {
     maxHeight: '300px',
     overflowY: 'auto' as const,
     padding: spacing[3],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
   },
   codeItem: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing[2],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.sm,
     fontSize: typography.fontSize.xs,
     fontFamily: typography.fontFamily.mono,
@@ -321,25 +321,25 @@ const s = {
   // Analysis preview
   analysisPreview: {
     padding: spacing[6],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
   },
   analysisSummary: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     lineHeight: typography.lineHeight.relaxed,
     marginBottom: spacing[4],
   },
   // Parent/follow-up section
   relationSection: {
     padding: spacing[4],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
     marginTop: spacing[4],
   },
   relationLink: {
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     fontWeight: typography.fontWeight.medium,
     textDecoration: 'none',
   },
@@ -355,7 +355,7 @@ const s = {
     padding: spacing[4],
   },
   modalContent: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.xl,
     padding: spacing[8],
     maxWidth: '500px',
@@ -367,12 +367,12 @@ const s = {
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   modalText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[6],
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -383,16 +383,16 @@ const s = {
   },
   // Messages
   errorMessage: {
-    backgroundColor: colors.semantic.error.light,
-    color: colors.semantic.error.text,
+    backgroundColor: 'var(--color-error-light)',
+    color: 'var(--color-error-text)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     marginBottom: spacing[4],
     fontSize: typography.fontSize.sm,
   },
   successMessage: {
-    backgroundColor: colors.semantic.success.light,
-    color: colors.semantic.success.text,
+    backgroundColor: 'var(--color-success-light)',
+    color: 'var(--color-success-text)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     marginBottom: spacing[4],
@@ -404,26 +404,26 @@ const s = {
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[16],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
   // Empty state
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[16],
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
-    border: `2px dashed ${colors.primary[300]}`,
+    border: `2px dashed ${'var(--color-primary-300)'}`,
   },
   emptyTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   emptyText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[6],
   },
   // Stats row
@@ -436,17 +436,17 @@ const s = {
   statItem: {
     textAlign: 'center' as const,
     padding: spacing[4],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.md,
   },
   statValue: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginTop: spacing[1],
   },
   // Form elements
@@ -457,23 +457,23 @@ const s = {
     display: 'block',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     marginBottom: spacing[2],
   },
   input: {
     width: '100%',
     padding: spacing[3],
-    border: `1px solid ${colors.primary[400]}`,
+    border: `1px solid ${'var(--color-primary-400)'}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
   },
   select: {
     width: '100%',
     padding: spacing[3],
-    border: `1px solid ${colors.primary[400]}`,
+    border: `1px solid ${'var(--color-primary-400)'}`,
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
   },
   checkbox: {
     display: 'flex',
@@ -481,7 +481,7 @@ const s = {
     gap: spacing[2],
     marginBottom: spacing[3],
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     cursor: 'pointer',
   },
   radioGroup: {
@@ -1003,7 +1003,7 @@ export default function ConversationDetailPage() {
                 Activate
               </button>
               {!canActivate && (
-                <span style={{ fontSize: typography.fontSize.xs, color: colors.semantic.error.main }}>
+                <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-error)' }}>
                   {activationBlockers.join(' • ')}
                 </span>
               )}
@@ -1261,7 +1261,7 @@ export default function ConversationDetailPage() {
                 {(showNewCodes && newlyGeneratedCodes.length > 0) && (
                   <div style={{ marginTop: spacing[4] }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
-                      <span style={{ fontSize: typography.fontSize.xs, color: colors.primary[600] }}>
+                      <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)' }}>
                         {newlyGeneratedCodes.length} codes generated
                       </span>
                       <button
@@ -1277,7 +1277,7 @@ export default function ConversationDetailPage() {
                           <code>{code}</code>
                           <button
                             onClick={() => copyCode(code)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: colors.primary[600] }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)' }}
                           >
                             {copiedCode === code ? '✓' : 'Copy'}
                           </button>
@@ -1290,7 +1290,7 @@ export default function ConversationDetailPage() {
                 {(showAllCodes && allCodes.length > 0) && (
                   <div style={{ marginTop: spacing[4] }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
-                      <span style={{ fontSize: typography.fontSize.xs, color: colors.primary[600] }}>
+                      <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)' }}>
                         {allCodes.length} total codes
                       </span>
                       <button
@@ -1306,7 +1306,7 @@ export default function ConversationDetailPage() {
                           <code>{codeObj.participant_code}</code>
                           <button
                             onClick={() => copyCode(codeObj.participant_code)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: colors.primary[600] }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)' }}
                           >
                             {copiedCode === codeObj.participant_code ? '✓' : 'Copy'}
                           </button>
@@ -1321,7 +1321,7 @@ export default function ConversationDetailPage() {
             {/* Invitations for invite-only */}
             {conversation.invite_only && (
               <div style={{ marginTop: spacing[4] }}>
-                <p style={{ fontSize: typography.fontSize.sm, color: colors.primary[600], marginBottom: spacing[3] }}>
+                <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[3] }}>
                   {invitations && invitations.total_invitations > 0
                     ? `${invitations.total_invitations} ${invitations.total_invitations === 1 ? 'person' : 'people'} invited`
                     : 'No invitations sent yet'}
@@ -1402,7 +1402,7 @@ export default function ConversationDetailPage() {
                     setSelectedSeriesId(conversation.series_id || '');
                     setShowSeriesModal(true);
                   }}
-                  style={{ background: 'none', border: 'none', color: colors.primary[600], cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
                 >
                   Change
                 </button>
@@ -1548,7 +1548,7 @@ export default function ConversationDetailPage() {
               </label>
             </div>
 
-            <p style={{ fontSize: typography.fontSize.sm, color: colors.primary[600], marginBottom: spacing[6] }}>
+            <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
               The follow-up will start with empty questions. You can add new questions after creation.
             </p>
 
@@ -1575,7 +1575,7 @@ export default function ConversationDetailPage() {
               style={{
                 maxWidth: '100%',
                 height: 'auto',
-                border: `1px solid ${colors.primary[300]}`,
+                border: `1px solid ${'var(--color-primary-300)'}`,
                 borderRadius: borders.radius.lg,
                 padding: spacing[4],
                 marginBottom: spacing[4],

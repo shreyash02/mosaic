@@ -4,12 +4,12 @@ import { api } from '../services/api';
 import type { Conversation, InvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { colors, typography, spacing, borders, transitions } from '../styles';
+import { typography, spacing, borders, transitions } from '../styles';
 
 const styles = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[6],
   },
   container: {
@@ -20,7 +20,7 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -41,17 +41,17 @@ const styles = {
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   card: {
     backgroundColor: 'white',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[200]}`,
+    border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
     marginBottom: spacing[6],
   },
@@ -64,12 +64,12 @@ const styles = {
   cardTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   cardDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[6],
     lineHeight: typography.lineHeight.relaxed,
   },
@@ -80,7 +80,7 @@ const styles = {
     display: 'block',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     marginBottom: spacing[2],
   },
   textarea: {
@@ -88,7 +88,7 @@ const styles = {
     padding: spacing[3],
     fontSize: typography.fontSize.sm,
     fontFamily: 'inherit',
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
     resize: 'vertical' as const,
     boxSizing: 'border-box' as const,
@@ -99,8 +99,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[5]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -115,11 +115,11 @@ const styles = {
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
     backgroundColor: 'white',
-    color: colors.primary[700],
+    color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[300]}`,
+    border: `1px solid ${'var(--color-primary-300)'}`,
     cursor: 'pointer',
     transition: transitions.duration.normal,
     textDecoration: 'none',
@@ -129,8 +129,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[3]}`,
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -147,15 +147,15 @@ const styles = {
     borderCollapse: 'collapse' as const,
   },
   tableHeader: {
-    backgroundColor: colors.primary[50],
-    borderBottom: `2px solid ${colors.primary[200]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    borderBottom: `2px solid ${'var(--color-primary-200)'}`,
   },
   th: {
     padding: `${spacing[3]} ${spacing[4]}`,
     textAlign: 'left' as const,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textTransform: 'uppercase' as const,
     letterSpacing: typography.letterSpacing.wide,
   },
@@ -164,21 +164,21 @@ const styles = {
     textAlign: 'right' as const,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     textTransform: 'uppercase' as const,
     letterSpacing: typography.letterSpacing.wide,
   },
   td: {
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
-    borderBottom: `1px solid ${colors.primary[100]}`,
+    color: 'var(--color-primary-700)',
+    borderBottom: `1px solid ${'var(--color-primary-100)'}`,
   },
   tdRight: {
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[700],
-    borderBottom: `1px solid ${colors.primary[100]}`,
+    color: 'var(--color-primary-700)',
+    borderBottom: `1px solid ${'var(--color-primary-100)'}`,
     textAlign: 'right' as const,
   },
   badge: {
@@ -190,43 +190,43 @@ const styles = {
     borderRadius: borders.radius.full,
   },
   badgeAccepted: {
-    backgroundColor: colors.primary[200],
-    color: colors.primary[800],
+    backgroundColor: 'var(--color-primary-200)',
+    color: 'var(--color-primary-800)',
   },
   badgeResponded: {
-    backgroundColor: colors.primary[900],
-    color: colors.primary[50],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
   },
   badgePending: {
-    backgroundColor: colors.primary[100],
-    color: colors.primary[600],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-600)',
   },
   badgeRegistered: {
-    backgroundColor: colors.primary[100],
-    color: colors.primary[700],
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
     marginLeft: spacing[2],
   },
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
   emptyStateTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   emptyStateText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginBottom: spacing[4],
   },
   error: {
-    backgroundColor: colors.primary[100],
-    border: `1px solid ${colors.primary[300]}`,
-    color: colors.primary[900],
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    color: 'var(--color-primary-900)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -235,41 +235,41 @@ const styles = {
   loading: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[4],
   },
   statText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
 };
 
 const hoverStyles = `
   .manage-back-link:hover {
-    color: ${colors.primary[900]};
+    color: ${'var(--color-primary-900)'};
   }
   .manage-input:focus {
-    border-color: ${colors.primary[500]};
-    box-shadow: 0 0 0 3px ${colors.primary[100]};
+    border-color: ${'var(--color-primary-500)'};
+    box-shadow: 0 0 0 3px ${'var(--color-primary-100)'};
     outline: none;
   }
   .manage-btn-primary:hover:not(:disabled) {
-    background-color: ${colors.primary[800]};
+    background-color: ${'var(--color-primary-800)'};
   }
   .manage-btn-secondary:hover:not(:disabled) {
-    background-color: ${colors.primary[50]};
-    border-color: ${colors.primary[400]};
+    background-color: ${'var(--color-primary-50)'};
+    border-color: ${'var(--color-primary-400)'};
   }
   .manage-btn-danger:hover:not(:disabled) {
-    background-color: ${colors.primary[700]};
+    background-color: ${'var(--color-primary-700)'};
   }
   .manage-table-row:hover {
-    background-color: ${colors.primary[50]};
+    background-color: ${'var(--color-primary-50)'};
   }
 `;
 
@@ -521,7 +521,7 @@ export default function ManageInvitationsPage() {
                               {statusBadge.text}
                             </span>
                           </td>
-                          <td style={{ ...styles.td, color: colors.primary[500] }}>
+                          <td style={{ ...styles.td, color: 'var(--color-primary-500)' }}>
                             {inv.is_accepted && inv.accepted_at
                               ? `Accepted ${formatRelativeTime(inv.accepted_at)}`
                               : `Invited ${formatRelativeTime(inv.created_at)}`}
