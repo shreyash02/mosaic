@@ -22,8 +22,10 @@ export default function Header() {
   const navigate = useNavigate();
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileProfileRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     logout();
@@ -44,20 +46,24 @@ export default function Header() {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setMobileMenuOpen(false);
       }
+      if (mobileProfileRef.current && !mobileProfileRef.current.contains(event.target as Node)) {
+        setMobileProfileOpen(false);
+      }
     };
 
-    if (showOrgDropdown || mobileMenuOpen) {
+    if (showOrgDropdown || mobileMenuOpen || mobileProfileOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showOrgDropdown, mobileMenuOpen]);
+  }, [showOrgDropdown, mobileMenuOpen, mobileProfileOpen]);
 
-  // Close mobile menu on route change
+  // Close mobile menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
+    setMobileProfileOpen(false);
   }, [location.pathname]);
 
   return (
@@ -82,9 +88,9 @@ export default function Header() {
 
         {isAuthenticated && user && (
           <>
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Left side */}
             <button
-              className="mobile-menu-btn"
+              className="mobile-menu-btn mobile-menu-btn-left"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -207,13 +213,41 @@ export default function Header() {
               </button>
             </div>
 
+            {/* Mobile Profile Button - Right side */}
+            <div className="mobile-profile-container" ref={mobileProfileRef}>
+              <button
+                className="mobile-profile-btn"
+                onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+                aria-label="Profile menu"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+                </svg>
+              </button>
+
+              {/* Mobile Profile Dropdown */}
+              {mobileProfileOpen && (
+                <div className="mobile-profile-dropdown">
+                  <div className="mobile-profile-info">
+                    <span className="mobile-profile-name">{user.full_name}</span>
+                    <span className="mobile-profile-email">{user.email}</span>
+                  </div>
+                  <div className="mobile-profile-divider" />
+                  <button onClick={handleLogout} className="mobile-profile-logout">
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Mobile Menu Overlay */}
             <div
               className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}
               onClick={() => setMobileMenuOpen(false)}
             />
 
-            {/* Mobile Menu */}
+            {/* Mobile Menu - Navigation only */}
             <div
               className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
               ref={mobileMenuRef}
@@ -235,16 +269,6 @@ export default function Header() {
                   Help
                 </Link>
               </nav>
-              <div className="mobile-menu-divider" />
-              <div className="mobile-user-info">
-                <div className="mobile-user-details">
-                  <span className="mobile-user-name">{user.full_name}</span>
-                  <span className="mobile-user-email">{user.email}</span>
-                </div>
-                <button onClick={handleLogout} className="mobile-logout-btn">
-                  Logout
-                </button>
-              </div>
             </div>
           </>
         )}

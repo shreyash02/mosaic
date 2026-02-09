@@ -299,20 +299,45 @@ export default function DashboardPage() {
         @media ${mediaQueries.tabletDown} {
           .dashboard-stats-grid {
             grid-template-columns: repeat(2, 1fr);
+            gap: ${spacing[3]};
           }
           .dashboard-two-columns {
             grid-template-columns: 1fr;
           }
+          .dashboard-stat-card {
+            padding: ${spacing[4]} !important;
+          }
+          .dashboard-stat-card .stat-value {
+            font-size: ${typography.fontSize['2xl']} !important;
+          }
+          .dashboard-stat-card .stat-label {
+            font-size: ${typography.fontSize.xs} !important;
+          }
         }
         @media ${mediaQueries.mobile} {
           .dashboard-stats-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: ${spacing[2]};
           }
           .dashboard-page {
             padding: ${spacing[4]} !important;
           }
           .dashboard-page-title {
             font-size: ${typography.fontSize['2xl']} !important;
+          }
+          .dashboard-stat-card {
+            padding: ${spacing[3]} !important;
+          }
+          .dashboard-stat-card .stat-value {
+            font-size: ${typography.fontSize.xl} !important;
+            margin-bottom: 0 !important;
+          }
+          .dashboard-stat-card .stat-label {
+            font-size: ${typography.fontSize.xs} !important;
+          }
+          .dashboard-stat-card svg {
+            width: 16px !important;
+            height: 16px !important;
           }
         }
       `}</style>
@@ -327,32 +352,32 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="dashboard-stats-grid">
-        <div style={s.statCard}>
+        <div style={s.statCard} className="dashboard-stat-card">
           <MessageIcon size={20} />
           <div style={{ marginTop: spacing[3] }}>
-            <div style={s.statValue}>{stats.total}</div>
-            <div style={s.statLabel}>Total conversations</div>
+            <div style={s.statValue} className="stat-value">{stats.total}</div>
+            <div style={s.statLabel} className="stat-label">Total conversations</div>
           </div>
         </div>
-        <div style={s.statCard}>
+        <div style={s.statCard} className="dashboard-stat-card">
           <TrendingIcon size={20} />
           <div style={{ marginTop: spacing[3] }}>
-            <div style={s.statValue}>{stats.active}</div>
-            <div style={s.statLabel}>Active now</div>
+            <div style={s.statValue} className="stat-value">{stats.active}</div>
+            <div style={s.statLabel} className="stat-label">Active now</div>
           </div>
         </div>
-        <div style={s.statCard}>
+        <div style={s.statCard} className="dashboard-stat-card">
           <UsersIcon size={20} />
           <div style={{ marginTop: spacing[3] }}>
-            <div style={s.statValue}>{stats.totalResponses}</div>
-            <div style={s.statLabel}>Total responses</div>
+            <div style={s.statValue} className="stat-value">{stats.totalResponses}</div>
+            <div style={s.statLabel} className="stat-label">Total responses</div>
           </div>
         </div>
-        <div style={s.statCard}>
+        <div style={s.statCard} className="dashboard-stat-card">
           <ChartIcon size={20} />
           <div style={{ marginTop: spacing[3] }}>
-            <div style={s.statValue}>{stats.avgResponses}</div>
-            <div style={s.statLabel}>Avg responses per conversation</div>
+            <div style={s.statValue} className="stat-value">{stats.avgResponses}</div>
+            <div style={s.statLabel} className="stat-label">Avg responses</div>
           </div>
         </div>
       </div>

@@ -1201,7 +1201,21 @@ export default function ConversationsPage() {
             justify-content: center;
           }
           .conversations-stats-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(3, 1fr);
+            gap: ${spacing[2]};
+          }
+          .conversations-stat-card {
+            padding: ${spacing[3]} !important;
+          }
+          .conversations-stat-card .stat-value {
+            font-size: ${typography.fontSize.xl} !important;
+          }
+          .conversations-stat-card .stat-label {
+            font-size: ${typography.fontSize.xs} !important;
+          }
+          .conversations-stat-card svg {
+            width: 16px !important;
+            height: 16px !important;
           }
           .conversations-tabs {
             gap: 0;
@@ -1260,25 +1274,25 @@ export default function ConversationsPage() {
       {/* Stats Cards */}
       {activeTab === 'owned' && !loading && (
         <div className="conversations-stats-grid">
-          <div style={s.statCard}>
+          <div style={s.statCard} className="conversations-stat-card">
             <MessageIcon size={20} className="" />
             <div style={{ marginTop: spacing[3] }}>
-              <div style={s.statValue}>{stats.activeConversations}</div>
-              <div style={s.statLabel}>Active conversations</div>
+              <div style={s.statValue} className="stat-value">{stats.activeConversations}</div>
+              <div style={s.statLabel} className="stat-label">Active</div>
             </div>
           </div>
-          <div style={s.statCard}>
+          <div style={s.statCard} className="conversations-stat-card">
             <UsersIcon size={20} className="" />
             <div style={{ marginTop: spacing[3] }}>
-              <div style={s.statValue}>{stats.totalResponses}</div>
-              <div style={s.statLabel}>Total responses</div>
+              <div style={s.statValue} className="stat-value">{stats.totalResponses}</div>
+              <div style={s.statLabel} className="stat-label">Responses</div>
             </div>
           </div>
-          <div style={s.statCard}>
+          <div style={s.statCard} className="conversations-stat-card">
             <TrendingIcon size={20} className="" />
             <div style={{ marginTop: spacing[3] }}>
-              <div style={s.statValue}>{stats.responseRate}%</div>
-              <div style={s.statLabel}>Conversations with responses</div>
+              <div style={s.statValue} className="stat-value">{stats.responseRate}%</div>
+              <div style={s.statLabel} className="stat-label">With responses</div>
             </div>
           </div>
         </div>
