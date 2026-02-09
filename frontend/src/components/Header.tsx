@@ -256,19 +256,19 @@ export default function Header() {
               ref={mobileMenuRef}
             >
               <nav className="mobile-nav">
-                <Link to="/dashboard" className="mobile-nav-link">
+                <Link to="/dashboard" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                   Dashboard
                 </Link>
-                <Link to="/conversations" className="mobile-nav-link">
+                <Link to="/conversations" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                   Conversations
                 </Link>
-                <Link to="/templates" className="mobile-nav-link">
+                <Link to="/templates" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                   Templates
                 </Link>
-                <Link to="/collections" className="mobile-nav-link">
+                <Link to="/collections" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                   Collections
                 </Link>
-                <Link to="/help" className="mobile-nav-link">
+                <Link to="/help" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                   Help
                 </Link>
               </nav>
