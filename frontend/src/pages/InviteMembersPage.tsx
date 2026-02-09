@@ -7,10 +7,9 @@ import { colors, typography, spacing, borders, transitions } from '../styles';
 
 const styles = {
   page: {
-    minHeight: '100vh',
+    minHeight: 'calc(100vh - var(--header-height))',
     backgroundColor: colors.primary[50],
     padding: spacing[6],
-    paddingTop: 'calc(60px + 1.5rem)',
   },
   container: {
     maxWidth: '900px',

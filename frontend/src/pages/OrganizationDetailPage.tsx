@@ -22,10 +22,9 @@ export default function OrganizationDetailPage() {
 
   const styles = {
     page: {
-      minHeight: '100vh',
+      minHeight: 'calc(100vh - var(--header-height))',
       backgroundColor: colors.primary[100],
       padding: spacing[8],
-      paddingTop: `calc(80px + ${spacing[8]})`, // Account for fixed header
     },
     container: {
       maxWidth: '1200px',

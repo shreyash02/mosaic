@@ -6,13 +6,12 @@ import { colors, typography, spacing, borders, shadows, transitions } from '../s
 
 const styles = {
   page: {
-    minHeight: '100vh',
+    minHeight: 'calc(100vh - var(--header-height))',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary[50],
     padding: spacing[4],
-    paddingTop: 'calc(60px + 2rem)', // Account for header
   },
   container: {
     backgroundColor: 'white',
