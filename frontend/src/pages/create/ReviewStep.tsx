@@ -445,7 +445,7 @@ export default function ReviewStep() {
                     top: '100%',
                     left: 0,
                     marginTop: spacing[1],
-                    backgroundColor: 'white',
+                    backgroundColor: 'var(--color-primary-50)',
                     border: '1px solid var(--color-primary-300)',
                     borderRadius: borders.radius.md,
                     boxShadow: shadows.lg,

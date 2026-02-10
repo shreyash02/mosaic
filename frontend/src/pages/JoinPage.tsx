@@ -50,7 +50,7 @@ const styles = {
     lineHeight: typography.lineHeight.relaxed,
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
@@ -58,7 +58,7 @@ const styles = {
     boxShadow: shadows.sm,
   },
   cardCentered: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[8],
@@ -157,7 +157,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[3]} ${spacing[5]}`,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -232,7 +232,7 @@ const styles = {
     marginBottom: spacing[3],
   },
   resultsLink: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     padding: spacing[3],
     borderRadius: borders.radius.md,
     border: `1px solid ${'var(--color-primary-300)'}`,
@@ -275,7 +275,7 @@ const styles = {
   },
   trustDetails: {
     textAlign: 'left' as const,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     padding: spacing[5],
     marginBottom: spacing[5],
@@ -315,7 +315,7 @@ const styles = {
   },
   conflictInfo: {
     textAlign: 'left' as const,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     padding: spacing[5],
     marginBottom: spacing[5],
@@ -371,7 +371,7 @@ const styles = {
     alignItems: 'center',
     gap: spacing[2],
     padding: spacing[3],
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     cursor: 'pointer',
@@ -438,7 +438,7 @@ const styles = {
     padding: spacing[4],
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.xl,
     padding: spacing[6],
     maxWidth: '500px',

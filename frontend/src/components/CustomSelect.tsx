@@ -56,7 +56,7 @@ const s = {
     left: 0,
     right: 0,
     marginTop: spacing[1],
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     boxShadow: shadows.lg,

@@ -25,7 +25,7 @@ const styles = {
     textAlign: 'center' as const,
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[8],
