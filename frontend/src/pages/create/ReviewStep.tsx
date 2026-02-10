@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -7,6 +7,7 @@ import ConversationPreview from '../../components/ConversationPreview';
 import { INTENT_PRESETS } from '../../types/intentPresets';
 import { api } from '../../services/api';
 import type { Series } from '../../types';
+import { typography, spacing, borders, shadows } from '../../styles';
 
 export default function ReviewStep() {
   const navigate = useNavigate();
@@ -21,6 +22,19 @@ export default function ReviewStep() {
   const [newSeriesName, setNewSeriesName] = useState('');
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
   const [creatingSeries, setCreatingSeries] = useState(false);
+  const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
+  const collectionDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close collection dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (collectionDropdownRef.current && !collectionDropdownRef.current.contains(event.target as Node)) {
+        setShowCollectionDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const loadSeries = async () => {
@@ -70,6 +84,12 @@ export default function ReviewStep() {
 
     try {
       // Validate
+      if (!formState.title.trim()) {
+        setError('Title is required');
+        setLoading(false);
+        return;
+      }
+
       if (formState.questions.length === 0) {
         setError('At least one question is required');
         setLoading(false);
@@ -211,7 +231,16 @@ export default function ReviewStep() {
         navigate(`/conversations/${conversation.id}`);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create conversation');
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        // Pydantic validation errors come as an array
+        const messages = detail.map((e: any) => e.msg || e.message || JSON.stringify(e));
+        setError(messages.join('. '));
+      } else if (typeof detail === 'string') {
+        setError(detail);
+      } else {
+        setError('Failed to create conversation');
+      }
     } finally {
       setLoading(false);
     }
@@ -331,60 +360,170 @@ export default function ReviewStep() {
           </div>
         )}
 
-        {/* Organization */}
+        {/* Collection */}
         <div className="form-section">
-          <h3>Organization (Optional)</h3>
-          <div className="form-group">
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-              <input
-                type="checkbox"
-                checked={formState.addToSeries}
-                onChange={(e) => {
-                  updateFormState({ addToSeries: e.target.checked });
-                  if (!e.target.checked) {
-                    updateFormState({ selectedSeriesId: '' });
-                  }
-                }}
-                style={{ marginRight: '0.5rem' }}
-              />
-              <span style={{ fontWeight: 600 }}>
-                {formState.createTemplate ? 'Set Collection for Instances' : 'Add to Collection'}
-              </span>
-            </label>
-            <p className="form-help-text" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-              {formState.createTemplate
-                ? 'Instances created from this template will automatically join the selected collection.'
-                : 'Group this conversation with related conversations in a collection.'}
-            </p>
+          <h3>Collection (Optional)</h3>
+          <p className="form-help-text" style={{ marginBottom: spacing[4] }}>
+            {formState.createTemplate
+              ? 'Instances created from this template will automatically join the selected collection.'
+              : 'Group this conversation with related conversations in a collection.'}
+          </p>
 
-            {formState.addToSeries && (
-              <div style={{ paddingLeft: '1.5rem', borderLeft: '3px solid #4299e1' }}>
-                <div className="form-group">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <label htmlFor="seriesSelect">Select Collection</label>
+          <div className="form-group">
+            {formState.selectedSeriesId ? (
+              // Show selected collection with remove option
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[3]}`,
+                backgroundColor: 'var(--color-primary-100)',
+                borderRadius: borders.radius.md,
+                border: '1px solid var(--color-primary-300)',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-primary-600)' }}>
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-900)' }}>
+                  In collection: <strong>{seriesList.find(s => s.id === formState.selectedSeriesId)?.name}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateFormState({ selectedSeriesId: '', addToSeries: false });
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '20px',
+                    height: '20px',
+                    padding: 0,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: borders.radius.full,
+                    cursor: 'pointer',
+                    color: 'var(--color-primary-500)',
+                  }}
+                  title="Remove from collection"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              // Show "Add to Collection" dropdown
+              <div ref={collectionDropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCollectionDropdown(!showCollectionDropdown)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    backgroundColor: 'transparent',
+                    border: '1px dashed var(--color-primary-400)',
+                    borderRadius: borders.radius.md,
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-600)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add to Collection
+                </button>
+
+                {showCollectionDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: spacing[1],
+                    backgroundColor: 'white',
+                    border: '1px solid var(--color-primary-300)',
+                    borderRadius: borders.radius.md,
+                    boxShadow: shadows.lg,
+                    minWidth: '240px',
+                    maxHeight: '280px',
+                    overflowY: 'auto',
+                    zIndex: 100,
+                  }}>
+                    {seriesList.length === 0 ? (
+                      <div style={{ padding: spacing[4], textAlign: 'center', color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
+                        No collections yet
+                      </div>
+                    ) : (
+                      seriesList.map((series) => (
+                        <button
+                          key={series.id}
+                          type="button"
+                          onClick={() => {
+                            updateFormState({ selectedSeriesId: series.id, addToSeries: true });
+                            setShowCollectionDropdown(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: spacing[2],
+                            width: '100%',
+                            padding: `${spacing[3]} ${spacing[4]}`,
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            fontSize: typography.fontSize.sm,
+                            color: 'var(--color-primary-900)',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid var(--color-primary-100)',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-50)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-primary-400)', flexShrink: 0 }}>
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {series.name}
+                          </span>
+                        </button>
+                      ))
+                    )}
                     <button
                       type="button"
-                      onClick={() => setShowCreateSeriesModal(true)}
-                      className="btn btn-secondary btn-small"
-                      style={{ fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}
+                      onClick={() => {
+                        setShowCollectionDropdown(false);
+                        setShowCreateSeriesModal(true);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing[2],
+                        width: '100%',
+                        padding: `${spacing[3]} ${spacing[4]}`,
+                        backgroundColor: 'var(--color-primary-50)',
+                        border: 'none',
+                        textAlign: 'left',
+                        fontSize: typography.fontSize.sm,
+                        fontWeight: typography.fontWeight.medium,
+                        color: 'var(--color-primary-700)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-50)'}
                     >
-                      + Create New
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Create New Collection
                     </button>
                   </div>
-                  <select
-                    id="seriesSelect"
-                    value={formState.selectedSeriesId}
-                    onChange={(e) => updateFormState({ selectedSeriesId: e.target.value })}
-                    required={formState.addToSeries}
-                  >
-                    <option value="">-- Select a collection --</option>
-                    {seriesList.map((series) => (
-                      <option key={series.id} value={series.id}>
-                        {series.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                )}
               </div>
             )}
           </div>

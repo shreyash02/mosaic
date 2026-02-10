@@ -881,7 +881,16 @@ function CreateConversationPageContent() {
         navigate(`/conversations/${conversation.id}`);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create conversation');
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        // Pydantic validation errors come as an array
+        const messages = detail.map((e: any) => e.msg || e.message || JSON.stringify(e));
+        setError(messages.join('. '));
+      } else if (typeof detail === 'string') {
+        setError(detail);
+      } else {
+        setError('Failed to create conversation');
+      }
     } finally {
       setLoading(false);
     }
