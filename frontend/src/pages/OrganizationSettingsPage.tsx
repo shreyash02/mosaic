@@ -522,10 +522,11 @@ export default function OrganizationSettingsPage() {
           {error && <div style={styles.error}>{error}</div>}
           {success && <div style={styles.success}>{success}</div>}
 
+          <form onSubmit={handleSave}>
           {/* General Settings */}
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>General Settings</h2>
-            <form onSubmit={handleSave} style={styles.form}>
+            <div style={styles.form}>
               <div style={styles.formGroup}>
                 <label htmlFor="name" style={styles.label}>
                   Organization Name<span style={styles.required}>*</span>
@@ -560,28 +561,7 @@ export default function OrganizationSettingsPage() {
                 />
                 <span style={styles.hint}>Help members understand the organization's purpose</span>
               </div>
-
-              <div style={styles.actions}>
-                <button
-                  type="submit"
-                  style={{
-                    ...styles.buttonPrimary,
-                    ...(saving || !name.trim() ? styles.buttonDisabled : {}),
-                  }}
-                  className="org-settings-btn-primary"
-                  disabled={saving || !name.trim()}
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <Link
-                  to={`/organizations/${id}`}
-                  style={styles.buttonSecondary}
-                  className="org-settings-btn-secondary"
-                >
-                  Cancel
-                </Link>
-              </div>
-            </form>
+            </div>
           </div>
 
           {/* Branding Settings */}
@@ -646,6 +626,29 @@ export default function OrganizationSettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Save Actions */}
+          <div style={{ ...styles.actions, marginBottom: spacing[6] }}>
+            <button
+              type="submit"
+              style={{
+                ...styles.buttonPrimary,
+                ...(saving || !name.trim() ? styles.buttonDisabled : {}),
+              }}
+              className="org-settings-btn-primary"
+              disabled={saving || !name.trim()}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <Link
+              to={`/organizations/${id}`}
+              style={styles.buttonSecondary}
+              className="org-settings-btn-secondary"
+            >
+              Cancel
+            </Link>
+          </div>
+          </form>
 
           {/* Danger Zone */}
           {isCreator && (
