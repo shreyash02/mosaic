@@ -744,6 +744,27 @@ export default function AnalysisPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Format period label to be more human-friendly
+  const formatPeriodLabel = (label: string) => {
+    // Weekly format: YYYY-Www -> "Week 7, 2026"
+    const weekMatch = label.match(/^(\d{4})-W(\d{2})$/);
+    if (weekMatch) {
+      return `Week ${parseInt(weekMatch[2], 10)}, ${weekMatch[1]}`;
+    }
+    // Monthly format: YYYY-MM -> "February 2026"
+    const monthMatch = label.match(/^(\d{4})-(\d{2})$/);
+    if (monthMatch) {
+      const monthName = new Date(parseInt(monthMatch[1]), parseInt(monthMatch[2]) - 1).toLocaleDateString('en-US', { month: 'long' });
+      return `${monthName} ${monthMatch[1]}`;
+    }
+    // Daily format: YYYY-MM-DD -> "February 10, 2026"
+    const dayMatch = label.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dayMatch) {
+      return new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+    return label;
+  };
+
   if (loading) {
     return (
       <>
@@ -897,7 +918,7 @@ export default function AnalysisPage() {
                     className="periodic-card"
                   >
                     <div style={styles.periodicCardContent}>
-                      <div style={styles.periodLabel}>{pa.period_label}</div>
+                      <div style={styles.periodLabel}>{formatPeriodLabel(pa.period_label)}</div>
                       <div style={styles.periodMeta}>
                         <span style={styles.periodDate}>
                           {formatPeriodDate(pa.period_start)} — {formatPeriodDate(pa.period_end)}

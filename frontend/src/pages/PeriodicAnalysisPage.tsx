@@ -408,6 +408,38 @@ export default function PeriodicAnalysisPage() {
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
+  // Format period label to be more human-friendly
+  // "2026-W07" -> "Week 7, 2026"
+  // "2026-02" -> "February 2026"
+  const formatPeriodLabel = (label: string) => {
+    // Weekly format: YYYY-Www
+    const weekMatch = label.match(/^(\d{4})-W(\d{2})$/);
+    if (weekMatch) {
+      const year = weekMatch[1];
+      const week = parseInt(weekMatch[2], 10);
+      return `Week ${week}, ${year}`;
+    }
+
+    // Monthly format: YYYY-MM
+    const monthMatch = label.match(/^(\d{4})-(\d{2})$/);
+    if (monthMatch) {
+      const year = monthMatch[1];
+      const month = parseInt(monthMatch[2], 10);
+      const monthName = new Date(parseInt(year), month - 1).toLocaleDateString('en-US', { month: 'long' });
+      return `${monthName} ${year}`;
+    }
+
+    // Daily format: YYYY-MM-DD
+    const dayMatch = label.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dayMatch) {
+      const date = new Date(label);
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    // Fallback to original label
+    return label;
+  };
+
   if (loading) {
     return (
       <>
@@ -466,7 +498,7 @@ export default function PeriodicAnalysisPage() {
                 </svg>
                 Back to Analysis History
               </button>
-              <h1 style={styles.title}>{analysis.period_label}</h1>
+              <h1 style={styles.title}>{formatPeriodLabel(analysis.period_label)}</h1>
               <p style={styles.subtitle}>{conversation.title}</p>
               <span style={styles.periodBadge}>
                 {formatPeriodDate(analysis.period_start)} — {formatPeriodDate(analysis.period_end)}
