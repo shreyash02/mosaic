@@ -494,14 +494,14 @@ const styles = {
   },
   periodicCard: {
     backgroundColor: 'var(--color-primary-50)',
-    borderRadius: borders.radius.lg,
+    borderRadius: borders.radius.md,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     cursor: 'pointer',
-    transition: `border-color ${transitions.duration.normal}, box-shadow ${transitions.duration.normal}`,
+    transition: `border-color ${transitions.duration.normal}`,
     textDecoration: 'none',
     color: 'inherit',
   },
@@ -584,7 +584,6 @@ const hoverStyles = `
   }
   .periodic-card:hover {
     border-color: ${'var(--color-primary-400)'} !important;
-    box-shadow: ${shadows.sm} !important;
   }
 `;
 
@@ -804,9 +803,15 @@ export default function AnalysisPage() {
     }
   };
 
-  const formatPeriodDate = (dateStr: string) => {
+  const formatPeriodDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   };
 
   // Format period label to be more human-friendly
@@ -1075,31 +1080,69 @@ export default function AnalysisPage() {
                     </div>
                   </div>
                 )}
-                {periodicAnalyses.map((pa) => (
-                  <Link
-                    key={pa.id}
-                    to={`/conversations/${id}/analysis/${encodeURIComponent(pa.period_label)}`}
-                    style={styles.periodicCard}
-                    className="periodic-card"
-                  >
-                    <div style={styles.periodicCardContent}>
-                      <div style={styles.periodLabel}>{formatPeriodLabel(pa.period_label)}</div>
-                      <div style={styles.periodMeta}>
-                        <span style={styles.periodDate}>
-                          {formatPeriodDate(pa.period_start)} — {formatPeriodDate(pa.period_end)}
-                        </span>
-                        <span style={styles.responsesBadge}>
-                          {pa.total_responses_analyzed || 0} responses
-                        </span>
+                {periodicAnalyses.map((pa) => {
+                  const isScheduled = pa.trigger_type === 'scheduled';
+                  const isManual = !isScheduled; // Anything not scheduled is manual
+                  return (
+                    <Link
+                      key={pa.id}
+                      to={`/conversations/${id}/analysis/${encodeURIComponent(pa.period_label)}`}
+                      style={{
+                        ...styles.periodicCard,
+                        ...(isScheduled ? {
+                          borderLeft: `3px solid var(--color-primary-900)`,
+                        } : {}),
+                        ...(isManual ? {
+                          opacity: 0.75,
+                          paddingLeft: spacing[6],
+                        } : {}),
+                      }}
+                      className="periodic-card"
+                    >
+                      <div style={styles.periodicCardContent}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                          <span style={styles.periodLabel}>{formatPeriodLabel(pa.period_label)}</span>
+                          {isScheduled && (
+                            <span style={{
+                              fontSize: typography.fontSize.xs,
+                              color: 'var(--color-primary-50)',
+                              backgroundColor: 'var(--color-primary-900)',
+                              padding: `${spacing[0.5]} ${spacing[2]}`,
+                              borderRadius: borders.radius.full,
+                              fontWeight: typography.fontWeight.medium,
+                            }}>
+                              Full Period
+                            </span>
+                          )}
+                          {isManual && (
+                            <span style={{
+                              fontSize: typography.fontSize.xs,
+                              color: 'var(--color-primary-600)',
+                              backgroundColor: 'var(--color-primary-100)',
+                              padding: `${spacing[0.5]} ${spacing[2]}`,
+                              borderRadius: borders.radius.full,
+                            }}>
+                              Manual
+                            </span>
+                          )}
+                        </div>
+                        <div style={styles.periodMeta}>
+                          <span style={styles.periodDate}>
+                            {formatPeriodDateTime(pa.period_start)} — {formatPeriodDateTime(pa.period_end)}
+                          </span>
+                          <span style={styles.responsesBadge}>
+                            {pa.total_responses_analyzed || 0} responses
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <span style={styles.viewArrow}>
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                      </svg>
-                    </span>
-                  </Link>
-                ))}
+                      <span style={styles.viewArrow}>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                        </svg>
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

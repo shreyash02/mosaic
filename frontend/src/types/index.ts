@@ -379,6 +379,8 @@ export interface Analysis {
 }
 
 // Periodic analysis for continuous conversations
+export type PeriodicAnalysisTriggerType = 'scheduled' | 'manual';
+
 export interface PeriodicAnalysis {
   id: string;
   conversation_id: string;
@@ -386,6 +388,7 @@ export interface PeriodicAnalysis {
   period_type: AnalysisInterval;
   period_start: string;
   period_end: string;
+  trigger_type: PeriodicAnalysisTriggerType;
   overall_summary?: string;
   themes?: Theme[];
   surprising_insights?: SurprisingInsight[];
