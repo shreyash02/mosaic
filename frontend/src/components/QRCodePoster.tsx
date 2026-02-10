@@ -333,7 +333,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: spacing[4],
   },
   modal: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     boxShadow: shadows.lg,
     maxWidth: '800px',
@@ -404,7 +404,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: typography.fontSize.sm,
     border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
-    backgroundColor: 'var(--color-primary-50)',
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-900)',
   },
   checkboxLabel: {
     display: 'flex',
@@ -546,7 +547,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     color: 'var(--color-primary-700)',
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-100)',
     border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
     cursor: 'pointer',
