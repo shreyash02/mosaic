@@ -3,24 +3,39 @@ import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { typography, spacing, borders, shadows } from '../styles';
 import CustomFileInput, { CustomFileInputRef } from './CustomFileInput';
+import CustomSelect from './CustomSelect';
+
+interface BrandingInfo {
+  logoUrl?: string;
+  name?: string;
+}
 
 interface QRCodePosterProps {
   url: string;
   accessCode: string;
   onClose: () => void;
-  defaultBrandLogoUrl?: string;
-  defaultBrandName?: string;
+  conversationBranding?: BrandingInfo;
+  organizationBranding?: BrandingInfo;
+  organizationName?: string;
 }
+
+type BrandingSource = 'conversation' | 'organization' | 'custom' | 'none';
 
 interface PosterConfig {
   topText: string;
   brandLogo: string;
   brandName: string;
-  showBranding: boolean;
   logoSize: number; // percentage: 50-150
 }
 
-export default function QRCodePoster({ url, accessCode, onClose, defaultBrandLogoUrl, defaultBrandName }: QRCodePosterProps) {
+export default function QRCodePoster({
+  url,
+  accessCode,
+  onClose,
+  conversationBranding,
+  organizationBranding,
+  organizationName,
+}: QRCodePosterProps) {
   const posterRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<CustomFileInputRef>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
@@ -29,45 +44,97 @@ export default function QRCodePoster({ url, accessCode, onClose, defaultBrandLog
   const [loadingStoredLogo, setLoadingStoredLogo] = useState(false);
   const [error, setError] = useState('');
 
-  // Determine if we have stored branding to use as defaults
-  const hasStoredBranding = !!(defaultBrandLogoUrl || defaultBrandName);
+  // Determine available branding sources
+  const hasConvoBranding = !!(conversationBranding?.logoUrl || conversationBranding?.name);
+  const hasOrgBranding = !!(organizationBranding?.logoUrl || organizationBranding?.name);
+
+  // Default to conversation branding if available, otherwise org, otherwise none
+  const getDefaultSource = (): BrandingSource => {
+    if (hasConvoBranding) return 'conversation';
+    if (hasOrgBranding) return 'organization';
+    return 'none';
+  };
+
+  const [brandingSource, setBrandingSource] = useState<BrandingSource>(getDefaultSource());
+  const [loadedLogos, setLoadedLogos] = useState<Record<string, string>>({});
 
   const [config, setConfig] = useState<PosterConfig>({
     topText: 'Leave feedback here',
     brandLogo: '',
-    brandName: defaultBrandName || '',
-    showBranding: hasStoredBranding,
+    brandName: '',
     logoSize: 100,
   });
 
-  // Load stored logo as base64 on mount if available
-  useEffect(() => {
-    if (defaultBrandLogoUrl && !config.brandLogo) {
-      setLoadingStoredLogo(true);
-      // Use the URL directly - relative URLs like /api/uploads/... work in browser
-      const logoUrl = defaultBrandLogoUrl;
-
-      // Fetch and convert to base64 for html2canvas compatibility
-      fetch(logoUrl)
-        .then(response => response.blob())
-        .then(blob => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            setConfig(prev => ({ ...prev, brandLogo: reader.result as string }));
-            setLoadingStoredLogo(false);
-          };
-          reader.onerror = () => {
-            console.error('Failed to load stored logo');
-            setLoadingStoredLogo(false);
-          };
-          reader.readAsDataURL(blob);
-        })
-        .catch(() => {
-          console.error('Failed to fetch stored logo');
-          setLoadingStoredLogo(false);
-        });
+  // Get branding based on selected source
+  const getActiveBranding = (): BrandingInfo | null => {
+    switch (brandingSource) {
+      case 'conversation':
+        return conversationBranding || null;
+      case 'organization':
+        return organizationBranding || null;
+      case 'custom':
+        return { logoUrl: config.brandLogo, name: config.brandName };
+      case 'none':
+      default:
+        return null;
     }
-  }, [defaultBrandLogoUrl]);
+  };
+
+  // Load logo as base64 for a given URL
+  const loadLogoAsBase64 = async (logoUrl: string): Promise<string> => {
+    if (loadedLogos[logoUrl]) return loadedLogos[logoUrl];
+
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        setLoadedLogos(prev => ({ ...prev, [logoUrl]: dataUrl }));
+        resolve(dataUrl);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // Update config when branding source changes
+  useEffect(() => {
+    const updateBranding = async () => {
+      const branding = getActiveBranding();
+
+      if (brandingSource === 'none') {
+        setConfig(prev => ({ ...prev, brandLogo: '', brandName: '' }));
+        return;
+      }
+
+      if (brandingSource === 'custom') {
+        // Keep current custom values
+        return;
+      }
+
+      if (branding) {
+        setLoadingStoredLogo(true);
+        try {
+          let logoDataUrl = '';
+          if (branding.logoUrl) {
+            logoDataUrl = await loadLogoAsBase64(branding.logoUrl);
+          }
+          setConfig(prev => ({
+            ...prev,
+            brandLogo: logoDataUrl,
+            brandName: branding.name || '',
+          }));
+        } catch (err) {
+          console.error('Failed to load branding logo:', err);
+        } finally {
+          setLoadingStoredLogo(false);
+        }
+      }
+    };
+
+    updateBranding();
+  }, [brandingSource]);
 
   // Generate QR code on mount
   useEffect(() => {
@@ -182,45 +249,94 @@ export default function QRCodePoster({ url, accessCode, onClose, defaultBrandLog
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={config.showBranding}
-                  onChange={(e) => updateConfig({ showBranding: e.target.checked })}
-                  style={styles.checkbox}
-                />
-                Add branding below QR code
-              </label>
+              <label style={styles.label}>Branding</label>
+              <CustomSelect
+                value={brandingSource}
+                options={[
+                  { value: 'none', label: 'No branding' },
+                  ...(hasConvoBranding ? [{
+                    value: 'conversation',
+                    label: `From conversation${conversationBranding?.name ? ` (${conversationBranding.name})` : ''}`
+                  }] : []),
+                  ...(hasOrgBranding ? [{
+                    value: 'organization',
+                    label: `From organization${organizationName ? ` (${organizationName})` : ''}`
+                  }] : []),
+                  { value: 'custom', label: 'Custom...' },
+                ]}
+                onChange={(value) => {
+                  const newSource = value as BrandingSource;
+                  setBrandingSource(newSource);
+                  if (newSource === 'custom') {
+                    // Clear for custom entry
+                    setConfig(prev => ({ ...prev, brandLogo: '', brandName: '' }));
+                  }
+                }}
+                minWidth="100%"
+              />
             </div>
 
-            {config.showBranding && (
+            {brandingSource !== 'none' && (
               <>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Brand Logo</label>
-                  {loadingStoredLogo ? (
-                    <div style={styles.loadingLogo}>Loading stored logo...</div>
-                  ) : config.brandLogo ? (
-                    <div style={styles.logoPreview}>
-                      <img src={config.brandLogo} alt="Brand logo" style={styles.logoImage} />
-                      <button
-                        type="button"
-                        onClick={() => updateConfig({ brandLogo: '' })}
-                        style={styles.removeButton}
-                      >
-                        Remove
-                      </button>
+                {/* Show preview for stored branding, or editable fields for custom */}
+                {brandingSource === 'custom' ? (
+                  <>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Brand Logo</label>
+                      {config.brandLogo ? (
+                        <div style={styles.logoPreview}>
+                          <img src={config.brandLogo} alt="Brand logo" style={styles.logoImage} />
+                          <button
+                            type="button"
+                            onClick={() => updateConfig({ brandLogo: '' })}
+                            style={styles.removeButton}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <CustomFileInput
+                          ref={fileInputRef}
+                          id="brandLogo"
+                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                          onChange={handleLogoUpload}
+                          disabled={uploadingLogo}
+                          label={uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                        />
+                      )}
                     </div>
-                  ) : (
-                    <CustomFileInput
-                      ref={fileInputRef}
-                      id="brandLogo"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                      onChange={handleLogoUpload}
-                      disabled={uploadingLogo}
-                      label={uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                    />
-                  )}
-                </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Brand Name</label>
+                      <input
+                        type="text"
+                        value={config.brandName}
+                        onChange={(e) => updateConfig({ brandName: e.target.value })}
+                        placeholder="Your Company Name"
+                        style={styles.input}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  /* Preview for stored branding */
+                  <div style={styles.brandingPreviewBox}>
+                    {loadingStoredLogo ? (
+                      <div style={styles.loadingLogo}>Loading branding...</div>
+                    ) : (
+                      <>
+                        {config.brandLogo && (
+                          <img src={config.brandLogo} alt="Brand logo" style={styles.logoImage} />
+                        )}
+                        {config.brandName && (
+                          <span style={styles.brandingPreviewName}>{config.brandName}</span>
+                        )}
+                        {!config.brandLogo && !config.brandName && (
+                          <span style={styles.noBrandingText}>No branding configured</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {config.brandLogo && (
                   <div style={styles.formGroup}>
@@ -242,17 +358,6 @@ export default function QRCodePoster({ url, accessCode, onClose, defaultBrandLog
                     </div>
                   </div>
                 )}
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Brand Name</label>
-                  <input
-                    type="text"
-                    value={config.brandName}
-                    onChange={(e) => updateConfig({ brandName: e.target.value })}
-                    placeholder="Your Company Name"
-                    style={styles.input}
-                  />
-                </div>
               </>
             )}
           </div>
@@ -277,7 +382,7 @@ export default function QRCodePoster({ url, accessCode, onClose, defaultBrandLog
                 )}
 
                 {/* Branding */}
-                {config.showBranding && (config.brandLogo || config.brandName) && (
+                {brandingSource !== 'none' && (config.brandLogo || config.brandName) && (
                   <div style={styles.branding}>
                     {config.brandLogo && (
                       <img
@@ -406,6 +511,35 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: borders.radius.md,
     backgroundColor: 'var(--color-primary-100)',
     color: 'var(--color-primary-900)',
+  },
+  select: {
+    width: '100%',
+    padding: `${spacing[2]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-900)',
+    cursor: 'pointer',
+  },
+  brandingPreviewBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+    padding: spacing[3],
+    backgroundColor: 'var(--color-primary-100)',
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[4],
+  },
+  brandingPreviewName: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-800)',
+    fontWeight: typography.fontWeight.medium,
+  },
+  noBrandingText: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-500)',
+    fontStyle: 'italic' as const,
   },
   checkboxLabel: {
     display: 'flex',

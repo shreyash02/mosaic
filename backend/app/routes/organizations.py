@@ -152,6 +152,10 @@ async def update_organization(
         organization.name = org_update.name
     if org_update.description is not None:
         organization.description = org_update.description
+    if org_update.brand_logo_url is not None:
+        organization.brand_logo_url = org_update.brand_logo_url if org_update.brand_logo_url else None
+    if org_update.brand_name is not None:
+        organization.brand_name = org_update.brand_name if org_update.brand_name else None
 
     db.commit()
     db.refresh(organization)

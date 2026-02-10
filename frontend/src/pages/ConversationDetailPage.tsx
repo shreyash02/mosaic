@@ -1703,8 +1703,15 @@ export default function ConversationDetailPage() {
           url={getInviteLink()}
           accessCode={conversation.access_code}
           onClose={() => setShowQRCodeModal(false)}
-          defaultBrandLogoUrl={conversation.brand_logo_url || organizationBranding?.brand_logo_url}
-          defaultBrandName={conversation.brand_name || organizationBranding?.brand_name}
+          conversationBranding={{
+            logoUrl: conversation.brand_logo_url,
+            name: conversation.brand_name,
+          }}
+          organizationBranding={{
+            logoUrl: organizationBranding?.brand_logo_url,
+            name: organizationBranding?.brand_name,
+          }}
+          organizationName={organizationName || undefined}
         />
       )}
 
