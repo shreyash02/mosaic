@@ -556,7 +556,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: `${spacing[2]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: 'white',
+    color: 'var(--color-primary-50)',
     backgroundColor: 'var(--color-primary-900)',
     border: 'none',
     borderRadius: borders.radius.md,
