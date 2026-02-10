@@ -70,6 +70,12 @@ export default function ReviewStep() {
 
     try {
       // Validate
+      if (formState.questions.length === 0) {
+        setError('At least one question is required');
+        setLoading(false);
+        return;
+      }
+
       if (formState.questions.some((q) => !q.question_text.trim())) {
         setError('All questions must have text');
         setLoading(false);
@@ -126,6 +132,9 @@ export default function ReviewStep() {
       }
 
       // Prepare conversation data
+      // Strip the 'id' field from questions as it's only used for React keys
+      const questionsForApi = formState.questions.map(({ id, ...rest }) => rest);
+
       const conversationData = {
         title: formState.title,
         ...(formState.participantTitle.trim() && { participant_title: formState.participantTitle.trim() }),
@@ -136,7 +145,7 @@ export default function ReviewStep() {
         show_verbatim_responses: formState.showVerbatimResponses,
         invite_only: formState.inviteOnly,
         timezone: userTimezone,
-        questions: formState.questions,
+        questions: questionsForApi,
         // Duration only applies to limited-time conversations
         ...(!formState.isLongRunning && totalMinutes > 0 && { duration_minutes: totalMinutes }),
         ...(formState.scheduleActivation && formState.scheduledActivateAt && {

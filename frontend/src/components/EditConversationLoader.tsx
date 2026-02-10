@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../contexts/ConversationFormContext';
 import { api } from '../services/api';
@@ -6,9 +6,10 @@ import { api } from '../services/api';
 export default function EditConversationLoader({ children }: { children: React.ReactNode }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { loadConversation } = useConversationForm();
+  const { loadConversation, formState } = useConversationForm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const loadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const fetchConversation = async () => {
@@ -18,9 +19,16 @@ export default function EditConversationLoader({ children }: { children: React.R
         return;
       }
 
+      // Skip if we've already loaded this conversation
+      if (loadedIdRef.current === id || formState.conversationId === id) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const conversation = await api.getConversation(id);
         loadConversation(conversation);
+        loadedIdRef.current = id;
         setLoading(false);
       } catch (err: any) {
         console.error('Failed to load conversation:', err);
@@ -37,7 +45,7 @@ export default function EditConversationLoader({ children }: { children: React.R
     };
 
     fetchConversation();
-  }, [id, loadConversation, navigate]);
+  }, [id, loadConversation, navigate, formState.conversationId]);
 
   if (loading) {
     return (

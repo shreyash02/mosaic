@@ -536,6 +536,7 @@ export default function ConversationDetailPage() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [copyInvitations, setCopyInvitations] = useState(false);
   const [copySettings, setCopySettings] = useState(true);
+  const [copyQuestions, setCopyQuestions] = useState(false);
   const [addToSeries, setAddToSeries] = useState(false);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
@@ -700,7 +701,7 @@ export default function ConversationDetailPage() {
       const followUp = await api.createFollowUp(id!, {
         copy_settings: copySettings,
         copy_invitations: copyInvitations,
-        copy_questions: false,
+        copy_questions: copyQuestions,
         add_to_series: addToSeries,
       });
       setShowFollowUpModal(false);
@@ -931,8 +932,8 @@ export default function ConversationDetailPage() {
   return (
     <div style={s.page} className="convo-detail-page">
       {/* Back button */}
-      <button onClick={() => navigate('/dashboard')} style={s.backButton}>
-        ← Back to Dashboard
+      <button onClick={() => navigate('/conversations')} style={s.backButton}>
+        ← Back to Conversations
       </button>
 
       {/* Header */}
@@ -1183,10 +1184,12 @@ export default function ConversationDetailPage() {
           )}
 
           {/* Follow-up Conversations */}
-          {conversation.follow_up_conversations && conversation.follow_up_conversations.length > 0 && (
+          {conversation.follow_up_conversations && conversation.follow_up_conversations.filter(f => f.state !== 'deleted').length > 0 && (
             <div style={s.card}>
               <h2 style={s.cardTitle}>Follow-up Conversations</h2>
-              {conversation.follow_up_conversations.map((followUp) => (
+              {conversation.follow_up_conversations
+                .filter((followUp) => followUp.state !== 'deleted')
+                .map((followUp) => (
                 <div key={followUp.id} style={merge(s.infoItem, { alignItems: 'center' })}>
                   <Link to={`/conversations/${followUp.id}`} style={s.relationLink}>
                     {followUp.title}
@@ -1528,6 +1531,14 @@ export default function ConversationDetailPage() {
                 />
                 <span>Keep the same settings</span>
               </label>
+              <label style={s.checkbox}>
+                <input
+                  type="checkbox"
+                  checked={copyQuestions}
+                  onChange={(e) => setCopyQuestions(e.target.checked)}
+                />
+                <span>Copy questions</span>
+              </label>
               {conversation.invite_only && (
                 <label style={s.checkbox}>
                   <input
@@ -1548,9 +1559,11 @@ export default function ConversationDetailPage() {
               </label>
             </div>
 
-            <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
-              The follow-up will start with empty questions. You can add new questions after creation.
-            </p>
+            {!copyQuestions && (
+              <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
+                The follow-up will start with empty questions. You can add new questions after creation.
+              </p>
+            )}
 
             <div style={s.modalActions}>
               <button onClick={() => setShowFollowUpModal(false)} style={s.buttonSecondary}>

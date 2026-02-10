@@ -952,6 +952,11 @@ export default function EditConversationPage() {
     e.preventDefault();
     setError('');
 
+    if (questions.length === 0) {
+      setError('At least one question is required');
+      return;
+    }
+
     if (questions.some((q) => !q.question_text.trim())) {
       setError('All questions must have text');
       return;
@@ -983,6 +988,9 @@ export default function EditConversationPage() {
         console.warn('Failed to detect timezone, using UTC:', err);
       }
 
+      // Strip the 'id' field from questions as it's only used for React keys
+      const questionsForApi = questions.map(({ id: _id, ...rest }) => rest);
+
       await api.updateConversation(id!, {
         title,
         participant_title: participantTitle.trim() || undefined,
@@ -993,7 +1001,7 @@ export default function EditConversationPage() {
         show_verbatim_responses: showVerbatimResponses,
         invite_only: inviteOnly,
         timezone: userTimezone,
-        questions,
+        questions: questionsForApi,
         ...(totalMinutes > 0 && { duration_minutes: totalMinutes }),
         ...(scheduleActivation && scheduledActivateAt && {
           scheduled_activate_at: scheduledActivateAt + ':00'

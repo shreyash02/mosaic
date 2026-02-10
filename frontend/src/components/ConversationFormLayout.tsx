@@ -67,6 +67,11 @@ export default function ConversationFormLayout() {
       // Calculate total minutes (only for limited time)
       const totalMinutes = formState.durationHours * 60 + formState.durationMinutes;
 
+      // Strip the 'id' field from questions as it's only used for React keys
+      const questionsForApi = formState.questions
+        .filter(q => q.question_text.trim())
+        .map(({ id: _id, ...rest }) => rest);
+
       // Prepare conversation data with current form state
       const conversationData = {
         title: formState.title,
@@ -78,7 +83,7 @@ export default function ConversationFormLayout() {
         show_verbatim_responses: formState.showVerbatimResponses,
         invite_only: formState.inviteOnly,
         timezone: userTimezone,
-        questions: formState.questions.filter(q => q.question_text.trim()), // Only include questions with text
+        questions: questionsForApi,
         // Duration only applies to limited-time conversations
         ...(!formState.isLongRunning && totalMinutes > 0 && { duration_minutes: totalMinutes }),
         ...(formState.scheduleActivation && formState.scheduledActivateAt && {
@@ -111,7 +116,7 @@ export default function ConversationFormLayout() {
       // Ensure at least one question exists
       if (conversationData.questions.length === 0) {
         conversationData.questions = [
-          { id: crypto.randomUUID(), question_text: 'Question 1', question_type: 'text', question_order: 0, is_required: false }
+          { question_text: 'Question 1', question_type: 'text', question_order: 0, is_required: false }
         ];
       }
 

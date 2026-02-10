@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ConversationListItem, Series } from '../types';
 import { ConversationState } from '../types';
@@ -15,6 +15,7 @@ type ViewMode = 'tile' | 'list';
 type DateRange = 'all' | '7' | '30' | '90';
 type SortColumn = 'title' | 'status' | 'responses' | 'created';
 type SortDirection = 'asc' | 'desc';
+type GroupBy = 'none' | 'collection' | 'status';
 
 interface ConversationsListProps {
   conversations: ConversationListItem[];
@@ -349,6 +350,110 @@ const s = {
     border: '1px solid var(--color-primary-400)',
     cursor: 'pointer',
   },
+  // Group header
+  groupHeader: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+    marginBottom: spacing[4],
+    marginTop: spacing[6],
+    paddingBottom: spacing[2],
+    borderBottom: '1px solid var(--color-primary-300)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  groupHeaderFirst: {
+    marginTop: 0,
+  },
+  groupCount: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    fontWeight: typography.fontWeight.normal,
+  },
+  groupLink: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    fontWeight: typography.fontWeight.normal,
+    textDecoration: 'none',
+  } as React.CSSProperties,
+  // Nested follow-up styles
+  nestedCard: {
+    marginLeft: spacing[8],
+    borderLeft: '3px solid var(--color-primary-300)',
+    paddingLeft: spacing[4],
+    marginTop: spacing[2],
+  },
+  nestedRow: {
+    backgroundColor: 'var(--color-primary-100)',
+  },
+  nestedTitleCell: {
+    paddingLeft: spacing[10],
+  },
+  followUpIndicator: {
+    color: 'var(--color-primary-500)',
+    marginRight: spacing[2],
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.normal,
+  },
+  // Toolbar controls
+  toolbarDropdownContainer: {
+    position: 'relative' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  toolbarDropdownButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-900)',
+    cursor: 'pointer',
+    minWidth: '120px',
+    justifyContent: 'space-between',
+  },
+  toolbarDropdownMenu: {
+    position: 'absolute' as const,
+    top: '100%',
+    left: 0,
+    marginTop: spacing[1],
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    boxShadow: shadows.md,
+    minWidth: '120px',
+    overflow: 'hidden',
+    zIndex: 50,
+  },
+  toolbarDropdownItem: {
+    display: 'block',
+    width: '100%',
+    padding: `${spacing[2]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-900)',
+    backgroundColor: 'transparent',
+    border: 'none',
+    textAlign: 'left' as const,
+    cursor: 'pointer',
+  },
+  toolbarDropdownItemActive: {
+    backgroundColor: 'var(--color-primary-100)',
+    fontWeight: typography.fontWeight.medium,
+  },
+  toolbarCheckbox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-700)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+  },
 };
 
 const merge = (...styles: (React.CSSProperties | false | undefined)[]) =>
@@ -372,6 +477,9 @@ export default function ConversationsList({
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('created');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [nestFollowUps, setNestFollowUps] = useState(false);
+  const [showGroupByDropdown, setShowGroupByDropdown] = useState(false);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -379,6 +487,9 @@ export default function ConversationsList({
       const target = event.target as HTMLElement;
       if (!target.closest('[data-dropdown]')) {
         setShowFilterDropdown(false);
+      }
+      if (!target.closest('[data-groupby-dropdown]')) {
+        setShowGroupByDropdown(false);
       }
       if (!target.closest('[data-menu]')) {
         setOpenMenuId(null);
@@ -543,6 +654,122 @@ export default function ConversationsList({
     ConversationState.ANALYZED,
   ];
 
+  // Grouping logic
+  type GroupedConversations = {
+    key: string;
+    label: string;
+    conversations: ConversationListItem[];
+  }[];
+
+  const getGroupedConversations = useMemo((): GroupedConversations => {
+    let conversationsToGroup = filteredConversations;
+
+    // If nesting follow-ups, filter out follow-ups from the main list
+    // (they'll be rendered under their parents)
+    // A conversation is a follow-up if it has parent_conversation_id or is_follow_up flag
+    if (nestFollowUps) {
+      conversationsToGroup = conversationsToGroup.filter(c => !c.parent_conversation_id && !c.is_follow_up);
+    }
+
+    if (groupBy === 'none') {
+      return [{ key: 'all', label: '', conversations: conversationsToGroup }];
+    }
+
+    if (groupBy === 'collection') {
+      const groups: Record<string, ConversationListItem[]> = {};
+      const noCollection: ConversationListItem[] = [];
+
+      conversationsToGroup.forEach(conv => {
+        if (conv.series_id) {
+          if (!groups[conv.series_id]) {
+            groups[conv.series_id] = [];
+          }
+          groups[conv.series_id].push(conv);
+        } else {
+          noCollection.push(conv);
+        }
+      });
+
+      const result: GroupedConversations = [];
+
+      // Add collection groups
+      Object.entries(groups).forEach(([seriesId, convs]) => {
+        const series = seriesList.find(s => s.id === seriesId);
+        result.push({
+          key: seriesId,
+          label: series?.name || 'Unknown Collection',
+          conversations: convs,
+        });
+      });
+
+      // Sort groups alphabetically by label
+      result.sort((a, b) => a.label.localeCompare(b.label));
+
+      // Add "No Collection" group at the end if there are any
+      if (noCollection.length > 0) {
+        result.push({
+          key: 'no-collection',
+          label: 'No Collection',
+          conversations: noCollection,
+        });
+      }
+
+      return result;
+    }
+
+    if (groupBy === 'status') {
+      const statusOrder = [
+        ConversationState.ACTIVE,
+        ConversationState.DRAFT,
+        ConversationState.CLOSED,
+        ConversationState.ANALYZING,
+        ConversationState.ANALYZED,
+      ];
+
+      const groups: Record<string, ConversationListItem[]> = {};
+
+      conversationsToGroup.forEach(conv => {
+        if (!groups[conv.state]) {
+          groups[conv.state] = [];
+        }
+        groups[conv.state].push(conv);
+      });
+
+      return statusOrder
+        .filter(state => groups[state]?.length > 0)
+        .map(state => ({
+          key: state,
+          label: getStateLabel(state),
+          conversations: groups[state],
+        }));
+    }
+
+    return [{ key: 'all', label: '', conversations: conversationsToGroup }];
+  }, [filteredConversations, groupBy, nestFollowUps, seriesList]);
+
+  // Get follow-ups for a parent conversation
+  // We need to look in the original filtered list (before follow-ups were removed)
+  // Check for parent_conversation_id OR is_follow_up flag
+  const followUpsMap = useMemo(() => {
+    if (!nestFollowUps) return new Map<string, ConversationListItem[]>();
+
+    const map = new Map<string, ConversationListItem[]>();
+    filteredConversations.forEach(conv => {
+      // A conversation is a follow-up if it has a parent_conversation_id
+      if (conv.parent_conversation_id) {
+        const existing = map.get(conv.parent_conversation_id) || [];
+        existing.push(conv);
+        map.set(conv.parent_conversation_id, existing);
+      }
+    });
+    return map;
+  }, [filteredConversations, nestFollowUps]);
+
+  const getFollowUps = (parentId: string): ConversationListItem[] => {
+    if (!nestFollowUps) return [];
+    return followUpsMap.get(parentId) || [];
+  };
+
   const handleDuplicate = async (e: React.MouseEvent, conversationId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -562,160 +789,183 @@ export default function ConversationsList({
   };
 
   // Render tile card
-  const renderTileCard = (conversation: ConversationListItem) => {
+  const renderTileCard = (conversation: ConversationListItem, isNested = false) => {
     const isMenuOpen = openMenuId === conversation.id;
     const collection = conversation.series_id
       ? seriesList.find(s => s.id === conversation.series_id)
       : null;
+    const followUps = getFollowUps(conversation.id);
 
     return (
-      <div key={conversation.id} style={s.cardWrapper} data-menu>
-        <Link
-          to={`/conversations/${conversation.id}`}
-          className="conversations-list-card"
-          style={s.card}
-        >
-          <div style={s.cardHeader}>
-            <h3 style={s.cardTitle}>{conversation.title}</h3>
-            <span style={getBadgeStyle(conversation.state)}>
-              {getStateLabel(conversation.state)}
-            </span>
-          </div>
-          <div style={s.cardMeta}>
-            <span>Created {formatDateShort(conversation.created_at)}</span>
-            {conversation.activated_at && (
-              <span> · Activated {formatDateShort(conversation.activated_at)}</span>
-            )}
-          </div>
-          {collection && showCollectionColumn && (
-            <div style={{ ...s.cardMeta, marginTop: spacing[2] }}>
-              Collection: {collection.name}
-            </div>
-          )}
-          {conversation.unique_participants !== undefined && (
-            <div style={{ ...s.cardMeta, marginTop: spacing[2] }}>
-              {conversation.unique_participants} {conversation.unique_participants === 1 ? 'response' : 'responses'}
-            </div>
-          )}
-        </Link>
-
-        {showMenu && (
-          <div style={s.cardMenu}>
-            <button
-              style={s.menuButton}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpenMenuId(isMenuOpen ? null : conversation.id);
-              }}
-              aria-label="More options"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <circle cx="8" cy="3" r="1.5"/>
-                <circle cx="8" cy="8" r="1.5"/>
-                <circle cx="8" cy="13" r="1.5"/>
-              </svg>
-            </button>
-            {isMenuOpen && (
-              <div style={s.menuDropdown}>
-                {onDuplicate && (
-                  <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
-                    Duplicate
-                  </button>
+      <div key={conversation.id}>
+        <div style={merge(s.cardWrapper, isNested && s.nestedCard)} data-menu>
+          <Link
+            to={`/conversations/${conversation.id}`}
+            className="conversations-list-card"
+            style={s.card}
+          >
+            <div style={s.cardHeader}>
+              <h3 style={s.cardTitle}>
+                {isNested && (
+                  <span style={s.followUpIndicator}>
+                    {conversation.is_recurring_instance ? '↻' : '↳'}
+                  </span>
                 )}
-                {onDelete && (
-                  <button
-                    style={merge(s.menuItem, s.menuItemDanger)}
-                    onClick={(e) => handleDeleteClick(e, conversation.id)}
-                  >
-                    Delete
-                  </button>
-                )}
+                {conversation.title}
+              </h3>
+              <span style={getBadgeStyle(conversation.state)}>
+                {getStateLabel(conversation.state)}
+              </span>
+            </div>
+            <div style={s.cardMeta}>
+              <span>Created {formatDateShort(conversation.created_at)}</span>
+              {conversation.activated_at && (
+                <span> · Activated {formatDateShort(conversation.activated_at)}</span>
+              )}
+            </div>
+            {collection && showCollectionColumn && groupBy !== 'collection' && (
+              <div style={{ ...s.cardMeta, marginTop: spacing[2] }}>
+                Collection: {collection.name}
               </div>
             )}
-          </div>
-        )}
+            {conversation.unique_participants !== undefined && (
+              <div style={{ ...s.cardMeta, marginTop: spacing[2] }}>
+                {conversation.unique_participants} {conversation.unique_participants === 1 ? 'response' : 'responses'}
+              </div>
+            )}
+          </Link>
+
+          {showMenu && (
+            <div style={s.cardMenu}>
+              <button
+                style={s.menuButton}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpenMenuId(isMenuOpen ? null : conversation.id);
+                }}
+                aria-label="More options"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="8" cy="3" r="1.5"/>
+                  <circle cx="8" cy="8" r="1.5"/>
+                  <circle cx="8" cy="13" r="1.5"/>
+                </svg>
+              </button>
+              {isMenuOpen && (
+                <div style={s.menuDropdown}>
+                  {onDuplicate && (
+                    <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
+                      Duplicate
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      style={merge(s.menuItem, s.menuItemDanger)}
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {/* Render nested follow-ups */}
+        {followUps.map(followUp => renderTileCard(followUp, true))}
       </div>
     );
   };
 
   // Render list row
-  const renderListRow = (conversation: ConversationListItem) => {
+  const renderListRow = (conversation: ConversationListItem, isNested = false): React.ReactNode => {
     const isMenuOpen = openMenuId === conversation.id;
     const isHovered = hoveredRowId === conversation.id;
     const collection = conversation.series_id
       ? seriesList.find(s => s.id === conversation.series_id)
       : null;
+    const followUps = getFollowUps(conversation.id);
 
     return (
-      <tr
-        key={conversation.id}
-        style={merge(s.tr, isHovered && s.trHover)}
-        onMouseEnter={() => setHoveredRowId(conversation.id)}
-        onMouseLeave={() => setHoveredRowId(null)}
-        onClick={() => navigate(`/conversations/${conversation.id}`)}
-      >
-        <td style={merge(s.td, s.tdTitle)}>{conversation.title}</td>
-        <td style={s.td}>
-          <span style={s.statusBadge}>
-            <span style={merge(s.statusDot, getStatusDotStyle(conversation.state))} />
-            {getStateLabel(conversation.state)}
-          </span>
-        </td>
-        <td style={s.td}>{conversation.unique_participants || 0}</td>
-        {showCollectionColumn && (
+      <React.Fragment key={conversation.id}>
+        <tr
+          style={merge(s.tr, isHovered && s.trHover, isNested && s.nestedRow)}
+          onMouseEnter={() => setHoveredRowId(conversation.id)}
+          onMouseLeave={() => setHoveredRowId(null)}
+          onClick={() => navigate(`/conversations/${conversation.id}`)}
+        >
+          <td style={merge(s.td, s.tdTitle, isNested && s.nestedTitleCell)}>
+            {isNested && (
+              <span style={s.followUpIndicator}>
+                {conversation.is_recurring_instance ? '↻' : '↳'}
+              </span>
+            )}
+            {conversation.title}
+          </td>
           <td style={s.td}>
-            {collection ? (
-              <Link
-                to={`/collections/${collection.id}`}
-                style={{ color: 'var(--color-primary-900)', textDecoration: 'none' }}
-                onClick={(e) => e.stopPropagation()}
+            <span style={s.statusBadge}>
+              <span style={merge(s.statusDot, getStatusDotStyle(conversation.state))} />
+              {getStateLabel(conversation.state)}
+            </span>
+          </td>
+          <td style={s.td}>{conversation.unique_participants || 0}</td>
+          {showCollectionColumn && groupBy !== 'collection' && (
+            <td style={s.td}>
+              {collection ? (
+                <Link
+                  to={`/collections/${collection.id}`}
+                  style={{ color: 'var(--color-primary-900)', textDecoration: 'none' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {collection.name}
+                </Link>
+              ) : (
+                <span style={{ color: 'var(--color-primary-400)' }}>—</span>
+              )}
+            </td>
+          )}
+          <td style={s.td}>{formatDateShort(conversation.created_at)}</td>
+          {showMenu && (
+            <td style={{ ...s.td, position: 'relative', width: '40px' }} data-menu>
+              <button
+                style={s.menuButton}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpenMenuId(isMenuOpen ? null : conversation.id);
+                }}
+                aria-label="More options"
               >
-                {collection.name}
-              </Link>
-            ) : (
-              <span style={{ color: 'var(--color-primary-400)' }}>—</span>
-            )}
-          </td>
-        )}
-        <td style={s.td}>{formatDateShort(conversation.created_at)}</td>
-        {showMenu && (
-          <td style={{ ...s.td, position: 'relative', width: '40px' }} data-menu>
-            <button
-              style={s.menuButton}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpenMenuId(isMenuOpen ? null : conversation.id);
-              }}
-              aria-label="More options"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <circle cx="8" cy="3" r="1.5"/>
-                <circle cx="8" cy="8" r="1.5"/>
-                <circle cx="8" cy="13" r="1.5"/>
-              </svg>
-            </button>
-            {isMenuOpen && (
-              <div style={s.menuDropdown}>
-                {onDuplicate && (
-                  <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
-                    Duplicate
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    style={merge(s.menuItem, s.menuItemDanger)}
-                    onClick={(e) => handleDeleteClick(e, conversation.id)}
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-            )}
-          </td>
-        )}
-      </tr>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="8" cy="3" r="1.5"/>
+                  <circle cx="8" cy="8" r="1.5"/>
+                  <circle cx="8" cy="13" r="1.5"/>
+                </svg>
+              </button>
+              {isMenuOpen && (
+                <div style={s.menuDropdown}>
+                  {onDuplicate && (
+                    <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
+                      Duplicate
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      style={merge(s.menuItem, s.menuItemDanger)}
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
+            </td>
+          )}
+        </tr>
+        {/* Render nested follow-ups */}
+        {followUps.map(followUp => renderListRow(followUp, true))}
+      </React.Fragment>
     );
   };
 
@@ -771,6 +1021,59 @@ export default function ConversationsList({
             <ListIcon size={18} />
           </button>
         </div>
+
+        {/* Group by */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }} data-groupby-dropdown>
+          <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', whiteSpace: 'nowrap' }}>
+            Group by:
+          </span>
+          <div style={{ position: 'relative' }}>
+            <button
+              style={s.toolbarDropdownButton}
+              onClick={() => setShowGroupByDropdown(!showGroupByDropdown)}
+            >
+              <span>{{ none: 'None', collection: 'Collection', status: 'Status' }[groupBy]}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {showGroupByDropdown && (
+              <div style={s.toolbarDropdownMenu}>
+                {(['none', 'collection', 'status'] as GroupBy[]).map((option) => (
+                  <button
+                    key={option}
+                    style={merge(s.toolbarDropdownItem, groupBy === option && s.toolbarDropdownItemActive)}
+                    onClick={() => {
+                      setGroupBy(option);
+                      setShowGroupByDropdown(false);
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                      <span style={{ width: '16px', display: 'inline-flex', justifyContent: 'center' }}>
+                        {groupBy === option && (
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </span>
+                      {{ none: 'None', collection: 'Collection', status: 'Status' }[option]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Nest follow-ups */}
+        <label style={s.toolbarCheckbox}>
+          <input
+            type="checkbox"
+            checked={nestFollowUps}
+            onChange={(e) => setNestFollowUps(e.target.checked)}
+          />
+          Nest follow-ups
+        </label>
 
         {/* Filter */}
         <div style={s.filterDropdownContainer} data-dropdown>
@@ -858,47 +1161,77 @@ export default function ConversationsList({
           </button>
         </div>
       ) : viewMode === 'list' ? (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={s.table}>
-            <thead style={s.tableHeader}>
-              <tr>
-                <th
-                  style={merge(s.th, s.thSortable)}
-                  onClick={() => handleSort('title')}
-                >
-                  Title <SortIcon column="title" />
-                </th>
-                <th
-                  style={merge(s.th, s.thSortable)}
-                  onClick={() => handleSort('status')}
-                >
-                  Status <SortIcon column="status" />
-                </th>
-                <th
-                  style={merge(s.th, s.thSortable)}
-                  onClick={() => handleSort('responses')}
-                >
-                  Responses <SortIcon column="responses" />
-                </th>
-                {showCollectionColumn && <th style={s.th}>Collection</th>}
-                <th
-                  style={merge(s.th, s.thSortable)}
-                  onClick={() => handleSort('created')}
-                >
-                  Created <SortIcon column="created" />
-                </th>
-                {showMenu && <th style={{ ...s.th, width: '40px' }}></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredConversations.map((conversation) => renderListRow(conversation))}
-            </tbody>
-          </table>
-        </div>
+        // List view with grouping
+        getGroupedConversations.map((group, groupIndex) => (
+          <div key={group.key}>
+            {/* Group header */}
+            {groupBy !== 'none' && (
+              <div style={merge(s.groupHeader, groupIndex === 0 && s.groupHeaderFirst)}>
+                <span>{group.label}</span>
+                {groupBy === 'collection' && group.key !== 'no-collection' && (
+                  <Link to={`/collections/${group.key}`} style={s.groupLink}>View Collection →</Link>
+                )}
+                <span style={s.groupCount}>({group.conversations.length})</span>
+              </div>
+            )}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={s.table}>
+                <thead style={s.tableHeader}>
+                  <tr>
+                    <th
+                      style={merge(s.th, s.thSortable)}
+                      onClick={() => handleSort('title')}
+                    >
+                      Title <SortIcon column="title" />
+                    </th>
+                    <th
+                      style={merge(s.th, s.thSortable)}
+                      onClick={() => handleSort('status')}
+                    >
+                      Status <SortIcon column="status" />
+                    </th>
+                    <th
+                      style={merge(s.th, s.thSortable)}
+                      onClick={() => handleSort('responses')}
+                    >
+                      Responses <SortIcon column="responses" />
+                    </th>
+                    {showCollectionColumn && groupBy !== 'collection' && <th style={s.th}>Collection</th>}
+                    <th
+                      style={merge(s.th, s.thSortable)}
+                      onClick={() => handleSort('created')}
+                    >
+                      Created <SortIcon column="created" />
+                    </th>
+                    {showMenu && <th style={{ ...s.th, width: '40px' }}></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.conversations.map((conversation) => renderListRow(conversation))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
       ) : (
-        <div style={s.conversationGrid}>
-          {filteredConversations.map((conversation) => renderTileCard(conversation))}
-        </div>
+        // Tile view with grouping
+        getGroupedConversations.map((group, groupIndex) => (
+          <div key={group.key}>
+            {/* Group header */}
+            {groupBy !== 'none' && (
+              <div style={merge(s.groupHeader, groupIndex === 0 && s.groupHeaderFirst)}>
+                <span>{group.label}</span>
+                {groupBy === 'collection' && group.key !== 'no-collection' && (
+                  <Link to={`/collections/${group.key}`} style={s.groupLink}>View Collection →</Link>
+                )}
+                <span style={s.groupCount}>({group.conversations.length})</span>
+              </div>
+            )}
+            <div style={s.conversationGrid}>
+              {group.conversations.map((conversation) => renderTileCard(conversation))}
+            </div>
+          </div>
+        ))
       )}
     </div>
   );
