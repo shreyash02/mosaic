@@ -1,6 +1,6 @@
 # Mosaic - Product Strategy
 
-**Last Updated:** 2026-01-31
+**Last Updated:** 2026-02-10
 
 ## Product Vision
 
@@ -162,25 +162,86 @@ Mosaic is the platform that enables psychological safety through:
 
 **One-line positioning**: *"Finally, feedback your team will actually believe is anonymous -- and AI insights you can actually act on."*
 
-### Positioning Strategy: "Trust-Based Team Insights" (RECOMMENDED)
+### Positioning Strategy: Unified Platform, Segmented Messaging (RECOMMENDED)
 
-**Pitch**: "The feedback platform your team will actually trust -- with insights you can actually use"
+**Master Tagline**: "Honest feedback. Continuous insight."
 
-**Pros**:
-- Combines anonymity + AI + longitudinal into unified value prop
-- Addresses emotional need (trust) and functional need (insights)
-- Differentiates from both "just surveys" and "just analytics"
+**Master Value Proposition**:
+> "Mosaic enables organizations to collect truly anonymous feedback through configurable privacy levels, then uses AI to extract themes, track trends, and surface insights you can act on — whether you need periodic snapshots or always-on listening."
 
-**Cons**:
-- More complex to communicate
-- Requires executing on multiple fronts
+#### Two Complementary Modes (Not Sub-Brands)
 
-**Required Investment**:
-- Polish all three core differentiators
-- Unified narrative and brand story
-- Case studies showing trust → honest feedback → better insights → outcomes
+Present Mosaic as having two modes that share the same platform:
 
-**Defensibility**: HIGH -- Multi-dimensional positioning is harder to replicate
+| Mode | Use Cases | Workflow | Key Value |
+|------|-----------|----------|-----------|
+| **Snapshot Mode** | Retrospectives, pulse surveys, 360 reviews, course evaluations | Create → collect for defined period → close → analyze → repeat | "See what changed since last time" |
+| **Continuous Mode** | Customer feedback, team health channels, product feedback | Create always-on channel → AI extracts periodic summaries → view trends | "Never miss a moment of feedback" |
+
+**Why This Works**:
+- Same anonymity model serves all use cases (customers value privacy too)
+- Same AI analysis (clusters, themes, summaries)
+- Same longitudinal tracking (trends over time)
+- Different workflow configuration, not different product
+
+#### Segment-Specific Landing Pages
+
+Create targeted entry points without fragmenting the brand:
+
+| Segment | Landing Page | Headline | Key Message |
+|---------|--------------|----------|-------------|
+| **Agile Teams** | /for/teams | "Retrospectives that prove you're improving" | Series + trends show sprint-over-sprint progress |
+| **HR/People Ops** | /for/hr | "Employee feedback that tells you what to do" | AI analysis saves hours, longitudinal trends track culture |
+| **Restaurants/Hospitality** | /for/hospitality | "Every table has a voice" | QR code feedback with weekly AI summaries |
+| **Retail** | /for/retail | "Hear from customers between visits" | Continuous feedback captures what exit surveys miss |
+| **Product Teams** | /for/product | "User feedback as it happens" | Ambient input during usage, periodic pain point extraction |
+| **Community/HOA** | /for/community | "Ongoing input, not one-off surveys" | Continuous dialogue with periodic sentiment reports |
+
+#### Segment-Specific Value Propositions
+
+**For Agile Teams:**
+> "The retrospective tool that shows you're actually improving, sprint after sprint. Anonymous feedback that builds psychological safety. AI analysis that saves hours. Trends that prove progress."
+
+**For Customer-Facing Businesses (Hospitality/Retail):**
+> "Turn anonymous feedback into weekly insights without reading every comment. QR codes on every table. AI summaries every week. Trends you can act on."
+
+**For HR/People Operations:**
+> "Employee feedback that tells you what's changing, not just what's wrong. Replace annual surveys with continuous pulse. AI does the analysis. You take the action."
+
+**For Product Teams:**
+> "Capture user pain points as they happen, not just when you remember to ask. Always-on feedback. Periodic AI extraction. Trends across releases."
+
+#### Competitive Messaging
+
+**Against Survey Tools (SurveyMonkey, Typeform):**
+> "Surveys capture moments. Mosaic captures movements. With continuous feedback channels, you'll never miss an insight because you forgot to ask."
+
+**Against Suggestion Boxes / Slack Channels:**
+> "The difference between a suggestion box and Mosaic? AI that actually reads every response and tells you what's changing."
+
+**Against Pulse Survey Tools (15Five, Officevibe):**
+> "Why force feedback into weekly cadences? With continuous mode, feedback flows naturally and AI tells you when something changes."
+
+#### Brand Architecture
+
+**Do NOT create sub-brands** for the next 18-24 months. Keep one unified brand with segment-specific messaging on landing pages.
+
+**Reasons**:
+- Same platform serves all use cases — brand separation for same product confuses users
+- Early stage — fragmenting now dilutes brand-building effort
+- Cross-sell value — an Agile team lead who loves Mosaic for retros might recommend it for customer feedback
+- Simplicity — one login, one dashboard, one pricing page, one support system
+
+#### Go-to-Market: Staged Rollout
+
+| Phase | Timeline | Focus | Rationale |
+|-------|----------|-------|-----------|
+| **Phase 1** | Months 1-6 | Agile/Scrum teams (primary) | Clear use case, high frequency, proven willingness to pay |
+| **Phase 2** | Months 4-9 | Customer-facing businesses (parallel experiment) | Test ambient feedback positioning with lightweight landing page |
+| **Phase 3** | Months 6-12 | HR/People Ops | Requires more polish (exports, enterprise features) |
+| **Phase 4** | Months 9-18 | Education, community, product teams | Based on learnings from Phase 1-3 |
+
+**Defensibility**: HIGH — The combination of anonymity + AI + longitudinal + continuous is defensible. No competitor currently has all four.
 
 ---
 
@@ -776,3 +837,4 @@ Based on comprehensive architecture review (2026-01-31):
 - **2026-01-31:** Created detailed refactoring plan for conversations.py route splitting (see REFACTORING_PLAN_CONVERSATIONS.md)
 - **2026-02-10:** Added missing features from competitive analysis: Response Threshold, Slack Integration, Action Items, Conditional Logic
 - **2026-02-10:** Added "Ambient Feedback" concept - continuous conversation mode for persistent feedback channels with periodic AI extraction. Added customer-facing businesses persona (restaurants, hotels, retail) and expanded use cases
+- **2026-02-10:** Updated positioning strategy to "Unified Platform, Segmented Messaging" with master tagline "Honest feedback. Continuous insight." Added segment-specific landing pages, value propositions, competitive messaging, and staged go-to-market plan
