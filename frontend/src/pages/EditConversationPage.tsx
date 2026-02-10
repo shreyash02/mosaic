@@ -6,6 +6,7 @@ import { convertUTCToLocalDateTimeString, formatDateForDateTimeLocal } from '../
 import ConversationPreview from '../components/ConversationPreview';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
+import DateTimePicker from '../components/DateTimePicker';
 import {
   DndContext,
   closestCenter,
@@ -1378,14 +1379,11 @@ export default function EditConversationPage() {
               {scheduleActivation && (
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Scheduled Activation Date & Time *</label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={scheduledActivateAt}
-                    onChange={(e) => setScheduledActivateAt(e.target.value)}
+                    onChange={setScheduledActivateAt}
                     min={formatDateForDateTimeLocal(new Date())}
                     required={scheduleActivation}
-                    style={{ ...styles.input, width: 'auto' }}
-                    className="edit-input"
                   />
                 </div>
               )}
@@ -1459,13 +1457,10 @@ export default function EditConversationPage() {
 
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Next Instance Date *</label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={nextInstanceDate}
-                    onChange={(e) => setNextInstanceDate(e.target.value)}
+                    onChange={setNextInstanceDate}
                     required
-                    style={{ ...styles.input, width: 'auto' }}
-                    className="edit-input"
                   />
                   <p style={styles.helpText}>
                     When should the next recurring instance be created?
@@ -1474,12 +1469,9 @@ export default function EditConversationPage() {
 
                 <div style={styles.formGroup}>
                   <label style={styles.label}>End Recurring Schedule (Optional)</label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={recurrenceEndDate}
-                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                    style={{ ...styles.input, width: 'auto' }}
-                    className="edit-input"
+                    onChange={setRecurrenceEndDate}
                   />
                   <p style={styles.helpText}>
                     Leave empty to continue indefinitely.

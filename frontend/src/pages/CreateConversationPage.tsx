@@ -10,6 +10,7 @@ import IntentSelection from '../components/IntentSelection';
 import ConfigurationSummary from '../components/ConfigurationSummary';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import DateTimePicker from '../components/DateTimePicker';
 import {
   DndContext,
   closestCenter,
@@ -1228,11 +1229,10 @@ function CreateConversationPageContent() {
               {scheduleActivation && (
                 <div className="form-group">
                   <label htmlFor="scheduledActivateAt">Scheduled Activation Date & Time *</label>
-                  <input
+                  <DateTimePicker
                     id="scheduledActivateAt"
-                    type="datetime-local"
                     value={scheduledActivateAt}
-                    onChange={(e) => setScheduledActivateAt(e.target.value)}
+                    onChange={setScheduledActivateAt}
                     min={formatDateForDateTimeLocal(new Date())}
                     required={scheduleActivation}
                   />
@@ -1326,11 +1326,10 @@ function CreateConversationPageContent() {
 
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label htmlFor="nextInstanceDate">Create First Instance On</label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     id="nextInstanceDate"
                     value={nextInstanceDate}
-                    onChange={(e) => setNextInstanceDate(e.target.value)}
+                    onChange={setNextInstanceDate}
                     required
                   />
                   <p className="form-help-text">
@@ -1340,11 +1339,10 @@ function CreateConversationPageContent() {
 
                 <div className="form-group">
                   <label htmlFor="recurrenceEndDate">End Recurring Schedule (Optional)</label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     id="recurrenceEndDate"
                     value={recurrenceEndDate}
-                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                    onChange={setRecurrenceEndDate}
                   />
                   <p className="form-help-text">
                     When should the recurring schedule stop? Leave empty to continue indefinitely.
