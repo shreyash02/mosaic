@@ -183,7 +183,8 @@ async def trigger_periodic_analysis(
             period_end=period_end,
             period_type=period_type,
             db_url=settings.DATABASE_URL,
-            period_label_override=period_label
+            period_label_override=period_label,
+            trigger_type='manual'
         )
 
         return SuccessResponse(
@@ -255,7 +256,8 @@ async def trigger_periodic_analysis(
         period_start=period_start,
         period_end=period_end,
         period_type=period_type,
-        db_url=settings.DATABASE_URL
+        db_url=settings.DATABASE_URL,
+        trigger_type='manual'
     )
 
     action = "replaced and retriggered" if request.force_replace and existing else "triggered"

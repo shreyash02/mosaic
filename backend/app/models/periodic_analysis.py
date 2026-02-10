@@ -26,6 +26,7 @@ class PeriodicAnalysis(Base):
     period_end = Column(DateTime, nullable=False)    # End of analysis window (UTC)
     period_label = Column(String(50), nullable=False)  # e.g., "2024-W01", "2024-01", "2024-01-15"
     period_type = Column(String(20), nullable=False)   # 'daily', 'weekly', 'biweekly', 'monthly'
+    trigger_type = Column(String(20), nullable=False, default='scheduled')  # 'scheduled', 'manual', 'manual_incremental'
 
     # Analysis results (same structure as Analysis model)
     overall_summary = Column(Text, nullable=True)

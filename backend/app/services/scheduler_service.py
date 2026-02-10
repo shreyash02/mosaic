@@ -511,7 +511,8 @@ def run_periodic_analysis_task(
     period_end: datetime,
     period_type: str,
     db_url: str,
-    period_label_override: Optional[str] = None
+    period_label_override: Optional[str] = None,
+    trigger_type: str = 'scheduled'
 ) -> None:
     """
     Run periodic analysis for a continuous conversation.
@@ -526,6 +527,7 @@ def run_periodic_analysis_task(
         period_type: Type of period (daily, weekly, biweekly, monthly)
         db_url: Database connection URL
         period_label_override: Optional override for the period label (for incremental analyses)
+        trigger_type: How the analysis was triggered ('scheduled', 'manual', 'manual_incremental')
     """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -603,6 +605,7 @@ def run_periodic_analysis_task(
                 period_end=period_end,
                 period_label=period_label,
                 period_type=period_type,
+                trigger_type=trigger_type,
                 overall_summary=analysis_result.get("overall_summary"),
                 question_analyses=analysis_result.get("question_analyses"),
                 surprising_insights=analysis_result.get("surprising_insights"),

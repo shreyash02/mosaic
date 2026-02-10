@@ -15,6 +15,7 @@ class PeriodicAnalysisBase(BaseModel):
     period_type: str
     period_start: datetime
     period_end: datetime
+    trigger_type: str = 'scheduled'  # 'scheduled', 'manual', 'manual_incremental'
 
 
 class PeriodicAnalysis(PeriodicAnalysisBase):
