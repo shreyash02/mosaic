@@ -705,7 +705,19 @@ export default function ConversationDetailPage() {
         add_to_series: addToSeries,
       });
       setShowFollowUpModal(false);
-      navigate(`/conversations/${followUp.id}`);
+
+      // Navigate to edit flow - choose starting screen based on what was copied
+      let startScreen = 'details';
+      if (!copyQuestions) {
+        // No questions - go to questions screen
+        startScreen = 'questions';
+      } else if (copySettings) {
+        // Everything copied - go directly to review
+        startScreen = 'review';
+      }
+      // If questions copied but not settings, start at details
+
+      navigate(`/edit/conversation/${followUp.id}/${startScreen}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create follow-up');
     }
