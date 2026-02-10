@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from '../services/api';
-import type { ResponseItem, LocalStorageDraft, AnonymityLevel } from '../types';
+import { AnonymityLevel } from '../types';
+import type { ResponseItem, LocalStorageDraft } from '../types';
 
 const DRAFT_VERSION = 1;
 const LOCAL_STORAGE_DEBOUNCE_MS = 2000;
@@ -56,12 +57,15 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
     accessCode,
     participantCode,
     sessionToken,
-    // anonymityLevel is part of the options but not used internally
-    // (used by caller to conditionally enable the hook)
+    anonymityLevel,
     enabled = true,
     onDraftLoaded,
     onSaveError,
   } = options;
+
+  // For OPEN anonymity level, skip server-side draft operations since they require authentication
+  // and we don't want to trigger a login redirect for unauthenticated users
+  const skipServerDrafts = anonymityLevel === AnonymityLevel.OPEN && !localStorage.getItem('access_token');
 
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -119,7 +123,7 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
 
   // Save to server
   const saveDraftToServer = useCallback(async (responses: ResponseItem[], revealConsent: boolean = false) => {
-    if (!enabled || responses.length === 0) return;
+    if (!enabled || responses.length === 0 || skipServerDrafts) return;
 
     setIsSaving(true);
     try {
@@ -141,7 +145,7 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
     } finally {
       setIsSaving(false);
     }
-  }, [accessCode, participantCode, sessionToken, enabled]);
+  }, [accessCode, participantCode, sessionToken, enabled, skipServerDrafts]);
 
   // Load draft from localStorage and server, use most recent
   const loadDraft = useCallback(async () => {
@@ -163,18 +167,20 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
       console.error('Failed to load draft from localStorage:', error);
     }
 
-    // Load from server
-    try {
-      const result = await api.loadDraft(accessCode, participantCode, sessionToken);
-      if (result.has_draft && result.last_saved_at) {
-        serverDraft = {
-          responses: result.responses,
-          lastSavedAt: new Date(result.last_saved_at),
-          revealConsent: result.reveal_consent,
-        };
+    // Load from server (skip for OPEN unauthenticated users to avoid login redirect)
+    if (!skipServerDrafts) {
+      try {
+        const result = await api.loadDraft(accessCode, participantCode, sessionToken);
+        if (result.has_draft && result.last_saved_at) {
+          serverDraft = {
+            responses: result.responses,
+            lastSavedAt: new Date(result.last_saved_at),
+            revealConsent: result.reveal_consent,
+          };
+        }
+      } catch (error) {
+        console.error('Failed to load draft from server:', error);
       }
-    } catch (error) {
-      console.error('Failed to load draft from server:', error);
     }
 
     // Determine which draft to use (most recent)
@@ -208,7 +214,7 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
     }
 
     setIsDraftLoaded(true);
-  }, [accessCode, participantCode, sessionToken, localStorageKey, enabled]);
+  }, [accessCode, participantCode, sessionToken, localStorageKey, enabled, skipServerDrafts]);
 
   // Clear draft from both localStorage and server
   const clearDraft = useCallback(async () => {
@@ -219,18 +225,20 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
       console.error('Failed to clear draft from localStorage:', error);
     }
 
-    // Clear server
-    try {
-      await api.deleteDraft(accessCode, participantCode, sessionToken);
-    } catch (error) {
-      console.error('Failed to clear draft from server:', error);
+    // Clear server (skip for OPEN unauthenticated users)
+    if (!skipServerDrafts) {
+      try {
+        await api.deleteDraft(accessCode, participantCode, sessionToken);
+      } catch (error) {
+        console.error('Failed to clear draft from server:', error);
+      }
     }
 
     // Reset state
     setLastSavedAt(null);
     setLastSavedResponses([]);
     setLastSavedRevealConsent(false);
-  }, [accessCode, participantCode, sessionToken, localStorageKey]);
+  }, [accessCode, participantCode, sessionToken, localStorageKey, skipServerDrafts]);
 
   // Debounced localStorage save when responses change
   useEffect(() => {

@@ -544,6 +544,9 @@ export default function ConversationDetailPage() {
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
   const [updatingSeries, setUpdatingSeries] = useState(false);
   const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
+  const [showAnalysisScheduleModal, setShowAnalysisScheduleModal] = useState(false);
+  const [selectedAnalysisInterval, setSelectedAnalysisInterval] = useState<string>('');
+  const [updatingAnalysisSchedule, setUpdatingAnalysisSchedule] = useState(false);
 
   usePageTitle(conversation?.title);
 
@@ -687,7 +690,13 @@ export default function ConversationDetailPage() {
       // Navigate to analysis page to show the new analysis
       navigate(`/conversations/${id}/analysis`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to trigger analysis');
+      const errorMessage = err.response?.data?.detail || 'Failed to trigger analysis';
+      // If analysis already exists for this period, just navigate to view it
+      if (errorMessage.includes('already exists')) {
+        navigate(`/conversations/${id}/analysis`);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setTriggeringAnalysis(false);
     }
@@ -822,6 +831,22 @@ export default function ConversationDetailPage() {
       setError(err.response?.data?.detail || 'Failed to update series');
     } finally {
       setUpdatingSeries(false);
+    }
+  };
+
+  const handleUpdateAnalysisSchedule = async () => {
+    if (!id || !selectedAnalysisInterval) return;
+    setUpdatingAnalysisSchedule(true);
+    try {
+      const updated = await api.updateConversation(id, {
+        analysis_interval: selectedAnalysisInterval as any,
+      });
+      setConversation(updated);
+      setShowAnalysisScheduleModal(false);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update analysis schedule');
+    } finally {
+      setUpdatingAnalysisSchedule(false);
     }
   };
 
@@ -1373,10 +1398,21 @@ export default function ConversationDetailPage() {
               <>
                 <div style={s.infoItem}>
                   <span style={s.infoLabel}>Analysis</span>
-                  <span style={s.infoValue}>
-                    {conversation.analysis_interval?.charAt(0).toUpperCase()}
-                    {conversation.analysis_interval?.slice(1)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                    <span style={s.infoValue}>
+                      {conversation.analysis_interval?.charAt(0).toUpperCase()}
+                      {conversation.analysis_interval?.slice(1)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedAnalysisInterval(conversation.analysis_interval || 'weekly');
+                        setShowAnalysisScheduleModal(true);
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
                 {conversation.next_analysis_at && (
                   <div style={s.infoItem}>
@@ -1614,6 +1650,43 @@ export default function ConversationDetailPage() {
                 disabled={updatingSeries}
               >
                 {updatingSeries ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Analysis Schedule Modal */}
+      {showAnalysisScheduleModal && (
+        <div style={s.modalOverlay} onClick={() => setShowAnalysisScheduleModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Edit Analysis Schedule</h2>
+            <p style={s.modalText}>
+              Choose how often to run analysis on this continuous conversation.
+            </p>
+            <div style={s.formGroup}>
+              <label style={s.formLabel}>Analysis Frequency</label>
+              <select
+                value={selectedAnalysisInterval}
+                onChange={(e) => setSelectedAnalysisInterval(e.target.value)}
+                style={s.select}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Biweekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div style={s.modalActions}>
+              <button onClick={() => setShowAnalysisScheduleModal(false)} style={s.buttonSecondary}>
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateAnalysisSchedule}
+                style={merge(s.buttonPrimary, updatingAnalysisSchedule && s.buttonDisabled)}
+                disabled={updatingAnalysisSchedule}
+              >
+                {updatingAnalysisSchedule ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>

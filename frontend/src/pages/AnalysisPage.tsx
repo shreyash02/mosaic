@@ -617,7 +617,7 @@ export default function AnalysisPage() {
       if (convData.is_continuous) {
         try {
           const periodicData = await api.listPeriodicAnalyses(id);
-          setPeriodicAnalyses(periodicData.items || []);
+          setPeriodicAnalyses(periodicData.analyses || []);
         } catch (err) {
           console.error('Failed to load periodic analyses:', err);
         }
@@ -731,7 +731,7 @@ export default function AnalysisPage() {
       await api.triggerPeriodicAnalysis(id);
       // Reload periodic analyses
       const periodicData = await api.listPeriodicAnalyses(id);
-      setPeriodicAnalyses(periodicData.items || []);
+      setPeriodicAnalyses(periodicData.analyses || []);
     } catch (err) {
       console.error('Failed to trigger analysis:', err);
     } finally {
@@ -757,10 +757,11 @@ export default function AnalysisPage() {
     );
   }
 
-  const conversationOrgId = conversation?.organization_id || null;
-  const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
+  const conversationOrgId = conversation?.organization_id || fullConversation?.organization_id || null;
+  const wrongWorkspace = (conversation || fullConversation) && conversationOrgId !== currentOrgId;
 
-  if (!conversation || wrongWorkspace) {
+  // Conversation doesn't exist or wrong workspace
+  if ((!conversation && !canAccessConversation) || wrongWorkspace) {
     return (
       <>
         <style>{hoverStyles}</style>
@@ -777,6 +778,48 @@ export default function AnalysisPage() {
                 className="analysis-btn-secondary"
               >
                 Back to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Conversation exists but no analysis yet (skip for continuous - they have their own handler)
+  if (!analysis && canAccessConversation && fullConversation && !fullConversation.is_continuous) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <header style={styles.header}>
+              <div style={styles.headerInfo}>
+                <button
+                  onClick={handleBackClick}
+                  style={styles.backLink}
+                  className="analysis-back-link"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 12L6 8L10 4" />
+                  </svg>
+                  Back to Conversation
+                </button>
+                <h1 style={styles.title}>Analysis</h1>
+                <p style={styles.subtitle}>{fullConversation.title}</p>
+              </div>
+            </header>
+            <div style={styles.emptyState}>
+              <h3 style={styles.emptyStateTitle}>No Analysis Yet</h3>
+              <p style={styles.emptyStateText}>
+                This conversation hasn't been analyzed yet. Analysis is available after the conversation is closed and responses have been collected.
+              </p>
+              <button
+                onClick={handleBackClick}
+                style={styles.buttonSecondary}
+                className="analysis-btn-secondary"
+              >
+                Back to Conversation
               </button>
             </div>
           </div>
@@ -923,7 +966,7 @@ export default function AnalysisPage() {
                 {canAccessConversation === false ? 'Back to Dashboard' : 'Back to Conversation'}
               </button>
               <h1 style={styles.title}>Analysis Results</h1>
-              <p style={styles.subtitle}>{conversation.title}</p>
+              <p style={styles.subtitle}>{conversation?.title || fullConversation?.title || 'Untitled'}</p>
             </div>
             <button
               onClick={handleExportPDF}

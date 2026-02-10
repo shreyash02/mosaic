@@ -395,8 +395,9 @@ export interface PeriodicAnalysis {
 }
 
 export interface PeriodicAnalysisList {
-  items: PeriodicAnalysis[];
-  total: number;
+  conversation_id: string;
+  total_periods: number;
+  analyses: PeriodicAnalysis[];
 }
 
 export interface TriggerPeriodicAnalysisRequest {

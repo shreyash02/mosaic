@@ -822,7 +822,10 @@ export default function JoinPage() {
       const convData = await api.getConversationByCode(accessCode!, sessionToken || undefined);
       setConversation(convData);
 
-      if (convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS) {
+      // Only check for prior submissions if user is logged in and anonymity level tracks identity
+      // Skip for OPEN (no login required) and FULLY_ANONYMOUS (uses participant codes instead)
+      if (convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS &&
+          convData.anonymity_level !== AnonymityLevel.OPEN) {
         try {
           const responseCheck = await api.checkUserResponse(accessCode!);
           if (responseCheck.has_submitted) {
@@ -850,7 +853,13 @@ export default function JoinPage() {
         );
       }
 
-      setShowTrustScreen(true);
+      // Skip trust screen for OPEN anonymity level (quick feedback, QR codes)
+      if (convData.anonymity_level === AnonymityLevel.OPEN) {
+        setShowTrustScreen(false);
+        setTrustScreenAcknowledged(true);
+      } else {
+        setShowTrustScreen(true);
+      }
     } catch (err: any) {
       const status = err.response?.status;
       const detail = err.response?.data?.detail;
@@ -1247,9 +1256,6 @@ export default function JoinPage() {
               <div style={styles.successState}>
                 <h2 style={styles.successTitle}>Thank You!</h2>
                 <p style={styles.successText}>Your response has been submitted successfully.</p>
-                <p style={{ ...styles.successText, color: 'var(--color-primary-500)' }}>
-                  Your feedback will help improve the conversation.
-                </p>
 
                 {conversation?.results_access !== ResultsAccess.CREATOR_ONLY && (
                   <div style={styles.resultsBox}>
@@ -1402,28 +1408,30 @@ export default function JoinPage() {
             {conversation.description && <p style={styles.description}>{conversation.description}</p>}
           </header>
 
-          <div style={styles.privacyCard}>
-            <div style={styles.privacyHeader}>
-              <LockIcon size={20} />
-              <h3 style={styles.privacyTitle}>Privacy & Visibility Settings</h3>
+          {conversation.anonymity_level !== AnonymityLevel.OPEN && (
+            <div style={styles.privacyCard}>
+              <div style={styles.privacyHeader}>
+                <LockIcon size={20} />
+                <h3 style={styles.privacyTitle}>Privacy & Visibility Settings</h3>
+              </div>
+              <div style={styles.privacyItem}>
+                <strong style={styles.privacyLabel}>Your Identity:</strong>
+                <p style={styles.privacyText}>
+                  {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && 'Your responses are completely anonymous.'}
+                  {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED && 'The platform tracks that you responded, but your identity is hidden.'}
+                  {conversation.anonymity_level === AnonymityLevel.REVEALABLE && 'You can choose whether to reveal your identity.'}
+                </p>
+              </div>
+              <div style={styles.privacyItem}>
+                <strong style={styles.privacyLabel}>Who Can See Results:</strong>
+                <p style={styles.privacyText}>
+                  {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results.'}
+                  {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results.'}
+                  {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
+                </p>
+              </div>
             </div>
-            <div style={styles.privacyItem}>
-              <strong style={styles.privacyLabel}>Your Identity:</strong>
-              <p style={styles.privacyText}>
-                {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && 'Your responses are completely anonymous.'}
-                {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED && 'The platform tracks that you responded, but your identity is hidden.'}
-                {conversation.anonymity_level === AnonymityLevel.REVEALABLE && 'You can choose whether to reveal your identity.'}
-              </p>
-            </div>
-            <div style={styles.privacyItem}>
-              <strong style={styles.privacyLabel}>Who Can See Results:</strong>
-              <p style={styles.privacyText}>
-                {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results.'}
-                {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results.'}
-                {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
-              </p>
-            </div>
-          </div>
+          )}
 
           {conversation.auto_close_at && (
             <div style={styles.closeNotice}>
@@ -1434,7 +1442,7 @@ export default function JoinPage() {
           <form onSubmit={handleSubmit}>
             {error && <div style={styles.error}>{error}</div>}
 
-            {showDraftRestoredNotice && (
+            {showDraftRestoredNotice && conversation.anonymity_level !== AnonymityLevel.OPEN && (
               <div style={styles.draftNotice}>
                 <span>Your previous draft has been restored.</span>
                 <button
@@ -1571,43 +1579,47 @@ export default function JoinPage() {
               </div>
             )}
 
-            <div style={styles.draftStatus}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                {isDraftSaving && (
-                  <>
-                    <span style={{ ...styles.draftIndicator, backgroundColor: '#f6ad55' }} />
-                    <span>Saving draft...</span>
-                  </>
-                )}
-                {!isDraftSaving && draftLastSavedAt && (
-                  <>
-                    <span style={{ ...styles.draftIndicator, backgroundColor: '#48bb78' }} />
-                    <span>Draft saved {formatRelativeTime(draftLastSavedAt.toISOString())}</span>
-                  </>
-                )}
-                {!isDraftSaving && !draftLastSavedAt && hasUnsavedChanges && (
-                  <>
-                    <span style={{ ...styles.draftIndicator, backgroundColor: '#ed8936' }} />
-                    <span>Unsaved changes</span>
-                  </>
-                )}
-                {!isDraftSaving && !draftLastSavedAt && !hasUnsavedChanges && (
-                  <span style={{ color: 'var(--color-primary-400)' }}>Your progress will be saved automatically</span>
-                )}
+            {conversation.anonymity_level !== AnonymityLevel.OPEN && (
+              <div style={styles.draftStatus}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {isDraftSaving && (
+                    <>
+                      <span style={{ ...styles.draftIndicator, backgroundColor: '#f6ad55' }} />
+                      <span>Saving draft...</span>
+                    </>
+                  )}
+                  {!isDraftSaving && draftLastSavedAt && (
+                    <>
+                      <span style={{ ...styles.draftIndicator, backgroundColor: '#48bb78' }} />
+                      <span>Draft saved {formatRelativeTime(draftLastSavedAt.toISOString())}</span>
+                    </>
+                  )}
+                  {!isDraftSaving && !draftLastSavedAt && hasUnsavedChanges && (
+                    <>
+                      <span style={{ ...styles.draftIndicator, backgroundColor: '#ed8936' }} />
+                      <span>Unsaved changes</span>
+                    </>
+                  )}
+                  {!isDraftSaving && !draftLastSavedAt && !hasUnsavedChanges && (
+                    <span style={{ color: 'var(--color-primary-400)' }}>Your progress will be saved automatically</span>
+                  )}
+                </div>
+                {draftSaveError && <span style={{ color: '#e53e3e', fontSize: typography.fontSize.xs }}>{draftSaveError}</span>}
               </div>
-              {draftSaveError && <span style={{ color: '#e53e3e', fontSize: typography.fontSize.xs }}>{draftSaveError}</span>}
-            </div>
+            )}
 
             <div style={styles.formActions}>
-              <button
-                type="button"
-                onClick={() => saveDraftToServer(responses, revealConsent)}
-                disabled={isDraftSaving || !hasUnsavedChanges || submitting}
-                style={{ ...styles.buttonSecondary, minWidth: '120px', ...(isDraftSaving || !hasUnsavedChanges || submitting ? styles.buttonDisabled : {}) }}
-                className="join-btn-secondary"
-              >
-                {isDraftSaving ? 'Saving...' : 'Save Draft'}
-              </button>
+              {conversation.anonymity_level !== AnonymityLevel.OPEN && (
+                <button
+                  type="button"
+                  onClick={() => saveDraftToServer(responses, revealConsent)}
+                  disabled={isDraftSaving || !hasUnsavedChanges || submitting}
+                  style={{ ...styles.buttonSecondary, minWidth: '120px', ...(isDraftSaving || !hasUnsavedChanges || submitting ? styles.buttonDisabled : {}) }}
+                  className="join-btn-secondary"
+                >
+                  {isDraftSaving ? 'Saving...' : 'Save Draft'}
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={submitting}

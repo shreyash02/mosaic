@@ -800,15 +800,24 @@ async def update_conversation(
     
     # Check if only series_id is being updated (allowed at any stage)
     only_series_update = (
-        len(update_dict) == 1 and 
+        len(update_dict) == 1 and
         'series_id' in update_dict and
+        questions_to_update is None
+    )
+
+    # Check if only analysis schedule is being updated (allowed for active continuous conversations)
+    analysis_schedule_fields = {'analysis_interval'}
+    only_analysis_schedule_update = (
+        conversation.is_continuous and
+        set(update_dict.keys()).issubset(analysis_schedule_fields) and
         questions_to_update is None
     )
 
     # Only allow updates in draft state for regular conversations
     # Templates can be updated at any time
     # series_id can be updated at any stage
-    if not is_template and not only_series_update and conversation.state != ConversationState.DRAFT.value:
+    # analysis_interval can be updated for active continuous conversations
+    if not is_template and not only_series_update and not only_analysis_schedule_update and conversation.state != ConversationState.DRAFT.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Can only update conversations in draft state"
@@ -825,6 +834,13 @@ async def update_conversation(
             setattr(conversation, field, value.value)
         elif field == 'recurrence_pattern' and value:
             setattr(conversation, field, value.value)
+        elif field == 'analysis_interval' and value:
+            setattr(conversation, field, value.value)
+            # Recalculate next_analysis_at when interval changes for active continuous conversations
+            if conversation.is_continuous and conversation.state == ConversationState.ACTIVE.value:
+                conversation.next_analysis_at = calculate_next_analysis_time(
+                    value.value
+                )
         elif field in ['next_instance_date', 'recurrence_end_date'] and value:
             # Convert from conversation timezone to UTC
             value_utc = parse_datetime_with_timezone(
