@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { PeriodicAnalysis, Conversation } from '../types';
+import type { PeriodicAnalysis, Conversation, ResponseWithQuestion } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
@@ -241,6 +241,79 @@ const styles = {
     color: 'var(--color-primary-500)',
     fontStyle: 'italic',
   },
+  verbatimSection: {
+    marginTop: spacing[6],
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+    margin: 0,
+  },
+  sectionDescription: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-600)',
+    margin: 0,
+    marginTop: spacing[1],
+  },
+  groupSelect: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    backgroundColor: 'white',
+    color: 'var(--color-primary-900)',
+  },
+  questionGroup: {
+    backgroundColor: 'white',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${'var(--color-primary-200)'}`,
+    padding: spacing[5],
+    marginBottom: spacing[4],
+  },
+  questionGroupTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+    marginTop: 0,
+    marginBottom: spacing[4],
+    paddingBottom: spacing[3],
+    borderBottom: `1px solid ${'var(--color-primary-100)'}`,
+  },
+  responseItem: {
+    padding: spacing[3],
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[3],
+  },
+  responseHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+  responseNumber: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-500)',
+  },
+  responseDate: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-400)',
+  },
+  responseContent: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-700)',
+    lineHeight: typography.lineHeight.relaxed,
+    margin: 0,
+    whiteSpace: 'pre-wrap' as const,
+  },
 };
 
 const hoverStyles = `
@@ -258,8 +331,10 @@ export default function PeriodicAnalysisPage() {
   const { currentOrgId } = useOrganization();
   const [analysis, setAnalysis] = useState<PeriodicAnalysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [responses, setResponses] = useState<ResponseWithQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [groupBy, setGroupBy] = useState<'question' | 'responder'>('question');
 
   useEffect(() => {
     if (id && periodLabel) {
@@ -276,12 +351,52 @@ export default function PeriodicAnalysisPage() {
       ]);
       setConversation(convData);
       setAnalysis(analysisData);
+
+      // Load verbatim responses if enabled
+      if (convData.show_verbatim_responses) {
+        try {
+          const responsesData = await api.getResponses(id!);
+          // Filter responses to only those within the analysis period
+          const periodStart = new Date(analysisData.period_start);
+          const periodEnd = new Date(analysisData.period_end);
+          const filteredResponses = responsesData.responses.filter(r => {
+            const submittedAt = new Date(r.submitted_at);
+            return submittedAt >= periodStart && submittedAt <= periodEnd;
+          });
+          setResponses(filteredResponses);
+        } catch (err) {
+          console.error('Failed to load responses:', err);
+        }
+      }
     } catch (err: any) {
       setError('Failed to load analysis');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const groupResponsesByQuestion = () => {
+    const grouped: Record<string, ResponseWithQuestion[]> = {};
+    responses.forEach(response => {
+      if (!grouped[response.question_id]) {
+        grouped[response.question_id] = [];
+      }
+      grouped[response.question_id].push(response);
+    });
+    return grouped;
+  };
+
+  const groupResponsesByParticipant = () => {
+    const grouped: Record<string, ResponseWithQuestion[]> = {};
+    responses.forEach(response => {
+      const key = response.participant_code_used || response.participant_id || response.id;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(response);
+    });
+    return grouped;
   };
 
   const handleBackClick = () => {
@@ -443,6 +558,70 @@ export default function PeriodicAnalysisPage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Verbatim Responses */}
+          {conversation?.show_verbatim_responses && responses.length > 0 && (
+            <div style={styles.verbatimSection}>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h3 style={styles.sectionTitle}>Verbatim Responses</h3>
+                  <p style={styles.sectionDescription}>All responses submitted during this period.</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <label htmlFor="groupBy" style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Group by:</label>
+                  <select
+                    id="groupBy"
+                    value={groupBy}
+                    onChange={(e) => setGroupBy(e.target.value as 'question' | 'responder')}
+                    style={styles.groupSelect}
+                  >
+                    <option value="question">Question</option>
+                    <option value="responder">Responder</option>
+                  </select>
+                </div>
+              </div>
+
+              {groupBy === 'question' ? (
+                <div>
+                  {Object.entries(groupResponsesByQuestion()).map(([questionId, questionResponses]) => (
+                    <div key={questionId} style={styles.questionGroup}>
+                      <h4 style={styles.questionGroupTitle}>{questionResponses[0].question_text}</h4>
+                      {questionResponses.map((response, index) => (
+                        <div key={response.id} style={styles.responseItem}>
+                          <div style={styles.responseHeader}>
+                            <span style={styles.responseNumber}>#{index + 1}</span>
+                            <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                          </div>
+                          <p style={styles.responseContent}>
+                            {response.response_text || <em>No text response</em>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  {Object.entries(groupResponsesByParticipant()).map(([participantKey, participantResponses], index) => (
+                    <div key={participantKey} style={styles.questionGroup}>
+                      <h4 style={styles.questionGroupTitle}>Responder #{index + 1}</h4>
+                      {participantResponses.map((response) => (
+                        <div key={response.id} style={styles.responseItem}>
+                          <div style={styles.responseHeader}>
+                            <span style={styles.responseNumber}>{response.question_text}</span>
+                            <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                          </div>
+                          <p style={styles.responseContent}>
+                            {response.response_text || <em>No text response</em>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
