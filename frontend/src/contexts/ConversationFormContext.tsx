@@ -86,7 +86,7 @@ const getDefaultFormState = (): ConversationFormState => ({
   headerImageUrl: '',
 
   // Privacy
-  anonymityLevel: AnonymityLevel.PLATFORM_TRACKED,
+  anonymityLevel: AnonymityLevel.OPEN,
   resultsAccess: ResultsAccess.PARTICIPANTS,
   showVerbatimResponses: false,
   inviteOnly: false,

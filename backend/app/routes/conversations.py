@@ -674,24 +674,25 @@ async def get_conversation_by_code(
             )
 
     # Check access based on anonymity level
-    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # For fully_anonymous with invite_only=true, require participant session
-        # For fully_anonymous with invite_only=false (open anonymous), allow anyone
-        if conversation.invite_only:
-            if not participant_session:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Valid participant session required for this conversation"
-                )
+    if conversation.anonymity_level == AnonymityLevel.OPEN.value:
+        # OPEN: Anyone with the link can access, no auth required
+        pass
 
-            # Verify session matches this conversation
-            if participant_session["access_code"] != access_code:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Session token does not match conversation"
-                )
-        # If invite_only=false (open anonymous), no session or auth required
-        # Anyone with the link can view and respond
+    elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        # FULLY_ANONYMOUS: Requires participant session (from validating secret code)
+        if not participant_session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Valid participant session required for this conversation"
+            )
+
+        # Verify session matches this conversation
+        if participant_session["access_code"] != access_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Session token does not match conversation"
+            )
+
     else:
         # For platform_tracked/revealable, require authentication
         if not current_user:

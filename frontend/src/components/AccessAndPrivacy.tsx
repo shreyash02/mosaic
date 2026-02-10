@@ -25,6 +25,7 @@ export default function AccessAndPrivacy({
   onResultsAccessChange,
   onShowVerbatimChange,
 }: AccessAndPrivacyProps) {
+  const isOpen = anonymityLevel === AnonymityLevel.OPEN;
   const isFullyAnonymous = anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS;
 
   const sectionStyle: React.CSSProperties = {
@@ -74,6 +75,21 @@ export default function AccessAndPrivacy({
           <input
             type="radio"
             name="anonymityLevel"
+            value={AnonymityLevel.OPEN}
+            checked={anonymityLevel === AnonymityLevel.OPEN}
+            onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
+            style={radioStyle}
+          />
+          <div>
+            <div style={labelStyle}>Does not matter</div>
+            <div style={descStyle}>Anyone can respond. Identity recorded if logged in.</div>
+          </div>
+        </label>
+
+        <label style={optionStyle}>
+          <input
+            type="radio"
+            name="anonymityLevel"
             value={AnonymityLevel.FULLY_ANONYMOUS}
             checked={anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS}
             onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
@@ -81,7 +97,7 @@ export default function AccessAndPrivacy({
           />
           <div>
             <div style={labelStyle}>Fully anonymous</div>
-            <div style={descStyle}>No tracking. Responders use one-time secret codes.</div>
+            <div style={descStyle}>No identity tracking. Requires secret codes.</div>
           </div>
         </label>
 
@@ -96,7 +112,7 @@ export default function AccessAndPrivacy({
           />
           <div>
             <div style={labelStyle}>Anonymous to you</div>
-            <div style={descStyle}>Platform tracks to prevent duplicates, hidden from you.</div>
+            <div style={descStyle}>Login required. Platform tracks, hidden from you.</div>
           </div>
         </label>
 
@@ -111,7 +127,7 @@ export default function AccessAndPrivacy({
           />
           <div>
             <div style={labelStyle}>Revealable</div>
-            <div style={descStyle}>You can reveal all identities to viewers later.</div>
+            <div style={descStyle}>Login required. You can reveal identities later.</div>
           </div>
         </label>
       </div>
@@ -120,68 +136,79 @@ export default function AccessAndPrivacy({
       <div style={sectionStyle}>
         <div style={titleStyle}>Who can respond?</div>
 
-        <label style={optionStyle}>
-          <input
-            type="radio"
-            name="accessLevel"
-            value="open"
-            checked={!inviteOnly}
-            onChange={() => onInviteOnlyChange(false)}
-            style={radioStyle}
-          />
-          <div>
-            <div style={labelStyle}>
-              {isFullyAnonymous ? 'Anyone with the link and a secret code' : 'Anyone with the link'}
-            </div>
-            <div style={descStyle}>
-              {isFullyAnonymous
-                ? 'Share the link publicly. Each responder gets a unique code.'
-                : 'Share the link with anyone you want to respond.'}
-            </div>
+        {isOpen ? (
+          // OPEN: Anyone with the link
+          <div style={{ marginBottom: '0.625rem' }}>
+            <div style={labelStyle}>Anyone with the link</div>
+            <div style={descStyle}>Share the link publicly or with specific people.</div>
           </div>
-        </label>
+        ) : isFullyAnonymous ? (
+          // FULLY_ANONYMOUS: Anyone with a secret code
+          <div style={{ marginBottom: '0.625rem' }}>
+            <div style={labelStyle}>Anyone with a secret code</div>
+            <div style={descStyle}>Generate codes and distribute them to your participants.</div>
+          </div>
+        ) : (
+          // PLATFORM_TRACKED / REVEALABLE: Radio options for open vs invite-only
+          <>
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="accessLevel"
+                value="open"
+                checked={!inviteOnly}
+                onChange={() => onInviteOnlyChange(false)}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Anyone with the link</div>
+                <div style={descStyle}>Any logged-in user with the link can respond.</div>
+              </div>
+            </label>
 
-        <label style={optionStyle}>
-          <input
-            type="radio"
-            name="accessLevel"
-            value="invite"
-            checked={inviteOnly}
-            onChange={() => onInviteOnlyChange(true)}
-            style={radioStyle}
-          />
-          <div>
-            <div style={labelStyle}>Only invited users</div>
-            <div style={descStyle}>Only people you invite by email can respond.</div>
-          </div>
-        </label>
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="accessLevel"
+                value="invite"
+                checked={inviteOnly}
+                onChange={() => onInviteOnlyChange(true)}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Only invited users</div>
+                <div style={descStyle}>Only people you invite by email can respond.</div>
+              </div>
+            </label>
 
-        {inviteOnly && (
-          <div style={{ marginLeft: '1.25rem', marginTop: '0.5rem' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-primary-700)', marginBottom: '0.5rem' }}>
-              Invite by email (optional)
-            </div>
-            <textarea
-              value={inviteEmails}
-              onChange={(e) => onInviteEmailsChange(e.target.value)}
-              placeholder="user1@example.com, user2@example.com"
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid var(--color-primary-300)',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                background: 'var(--color-primary-50)',
-                color: 'var(--color-primary-900)',
-              }}
-            />
-            <div style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: 'var(--color-primary-500)' }}>
-              Enter email addresses separated by commas. You can add more after creating.
-            </div>
-          </div>
+            {inviteOnly && (
+              <div style={{ marginLeft: '1.25rem', marginTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-primary-700)', marginBottom: '0.5rem' }}>
+                  Invite by email (optional)
+                </div>
+                <textarea
+                  value={inviteEmails}
+                  onChange={(e) => onInviteEmailsChange(e.target.value)}
+                  placeholder="user1@example.com, user2@example.com"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--color-primary-300)',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    background: 'var(--color-primary-50)',
+                    color: 'var(--color-primary-900)',
+                  }}
+                />
+                <div style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: 'var(--color-primary-500)' }}>
+                  Enter email addresses separated by commas. You can add more after creating.
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

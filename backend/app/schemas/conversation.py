@@ -11,9 +11,10 @@ from enum import Enum
 class AnonymityLevel(str, Enum):
     """Anonymity level options."""
 
-    FULLY_ANONYMOUS = "fully_anonymous"
-    PLATFORM_TRACKED = "platform_tracked"
-    REVEALABLE = "revealable"
+    OPEN = "open"  # Anyone can respond, identity recorded if logged in
+    FULLY_ANONYMOUS = "fully_anonymous"  # No identity tracking, requires secret codes
+    PLATFORM_TRACKED = "platform_tracked"  # Login required, platform tracks
+    REVEALABLE = "revealable"  # Login required, can reveal identities
 
 
 class ResultsAccess(str, Enum):

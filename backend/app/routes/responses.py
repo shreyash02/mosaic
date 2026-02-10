@@ -93,12 +93,15 @@ async def validate_code(
             )
 
     # Conversation exists and is active
-    # For FULLY_ANONYMOUS: require participant codes only if invite_only is true
-    # If invite_only is false, anyone with the link can respond without a code
+    # Determine requirements based on anonymity level:
+    # - OPEN: No login, no codes required
+    # - FULLY_ANONYMOUS: Requires secret codes (for duplicate prevention)
+    # - PLATFORM_TRACKED/REVEALABLE: Requires login
+    is_open = conversation.anonymity_level == AnonymityLevel.OPEN.value
     is_fully_anonymous = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
-    requires_participant_code = is_fully_anonymous and conversation.invite_only
-    # Login is required for non-anonymous conversations (PLATFORM_TRACKED, REVEALABLE)
-    requires_login = not is_fully_anonymous
+
+    requires_participant_code = is_fully_anonymous  # Secret codes required for fully anonymous
+    requires_login = not is_open and not is_fully_anonymous  # Login required for tracked modes
 
     return CodeValidation(
         valid=True,
@@ -627,58 +630,41 @@ async def submit_response(
         )
 
     # Validate anonymity level handling
-    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # For FULLY_ANONYMOUS with invite_only=false, participant codes are optional
-        # Anyone with the link can respond anonymously
-        if conversation.invite_only:
-            # invite_only=true: Must use participant code (either from URL or request body)
-            if not used_participant_code:
-                # Check if participant_code is provided in request body
-                if not response_data.participant_code:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="This conversation requires a participant code"
-                    )
+    if conversation.anonymity_level == AnonymityLevel.OPEN.value:
+        # OPEN: Anyone can respond, no login or codes required
+        # If user is logged in, their ID will be recorded (handled in response creation)
+        pass
 
-                # Look up participant code from request body
-                participant_code = db.query(ParticipantCode).filter(
-                    ParticipantCode.participant_code == response_data.participant_code,
-                    ParticipantCode.conversation_id == conversation.id
-                ).first()
-
-                if not participant_code:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Invalid participant code"
-                    )
-
-                used_participant_code = participant_code
-
-            # Check if code is already used
-            if used_participant_code.is_used:
+    elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        # FULLY_ANONYMOUS: Requires secret codes for duplicate prevention
+        if not used_participant_code:
+            # Check if participant_code is provided in request body
+            if not response_data.participant_code:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="This participant code has already been used"
+                    detail="This conversation requires a participant code"
                 )
-        else:
-            # invite_only=false: Open anonymous mode - no participant code required
-            # If a participant code was provided, validate it but it's optional
-            if response_data.participant_code:
-                participant_code = db.query(ParticipantCode).filter(
-                    ParticipantCode.participant_code == response_data.participant_code,
-                    ParticipantCode.conversation_id == conversation.id
-                ).first()
 
-                if participant_code:
-                    if participant_code.is_used:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="This participant code has already been used"
-                        )
-                    used_participant_code = participant_code
+            # Look up participant code from request body
+            participant_code = db.query(ParticipantCode).filter(
+                ParticipantCode.participant_code == response_data.participant_code,
+                ParticipantCode.conversation_id == conversation.id
+            ).first()
 
-            # For open anonymous mode, if user is logged in, we'll record their ID
-            # but we don't require login - this is handled in response creation below
+            if not participant_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid participant code"
+                )
+
+            used_participant_code = participant_code
+
+        # Check if code is already used
+        if used_participant_code.is_used:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This participant code has already been used"
+            )
 
     elif conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
         # Must be authenticated
