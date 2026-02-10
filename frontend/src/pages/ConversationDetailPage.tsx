@@ -6,9 +6,9 @@ import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Ser
 import { ConversationState, AnonymityLevel } from '../types';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
+import QRCodePoster from '../components/QRCodePoster';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
-import QRCode from 'qrcode';
 
 // Design tokens based styles
 const s = {
@@ -539,8 +539,6 @@ export default function ConversationDetailPage() {
   const [copyQuestions, setCopyQuestions] = useState(false);
   const [addToSeries, setAddToSeries] = useState(false);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
-  const [generatingQRCode, setGeneratingQRCode] = useState(false);
   const [showSeriesModal, setShowSeriesModal] = useState(false);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
@@ -553,7 +551,6 @@ export default function ConversationDetailPage() {
     if (id) {
       loadConversation();
       loadInvitations();
-      setQrCodeDataUrl(null);
     }
   }, [id]);
 
@@ -748,39 +745,6 @@ export default function ConversationDetailPage() {
   };
 
   const getInviteLink = () => `${window.location.origin}/join/${conversation?.access_code}`;
-
-  const generateQRCode = async () => {
-    if (!conversation?.access_code) return;
-    if (qrCodeDataUrl) {
-      setShowQRCodeModal(true);
-      return;
-    }
-
-    setGeneratingQRCode(true);
-    try {
-      const link = getInviteLink();
-      const dataUrl = await QRCode.toDataURL(link, {
-        width: 400,
-        margin: 2,
-        color: { dark: '#000000', light: '#FFFFFF' },
-      });
-      setQrCodeDataUrl(dataUrl);
-      setShowQRCodeModal(true);
-    } catch (err) {
-      console.error('Failed to generate QR code', err);
-      setError('Failed to generate QR code');
-    } finally {
-      setGeneratingQRCode(false);
-    }
-  };
-
-  const downloadQRCode = () => {
-    if (!qrCodeDataUrl) return;
-    const link = document.createElement('a');
-    link.download = `qr-code-${conversation?.access_code || 'conversation'}.png`;
-    link.href = qrCodeDataUrl;
-    link.click();
-  };
 
   const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
@@ -1254,11 +1218,10 @@ export default function ConversationDetailPage() {
                   {linkCopied ? '✓ Copied!' : 'Copy Link'}
                 </button>
                 <button
-                  onClick={generateQRCode}
+                  onClick={() => setShowQRCodeModal(true)}
                   style={s.buttonSecondary}
-                  disabled={generatingQRCode}
                 >
-                  {generatingQRCode ? '...' : 'QR Code'}
+                  QR Code
                 </button>
               </div>
             </div>
@@ -1609,36 +1572,13 @@ export default function ConversationDetailPage() {
         </div>
       )}
 
-      {/* QR Code Modal */}
-      {showQRCodeModal && qrCodeDataUrl && (
-        <div style={s.modalOverlay} onClick={() => setShowQRCodeModal(false)}>
-          <div style={{ ...s.modalContent, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>QR Code</h2>
-            <img
-              src={qrCodeDataUrl}
-              alt="QR Code"
-              style={{
-                maxWidth: '100%',
-                height: 'auto',
-                border: `1px solid ${'var(--color-primary-300)'}`,
-                borderRadius: borders.radius.lg,
-                padding: spacing[4],
-                marginBottom: spacing[4],
-              }}
-            />
-            <p style={{ ...s.modalText, textAlign: 'center' }}>
-              Scan this QR code to access the conversation
-            </p>
-            <div style={{ ...s.modalActions, justifyContent: 'center' }}>
-              <button onClick={downloadQRCode} style={s.buttonPrimary}>
-                Download
-              </button>
-              <button onClick={() => setShowQRCodeModal(false)} style={s.buttonSecondary}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* QR Code Poster Modal */}
+      {showQRCodeModal && conversation && (
+        <QRCodePoster
+          url={getInviteLink()}
+          accessCode={conversation.access_code}
+          onClose={() => setShowQRCodeModal(false)}
+        />
       )}
 
       {/* Series Modal */}
