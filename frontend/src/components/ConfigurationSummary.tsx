@@ -163,6 +163,47 @@ export default function ConfigurationSummary({
           {isExpanded ? 'Hide' : 'Customize'} Settings
         </button>
 
+        {/* Invite-Only Mode - Always visible outside expandable */}
+        <div style={{
+          marginTop: spacing[6],
+          paddingTop: spacing[6],
+          borderTop: `${borders.width.thin} solid ${'var(--color-primary-300)'}`,
+        }}>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            cursor: 'pointer',
+          }}>
+            <input
+              type="checkbox"
+              checked={inviteOnly}
+              onChange={(e) => onInviteOnlyChange(e.target.checked)}
+              style={{
+                width: '18px',
+                height: '18px',
+                accentColor: 'var(--color-primary-900)',
+              }}
+            />
+            <span style={{
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              color: 'var(--color-primary-900)',
+            }}>
+              Restrict to invited users only
+            </span>
+          </label>
+          <p style={{
+            margin: 0,
+            marginTop: spacing[1],
+            marginLeft: '26px',
+            fontSize: typography.fontSize.xs,
+            color: 'var(--color-primary-600)',
+          }}>
+            Only invited users can access this conversation.
+          </p>
+        </div>
+
         {/* Expanded Settings */}
         {isExpanded && (
           <div style={{
@@ -297,83 +338,49 @@ export default function ConfigurationSummary({
               </p>
             </div>
 
-            {/* Invite-Only Mode */}
-            <div style={{ marginTop: spacing[4] }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: spacing[2],
-                cursor: 'pointer',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={inviteOnly}
-                  onChange={(e) => onInviteOnlyChange(e.target.checked)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    accentColor: 'var(--color-primary-900)',
-                  }}
-                />
-                <span style={{
-                  fontSize: typography.fontSize.sm,
-                  fontWeight: typography.fontWeight.medium,
-                  color: 'var(--color-primary-900)',
-                }}>
-                  Restrict to invited users only
-                </span>
-              </label>
-              <p style={{
-                margin: 0,
-                marginTop: spacing[1],
-                marginLeft: '26px',
-                fontSize: typography.fontSize.xs,
-                color: 'var(--color-primary-600)',
-              }}>
-                Only invited users can access this conversation.
-              </p>
-            </div>
+          </div>
+        )}
 
-            {/* Invite Emails */}
-            {inviteOnly && (
-              <div style={{ marginTop: spacing[4] }}>
-                <label htmlFor="invite-emails" style={{
-                  display: 'block',
-                  fontSize: typography.fontSize.sm,
-                  fontWeight: typography.fontWeight.medium,
-                  color: 'var(--color-primary-900)',
-                  marginBottom: spacing[2],
-                }}>
-                  Invite Users by Email (Optional)
-                </label>
-                <textarea
-                  id="invite-emails"
-                  value={inviteEmails}
-                  onChange={(e) => onInviteEmailsChange(e.target.value)}
-                  placeholder="user1@example.com, user2@example.com"
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: spacing[3],
-                    fontSize: typography.fontSize.sm,
-                    border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
-                    borderRadius: borders.radius.md,
-                    backgroundColor: 'var(--color-primary-50)',
-                    color: 'var(--color-primary-900)',
-                    resize: 'vertical',
-                    fontFamily: typography.fontFamily.sans,
-                  }}
-                />
-                <p style={{
-                  margin: 0,
-                  marginTop: spacing[1],
-                  fontSize: typography.fontSize.xs,
-                  color: 'var(--color-primary-600)',
-                }}>
-                  Enter email addresses separated by commas. You can also add more invitations after creating the conversation.
-                </p>
-              </div>
-            )}
+        {/* Invite Emails - Always visible when inviteOnly is enabled */}
+        {inviteOnly && (
+          <div style={{
+            marginTop: spacing[4],
+          }}>
+            <label htmlFor="invite-emails" style={{
+              display: 'block',
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              color: 'var(--color-primary-900)',
+              marginBottom: spacing[2],
+            }}>
+              Invite Users by Email (Optional)
+            </label>
+            <textarea
+              id="invite-emails"
+              value={inviteEmails}
+              onChange={(e) => onInviteEmailsChange(e.target.value)}
+              placeholder="user1@example.com, user2@example.com"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: spacing[3],
+                fontSize: typography.fontSize.sm,
+                border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
+                borderRadius: borders.radius.md,
+                backgroundColor: 'var(--color-primary-50)',
+                color: 'var(--color-primary-900)',
+                resize: 'vertical',
+                fontFamily: typography.fontFamily.sans,
+              }}
+            />
+            <p style={{
+              margin: 0,
+              marginTop: spacing[1],
+              fontSize: typography.fontSize.xs,
+              color: 'var(--color-primary-600)',
+            }}>
+              Enter email addresses separated by commas. You can also add more invitations after creating the conversation.
+            </p>
           </div>
         )}
 
