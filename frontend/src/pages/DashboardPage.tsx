@@ -251,7 +251,8 @@ export default function DashboardPage() {
     const closed = conversations.filter(c => c.state === ConversationState.CLOSED).length;
     const analyzed = conversations.filter(c => c.state === ConversationState.ANALYZED).length;
     const totalResponses = conversations.reduce((sum, c) => sum + (c.unique_participants || 0), 0);
-    const avgResponses = total > 0 ? Math.round(totalResponses / total) : 0;
+    const withResponses = conversations.filter(c => (c.unique_participants || 0) > 0).length;
+    const responseRate = total > 0 ? Math.round((withResponses / total) * 100) : 0;
 
     return {
       total,
@@ -260,7 +261,7 @@ export default function DashboardPage() {
       closed,
       analyzed,
       totalResponses,
-      avgResponses,
+      responseRate,
     };
   }, [conversations]);
 
@@ -395,8 +396,8 @@ export default function DashboardPage() {
         <div style={s.statCard} className="dashboard-stat-card">
           <ChartIcon size={20} />
           <div style={{ marginTop: spacing[3] }}>
-            <div style={s.statValue} className="stat-value">{stats.avgResponses}</div>
-            <div style={s.statLabel} className="stat-label">Avg responses</div>
+            <div style={s.statValue} className="stat-value">{stats.responseRate}%</div>
+            <div style={s.statLabel} className="stat-label">Response rate</div>
           </div>
         </div>
       </div>

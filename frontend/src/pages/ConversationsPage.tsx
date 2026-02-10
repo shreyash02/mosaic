@@ -7,11 +7,6 @@ import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
-import {
-  MessageIcon,
-  UsersIcon,
-  TrendingIcon,
-} from '../components/icons';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
 import ConversationsList from '../components/ConversationsList';
@@ -90,34 +85,6 @@ const s = {
     backgroundColor: 'var(--color-error)',
     color: 'var(--color-primary-50)',
     border: 'none',
-  },
-  // Stats cards
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: spacing[4],
-    marginBottom: spacing[8],
-  },
-  statCard: {
-    backgroundColor: 'var(--color-primary-50)',
-    border: '1px solid var(--color-primary-300)',
-    borderRadius: borders.radius.lg,
-    padding: spacing[6],
-  },
-  statIcon: {
-    color: 'var(--color-primary-500)',
-    marginBottom: spacing[3],
-  },
-  statValue: {
-    fontSize: typography.fontSize['3xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: 'var(--color-primary-900)',
-    lineHeight: 1,
-    marginBottom: spacing[1],
-  },
-  statLabel: {
-    fontSize: typography.fontSize.sm,
-    color: 'var(--color-primary-600)',
   },
   // Tabs
   tabs: {
@@ -721,20 +688,6 @@ export default function ConversationsPage() {
     [conversations]
   );
 
-  const stats = useMemo(() => {
-    const active = actualConversations.filter(c => c.state === ConversationState.ACTIVE).length;
-    const totalResponses = actualConversations.reduce((sum, c) => sum + (c.unique_participants || 0), 0);
-    const withResponses = actualConversations.filter(c => (c.unique_participants || 0) > 0).length;
-    const responseRate = actualConversations.length > 0
-      ? Math.round((withResponses / actualConversations.length) * 100)
-      : 0;
-    return {
-      activeConversations: active,
-      totalResponses,
-      responseRate,
-    };
-  }, [actualConversations]);
-
 
   // Helper functions
   const getStateLabel = (state: ConversationState) => {
@@ -863,12 +816,6 @@ export default function ConversationsPage() {
           align-items: flex-start;
           margin-bottom: ${spacing[6]};
         }
-        .conversations-stats-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: ${spacing[4]};
-          margin-bottom: ${spacing[8]};
-        }
         .conversations-tabs {
           display: flex;
           gap: ${spacing[1]};
@@ -899,23 +846,6 @@ export default function ConversationsPage() {
           .conversations-header-actions a {
             width: 100%;
             justify-content: center;
-          }
-          .conversations-stats-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: ${spacing[2]};
-          }
-          .conversations-stat-card {
-            padding: ${spacing[3]} !important;
-          }
-          .conversations-stat-card .stat-value {
-            font-size: ${typography.fontSize.xl} !important;
-          }
-          .conversations-stat-card .stat-label {
-            font-size: ${typography.fontSize.xs} !important;
-          }
-          .conversations-stat-card svg {
-            width: 16px !important;
-            height: 16px !important;
           }
           .conversations-tabs {
             gap: 0;
@@ -970,33 +900,6 @@ export default function ConversationsPage() {
           )}
         </div>
       </header>
-
-      {/* Stats Cards */}
-      {activeTab === 'owned' && !loading && (
-        <div className="conversations-stats-grid">
-          <div style={s.statCard} className="conversations-stat-card">
-            <MessageIcon size={20} className="" />
-            <div style={{ marginTop: spacing[3] }}>
-              <div style={s.statValue} className="stat-value">{stats.activeConversations}</div>
-              <div style={s.statLabel} className="stat-label">Active</div>
-            </div>
-          </div>
-          <div style={s.statCard} className="conversations-stat-card">
-            <UsersIcon size={20} className="" />
-            <div style={{ marginTop: spacing[3] }}>
-              <div style={s.statValue} className="stat-value">{stats.totalResponses}</div>
-              <div style={s.statLabel} className="stat-label">Responses</div>
-            </div>
-          </div>
-          <div style={s.statCard} className="conversations-stat-card">
-            <TrendingIcon size={20} className="" />
-            <div style={{ marginTop: spacing[3] }}>
-              <div style={s.statValue} className="stat-value">{stats.responseRate}%</div>
-              <div style={s.statLabel} className="stat-label">With responses</div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       {isPersonalWorkspace && (
