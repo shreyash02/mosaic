@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ConversationListItem, Series } from '../types';
 import { ConversationState } from '../types';
@@ -209,11 +210,11 @@ const s = {
   // Table styles
   table: {
     width: '100%',
-    borderCollapse: 'collapse' as const,
+    borderCollapse: 'separate' as const,
+    borderSpacing: 0,
     backgroundColor: 'var(--color-primary-50)',
     border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.lg,
-    overflow: 'hidden',
   },
   tableHeader: {
     backgroundColor: 'var(--color-primary-100)',
@@ -296,13 +297,12 @@ const s = {
     top: '100%',
     right: 0,
     marginTop: spacing[1],
-    backgroundColor: 'var(--color-primary-50)',
+    backgroundColor: 'white',
     border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
-    boxShadow: shadows.md,
+    boxShadow: shadows.lg,
     minWidth: '120px',
-    overflow: 'hidden',
-    zIndex: 20,
+    zIndex: 9999,
   },
   menuItem: {
     display: 'block',
@@ -474,6 +474,7 @@ export default function ConversationsList({
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('created');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -493,6 +494,7 @@ export default function ConversationsList({
       }
       if (!target.closest('[data-menu]')) {
         setOpenMenuId(null);
+        setMenuPosition(null);
       }
     };
 
@@ -927,13 +929,26 @@ export default function ConversationsList({
           )}
           <td style={s.td}>{formatDateShort(conversation.created_at)}</td>
           {showMenu && (
-            <td style={{ ...s.td, position: 'relative', width: '40px' }} data-menu>
+            <td
+              style={{ ...s.td, position: 'relative', width: '40px' }}
+              data-menu
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 style={s.menuButton}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setOpenMenuId(isMenuOpen ? null : conversation.id);
+                  if (isMenuOpen) {
+                    setOpenMenuId(null);
+                    setMenuPosition(null);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    // Position dropdown below button, aligned to button's right edge
+                    const rightFromViewport = window.innerWidth - rect.right;
+                    setMenuPosition({ top: rect.bottom + 4, right: Math.max(8, rightFromViewport) });
+                    setOpenMenuId(conversation.id);
+                  }
                 }}
                 aria-label="More options"
               >
@@ -943,8 +958,11 @@ export default function ConversationsList({
                   <circle cx="8" cy="13" r="1.5"/>
                 </svg>
               </button>
-              {isMenuOpen && (
-                <div style={s.menuDropdown}>
+              {isMenuOpen && menuPosition && createPortal(
+                <div
+                  style={{ ...s.menuDropdown, position: 'fixed', top: menuPosition.top, right: menuPosition.right }}
+                  data-menu
+                >
                   {onDuplicate && (
                     <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
                       Duplicate
@@ -958,7 +976,8 @@ export default function ConversationsList({
                       Delete
                     </button>
                   )}
-                </div>
+                </div>,
+                document.body
               )}
             </td>
           )}

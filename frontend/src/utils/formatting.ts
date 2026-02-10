@@ -33,15 +33,12 @@ export function formatResultsAccess(access: ResultsAccess | string): string {
  */
 function getUserLocale(): string {
   const locale = navigator.language || 'en-US';
-  console.log('[formatting] getUserLocale:', locale);
   return locale;
 }
 
 function getUserTimezone(): string | undefined {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log('[formatting] getUserTimezone:', timezone);
-    console.log('[formatting] Intl.DateTimeFormat().resolvedOptions():', Intl.DateTimeFormat().resolvedOptions());
     return timezone;
   } catch (error) {
     console.error('[formatting] Failed to get user timezone:', error);
@@ -60,9 +57,7 @@ function getUserTimezone(): string | undefined {
  * @param dateString - ISO date string from backend (assumed UTC if no timezone)
  * @param backendTimezone - Optional timezone from backend (IANA timezone name, e.g., "UTC", "America/New_York")
  */
-export function formatDate(dateString: string, backendTimezone?: string): string {
-  console.log('[formatDate] Input dateString (from backend):', dateString);
-  console.log('[formatDate] Backend timezone:', backendTimezone || 'not provided (assuming UTC)');
+export function formatDate(dateString: string, _backendTimezone?: string): string {
   
   // Parse the date string (assumes ISO format from backend, which is UTC)
   // If the string doesn't end with 'Z' or have a timezone offset, treat it as UTC
@@ -71,16 +66,10 @@ export function formatDate(dateString: string, backendTimezone?: string): string
     // Backend sends UTC times without 'Z' suffix, so we need to append it
     // This ensures JavaScript parses it as UTC, not local time
     dateStringToParse = dateString + 'Z';
-    console.log('[formatDate] Appended Z to treat as UTC:', dateStringToParse);
   } else {
-    console.log('[formatDate] Date string already has timezone indicator');
   }
   
   const date = new Date(dateStringToParse);
-  console.log('[formatDate] Parsed Date object:', date);
-  console.log('[formatDate] Date.getTime() (UTC milliseconds):', date.getTime());
-  console.log('[formatDate] Date.toISOString() (UTC):', date.toISOString());
-  console.log('[formatDate] Date.toString() (local):', date.toString());
   
   // Get current date in user's local timezone
   const now = new Date();
@@ -88,10 +77,6 @@ export function formatDate(dateString: string, backendTimezone?: string): string
   // Always use user's local timezone for display (backend timezone is only for parsing context)
   const displayTimezone = getUserTimezone();
   
-  console.log('[formatDate] Current time (now):', now.toString());
-  console.log('[formatDate] Using locale:', locale);
-  console.log('[formatDate] Backend timezone (for reference):', backendTimezone || 'not provided');
-  console.log('[formatDate] Display timezone (user local):', displayTimezone);
   
   // Create date objects for comparison (in local timezone)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -99,8 +84,6 @@ export function formatDate(dateString: string, backendTimezone?: string): string
   yesterday.setDate(yesterday.getDate() - 1);
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   
-  console.log('[formatDate] dateOnly (local date only):', dateOnly.toString());
-  console.log('[formatDate] today (local date only):', today.toString());
 
   // Format options - don't specify timeZone, let it use user's local timezone automatically
   // The date is already parsed correctly (as UTC), so formatting will automatically convert to local time
@@ -129,14 +112,12 @@ export function formatDate(dateString: string, backendTimezone?: string): string
   if (date.getFullYear() === now.getFullYear()) {
     const dateStr = date.toLocaleDateString(locale, dateOptions);
     const timeStr = formatTime(date, locale, displayTimezone);
-    console.log('[formatDate] Formatted (this year):', `${dateStr} at ${timeStr}`);
     return `${dateStr} at ${timeStr}`;
   }
 
   // Full date with year
   const dateStr = date.toLocaleDateString(locale, dateOptionsWithYear);
   const timeStr = formatTime(date, locale, displayTimezone);
-  console.log('[formatDate] Formatted (with year):', `${dateStr} at ${timeStr}`);
   return `${dateStr} at ${timeStr}`;
 }
 
@@ -145,7 +126,7 @@ export function formatDate(dateString: string, backendTimezone?: string): string
  * Note: timezone parameter is kept for API compatibility but not used
  * The date is already in the correct timezone, so we let JavaScript use local timezone automatically
  */
-function formatTime(date: Date, locale?: string, timezone?: string): string {
+function formatTime(date: Date, locale?: string, _timezone?: string): string {
   // Don't specify timeZone - let it use the user's local timezone automatically
   // The date object already represents the correct moment in time, so formatting
   // will automatically convert to the user's local timezone
@@ -157,11 +138,6 @@ function formatTime(date: Date, locale?: string, timezone?: string): string {
   };
   
   const formatted = date.toLocaleTimeString(locale || getUserLocale(), options);
-  console.log('[formatTime] Input date:', date.toString());
-  console.log('[formatTime] Using locale:', locale || getUserLocale());
-  console.log('[formatTime] Timezone parameter (not used for formatting):', timezone);
-  console.log('[formatTime] Options:', options);
-  console.log('[formatTime] Formatted result (in user local timezone):', formatted);
   
   return formatted;
 }
@@ -176,9 +152,7 @@ function formatTime(date: Date, locale?: string, timezone?: string): string {
  * @param dateString - ISO date string from backend (assumed UTC if no timezone)
  * @param backendTimezone - Optional timezone from backend (IANA timezone name, e.g., "UTC", "America/New_York")
  */
-export function formatDateShort(dateString: string, backendTimezone?: string): string {
-  console.log('[formatDateShort] Input dateString (from backend):', dateString);
-  console.log('[formatDateShort] Backend timezone:', backendTimezone || 'not provided (assuming UTC)');
+export function formatDateShort(dateString: string, _backendTimezone?: string): string {
   
   // Parse the date string (assumes ISO format from backend, which is UTC)
   // If the string doesn't end with 'Z' or have a timezone offset, treat it as UTC
@@ -187,32 +161,19 @@ export function formatDateShort(dateString: string, backendTimezone?: string): s
     // Backend sends UTC times without 'Z' suffix, so we need to append it
     // This ensures JavaScript parses it as UTC, not local time
     dateStringToParse = dateString + 'Z';
-    console.log('[formatDateShort] Appended Z to treat as UTC:', dateStringToParse);
   } else {
-    console.log('[formatDateShort] Date string already has timezone indicator');
   }
   
   const date = new Date(dateStringToParse);
-  console.log('[formatDateShort] Parsed Date object:', date.toString());
-  console.log('[formatDateShort] Date.toISOString() (UTC):', date.toISOString());
-  
+
   const now = new Date();
   const locale = getUserLocale();
-  // Always use user's local timezone for display (backend timezone is only for parsing context)
-  const displayTimezone = getUserTimezone();
-  
-  console.log('[formatDateShort] Using locale:', locale);
-  console.log('[formatDateShort] Backend timezone (for reference):', backendTimezone || 'not provided');
-  console.log('[formatDateShort] Display timezone (user local):', displayTimezone);
-  
+
   // Create date objects for comparison (in local timezone)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
-  console.log('[formatDateShort] dateOnly:', dateOnly.toString());
-  console.log('[formatDateShort] today:', today.toString());
 
   if (dateOnly.getTime() === today.getTime()) {
     return 'Today';
@@ -233,13 +194,11 @@ export function formatDateShort(dateString: string, backendTimezone?: string): s
   // Check if it's this year
   if (date.getFullYear() === now.getFullYear()) {
     const formatted = date.toLocaleDateString(locale, dateOptions);
-    console.log('[formatDateShort] Formatted (this year):', formatted);
     return formatted;
   }
 
   // Include year for dates from previous years
   const formatted = date.toLocaleDateString(locale, { ...dateOptions, year: 'numeric' });
-  console.log('[formatDateShort] Formatted (with year):', formatted);
   return formatted;
 }
 
