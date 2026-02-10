@@ -28,6 +28,7 @@ export interface ConversationFormState {
   expandedQuestions: Set<number>;
 
   // Step 4: Timing
+  activationMode: 'immediate' | 'scheduled' | 'manual';
   scheduleActivation: boolean;
   scheduledActivateAt: string;
   durationHours: number;
@@ -97,6 +98,7 @@ const getDefaultFormState = (): ConversationFormState => ({
   expandedQuestions: new Set([0]),
 
   // Timing
+  activationMode: 'immediate',
   scheduleActivation: false,
   scheduledActivateAt: '',
   durationHours: 48,
