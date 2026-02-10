@@ -38,7 +38,8 @@ class CodeValidation(BaseModel):
     valid: bool
     conversation_id: Optional[UUID] = None
     message: Optional[str] = None
-    requires_participant_code: bool = False  # True if fully_anonymous and needs participant_code
+    requires_participant_code: bool = False  # True if fully_anonymous with invite_only=true
+    requires_login: bool = True  # True if platform_tracked/revealable (non-anonymous)
     session_token: Optional[str] = None  # Temporary session token for fully_anonymous after participant code validation
     has_submitted: Optional[bool] = None  # True if participant code has already been used to submit
     conversation_state: Optional[str] = None  # Current state of the conversation

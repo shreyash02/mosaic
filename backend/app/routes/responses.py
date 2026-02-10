@@ -93,12 +93,19 @@ async def validate_code(
             )
 
     # Conversation exists and is active
-    requires_participant_code = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+    # For FULLY_ANONYMOUS: require participant codes only if invite_only is true
+    # If invite_only is false, anyone with the link can respond without a code
+    is_fully_anonymous = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+    requires_participant_code = is_fully_anonymous and conversation.invite_only
+    # Login is required for non-anonymous conversations (PLATFORM_TRACKED, REVEALABLE)
+    requires_login = not is_fully_anonymous
+
     return CodeValidation(
         valid=True,
         conversation_id=conversation.id,
         message="Valid conversation access code",
-        requires_participant_code=requires_participant_code
+        requires_participant_code=requires_participant_code,
+        requires_login=requires_login
     )
 
 
@@ -621,51 +628,57 @@ async def submit_response(
 
     # Validate anonymity level handling
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # Must use participant code (either from URL or request body)
-        if not used_participant_code:
-            # Check if participant_code is provided in request body
-            if not response_data.participant_code:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Fully anonymous conversations require a participant code"
-                )
-            
-            # Look up participant code from request body
-            participant_code = db.query(ParticipantCode).filter(
-                ParticipantCode.participant_code == response_data.participant_code,
-                ParticipantCode.conversation_id == conversation.id
-            ).first()
-            
-            if not participant_code:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid participant code"
-                )
-            
-            used_participant_code = participant_code
-
-        # Check if code is already used
-        if used_participant_code.is_used:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This participant code has already been used"
-            )
-        
-        # If invite_only is enabled, verify that invitations exist
-        # For fully_anonymous, we trust that participant codes are distributed only to invited users
+        # For FULLY_ANONYMOUS with invite_only=false, participant codes are optional
+        # Anyone with the link can respond anonymously
         if conversation.invite_only:
-            # Check if any invitations exist for this conversation
-            has_invitations = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id
-            ).first()
-            
-            if not has_invitations:
-                # If invite_only is enabled but no invitations exist, this is a configuration error
-                # But we'll still allow access to prevent breaking existing conversations
-                pass
-            # Note: For fully_anonymous, we can't directly link participant codes to invitations
-            # since participant codes don't have emails. The facilitator must distribute
-            # participant codes only to invited users.
+            # invite_only=true: Must use participant code (either from URL or request body)
+            if not used_participant_code:
+                # Check if participant_code is provided in request body
+                if not response_data.participant_code:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="This conversation requires a participant code"
+                    )
+
+                # Look up participant code from request body
+                participant_code = db.query(ParticipantCode).filter(
+                    ParticipantCode.participant_code == response_data.participant_code,
+                    ParticipantCode.conversation_id == conversation.id
+                ).first()
+
+                if not participant_code:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid participant code"
+                    )
+
+                used_participant_code = participant_code
+
+            # Check if code is already used
+            if used_participant_code.is_used:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This participant code has already been used"
+                )
+        else:
+            # invite_only=false: Open anonymous mode - no participant code required
+            # If a participant code was provided, validate it but it's optional
+            if response_data.participant_code:
+                participant_code = db.query(ParticipantCode).filter(
+                    ParticipantCode.participant_code == response_data.participant_code,
+                    ParticipantCode.conversation_id == conversation.id
+                ).first()
+
+                if participant_code:
+                    if participant_code.is_used:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="This participant code has already been used"
+                        )
+                    used_participant_code = participant_code
+
+            # For open anonymous mode, if user is logged in, we'll record their ID
+            # but we don't require login - this is handled in response creation below
 
     elif conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
         # Must be authenticated

@@ -680,13 +680,15 @@ export default function JoinPage() {
 
       if (validationResult.valid) {
         const hasAuthToken = !!localStorage.getItem('access_token');
+        // If requires participant code (invite-only anonymous) and user is logged in, show conflict
         if (validationResult.requires_participant_code && hasAuthToken) {
           setShowAnonymousConflict(true);
           setLoading(false);
           return;
         }
         setAccessCodeValidated(true);
-        if (!validationResult.requires_participant_code) {
+        // Only redirect to login if this conversation requires login (non-anonymous types)
+        if (validationResult.requires_login) {
           const token = localStorage.getItem('access_token');
           if (!token) {
             navigate(`/login?redirect=/join/${accessCode}`);

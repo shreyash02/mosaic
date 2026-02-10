@@ -415,6 +415,7 @@ export interface CodeValidation {
   conversation_id?: string;
   message: string;
   requires_participant_code?: boolean;
+  requires_login?: boolean;
   session_token?: string;
   has_submitted?: boolean;
   conversation_state?: string;

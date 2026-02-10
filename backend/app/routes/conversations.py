@@ -675,35 +675,23 @@ async def get_conversation_by_code(
 
     # Check access based on anonymity level
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # For fully_anonymous, require participant session
-        if not participant_session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Valid participant session required for fully anonymous conversations"
-            )
-
-        # Verify session matches this conversation
-        if participant_session["access_code"] != access_code:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Session token does not match conversation"
-            )
-
-        # If invite_only is enabled, verify that invitations exist
-        # For fully_anonymous, we trust that participant codes are distributed only to invited users
+        # For fully_anonymous with invite_only=true, require participant session
+        # For fully_anonymous with invite_only=false (open anonymous), allow anyone
         if conversation.invite_only:
-            # Check if any invitations exist for this conversation
-            has_invitations = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id
-            ).first()
+            if not participant_session:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Valid participant session required for this conversation"
+                )
 
-            if not has_invitations:
-                # If invite_only is enabled but no invitations exist, this is a configuration error
-                # But we'll still allow access to prevent breaking existing conversations
-                pass
-            # Note: For fully_anonymous, we can't directly link participant codes to invitations
-            # since participant codes don't have emails. The facilitator must distribute
-            # participant codes only to invited users.
+            # Verify session matches this conversation
+            if participant_session["access_code"] != access_code:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Session token does not match conversation"
+                )
+        # If invite_only=false (open anonymous), no session or auth required
+        # Anyone with the link can view and respond
     else:
         # For platform_tracked/revealable, require authentication
         if not current_user:
