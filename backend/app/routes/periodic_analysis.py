@@ -22,7 +22,7 @@ from app.schemas.periodic_analysis import (
 )
 from app.schemas.common import SuccessResponse
 from app.services.continuous_trends_service import ContinuousTrendsService
-from app.services.scheduler_service import run_periodic_analysis_task, generate_period_label
+from app.services.scheduler_service import run_periodic_analysis_task, generate_period_label, generate_incremental_period_label
 
 router = APIRouter()
 
@@ -139,7 +139,59 @@ async def trigger_periodic_analysis(
             detail="Can only trigger periodic analysis for continuous conversations"
         )
 
-    # Determine analysis window
+    period_type = conversation.analysis_interval or "weekly"
+
+    # Handle incremental analysis (from last analysis end to now)
+    if request.incremental:
+        # Find last analysis
+        last_analysis = db.query(PeriodicAnalysis).filter(
+            PeriodicAnalysis.conversation_id == conversation_id
+        ).order_by(PeriodicAnalysis.period_end.desc()).first()
+
+        if not last_analysis:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No previous analysis found. Cannot create incremental analysis."
+            )
+
+        period_start = last_analysis.period_end
+        period_end = datetime.utcnow()
+
+        # Ensure naive datetimes (UTC)
+        if period_start.tzinfo is not None:
+            period_start = period_start.replace(tzinfo=None)
+        if period_end.tzinfo is not None:
+            period_end = period_end.replace(tzinfo=None)
+
+        # Validate period
+        if period_start >= period_end:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No new data since last analysis."
+            )
+
+        # Generate incremental period label with suffix (e.g., 2026-W07-a, 2026-W07-b)
+        period_label = generate_incremental_period_label(
+            db, conversation_id, period_start, period_end, period_type
+        )
+
+        # Trigger background analysis with the incremental label
+        background_tasks.add_task(
+            run_periodic_analysis_task,
+            conversation_id=conversation_id,
+            period_start=period_start,
+            period_end=period_end,
+            period_type=period_type,
+            db_url=settings.DATABASE_URL,
+            period_label_override=period_label
+        )
+
+        return SuccessResponse(
+            success=True,
+            message=f"Incremental analysis triggered for {period_start.date()} to {period_end.date()} ({period_label})"
+        )
+
+    # Determine analysis window for standard/force_replace mode
     if request.period_end:
         period_end = request.period_end
     else:
@@ -178,7 +230,6 @@ async def trigger_periodic_analysis(
         )
 
     # Check if analysis for this period already exists
-    period_type = conversation.analysis_interval or "weekly"
     period_label = generate_period_label(period_start, period_end, period_type)
 
     existing = db.query(PeriodicAnalysis).filter(
@@ -187,10 +238,15 @@ async def trigger_periodic_analysis(
     ).first()
 
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Periodic analysis for period '{period_label}' already exists"
-        )
+        if request.force_replace:
+            # Delete the existing analysis
+            db.delete(existing)
+            db.commit()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Periodic analysis for period '{period_label}' already exists"
+            )
 
     # Trigger background analysis
     background_tasks.add_task(
@@ -202,9 +258,10 @@ async def trigger_periodic_analysis(
         db_url=settings.DATABASE_URL
     )
 
+    action = "replaced and retriggered" if request.force_replace and existing else "triggered"
     return SuccessResponse(
         success=True,
-        message=f"Periodic analysis triggered for {period_start.date()} to {period_end.date()}"
+        message=f"Periodic analysis {action} for {period_start.date()} to {period_end.date()}"
     )
 
 

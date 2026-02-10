@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { Analysis, Conversation, ResponseWithQuestion, PeriodicAnalysis } from '../types';
@@ -565,6 +565,10 @@ const styles = {
 };
 
 const hoverStyles = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
   .analysis-back-link:hover {
     color: ${'var(--color-primary-900)'};
   }
@@ -575,6 +579,9 @@ const hoverStyles = `
     background-color: ${'var(--color-primary-50)'};
     border-color: ${'var(--color-primary-400)'};
   }
+  .analysis-dropdown-item:hover {
+    background-color: var(--color-primary-100) !important;
+  }
   .periodic-card:hover {
     border-color: ${'var(--color-primary-400)'} !important;
     box-shadow: ${shadows.sm} !important;
@@ -584,6 +591,7 @@ const hoverStyles = `
 export default function AnalysisPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentOrgId } = useOrganization();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -596,8 +604,60 @@ export default function AnalysisPage() {
   const [fullConversation, setFullConversation] = useState<Conversation | null>(null);
   const [periodicAnalyses, setPeriodicAnalyses] = useState<PeriodicAnalysis[]>([]);
   const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
+  const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
+  const [pendingAnalysis, setPendingAnalysis] = useState<{ mode: 'update' | 'incremental'; startedAt: Date } | null>(null);
+  const analysisDropdownRef = useRef<HTMLDivElement>(null);
 
   usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
+
+  // Check if navigated from ConversationDetailPage with analysis triggered
+  useEffect(() => {
+    const state = location.state as { analysisTriggered?: 'update' | 'incremental' } | null;
+    if (state?.analysisTriggered) {
+      setPendingAnalysis({ mode: state.analysisTriggered, startedAt: new Date() });
+      // Clear the state so it doesn't trigger again on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (analysisDropdownRef.current && !analysisDropdownRef.current.contains(event.target as Node)) {
+        setShowAnalysisDropdown(false);
+      }
+    };
+
+    if (showAnalysisDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAnalysisDropdown]);
+
+  // Poll for pending analysis completion
+  useEffect(() => {
+    if (!pendingAnalysis || !id) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const periodicData = await api.listPeriodicAnalyses(id);
+        const newAnalyses = periodicData.analyses || [];
+
+        // Check if we have more analyses than before (new one completed)
+        if (newAnalyses.length > periodicAnalyses.length) {
+          setPeriodicAnalyses(newAnalyses);
+          setPendingAnalysis(null);
+        }
+      } catch (err) {
+        console.error('Error polling for analysis:', err);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [pendingAnalysis, id, periodicAnalyses.length]);
 
   useEffect(() => {
     if (id) {
@@ -724,14 +784,19 @@ export default function AnalysisPage() {
     }
   };
 
-  const handleTriggerAnalysis = async () => {
-    if (!id || triggeringAnalysis) return;
+  const handleTriggerAnalysis = async (mode: 'update' | 'incremental' = 'update') => {
+    if (!id || triggeringAnalysis || pendingAnalysis) return;
     setTriggeringAnalysis(true);
+    setShowAnalysisDropdown(false);
     try {
-      await api.triggerPeriodicAnalysis(id);
-      // Reload periodic analyses
-      const periodicData = await api.listPeriodicAnalyses(id);
-      setPeriodicAnalyses(periodicData.analyses || []);
+      if (mode === 'incremental') {
+        await api.triggerPeriodicAnalysis(id, { incremental: true });
+      } else {
+        // Try with force_replace to update existing analysis
+        await api.triggerPeriodicAnalysis(id, { force_replace: true });
+      }
+      // Set pending state to show in the list while polling
+      setPendingAnalysis({ mode, startedAt: new Date() });
     } catch (err) {
       console.error('Failed to trigger analysis:', err);
     } finally {
@@ -746,21 +811,30 @@ export default function AnalysisPage() {
 
   // Format period label to be more human-friendly
   const formatPeriodLabel = (label: string) => {
+    // Check for incremental suffix (e.g., "2026-W07-a" -> extract "a")
+    let suffix = '';
+    let baseLabel = label;
+    const suffixMatch = label.match(/^(.+)-([a-z])$/);
+    if (suffixMatch) {
+      baseLabel = suffixMatch[1];
+      suffix = ` (${suffixMatch[2].toUpperCase()})`;
+    }
+
     // Weekly format: YYYY-Www -> "Week 7, 2026"
-    const weekMatch = label.match(/^(\d{4})-W(\d{2})$/);
+    const weekMatch = baseLabel.match(/^(\d{4})-W(\d{2})$/);
     if (weekMatch) {
-      return `Week ${parseInt(weekMatch[2], 10)}, ${weekMatch[1]}`;
+      return `Week ${parseInt(weekMatch[2], 10)}, ${weekMatch[1]}${suffix}`;
     }
     // Monthly format: YYYY-MM -> "February 2026"
-    const monthMatch = label.match(/^(\d{4})-(\d{2})$/);
+    const monthMatch = baseLabel.match(/^(\d{4})-(\d{2})$/);
     if (monthMatch) {
       const monthName = new Date(parseInt(monthMatch[1]), parseInt(monthMatch[2]) - 1).toLocaleDateString('en-US', { month: 'long' });
-      return `${monthName} ${monthMatch[1]}`;
+      return `${monthName} ${monthMatch[1]}${suffix}`;
     }
     // Daily format: YYYY-MM-DD -> "February 10, 2026"
-    const dayMatch = label.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const dayMatch = baseLabel.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (dayMatch) {
-      return new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      return new Date(baseLabel).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + suffix;
     }
     return label;
   };
@@ -871,17 +945,74 @@ export default function AnalysisPage() {
                 <h1 style={styles.title}>Analysis History</h1>
                 <p style={styles.subtitle}>{fullConversation.title}</p>
               </div>
-              <button
-                onClick={handleTriggerAnalysis}
-                style={{
-                  ...styles.triggerButton,
-                  ...(triggeringAnalysis ? styles.buttonDisabled : {}),
-                }}
-                className="analysis-btn-primary"
-                disabled={triggeringAnalysis}
-              >
-                {triggeringAnalysis ? 'Running...' : 'Run Analysis Now'}
-              </button>
+              <div style={{ position: 'relative' }} ref={analysisDropdownRef}>
+                <div style={{ display: 'flex' }}>
+                  <button
+                    onClick={() => handleTriggerAnalysis('update')}
+                    style={{
+                      ...styles.triggerButton,
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                      ...(triggeringAnalysis || pendingAnalysis ? styles.buttonDisabled : {}),
+                    }}
+                    className="analysis-btn-primary"
+                    disabled={triggeringAnalysis || !!pendingAnalysis}
+                  >
+                    {triggeringAnalysis ? 'Starting...' : pendingAnalysis ? 'Analysis Running...' : 'Run Analysis Now'}
+                  </button>
+                  <button
+                    onClick={() => setShowAnalysisDropdown(!showAnalysisDropdown)}
+                    style={{
+                      ...styles.triggerButton,
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderLeft: `1px solid ${'var(--color-primary-700)'}`,
+                      padding: `${spacing[2]} ${spacing[2]}`,
+                      ...(triggeringAnalysis || pendingAnalysis ? styles.buttonDisabled : {}),
+                    }}
+                    className="analysis-btn-primary"
+                    disabled={triggeringAnalysis || !!pendingAnalysis}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                      <path d="M3 4.5L6 7.5L9 4.5H3Z" />
+                    </svg>
+                  </button>
+                </div>
+                {showAnalysisDropdown && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: spacing[1],
+                      backgroundColor: 'var(--color-primary-50)',
+                      border: `1px solid ${'var(--color-primary-300)'}`,
+                      borderRadius: borders.radius.md,
+                      boxShadow: shadows.md,
+                      zIndex: 10,
+                      minWidth: '200px',
+                    }}
+                  >
+                    <button
+                      onClick={() => handleTriggerAnalysis('incremental')}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: `${spacing[3]} ${spacing[4]}`,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: typography.fontSize.sm,
+                        color: 'var(--color-primary-900)',
+                      }}
+                      className="analysis-dropdown-item"
+                    >
+                      From last analysed time
+                    </button>
+                  </div>
+                )}
+              </div>
             </header>
 
             <div style={styles.periodicHeader}>
@@ -900,7 +1031,7 @@ export default function AnalysisPage() {
               </div>
             </div>
 
-            {periodicAnalyses.length === 0 ? (
+            {periodicAnalyses.length === 0 && !pendingAnalysis ? (
               <div style={styles.emptyPeriodic}>
                 <h3 style={styles.emptyStateTitle}>No Analysis Yet</h3>
                 <p style={styles.emptyStateText}>
@@ -910,6 +1041,40 @@ export default function AnalysisPage() {
               </div>
             ) : (
               <div style={styles.periodicList}>
+                {/* Pending analysis entry */}
+                {pendingAnalysis && (
+                  <div
+                    style={{
+                      ...styles.periodicCard,
+                      opacity: 0.8,
+                      cursor: 'default',
+                    }}
+                  >
+                    <div style={styles.periodicCardContent}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          style={{ animation: 'spin 1s linear infinite' }}
+                        >
+                          <path d="M21 12a9 9 0 11-6.219-8.56" />
+                        </svg>
+                        <span style={styles.periodLabel}>
+                          {pendingAnalysis.mode === 'incremental' ? 'Running incremental analysis...' : 'Running analysis...'}
+                        </span>
+                      </div>
+                      <div style={styles.periodMeta}>
+                        <span style={styles.periodDate}>
+                          Started {pendingAnalysis.startedAt.toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {periodicAnalyses.map((pa) => (
                   <Link
                     key={pa.id}

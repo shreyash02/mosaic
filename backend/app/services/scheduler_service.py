@@ -445,12 +445,73 @@ def generate_period_label(period_start: datetime, period_end: datetime, interval
         return period_start.strftime("%Y-%m-%d")
 
 
+def generate_incremental_period_label(
+    db,
+    conversation_id: UUID,
+    period_start: datetime,
+    period_end: datetime,
+    interval: str
+) -> str:
+    """
+    Generate a period label with suffix for incremental analyses.
+
+    If analyses already exist for the base period (e.g., 2026-W07), this will
+    generate labels like 2026-W07-a, 2026-W07-b, etc.
+
+    Args:
+        db: Database session
+        conversation_id: ID of the conversation
+        period_start: Start of the period
+        period_end: End of the period
+        interval: Analysis interval
+
+    Returns:
+        Period label string with suffix (e.g., "2024-W01-a")
+    """
+    from app.models.periodic_analysis import PeriodicAnalysis
+
+    base_label = generate_period_label(period_start, period_end, interval)
+
+    # Find existing analyses with this base label or suffixed variants
+    existing = db.query(PeriodicAnalysis).filter(
+        PeriodicAnalysis.conversation_id == conversation_id,
+        PeriodicAnalysis.period_label.like(f"{base_label}%")
+    ).all()
+
+    if not existing:
+        # No existing analysis for this period, use suffix 'a'
+        return f"{base_label}-a"
+
+    # Find the highest suffix used
+    max_suffix = None
+    for analysis in existing:
+        label = analysis.period_label
+        if label == base_label:
+            # Base label exists without suffix
+            if max_suffix is None:
+                max_suffix = ''  # empty string means base exists
+        elif label.startswith(f"{base_label}-"):
+            suffix = label[len(base_label) + 1:]  # Get the part after "-"
+            if len(suffix) == 1 and suffix.isalpha():
+                if max_suffix is None or suffix > max_suffix:
+                    max_suffix = suffix
+
+    # Generate next suffix
+    if max_suffix is None or max_suffix == '':
+        return f"{base_label}-a"
+    else:
+        # Increment the suffix (a -> b -> c, etc.)
+        next_suffix = chr(ord(max_suffix) + 1)
+        return f"{base_label}-{next_suffix}"
+
+
 def run_periodic_analysis_task(
     conversation_id: UUID,
     period_start: datetime,
     period_end: datetime,
     period_type: str,
-    db_url: str
+    db_url: str,
+    period_label_override: Optional[str] = None
 ) -> None:
     """
     Run periodic analysis for a continuous conversation.
@@ -464,6 +525,7 @@ def run_periodic_analysis_task(
         period_end: End of analysis window (UTC)
         period_type: Type of period (daily, weekly, biweekly, monthly)
         db_url: Database connection URL
+        period_label_override: Optional override for the period label (for incremental analyses)
     """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -510,8 +572,8 @@ def run_periodic_analysis_task(
             min_cluster_size=2
         )
 
-        # Generate period label
-        period_label = generate_period_label(period_start, period_end, period_type)
+        # Generate period label (use override if provided, for incremental analyses)
+        period_label = period_label_override or generate_period_label(period_start, period_end, period_type)
 
         # Check if analysis for this period already exists (shouldn't happen, but be safe)
         existing = db.query(PeriodicAnalysis).filter(

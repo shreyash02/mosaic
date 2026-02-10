@@ -403,6 +403,8 @@ export interface PeriodicAnalysisList {
 export interface TriggerPeriodicAnalysisRequest {
   period_start?: string;
   period_end?: string;
+  force_replace?: boolean;
+  incremental?: boolean;
 }
 
 // API Response types

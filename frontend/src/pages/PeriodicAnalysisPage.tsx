@@ -412,28 +412,37 @@ export default function PeriodicAnalysisPage() {
   // "2026-W07" -> "Week 7, 2026"
   // "2026-02" -> "February 2026"
   const formatPeriodLabel = (label: string) => {
+    // Check for incremental suffix (e.g., "2026-W07-a" -> extract "a")
+    let suffix = '';
+    let baseLabel = label;
+    const suffixMatch = label.match(/^(.+)-([a-z])$/);
+    if (suffixMatch) {
+      baseLabel = suffixMatch[1];
+      suffix = ` (${suffixMatch[2].toUpperCase()})`;
+    }
+
     // Weekly format: YYYY-Www
-    const weekMatch = label.match(/^(\d{4})-W(\d{2})$/);
+    const weekMatch = baseLabel.match(/^(\d{4})-W(\d{2})$/);
     if (weekMatch) {
       const year = weekMatch[1];
       const week = parseInt(weekMatch[2], 10);
-      return `Week ${week}, ${year}`;
+      return `Week ${week}, ${year}${suffix}`;
     }
 
     // Monthly format: YYYY-MM
-    const monthMatch = label.match(/^(\d{4})-(\d{2})$/);
+    const monthMatch = baseLabel.match(/^(\d{4})-(\d{2})$/);
     if (monthMatch) {
       const year = monthMatch[1];
       const month = parseInt(monthMatch[2], 10);
       const monthName = new Date(parseInt(year), month - 1).toLocaleDateString('en-US', { month: 'long' });
-      return `${monthName} ${year}`;
+      return `${monthName} ${year}${suffix}`;
     }
 
     // Daily format: YYYY-MM-DD
-    const dayMatch = label.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const dayMatch = baseLabel.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (dayMatch) {
-      const date = new Date(label);
-      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const date = new Date(baseLabel);
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + suffix;
     }
 
     // Fallback to original label

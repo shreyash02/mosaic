@@ -60,6 +60,8 @@ class TriggerPeriodicAnalysisRequest(BaseModel):
 
     period_start: Optional[datetime] = Field(None, description="Start of analysis window. If not provided, uses end of last analysis or activation time.")
     period_end: Optional[datetime] = Field(None, description="End of analysis window. If not provided, uses current time.")
+    force_replace: bool = Field(False, description="If True, delete existing analysis for this period and create a fresh one.")
+    incremental: bool = Field(False, description="If True, create an incremental analysis from last analysis end to now with suffix (e.g., '2026-W07-a').")
 
 
 class TrendDataPoint(BaseModel):

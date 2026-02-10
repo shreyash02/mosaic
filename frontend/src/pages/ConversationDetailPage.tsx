@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -547,8 +547,27 @@ export default function ConversationDetailPage() {
   const [showAnalysisScheduleModal, setShowAnalysisScheduleModal] = useState(false);
   const [selectedAnalysisInterval, setSelectedAnalysisInterval] = useState<string>('');
   const [updatingAnalysisSchedule, setUpdatingAnalysisSchedule] = useState(false);
+  const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
+  const analysisDropdownRef = useRef<HTMLDivElement>(null);
 
   usePageTitle(conversation?.title);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (analysisDropdownRef.current && !analysisDropdownRef.current.contains(event.target as Node)) {
+        setShowAnalysisDropdown(false);
+      }
+    };
+
+    if (showAnalysisDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAnalysisDropdown]);
 
   useEffect(() => {
     if (id) {
@@ -680,18 +699,24 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const handleTriggerAnalysis = async () => {
+  const handleTriggerAnalysis = async (mode: 'update' | 'incremental' = 'update') => {
     if (!conversation?.is_continuous) return;
 
     setTriggeringAnalysis(true);
+    setShowAnalysisDropdown(false);
     setError('');
     try {
-      await api.triggerPeriodicAnalysis(id!);
-      // Navigate to analysis page to show the new analysis
-      navigate(`/conversations/${id}/analysis`);
+      if (mode === 'incremental') {
+        await api.triggerPeriodicAnalysis(id!, { incremental: true });
+      } else {
+        // Try with force_replace to update existing analysis
+        await api.triggerPeriodicAnalysis(id!, { force_replace: true });
+      }
+      // Navigate to analysis page with state indicating analysis is running
+      navigate(`/conversations/${id}/analysis`, { state: { analysisTriggered: mode } });
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || 'Failed to trigger analysis';
-      // If analysis already exists for this period, just navigate to view it
+      // If analysis already exists for this period (shouldn't happen with force_replace), just navigate
       if (errorMessage.includes('already exists')) {
         navigate(`/conversations/${id}/analysis`);
       } else {
@@ -1012,13 +1037,72 @@ export default function ConversationDetailPage() {
           <>
             {conversation.is_continuous ? (
               <>
-                <button
-                  onClick={handleTriggerAnalysis}
-                  style={merge(s.buttonPrimary, triggeringAnalysis && s.buttonDisabled)}
-                  disabled={triggeringAnalysis}
-                >
-                  {triggeringAnalysis ? 'Running...' : 'Run Analysis Now'}
-                </button>
+                <div style={{ position: 'relative' }} ref={analysisDropdownRef}>
+                  <div style={{ display: 'flex' }}>
+                    <button
+                      onClick={() => handleTriggerAnalysis('update')}
+                      style={{
+                        ...s.buttonPrimary,
+                        borderTopRightRadius: 0,
+                        borderBottomRightRadius: 0,
+                        ...(triggeringAnalysis ? s.buttonDisabled : {}),
+                      }}
+                      disabled={triggeringAnalysis}
+                    >
+                      {triggeringAnalysis ? 'Running...' : 'Run Analysis Now'}
+                    </button>
+                    <button
+                      onClick={() => setShowAnalysisDropdown(!showAnalysisDropdown)}
+                      style={{
+                        ...s.buttonPrimary,
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        borderLeft: `1px solid ${'var(--color-primary-700)'}`,
+                        padding: `${spacing[2]} ${spacing[2]}`,
+                        ...(triggeringAnalysis ? s.buttonDisabled : {}),
+                      }}
+                      disabled={triggeringAnalysis}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                        <path d="M3 4.5L6 7.5L9 4.5H3Z" />
+                      </svg>
+                    </button>
+                  </div>
+                  {showAnalysisDropdown && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: spacing[1],
+                        backgroundColor: 'var(--color-primary-50)',
+                        border: `1px solid ${'var(--color-primary-300)'}`,
+                        borderRadius: borders.radius.md,
+                        boxShadow: shadows.md,
+                        zIndex: 10,
+                        minWidth: '200px',
+                      }}
+                    >
+                      <button
+                        onClick={() => handleTriggerAnalysis('incremental')}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: `${spacing[3]} ${spacing[4]}`,
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontSize: typography.fontSize.sm,
+                          color: 'var(--color-primary-900)',
+                        }}
+                        className="analysis-dropdown-item"
+                      >
+                        From last analysed time
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Link to={`/conversations/${id}/analysis`} style={s.buttonSecondary}>
                   View Analysis History
                 </Link>
@@ -1698,6 +1782,9 @@ export default function ConversationDetailPage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .analysis-dropdown-item:hover {
+          background-color: var(--color-primary-100) !important;
         }
         @media ${mediaQueries.tabletDown} {
           .convo-detail-page {
