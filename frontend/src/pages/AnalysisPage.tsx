@@ -59,7 +59,7 @@ const styles = {
     margin: 0,
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
@@ -125,7 +125,7 @@ const styles = {
     lineHeight: typography.lineHeight.relaxed,
   },
   questionCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
@@ -192,7 +192,7 @@ const styles = {
     margin: 0,
   },
   perspectiveItem: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
     padding: spacing[3],
     marginTop: spacing[3],
@@ -301,7 +301,7 @@ const styles = {
     color: 'var(--color-primary-600)',
   },
   verbatimSection: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
@@ -330,7 +330,7 @@ const styles = {
     fontSize: typography.fontSize.sm,
     border: `1px solid ${'var(--color-primary-300)'}`,
     borderRadius: borders.radius.md,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
   },
   questionGroup: {
     marginBottom: spacing[5],
@@ -417,7 +417,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     color: 'var(--color-primary-700)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -438,7 +438,7 @@ const styles = {
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
   },
@@ -493,7 +493,7 @@ const styles = {
     gap: spacing[4],
   },
   periodicCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
@@ -544,7 +544,7 @@ const styles = {
   emptyPeriodic: {
     textAlign: 'center' as const,
     padding: spacing[12],
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `2px dashed ${'var(--color-primary-300)'}`,
   },

@@ -67,7 +67,7 @@ const styles = {
     marginTop: spacing[2],
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[6],
@@ -133,7 +133,7 @@ const styles = {
     lineHeight: typography.lineHeight.relaxed,
   },
   questionCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
@@ -207,7 +207,7 @@ const styles = {
   emptyState: {
     textAlign: 'center' as const,
     padding: spacing[8],
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
   },
@@ -267,11 +267,11 @@ const styles = {
     fontSize: typography.fontSize.sm,
     borderRadius: borders.radius.md,
     border: `1px solid ${'var(--color-primary-300)'}`,
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     color: 'var(--color-primary-900)',
   },
   questionGroup: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.lg,
     border: `1px solid ${'var(--color-primary-200)'}`,
     padding: spacing[5],
