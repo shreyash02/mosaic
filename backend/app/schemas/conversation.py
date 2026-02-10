@@ -132,6 +132,10 @@ class ConversationBase(BaseModel):
     analysis_interval: Optional[AnalysisInterval] = Field(None, description="How often to run periodic analysis (daily, weekly, biweekly, monthly)")
     analysis_timezone: Optional[str] = Field(None, description="Timezone for analysis window boundaries")
 
+    # Branding (overrides organization branding if set)
+    brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL (overrides organization branding)")
+    brand_name: Optional[str] = Field(None, max_length=255, description="Brand name (overrides organization branding)")
+
     @field_validator('timezone')
     @classmethod
     def normalize_timezone(cls, v: Optional[str]) -> Optional[str]:
@@ -184,6 +188,10 @@ class ConversationUpdate(BaseModel):
     is_continuous: Optional[bool] = None
     analysis_interval: Optional[AnalysisInterval] = None
     analysis_timezone: Optional[str] = None
+
+    # Branding (overrides organization branding if set)
+    brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL (overrides organization branding)")
+    brand_name: Optional[str] = Field(None, max_length=255, description="Brand name (overrides organization branding)")
 
     @field_validator('timezone')
     @classmethod

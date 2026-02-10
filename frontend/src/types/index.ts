@@ -153,6 +153,9 @@ export interface Conversation {
   analysis_interval?: AnalysisInterval;
   next_analysis_at?: string;
   analysis_timezone?: string;
+  // Branding (overrides organization branding)
+  brand_logo_url?: string;
+  brand_name?: string;
 }
 
 export interface ConversationCreate {
@@ -187,6 +190,9 @@ export interface ConversationCreate {
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
   analysis_timezone?: string;
+  // Branding (overrides organization branding)
+  brand_logo_url?: string;
+  brand_name?: string;
 }
 
 export interface ConversationListItem {
@@ -550,6 +556,8 @@ export interface Organization {
   id: string;
   name: string;
   description?: string;
+  brand_logo_url?: string;
+  brand_name?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -571,11 +579,15 @@ export interface OrganizationWithMembers extends Organization {
 export interface OrganizationCreate {
   name: string;
   description?: string;
+  brand_logo_url?: string;
+  brand_name?: string;
 }
 
 export interface OrganizationUpdate {
   name?: string;
   description?: string;
+  brand_logo_url?: string;
+  brand_name?: string;
 }
 
 export interface OrganizationInvitation {

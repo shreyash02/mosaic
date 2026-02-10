@@ -8,6 +8,8 @@ interface QRCodePosterProps {
   url: string;
   accessCode: string;
   onClose: () => void;
+  defaultBrandLogoUrl?: string;
+  defaultBrandName?: string;
 }
 
 interface PosterConfig {
@@ -18,21 +20,54 @@ interface PosterConfig {
   logoSize: number; // percentage: 50-150
 }
 
-export default function QRCodePoster({ url, accessCode, onClose }: QRCodePosterProps) {
+export default function QRCodePoster({ url, accessCode, onClose, defaultBrandLogoUrl, defaultBrandName }: QRCodePosterProps) {
   const posterRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<CustomFileInputRef>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [loadingStoredLogo, setLoadingStoredLogo] = useState(false);
   const [error, setError] = useState('');
+
+  // Determine if we have stored branding to use as defaults
+  const hasStoredBranding = !!(defaultBrandLogoUrl || defaultBrandName);
 
   const [config, setConfig] = useState<PosterConfig>({
     topText: 'Leave feedback here',
     brandLogo: '',
-    brandName: '',
-    showBranding: false,
+    brandName: defaultBrandName || '',
+    showBranding: hasStoredBranding,
     logoSize: 100,
   });
+
+  // Load stored logo as base64 on mount if available
+  useEffect(() => {
+    if (defaultBrandLogoUrl && !config.brandLogo) {
+      setLoadingStoredLogo(true);
+      // Use the URL directly - relative URLs like /api/uploads/... work in browser
+      const logoUrl = defaultBrandLogoUrl;
+
+      // Fetch and convert to base64 for html2canvas compatibility
+      fetch(logoUrl)
+        .then(response => response.blob())
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            setConfig(prev => ({ ...prev, brandLogo: reader.result as string }));
+            setLoadingStoredLogo(false);
+          };
+          reader.onerror = () => {
+            console.error('Failed to load stored logo');
+            setLoadingStoredLogo(false);
+          };
+          reader.readAsDataURL(blob);
+        })
+        .catch(() => {
+          console.error('Failed to fetch stored logo');
+          setLoadingStoredLogo(false);
+        });
+    }
+  }, [defaultBrandLogoUrl]);
 
   // Generate QR code on mount
   useEffect(() => {
@@ -162,7 +197,9 @@ export default function QRCodePoster({ url, accessCode, onClose }: QRCodePosterP
               <>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Brand Logo</label>
-                  {config.brandLogo ? (
+                  {loadingStoredLogo ? (
+                    <div style={styles.loadingLogo}>Loading stored logo...</div>
+                  ) : config.brandLogo ? (
                     <div style={styles.logoPreview}>
                       <img src={config.brandLogo} alt="Brand logo" style={styles.logoImage} />
                       <button
@@ -414,6 +451,14 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid var(--color-error)',
     borderRadius: borders.radius.sm,
     cursor: 'pointer',
+  },
+  loadingLogo: {
+    padding: `${spacing[3]} ${spacing[4]}`,
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-500)',
+    backgroundColor: 'var(--color-primary-100)',
+    borderRadius: borders.radius.md,
+    textAlign: 'center' as const,
   },
   previewContainer: {
     flex: 1,

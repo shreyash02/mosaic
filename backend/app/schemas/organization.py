@@ -14,6 +14,8 @@ class OrganizationBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
+    brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL for QR code posters and other branding")
+    brand_name: Optional[str] = Field(None, max_length=255, description="Brand name displayed on QR code posters")
 
 
 class OrganizationCreate(OrganizationBase):
@@ -27,6 +29,8 @@ class OrganizationUpdate(BaseModel):
 
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
+    brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL for QR code posters and other branding")
+    brand_name: Optional[str] = Field(None, max_length=255, description="Brand name displayed on QR code posters")
 
 
 class Organization(OrganizationBase):

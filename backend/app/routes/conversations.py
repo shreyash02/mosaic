@@ -839,6 +839,7 @@ async def update_conversation(
             # Recalculate next_analysis_at when interval changes for active continuous conversations
             if conversation.is_continuous and conversation.state == ConversationState.ACTIVE.value:
                 conversation.next_analysis_at = calculate_next_analysis_time(
+                    datetime.utcnow(),
                     value.value
                 )
         elif field in ['next_instance_date', 'recurrence_end_date'] and value:

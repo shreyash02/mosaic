@@ -516,6 +516,7 @@ export default function ConversationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [organizationName, setOrganizationName] = useState<string | null>(null);
+  const [organizationBranding, setOrganizationBranding] = useState<{ brand_logo_url?: string; brand_name?: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -628,6 +629,10 @@ export default function ConversationDetailPage() {
         try {
           const orgData = await api.getOrganization(convData.organization_id);
           setOrganizationName(orgData.name);
+          setOrganizationBranding({
+            brand_logo_url: orgData.brand_logo_url,
+            brand_name: orgData.brand_name,
+          });
         } catch (err) {
           console.error('Failed to load organization:', err);
         }
@@ -1698,6 +1703,8 @@ export default function ConversationDetailPage() {
           url={getInviteLink()}
           accessCode={conversation.access_code}
           onClose={() => setShowQRCodeModal(false)}
+          defaultBrandLogoUrl={conversation.brand_logo_url || organizationBranding?.brand_logo_url}
+          defaultBrandName={conversation.brand_name || organizationBranding?.brand_name}
         />
       )}
 

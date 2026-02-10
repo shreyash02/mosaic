@@ -14,6 +14,59 @@ const styles = {
     maxWidth: '600px',
     margin: '0 auto',
   },
+  logoPreview: {
+    width: '80px',
+    height: '80px',
+    objectFit: 'contain' as const,
+    border: `1px solid ${'var(--color-primary-200)'}`,
+    borderRadius: borders.radius.md,
+    backgroundColor: 'var(--color-primary-100)',
+  },
+  logoPlaceholder: {
+    width: '80px',
+    height: '80px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: `1px dashed ${'var(--color-primary-300)'}`,
+    borderRadius: borders.radius.md,
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-400)',
+    fontSize: typography.fontSize.xs,
+  },
+  logoUploadRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[4],
+  },
+  logoActions: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[2],
+  },
+  uploadButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  removeButton: {
+    padding: `${spacing[1]} ${spacing[3]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-500)',
+    fontSize: typography.fontSize.xs,
+    border: 'none',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+  },
   backLink: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -280,6 +333,9 @@ export default function OrganizationSettingsPage() {
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [brandLogoUrl, setBrandLogoUrl] = useState('');
+  const [brandName, setBrandName] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
@@ -304,6 +360,8 @@ export default function OrganizationSettingsPage() {
       setOrganization(orgData);
       setName(orgData.name);
       setDescription(orgData.description || '');
+      setBrandLogoUrl(orgData.brand_logo_url || '');
+      setBrandName(orgData.brand_name || '');
 
       const currentUser = await api.getCurrentUser();
       const membership = orgData.members.find(m => m.user_id === currentUser.id);
@@ -337,6 +395,8 @@ export default function OrganizationSettingsPage() {
       const updated = await api.updateOrganization(id!, {
         name: name.trim(),
         description: description.trim() || undefined,
+        brand_logo_url: brandLogoUrl.trim() || undefined,
+        brand_name: brandName.trim() || undefined,
       });
 
       setOrganization({ ...organization!, ...updated });
@@ -346,6 +406,35 @@ export default function OrganizationSettingsPage() {
       setError(err.response?.data?.detail || 'Failed to update organization');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+
+    setUploadingLogo(true);
+    setError('');
+
+    try {
+      const response = await api.uploadImage(file);
+      setBrandLogoUrl(response.url);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -493,6 +582,69 @@ export default function OrganizationSettingsPage() {
                 </Link>
               </div>
             </form>
+          </div>
+
+          {/* Branding Settings */}
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Branding</h2>
+            <p style={{ ...styles.hint, marginBottom: spacing[6] }}>
+              Customize how your organization appears on QR code posters and other materials.
+            </p>
+            <div style={styles.form}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Organization Logo</label>
+                <div style={styles.logoUploadRow}>
+                  {brandLogoUrl ? (
+                    <img
+                      src={brandLogoUrl}
+                      alt="Brand logo"
+                      style={styles.logoPreview}
+                    />
+                  ) : (
+                    <div style={styles.logoPlaceholder}>No logo</div>
+                  )}
+                  <div style={styles.logoActions}>
+                    <label style={styles.uploadButton}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        style={{ display: 'none' }}
+                        disabled={uploadingLogo}
+                      />
+                      {uploadingLogo ? 'Uploading...' : (brandLogoUrl ? 'Change Logo' : 'Upload Logo')}
+                    </label>
+                    {brandLogoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setBrandLogoUrl('')}
+                        style={styles.removeButton}
+                      >
+                        Remove logo
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <span style={styles.hint}>Recommended: Square image, at least 200x200px</span>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label htmlFor="brandName" style={styles.label}>
+                  Brand Name (Optional)
+                </label>
+                <input
+                  id="brandName"
+                  type="text"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  placeholder="e.g., Company Name, Team Name"
+                  maxLength={255}
+                  style={styles.input}
+                  className="org-settings-input"
+                />
+                <span style={styles.hint}>Displayed on QR code posters. If not set, organization name will be used.</span>
+              </div>
+            </div>
           </div>
 
           {/* Danger Zone */}

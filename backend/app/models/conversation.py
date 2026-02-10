@@ -53,6 +53,10 @@ class Conversation(Base):
     header_image_url = Column(String(500), nullable=True)
     # Optional header image URL displayed when users are responding
 
+    # Branding (overrides organization branding if set)
+    brand_logo_url = Column(String(500), nullable=True)
+    brand_name = Column(String(255), nullable=True)
+
     # Access
     access_code = Column(String(50), unique=True, nullable=False, index=True)
 
