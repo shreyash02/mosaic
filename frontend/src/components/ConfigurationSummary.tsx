@@ -1,8 +1,134 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { IntentPreset } from '../types/intentPresets';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { GearIcon } from './icons';
+
+// Custom Select Component
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  id?: string;
+}
+
+function CustomSelect({ value, options, onChange, id }: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }} id={id}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: spacing[3],
+          fontSize: typography.fontSize.sm,
+          border: `${borders.width.thin} solid var(--color-primary-400)`,
+          borderRadius: borders.radius.md,
+          backgroundColor: 'var(--color-primary-50)',
+          color: 'var(--color-primary-900)',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          textAlign: 'left',
+        }}
+      >
+        <span>{selectedOption?.label || 'Select...'}</span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+            flexShrink: 0,
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          marginTop: '4px',
+          backgroundColor: 'var(--color-primary-50)',
+          border: `${borders.width.thin} solid var(--color-primary-300)`,
+          borderRadius: borders.radius.md,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          zIndex: 100,
+          overflow: 'hidden',
+        }}>
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: `${spacing[2]} ${spacing[3]}`,
+                fontSize: typography.fontSize.sm,
+                color: option.value === value ? 'var(--color-primary-900)' : 'var(--color-primary-700)',
+                backgroundColor: option.value === value ? 'var(--color-primary-200)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[2],
+              }}
+              onMouseEnter={(e) => {
+                if (option.value !== value) {
+                  e.currentTarget.style.backgroundColor = 'var(--color-primary-100)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = option.value === value ? 'var(--color-primary-200)' : 'transparent';
+              }}
+            >
+              {option.value === value && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              <span style={{ marginLeft: option.value !== value ? '22px' : 0 }}>{option.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ConfigurationSummaryProps {
   intent: IntentPreset;
@@ -222,25 +348,16 @@ export default function ConfigurationSummary({
               }}>
                 Response Privacy *
               </label>
-              <select
+              <CustomSelect
                 id="anonymityLevel"
                 value={anonymityLevel}
-                onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
-                required
-                style={{
-                  width: '100%',
-                  padding: spacing[3],
-                  fontSize: typography.fontSize.sm,
-                  border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
-                  borderRadius: borders.radius.md,
-                  backgroundColor: 'var(--color-primary-50)',
-                  color: 'var(--color-primary-900)',
-                }}
-              >
-                <option value={AnonymityLevel.FULLY_ANONYMOUS}>Fully Anonymous</option>
-                <option value={AnonymityLevel.PLATFORM_TRACKED}>Anonymous to You</option>
-                <option value={AnonymityLevel.REVEALABLE}>Identity on Request</option>
-              </select>
+                onChange={(val) => onAnonymityChange(val as AnonymityLevel)}
+                options={[
+                  { value: AnonymityLevel.FULLY_ANONYMOUS, label: 'Fully Anonymous' },
+                  { value: AnonymityLevel.PLATFORM_TRACKED, label: 'Anonymous to You' },
+                  { value: AnonymityLevel.REVEALABLE, label: 'Revealable' },
+                ]}
+              />
               <p style={{
                 margin: 0,
                 marginTop: spacing[1],
@@ -267,25 +384,16 @@ export default function ConfigurationSummary({
               }}>
                 Results Visibility *
               </label>
-              <select
+              <CustomSelect
                 id="resultsAccess"
                 value={resultsAccess}
-                onChange={(e) => onResultsAccessChange(e.target.value as ResultsAccess)}
-                required
-                style={{
-                  width: '100%',
-                  padding: spacing[3],
-                  fontSize: typography.fontSize.sm,
-                  border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
-                  borderRadius: borders.radius.md,
-                  backgroundColor: 'var(--color-primary-50)',
-                  color: 'var(--color-primary-900)',
-                }}
-              >
-                <option value={ResultsAccess.CREATOR_ONLY}>Only Me</option>
-                <option value={ResultsAccess.PARTICIPANTS}>All Respondents</option>
-                <option value={ResultsAccess.PUBLIC_LINK}>Public (Anyone with Link)</option>
-              </select>
+                onChange={(val) => onResultsAccessChange(val as ResultsAccess)}
+                options={[
+                  { value: ResultsAccess.CREATOR_ONLY, label: 'Only Me' },
+                  { value: ResultsAccess.PARTICIPANTS, label: 'All Respondents' },
+                  { value: ResultsAccess.PUBLIC_LINK, label: 'Public (Anyone with Link)' },
+                ]}
+              />
               <p style={{
                 margin: 0,
                 marginTop: spacing[1],
