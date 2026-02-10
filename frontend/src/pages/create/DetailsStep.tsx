@@ -13,7 +13,10 @@ export default function DetailsStep() {
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
+  const [titleTouched, setTitleTouched] = useState(false);
   const fileInputRef = useRef<CustomFileInputRef>(null);
+
+  const titleError = titleTouched && !formState.title.trim() ? 'Title is required' : '';
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,11 +55,9 @@ export default function DetailsStep() {
 
   const handleNext = () => {
     if (!formState.title.trim()) {
-      setError('Title is required');
+      setTitleTouched(true);
       return;
     }
-
-    setError('');
 
     // Navigate based on mode
     if (formState.isGuidedMode) {
@@ -107,13 +108,21 @@ export default function DetailsStep() {
             type="text"
             value={formState.title}
             onChange={(e) => updateFormState({ title: e.target.value })}
+            onBlur={() => setTitleTouched(true)}
             required
             placeholder="e.g., Team retrospective: what's working & what's not"
             autoFocus
+            style={titleError ? { borderColor: 'var(--color-error)' } : undefined}
           />
-          <small className="form-help-text">
-            This is the title you'll see in your dashboard and conversation list.
-          </small>
+          {titleError ? (
+            <small style={{ color: 'var(--color-error)', display: 'block', marginTop: '0.25rem' }}>
+              {titleError}
+            </small>
+          ) : (
+            <small className="form-help-text">
+              This is the title you'll see in your dashboard and conversation list.
+            </small>
+          )}
         </div>
 
         <div className="form-group">

@@ -1006,21 +1006,13 @@ export default function ConversationDetailPage() {
       <div style={s.actionsBar} className="convo-detail-actions">
         {conversation.state === ConversationState.DRAFT && (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
-              <button
-                onClick={() => setShowActivateModal(true)}
-                style={merge(s.buttonPrimary, (actionLoading || !canActivate) && s.buttonDisabled)}
-                disabled={actionLoading || !canActivate}
-                title={!canActivate ? activationBlockers.join(', ') : undefined}
-              >
-                Activate
-              </button>
-              {!canActivate && (
-                <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-error)' }}>
-                  {activationBlockers.join(' • ')}
-                </span>
-              )}
-            </div>
+            <button
+              onClick={() => setShowActivateModal(true)}
+              style={merge(s.buttonPrimary, (actionLoading || !canActivate) && s.buttonDisabled)}
+              disabled={actionLoading || !canActivate}
+            >
+              Activate
+            </button>
             <Link to={`/conversations/${id}/edit`} style={s.buttonSecondary}>
               Edit
             </Link>
@@ -1116,6 +1108,34 @@ export default function ConversationDetailPage() {
           Delete
         </button>
       </div>
+
+      {/* Activation blockers */}
+      {conversation.state === ConversationState.DRAFT && !canActivate && (
+        <div style={{
+          marginBottom: spacing[4],
+          padding: spacing[4],
+          backgroundColor: 'var(--color-error-light)',
+          borderRadius: borders.radius.md,
+        }}>
+          <p style={{
+            margin: 0,
+            marginBottom: spacing[2],
+            fontWeight: typography.fontWeight.medium,
+            color: 'var(--color-error-text)',
+          }}>
+            Before activating, please fix the following:
+          </p>
+          <ul style={{
+            margin: 0,
+            paddingLeft: spacing[6],
+            color: 'var(--color-error-text)',
+          }}>
+            {activationBlockers.map((blocker, idx) => (
+              <li key={idx}>{blocker}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Messages */}
       {error && <div style={s.errorMessage}>{error}</div>}
