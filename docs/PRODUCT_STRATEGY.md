@@ -220,7 +220,23 @@ Mosaic is the platform that enables psychological safety through:
 
 **Why Mosaic Wins**: AI synthesis + longitudinal tracking + professional export
 
-#### 3. The Educator (Dr. Chen) - TERTIARY TARGET
+#### 3. The Business Owner (Maria) - SECONDARY TARGET
+**Job Title**: Restaurant Owner, Cafe Manager, Hotel GM, Retail Store Manager
+**Context**:
+- Wants ongoing customer feedback, not just post-visit surveys
+- Current methods (comment cards, email surveys) get low response rates
+- Needs to spot issues quickly and track improvement over time
+- Small-to-medium business, limited analytics resources
+
+**Needs**:
+- Always-available feedback channel (QR code, link)
+- Low friction for customers (no accounts, quick input)
+- Regular summaries without manual analysis
+- Trend tracking to see if changes are working
+
+**Why Mosaic Wins**: Continuous conversation mode + periodic AI extraction + longitudinal trends. Turns ambient feedback into actionable weekly/monthly reports without manual effort.
+
+#### 4. The Educator (Dr. Chen) - TERTIARY TARGET
 **Job Title**: Professor, Course Instructor
 **Context**:
 - Collects course feedback from students
@@ -236,13 +252,43 @@ Mosaic is the platform that enables psychological safety through:
 
 **Why Mosaic Wins**: True anonymity + AI theme extraction + Series for multi-semester trends
 
+### Ambient Feedback: The Continuous Conversation Model
+
+Beyond traditional episodic surveys, Mosaic enables **ambient feedback** - persistent channels that capture thoughts as they naturally occur, with periodic AI-powered extraction of insights.
+
+**What It Is:**
+- Always-on feedback channels (via QR code, link, or integration)
+- People drop feedback whenever they think of it - not on a schedule
+- AI periodically extracts summaries, themes, and trends (daily/weekly/monthly)
+
+**Why It Works:**
+1. **Matches natural behavior** - Feedback happens at random moments. Traditional surveys miss these because they ask at scheduled times.
+2. **Lower friction, higher authenticity** - "Drop a thought whenever" feels less like work than "complete this survey by Friday."
+3. **Longitudinal insights** - Captures trends over time, not just snapshots.
+4. **Actionable through AI extraction** - Unlike suggestion boxes that collect dust, periodic summarization makes the stream useful.
+
+**Key Use Cases for Ambient Feedback:**
+
+| Context | How It Works | Value |
+|---------|--------------|-------|
+| **Restaurant/Cafe** | QR code on tables → always-on feedback → weekly summary for managers | Replace post-visit emails with 5% response rates |
+| **Hotel/Hospitality** | Room QR code → guests share experiences during stay → daily briefings | Real-time service recovery, not just post-checkout surveys |
+| **Retail Stores** | Feedback station or QR → ongoing customer sentiment → weekly trends | Continuous pulse on customer experience |
+| **Team Health** | Persistent "team pulse" channel → monthly AI-extracted themes | More organic than quarterly engagement surveys |
+| **Product Feedback** | Users drop thoughts during usage → periodic pain point extraction | Catches issues as they happen, not in scheduled research |
+| **Community Input** | Open channel for residents/members → periodic sentiment reports | Ongoing dialogue, not one-off consultations |
+
+**The Differentiator:** Slack channels and physical suggestion boxes fail because nobody reads them. Mosaic's periodic AI summarization transforms continuous input into actionable insights.
+
 ### Core Use Cases (Priority Order)
 
 1. **Team retrospectives and pulse surveys** (PRIMARY - Agile teams)
-2. **Anonymous upward feedback / 360 reviews** (HIGH VALUE)
-3. **Course evaluations** (EDUCATION SEGMENT)
-4. **Organizational change sentiment tracking** (HR USE CASE)
-5. **Community research and input gathering** (SECONDARY)
+2. **Ambient feedback channels** (HIGH VALUE - continuous mode)
+3. **Anonymous upward feedback / 360 reviews** (HIGH VALUE)
+4. **Customer experience feedback** (HOSPITALITY/RETAIL - ambient mode)
+5. **Course evaluations** (EDUCATION SEGMENT)
+6. **Organizational change sentiment tracking** (HR USE CASE)
+7. **Community research and input gathering** (SECONDARY)
 
 ### Market Segmentation Strategy
 
@@ -260,6 +306,7 @@ Mosaic is the platform that enables psychological safety through:
 | Segment | Size | Pain Point | Why Mosaic Wins | Timeline |
 |---------|------|------------|-----------------|----------|
 | **Agile/Scrum Teams** | Large | Generic retro tools don't track improvement | Series + trends | 0-12 months |
+| **Customer-Facing Businesses** | Large | Post-visit surveys get 5% response; no ongoing pulse | Continuous mode + QR codes + periodic AI summaries | 6-12 months |
 | **Educational Institutions** | Medium | Anonymous student feedback with insights | Anonymity + AI at accessible price | 6-12 months |
 | **Remote/Distributed Teams** | Growing | Need async feedback with trust | True anonymity for dispersed teams | 6-12 months |
 | **Coaching/Consulting** | Medium | Need honest client feedback | Professional AI insights presentation | 12-18 months |
@@ -271,7 +318,7 @@ Mosaic is the platform that enables psychological safety through:
 |--------|------------------|-------------------------|----------|
 | **360 Feedback/Peer Reviews** | Medium | High (anonymity + multi-question) | 12-18 months |
 | **Exit Interviews** | Low | High | 6-12 months |
-| **Customer Feedback** | Medium | Medium (different anonymity needs) | 18-24 months |
+| **Customer Feedback** | Low | High (continuous mode is perfect fit) | 6-12 months |
 | **Research Panels** | High | Low (needs recruitment features) | Not recommended |
 
 ---
@@ -285,14 +332,18 @@ Mosaic is the platform that enables psychological safety through:
 - [ ] **Copy Conversation Link Button** (0.5 days) - One-click copy for participant join URL
 - [ ] **Response Count in Dashboard** (0.5 days) - Show prominently in conversation cards
 - [ ] **Improve Empty States** (1 day) - Better guidance when no conversations exist
+- [ ] **Response Threshold Setting** (1-2 days) - "Don't show results until X responses" to protect anonymity in small teams (competitors have this)
 
 ### Feature Enhancements (Deepen Existing Capabilities)
 
+- [ ] **Slack Integration** (1-2 weeks) - Notifications when conversation opens/closes/results ready, post links to channels. HIGH PRIORITY - #1 blocker for team adoption per competitive analysis
+- [ ] **Action Items from Retrospectives** (1 week) - Track decisions/commitments from feedback, not just what was said. Key differentiator vs Retrium/TeamRetro
 - [ ] **Enhanced Analysis Visualization** (1-2 weeks) - Bar charts for ratings, pie charts for polls, word clouds
 - [ ] **Response Time Analytics** (3-5 days) - Track submission patterns, identify engagement trends
 - [ ] **Comparative Analysis** (1-2 weeks) - Compare across conversations in same series, highlight sentiment changes
 - [ ] **Richer Question Types** (1-2 weeks) - Matrix questions, NPS with analysis, ranking questions
 - [ ] **Smart Scheduling** (3-5 days) - Time zone-aware, recurring patterns, calendar view
+- [ ] **Conditional/Branching Logic** (1-2 weeks) - "If rating < 5, ask why" - smarter surveys
 
 ### User Experience Optimizations
 
@@ -723,3 +774,5 @@ Based on comprehensive architecture review (2026-01-31):
 - **2026-01-31:** Added deep competitive analysis, USP clarification, market segmentation, feature parity analysis, enhanced roadmap with long-term initiatives, refined strategic decisions with recommendations
 - **2026-01-31:** Added comprehensive technical debt analysis from architecture review, identified critical security issue (hardcoded OAuth credentials), updated roadmap priorities to include security fixes
 - **2026-01-31:** Created detailed refactoring plan for conversations.py route splitting (see REFACTORING_PLAN_CONVERSATIONS.md)
+- **2026-02-10:** Added missing features from competitive analysis: Response Threshold, Slack Integration, Action Items, Conditional Logic
+- **2026-02-10:** Added "Ambient Feedback" concept - continuous conversation mode for persistent feedback channels with periodic AI extraction. Added customer-facing businesses persona (restaurants, hotels, retail) and expanded use cases
