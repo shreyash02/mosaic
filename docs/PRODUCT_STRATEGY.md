@@ -446,7 +446,7 @@ Based on comprehensive architecture review (2026-01-31):
 - [x] **Add Rate Limiting** - ✅ IMPLEMENTED
   - Using SlowAPI with in-memory storage
   - Limits: login (10/min), register (5/min), responses (20/min), analysis (10/min)
-  - Can upgrade to Redis for multi-instance deployments
+  - **TODO**: Upgrade to Redis backend when scaling to multi-instance deployments (in-memory doesn't share state across instances)
 
 #### Accumulating Debt (2-4 weeks)
 
@@ -478,9 +478,10 @@ Based on comprehensive architecture review (2026-01-31):
 
 #### Improvement Opportunities (Lower Priority)
 
-- [ ] **Implement Caching** (1-2 weeks)
+- [ ] **Implement Caching / Redis Infrastructure** (1-2 weeks)
   - Redis for sessions, cache analysis results
   - Response caching for expensive queries
+  - Upgrade rate limiting to Redis backend for multi-instance deployments
 
 - [ ] **Audit Logging** (1 week)
   - Track who did what when
