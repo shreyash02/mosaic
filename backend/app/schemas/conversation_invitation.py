@@ -73,3 +73,15 @@ class ConversationInvitationWithConversation(ConversationInvitation):
 
     conversation: ConversationListItem
 
+
+class CSVUploadResult(BaseModel):
+    """Schema for CSV upload response."""
+
+    conversation_id: UUID
+    total_rows: int = Field(..., description="Total rows processed from CSV")
+    invitations_created: int = Field(..., description="Number of new invitations created")
+    skipped_existing: int = Field(..., description="Emails already invited (skipped)")
+    skipped_invalid: int = Field(..., description="Invalid email formats (skipped)")
+    invalid_emails: List[str] = Field(default_factory=list, description="List of invalid email strings")
+    invitations: List[ConversationInvitation] = Field(default_factory=list, description="Newly created invitations")
+

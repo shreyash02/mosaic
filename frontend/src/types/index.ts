@@ -468,6 +468,16 @@ export interface InvitationListResponse {
   invitations: ConversationInvitation[];
 }
 
+export interface CSVUploadResult {
+  conversation_id: string;
+  total_rows: number;
+  invitations_created: number;
+  skipped_existing: number;
+  skipped_invalid: number;
+  invalid_emails: string[];
+  invitations: ConversationInvitation[];
+}
+
 export interface ConversationInvitationWithConversation extends ConversationInvitation {
   conversation: ConversationListItem;
 }

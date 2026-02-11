@@ -24,6 +24,7 @@ import type {
   CodeValidation,
   InviteUsersResponse,
   InvitationListResponse,
+  CSVUploadResult,
   ConversationInvitationWithConversation,
   AdminLoginRequest,
   AdminToken,
@@ -398,6 +399,21 @@ class ApiService {
   async deleteInvitation(conversationId: string, invitationId: string): Promise<SuccessResponse> {
     const response = await this.client.delete<SuccessResponse>(
       `/conversations/${conversationId}/invitations/${invitationId}`
+    );
+    return response.data;
+  }
+
+  async uploadInvitationsCSV(conversationId: string, file: File): Promise<CSVUploadResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post<CSVUploadResult>(
+      `${this.client.defaults.baseURL}/conversations/${conversationId}/invitations/upload-csv`,
+      formData,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      }
     );
     return response.data;
   }

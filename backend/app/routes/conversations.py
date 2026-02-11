@@ -1,13 +1,16 @@
 """Conversation routes."""
 
+import csv
+import io
 import logging
+import re
 import secrets
 import string
 from datetime import datetime, timedelta
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 
@@ -48,6 +51,7 @@ from app.schemas.conversation_invitation import (
     ConversationInvitation as ConversationInvitationSchema,
     ConversationInvitationWithUser,
     ConversationInvitationWithConversation,
+    CSVUploadResult,
 )
 from app.schemas.common import DeleteResponse
 from app.schemas.periodic_analysis import EnableContinuousRequest
@@ -1528,6 +1532,195 @@ async def invite_users(
     return InviteUsersResponse(
         conversation_id=conversation.id,
         invitations_created=len(created_invitations),
+        invitations=[ConversationInvitationSchema.model_validate(inv) for inv in created_invitations]
+    )
+
+
+@router.post("/{conversation_id}/invitations/upload-csv", response_model=CSVUploadResult, status_code=status.HTTP_201_CREATED)
+async def upload_invitations_csv(
+    conversation_id: UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload a CSV file to batch invite users to a conversation.
+
+    The CSV should contain email addresses. Accepts formats:
+    - One email per line
+    - CSV with 'email' column header
+    - CSV where first column contains emails
+
+    Args:
+        conversation_id: Conversation ID
+        file: CSV file upload
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Upload results with counts and any invalid emails
+
+    Raises:
+        HTTPException: If conversation not found, not invite-only, or file invalid
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    # Check conversation state
+    if conversation.state not in [ConversationState.DRAFT.value, ConversationState.ACTIVE.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only invite users to draft or active conversations"
+        )
+
+    # Validate invite_only mode
+    if not conversation.invite_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitations can only be sent for conversations with invite-only mode enabled"
+        )
+
+    # Validate file type
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file provided"
+        )
+
+    if not file.filename.lower().endswith('.csv'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be a CSV file"
+        )
+
+    # Read and parse CSV
+    try:
+        content = await file.read()
+        # Try to decode as UTF-8, fallback to latin-1
+        try:
+            text = content.decode('utf-8')
+        except UnicodeDecodeError:
+            text = content.decode('latin-1')
+
+        # Parse CSV
+        emails = []
+        reader = csv.reader(io.StringIO(text))
+        rows = list(reader)
+
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file is empty"
+            )
+
+        # Check if first row is a header
+        first_row = rows[0]
+        email_column_index = 0
+        has_header = False
+
+        # Look for 'email' column header (case-insensitive)
+        for i, cell in enumerate(first_row):
+            if cell.strip().lower() == 'email':
+                email_column_index = i
+                has_header = True
+                break
+
+        # If no 'email' header but first cell looks like a header, skip it
+        if not has_header and first_row and not '@' in first_row[0]:
+            # Check if any cell in first row contains @, if not treat as header
+            if not any('@' in cell for cell in first_row):
+                has_header = True
+
+        start_row = 1 if has_header else 0
+
+        for row in rows[start_row:]:
+            if row and len(row) > email_column_index:
+                email = row[email_column_index].strip()
+                if email:
+                    emails.append(email)
+
+    except csv.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid CSV format: {str(e)}"
+        )
+
+    if not emails:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No email addresses found in CSV"
+        )
+
+    # Limit to 1000 emails per upload
+    if len(emails) > 1000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CSV contains too many emails. Maximum 1000 per upload."
+        )
+
+    # Simple email validation regex
+    email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+    total_rows = len(emails)
+    valid_emails = []
+    invalid_emails = []
+
+    for email in emails:
+        email_lower = email.lower()
+        if email_pattern.match(email_lower):
+            valid_emails.append(email_lower)
+        else:
+            invalid_emails.append(email)
+
+    # Get existing invitations for this conversation
+    existing_emails = set(
+        inv.email for inv in db.query(ConversationInvitation.email).filter(
+            ConversationInvitation.conversation_id == conversation.id
+        ).all()
+    )
+
+    # Create invitations for new emails
+    created_invitations = []
+    skipped_existing = 0
+
+    for email in valid_emails:
+        if email in existing_emails:
+            skipped_existing += 1
+            continue
+
+        # Check if user exists
+        invited_user = db.query(User).filter(User.email == email).first()
+
+        # Generate invitation token
+        invitation_token = generate_access_code(length=24)
+
+        invitation = ConversationInvitation(
+            conversation_id=conversation.id,
+            email=email,
+            invited_by_id=current_user.id,
+            invited_user_id=invited_user.id if invited_user else None,
+            invitation_token=invitation_token,
+        )
+        db.add(invitation)
+        created_invitations.append(invitation)
+        existing_emails.add(email)  # Prevent duplicates within same upload
+
+    db.commit()
+
+    # Refresh invitations
+    for inv in created_invitations:
+        db.refresh(inv)
+
+    # Send emails if conversation is active
+    if conversation.state == ConversationState.ACTIVE.value:
+        await send_pending_invitation_emails(conversation, db, current_user)
+
+    return CSVUploadResult(
+        conversation_id=conversation.id,
+        total_rows=total_rows,
+        invitations_created=len(created_invitations),
+        skipped_existing=skipped_existing,
+        skipped_invalid=len(invalid_emails),
+        invalid_emails=invalid_emails[:50],  # Limit to first 50 invalid emails
         invitations=[ConversationInvitationSchema.model_validate(inv) for inv in created_invitations]
     )
 

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Conversation, InvitationListResponse } from '../types';
+import type { Conversation, InvitationListResponse, CSVUploadResult } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, transitions } from '../styles';
@@ -223,6 +223,79 @@ const styles = {
     color: 'var(--color-primary-500)',
     marginBottom: spacing[4],
   },
+  csvUploadSection: {
+    marginTop: spacing[4],
+    paddingTop: spacing[4],
+    borderTop: `1px solid ${'var(--color-primary-200)'}`,
+  },
+  csvUploadLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-700)',
+    marginBottom: spacing[2],
+  },
+  csvUploadRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+    flexWrap: 'wrap' as const,
+  },
+  fileInput: {
+    display: 'none',
+  },
+  fileInputLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-700)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  selectedFile: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-600)',
+  },
+  uploadResult: {
+    marginTop: spacing[4],
+    padding: spacing[4],
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.md,
+    border: `1px solid ${'var(--color-primary-200)'}`,
+  },
+  uploadResultTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+    marginBottom: spacing[2],
+  },
+  uploadResultStats: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: spacing[4],
+    marginBottom: spacing[2],
+  },
+  uploadResultStat: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-600)',
+  },
+  uploadResultStatValue: {
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+  },
+  invalidEmailsList: {
+    marginTop: spacing[2],
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+  },
   error: {
     backgroundColor: 'var(--color-primary-100)',
     border: `1px solid ${'var(--color-primary-300)'}`,
@@ -271,6 +344,10 @@ const hoverStyles = `
   .manage-table-row:hover {
     background-color: ${'var(--color-primary-50)'};
   }
+  .manage-file-input-label:hover {
+    background-color: ${'var(--color-primary-100)'};
+    border-color: ${'var(--color-primary-400)'};
+  }
 `;
 
 export default function ManageInvitationsPage() {
@@ -285,6 +362,10 @@ export default function ManageInvitationsPage() {
   const [inviting, setInviting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<CSVUploadResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -347,6 +428,35 @@ export default function ManageInvitationsPage() {
       setError(err.response?.data?.detail || 'Failed to delete invitation');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCsvFile(file);
+      setUploadResult(null);
+    }
+  };
+
+  const handleCSVUpload = async () => {
+    if (!id || !csvFile) return;
+
+    setUploading(true);
+    setError('');
+    setUploadResult(null);
+    try {
+      const result = await api.uploadInvitationsCSV(id, csvFile);
+      setUploadResult(result);
+      setCsvFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to upload CSV');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -471,6 +581,88 @@ export default function ManageInvitationsPage() {
               >
                 {inviting ? 'Sending Invitations...' : 'Send Invitations'}
               </button>
+
+              {/* CSV Upload Section */}
+              <div style={styles.csvUploadSection}>
+                <div style={styles.csvUploadLabel}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                  Or upload a CSV file
+                </div>
+                <div style={styles.csvUploadRow}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    style={styles.fileInput}
+                    id="csv-upload"
+                    disabled={uploading}
+                  />
+                  <label
+                    htmlFor="csv-upload"
+                    style={styles.fileInputLabel}
+                    className="manage-file-input-label"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Choose CSV File
+                  </label>
+                  {csvFile && (
+                    <>
+                      <span style={styles.selectedFile}>{csvFile.name}</span>
+                      <button
+                        onClick={handleCSVUpload}
+                        style={{
+                          ...styles.buttonPrimary,
+                          ...(uploading ? styles.buttonDisabled : {}),
+                        }}
+                        className="manage-btn-primary"
+                        disabled={uploading}
+                      >
+                        {uploading ? 'Uploading...' : 'Upload'}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <p style={{ ...styles.cardDescription, marginTop: spacing[2], marginBottom: 0 }}>
+                  CSV should contain email addresses, one per line or in an "email" column.
+                </p>
+
+                {uploadResult && (
+                  <div style={styles.uploadResult}>
+                    <div style={styles.uploadResultTitle}>Upload Complete</div>
+                    <div style={styles.uploadResultStats}>
+                      <span style={styles.uploadResultStat}>
+                        <span style={styles.uploadResultStatValue}>{uploadResult.invitations_created}</span> invitations created
+                      </span>
+                      {uploadResult.skipped_existing > 0 && (
+                        <span style={styles.uploadResultStat}>
+                          <span style={styles.uploadResultStatValue}>{uploadResult.skipped_existing}</span> already invited
+                        </span>
+                      )}
+                      {uploadResult.skipped_invalid > 0 && (
+                        <span style={styles.uploadResultStat}>
+                          <span style={styles.uploadResultStatValue}>{uploadResult.skipped_invalid}</span> invalid emails
+                        </span>
+                      )}
+                    </div>
+                    {uploadResult.invalid_emails.length > 0 && (
+                      <div style={styles.invalidEmailsList}>
+                        Invalid: {uploadResult.invalid_emails.slice(0, 5).join(', ')}
+                        {uploadResult.invalid_emails.length > 5 && ` and ${uploadResult.invalid_emails.length - 5} more`}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
