@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { api } from '../../services/api';
 import CustomFileInput from '../../components/CustomFileInput';
-import CustomSelect from '../../components/CustomSelect';
+import QuestionTypeSelector from '../../components/QuestionTypeSelector';
+import { ChatBubbleIcon, StarRatingIcon, CheckCircleIcon, CheckListIcon } from '../../components/icons';
+import { typography, spacing, borders } from '../../styles/tokens';
 
-const QUESTION_TYPE_OPTIONS = [
-  { value: 'text', label: 'Text Response' },
-  { value: 'rating', label: 'Rating (0-10)' },
-  { value: 'single_choice', label: 'Single Choice' },
-  { value: 'multiple_choice', label: 'Multiple Choice' },
-];
+// Map question types to icons
+const QUESTION_TYPE_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  text: ChatBubbleIcon,
+  rating: StarRatingIcon,
+  single_choice: CheckCircleIcon,
+  multiple_choice: CheckListIcon,
+};
 import {
   DndContext,
   closestCenter,
@@ -105,11 +108,10 @@ function SortablePollOption({
 interface SortableQuestionProps {
   id: string;
   questionsCount: number;
-  isExpanded: boolean;
   children: (dragHandleProps: { attributes: any; listeners: any } | null) => React.ReactNode;
 }
 
-function SortableQuestion({ id, questionsCount, isExpanded, children }: SortableQuestionProps) {
+function SortableQuestion({ id, questionsCount, children }: SortableQuestionProps) {
   const {
     attributes,
     listeners,
@@ -128,38 +130,10 @@ function SortableQuestion({ id, questionsCount, isExpanded, children }: Sortable
   const showDragHandle = questionsCount > 1;
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <div style={{ display: 'flex', flexDirection: 'column' }} className={isExpanded ? "question-item" : ""}>
+    <div ref={setNodeRef} style={{ ...style, width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
         {children(showDragHandle ? { attributes, listeners } : null)}
       </div>
-    </div>
-  );
-}
-
-// Drag handle component to be used inside question cards
-function DragHandle({ attributes, listeners }: { attributes: any; listeners: any }) {
-  return (
-    <div
-      {...attributes}
-      {...listeners}
-      aria-label="Drag to reorder question"
-      style={{
-        cursor: 'grab',
-        padding: '0.25rem',
-        color: 'var(--color-primary-500)',
-        display: 'flex',
-        alignItems: 'center',
-        marginRight: '0.25rem',
-      }}
-    >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-        <circle cx="3" cy="2" r="1.25" />
-        <circle cx="9" cy="2" r="1.25" />
-        <circle cx="3" cy="6" r="1.25" />
-        <circle cx="9" cy="6" r="1.25" />
-        <circle cx="3" cy="10" r="1.25" />
-        <circle cx="9" cy="10" r="1.25" />
-      </svg>
     </div>
   );
 }
@@ -413,6 +387,29 @@ export default function QuestionsStep() {
         Add the questions you want to ask respondents
       </p>
 
+      {/* Warning banner when no questions are required */}
+      {formState.questions.length > 0 && !formState.questions.some(q => q.is_required) && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[2],
+          padding: `${spacing[3]} ${spacing[4]}`,
+          backgroundColor: 'var(--color-warning-50, #fffbeb)',
+          border: `1px solid var(--color-warning-300, #fcd34d)`,
+          borderRadius: borders.radius.md,
+          marginBottom: spacing[4],
+          fontSize: typography.fontSize.sm,
+          color: 'var(--color-warning-800, #92400e)',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span>Consider marking at least one question as required to ensure you receive complete responses.</span>
+        </div>
+      )}
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -431,99 +428,68 @@ export default function QuestionsStep() {
                   key={question.id}
                   id={question.id}
                   questionsCount={formState.questions.length}
-                  isExpanded={isExpanded}
                 >
-                  {(dragHandleProps) => (
-                  <>
-                  {/* Collapsed Header */}
-                  {!isExpanded && (
-                    <div className="question-collapsed-header" onClick={() => toggleQuestion(index)} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                      {/* Row 1: drag handle, collapse, question number, delete */}
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {dragHandleProps && <DragHandle {...dragHandleProps} />}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleQuestion(index); }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '0.25rem',
-                            cursor: 'pointer',
-                            color: 'var(--color-primary-600)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginRight: '0.5rem',
-                            flexShrink: 0,
-                          }}
-                          aria-label="Expand question"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <span style={{ color: 'var(--color-primary-600)', fontWeight: 500, flex: 1 }}>Question {index + 1}</span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeQuestion(index); }}
-                          className="btn-delete-question"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '0.25rem',
-                            cursor: 'pointer',
-                            color: 'var(--color-error)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            flexShrink: 0,
-                          }}
-                          aria-label="Delete question"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      </div>
-                      {/* Row 2: question type */}
-                      <div style={{ paddingLeft: '2.5rem', marginTop: '0.25rem' }}>
-                        <span style={{ color: 'var(--color-info)', fontSize: '0.875rem' }}>{questionType}</span>
-                      </div>
-                    </div>
-                  )}
+                  {(dragHandleProps) => {
+                    const TypeIcon = QUESTION_TYPE_ICONS[question.question_type || 'text'] || ChatBubbleIcon;
+                    const questionText = question.question_text || 'Untitled question';
 
-                  {/* Expanded Content - truncated for length, but would include full question editor */}
-                  {isExpanded && (
+                    return (
                     <>
-                      <div className="question-header" style={{ width: '100%', marginBottom: '1rem' }}>
-                        {/* Row 1: drag handle, collapse, title, remove button */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                          {dragHandleProps && <DragHandle {...dragHandleProps} />}
-                          <button
-                            type="button"
-                            onClick={() => toggleQuestion(index)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '0.25rem',
-                              cursor: 'pointer',
-                              color: 'var(--color-primary-600)',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                            aria-label="Collapse question"
+                    {/* Collapsed Header */}
+                    {!isExpanded && (
+                      <div
+                        onClick={() => toggleQuestion(index)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: spacing[4],
+                          cursor: 'pointer',
+                          gap: spacing[3],
+                          border: `1px solid var(--color-primary-300)`,
+                          borderRadius: borders.radius.lg,
+                          backgroundColor: 'var(--color-primary-50)',
+                          marginBottom: spacing[3],
+                        }}
+                      >
+                        {/* Drag handle */}
+                        {dragHandleProps && (
+                          <div
+                            {...dragHandleProps.attributes}
+                            {...dragHandleProps.listeners}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ cursor: 'grab', color: 'var(--color-primary-400)', display: 'flex' }}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M18 15l-6-6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                              <circle cx="4" cy="3" r="1.5" />
+                              <circle cx="12" cy="3" r="1.5" />
+                              <circle cx="4" cy="8" r="1.5" />
+                              <circle cx="12" cy="8" r="1.5" />
+                              <circle cx="4" cy="13" r="1.5" />
+                              <circle cx="12" cy="13" r="1.5" />
                             </svg>
-                          </button>
-                          <span className="question-number" style={{ fontWeight: 600, color: 'var(--color-primary-900)', flex: 1 }}>Question {index + 1}</span>
-                          {formState.questions.length > 1 && (
-                            <button type="button" onClick={() => removeQuestion(index)} className="btn-remove">
-                              Remove
-                            </button>
-                          )}
+                          </div>
+                        )}
+                        {/* Type icon */}
+                        <div style={{ color: 'var(--color-primary-600)', display: 'flex' }}>
+                          <TypeIcon size={20} />
                         </div>
-                        {/* Row 2: Required checkbox */}
-                        <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '2.5rem' }}>
+                        {/* Question text and subtitle */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontWeight: 500,
+                            color: 'var(--color-primary-900)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {questionText}
+                          </div>
+                          <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)' }}>
+                            {questionType}{question.is_required && ' • Required'}
+                          </div>
+                        </div>
+                        {/* Required checkbox */}
+                        <label onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
                           <input
                             type="checkbox"
                             checked={question.is_required || false}
@@ -533,172 +499,148 @@ export default function QuestionsStep() {
                               updateFormState({ questions: newQuestions });
                             }}
                           />
-                          <span>Required</span>
+                          <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Required</span>
                         </label>
-                      </div>
-
-                      <div className="form-group">
-                        <label>Question Type</label>
-                        <CustomSelect
-                          value={question.question_type || 'text'}
-                          options={QUESTION_TYPE_OPTIONS}
-                          onChange={(value) => updateQuestionType(index, value as string)}
-                          minWidth="200px"
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label>Question Text</label>
-                        <textarea
-                          value={question.question_text}
-                          onChange={(e) => updateQuestion(index, e.target.value)}
-                          placeholder="Enter your question..."
-                          required
-                          rows={3}
-                          style={{ width: '100%', boxSizing: 'border-box' }}
-                        />
-                      </div>
-
-                      {/* Question Image */}
-                      <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-                        {question.question_image_url ? (
-                          <div style={{ position: 'relative', display: 'inline-block' }}>
-                            <img
-                              src={question.question_image_url}
-                              alt="Question image"
-                              style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid var(--color-primary-300)' }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeQuestionImage(index)}
-                              className="btn btn-secondary btn-small"
-                              style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ) : showFileInput[index] ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <CustomFileInput
-                              key={`question-image-${index}-${uploadResetKey[index] || 0}`}
-                              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                              onChange={(e) => handleQuestionImageUpload(e, index)}
-                              disabled={uploadingQuestionImage[index]}
-                              label={uploadingQuestionImage[index] ? 'Uploading...' : 'Choose Image'}
-                            />
-                            {!uploadingQuestionImage[index] && (
-                              <button
-                                type="button"
-                                onClick={() => setShowFileInput(prev => ({ ...prev, [index]: false }))}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: 'var(--color-primary-600)',
-                                  cursor: 'pointer',
-                                  fontSize: '0.875rem',
-                                  padding: 0,
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </div>
-                        ) : (
+                        {/* Delete button */}
+                        {formState.questions.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => setShowFileInput(prev => ({ ...prev, [index]: true }))}
+                            onClick={(e) => { e.stopPropagation(); removeQuestion(index); }}
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: 'var(--color-info)',
+                              padding: spacing[1],
                               cursor: 'pointer',
-                              fontSize: '0.875rem',
-                              padding: 0,
-                              display: 'inline-flex',
+                              color: 'var(--color-error)',
+                              display: 'flex',
                               alignItems: 'center',
-                              gap: '0.25rem',
+                              marginLeft: spacing[2],
                             }}
+                            aria-label="Delete question"
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                              <circle cx="8.5" cy="8.5" r="1.5" />
-                              <polyline points="21 15 16 10 5 21" />
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                             </svg>
-                            Add image
                           </button>
                         )}
                       </div>
+                    )}
 
-                      {/* Rating config */}
-                      {question.question_type === 'rating' && (
-                        <div className="question-config">
-                          <p className="config-info">
-                            Participants will rate on a scale from 0 to 10 using a slider.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Poll options - simplified for length */}
-                      {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
-                        <div className="question-config">
-                          <div className="poll-options">
-                            <div className="config-header">
-                              <label>Answer Options</label>
-                              <button type="button" onClick={() => addPollOption(index)} className="btn btn-secondary btn-small">
-                                + Add Option
-                              </button>
-                            </div>
-
-                            <DndContext
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={(event: DragEndEvent) => {
-                                const { active, over } = event;
-                                if (over && active.id !== over.id) {
-                                  reorderPollOptions(index, active.id as string, over.id as string);
-                                }
-                              }}
-                            >
-                              <SortableContext
-                                items={question.options?.choices?.map(c => c.id) || []}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                {[...(question.options?.choices || [])]
-                                  .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                  .map((choice, choiceIndex) => (
-                                    <SortablePollOption
-                                      key={choice.id}
-                                      choice={choice}
-                                      choiceIndex={choiceIndex}
-                                      questionIndex={index}
-                                      onLabelChange={updatePollOptionLabel}
-                                      onRemove={removePollOption}
-                                      canRemove={(question.options?.choices?.length || 0) > 1}
-                                    />
-                                  ))}
-                              </SortableContext>
-                            </DndContext>
-                          </div>
-
-                          {question.question_type === 'multiple_choice' && (
-                            <div className="form-group">
-                              <label>Maximum Selections Allowed</label>
-                              <input
-                                type="number"
-                                min="1"
-                                max={question.options?.choices?.length || 1}
-                                value={question.options?.max_selections || 1}
-                                onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
-                              />
-                              <small>Participants can select up to this many options</small>
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                      <div style={{
+                        width: '100%',
+                        border: `1px solid var(--color-primary-300)`,
+                        borderRadius: borders.radius.lg,
+                        backgroundColor: 'var(--color-primary-50)',
+                        marginBottom: spacing[3],
+                        padding: spacing[4],
+                      }}>
+                        {/* Summary bar header - clickable to collapse */}
+                        <div onClick={() => toggleQuestion(index)} style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[4], paddingBottom: spacing[3], borderBottom: `1px solid var(--color-primary-200)`, cursor: 'pointer' }}>
+                          {dragHandleProps && (
+                            <div {...dragHandleProps.attributes} {...dragHandleProps.listeners} style={{ cursor: 'grab', color: 'var(--color-primary-400)', display: 'flex' }}>
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <circle cx="4" cy="3" r="1.5" /><circle cx="12" cy="3" r="1.5" /><circle cx="4" cy="8" r="1.5" /><circle cx="12" cy="8" r="1.5" /><circle cx="4" cy="13" r="1.5" /><circle cx="12" cy="13" r="1.5" />
+                              </svg>
                             </div>
                           )}
+                          <div style={{ color: 'var(--color-primary-600)', display: 'flex' }}><TypeIcon size={20} /></div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 500, color: 'var(--color-primary-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{questionText}</div>
+                            <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)' }}>{questionType}{question.is_required && ' • Required'}</div>
+                          </div>
+                          <label onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
+                            <input type="checkbox" checked={question.is_required || false} onChange={(e) => { const newQuestions = [...formState.questions]; newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked }; updateFormState({ questions: newQuestions }); }} />
+                            <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Required</span>
+                          </label>
                         </div>
-                      )}
-                    </>
+
+                        {/* Question Type Cards - Full Width */}
+                        <QuestionTypeSelector selectedType={question.question_type || 'text'} onSelectType={(type) => updateQuestionType(index, type)} />
+
+                        {/* Question Text */}
+                        <div style={{ marginBottom: spacing[4] }}>
+                          <label style={{ display: 'block', marginBottom: spacing[2], fontSize: typography.fontSize.sm, fontWeight: 500, color: 'var(--color-primary-700)' }}>Question Text</label>
+                          <textarea
+                            value={question.question_text}
+                            onChange={(e) => updateQuestion(index, e.target.value)}
+                            placeholder="Enter your question..."
+                            required
+                            rows={3}
+                            style={{ width: '100%', padding: spacing[3], border: `1px solid var(--color-primary-300)`, borderRadius: borders.radius.md, fontSize: typography.fontSize.sm, resize: 'vertical', boxSizing: 'border-box' }}
+                          />
+                        </div>
+
+                        {/* Rating info */}
+                        {question.question_type === 'rating' && (
+                          <div style={{ padding: spacing[3], backgroundColor: 'var(--color-primary-100)', borderRadius: borders.radius.md, marginBottom: spacing[4], fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+                            Participants will rate on a scale from 0 to 10 using a slider.
+                          </div>
+                        )}
+
+                        {/* Poll Options - No box wrapper, text link for add */}
+                        {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
+                          <div style={{ marginBottom: spacing[4] }}>
+                            <label style={{ display: 'block', marginBottom: spacing[2], fontSize: typography.fontSize.sm, fontWeight: 500, color: 'var(--color-primary-700)' }}>Options</label>
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event: DragEndEvent) => { const { active, over } = event; if (over && active.id !== over.id) { reorderPollOptions(index, active.id as string, over.id as string); } }}>
+                              <SortableContext items={question.options?.choices?.map(c => c.id) || []} strategy={verticalListSortingStrategy}>
+                                {[...(question.options?.choices || [])].sort((a, b) => (a.order || 0) - (b.order || 0)).map((choice, choiceIndex) => (
+                                  <SortablePollOption key={choice.id} choice={choice} choiceIndex={choiceIndex} questionIndex={index} onLabelChange={updatePollOptionLabel} onRemove={removePollOption} canRemove={(question.options?.choices?.length || 0) > 1} />
+                                ))}
+                              </SortableContext>
+                            </DndContext>
+                            {/* Add Option as text link */}
+                            <button type="button" onClick={() => addPollOption(index)} style={{ background: 'none', border: 'none', color: 'var(--color-primary-700)', cursor: 'pointer', fontSize: typography.fontSize.sm, padding: 0, display: 'inline-flex', alignItems: 'center', gap: spacing[1], marginTop: spacing[2] }}>
+                              + Add Option
+                            </button>
+
+                            {question.question_type === 'multiple_choice' && (
+                              <div style={{ marginTop: spacing[3] }}>
+                                <label style={{ display: 'block', marginBottom: spacing[1], fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>Maximum Selections Allowed</label>
+                                <input type="number" min="1" max={question.options?.choices?.length || 1} value={question.options?.max_selections || 1} onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)} style={{ width: '80px', padding: spacing[2], border: `1px solid var(--color-primary-300)`, borderRadius: borders.radius.md, fontSize: typography.fontSize.sm }} />
+                                <span style={{ marginLeft: spacing[2], fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>Participants can select up to this many options</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Bottom action row - Add image & Delete */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing[3], borderTop: `1px solid var(--color-primary-200)` }}>
+                          {/* Add image link */}
+                          {!question.question_image_url ? (
+                            showFileInput[index] ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <CustomFileInput key={`question-image-${index}-${uploadResetKey[index] || 0}`} accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" onChange={(e) => handleQuestionImageUpload(e, index)} disabled={uploadingQuestionImage[index]} label={uploadingQuestionImage[index] ? 'Uploading...' : 'Choose Image'} />
+                                {!uploadingQuestionImage[index] && <button type="button" onClick={() => setShowFileInput(prev => ({ ...prev, [index]: false }))} style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.sm, padding: 0 }}>Cancel</button>}
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => setShowFileInput(prev => ({ ...prev, [index]: true }))} style={{ background: 'none', border: 'none', color: 'var(--color-primary-700)', cursor: 'pointer', fontSize: typography.fontSize.sm, padding: 0, display: 'inline-flex', alignItems: 'center', gap: spacing[1] }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                Add image
+                              </button>
+                            )
+                          ) : (
+                            <div style={{ position: 'relative', display: 'inline-block' }}>
+                              <img src={question.question_image_url} alt="Question image" style={{ maxWidth: '200px', maxHeight: '100px', borderRadius: borders.radius.md, border: `1px solid var(--color-primary-300)` }} />
+                              <button type="button" onClick={() => removeQuestionImage(index)} style={{ marginLeft: spacing[2], background: 'none', border: 'none', color: 'var(--color-error)', cursor: 'pointer', fontSize: typography.fontSize.sm }}>Remove</button>
+                            </div>
+                          )}
+
+                          {/* Delete question link */}
+                          {formState.questions.length > 1 && (
+                            <button type="button" onClick={() => removeQuestion(index)} style={{ background: 'none', border: 'none', color: 'var(--color-error)', cursor: 'pointer', fontSize: typography.fontSize.sm, padding: 0, display: 'inline-flex', alignItems: 'center', gap: spacing[1] }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                              Delete question
+                            </button>
+                          )}
+                        </div>
+                      </div>
                   )}
                   </>
-                  )}
+                  );
+                  }}
                 </SortableQuestion>
               );
             })}

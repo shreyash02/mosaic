@@ -17,4 +17,8 @@ export { default as InboxIcon } from './InboxIcon';
 export { default as GlobeIcon } from './GlobeIcon';
 export { default as GearIcon } from './GearIcon';
 export { default as TargetIcon } from './TargetIcon';
+export { default as ChatBubbleIcon } from './ChatBubbleIcon';
+export { default as StarRatingIcon } from './StarRatingIcon';
+export { default as CheckCircleIcon } from './CheckCircleIcon';
+export { default as CheckListIcon } from './CheckListIcon';
 

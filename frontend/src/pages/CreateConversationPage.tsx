@@ -11,217 +11,8 @@ import ConfigurationSummary from '../components/ConfigurationSummary';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import DateTimePicker from '../components/DateTimePicker';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
-interface SortablePollOptionProps {
-  choice: { id: string; label: string; order: number };
-  choiceIndex: number;
-  questionIndex: number;
-  onLabelChange: (questionIndex: number, choiceId: string, label: string) => void;
-  onRemove: (questionIndex: number, choiceId: string) => void;
-  canRemove: boolean;
-}
-
-function SortablePollOption({
-  choice,
-  choiceIndex,
-  questionIndex,
-  onLabelChange,
-  onRemove,
-  canRemove,
-}: SortablePollOptionProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: choice.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} className="poll-option-item">
-      <button
-        type="button"
-        className="drag-handle"
-        {...attributes}
-        {...listeners}
-        aria-label="Drag to reorder"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z"
-            fill="currentColor"
-          />
-          <path
-            d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z"
-            fill="currentColor"
-          />
-          <path
-            d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z"
-            fill="currentColor"
-          />
-          <path
-            d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z"
-            fill="currentColor"
-          />
-          <path
-            d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z"
-            fill="currentColor"
-          />
-          <path
-            d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-      <span className="option-number">{choiceIndex + 1}.</span>
-      <input
-        type="text"
-        value={choice.label}
-        onChange={(e) => onLabelChange(questionIndex, choice.id, e.target.value)}
-        placeholder={`Option ${choiceIndex + 1}`}
-        required
-        style={{ flex: '1 1 auto', minWidth: 0 }}
-      />
-      {canRemove && (
-        <button
-          type="button"
-          onClick={() => onRemove(questionIndex, choice.id)}
-          className="btn-remove"
-          style={{ flexShrink: 0 }}
-        >
-          ×
-        </button>
-      )}
-    </div>
-  );
-}
-
-interface SortableQuestionProps {
-  id: string;
-  isDraft: boolean;
-  questionsCount: number;
-  isExpanded: boolean;
-  children: React.ReactNode;
-}
-
-function SortableQuestion({
-  id,
-  isDraft,
-  questionsCount,
-  isExpanded,
-  children,
-}: SortableQuestionProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: id,
-    disabled: !isDraft,
-  });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const showDragHandle = isDraft && questionsCount > 1;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ ...style, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}
-    >
-      {showDragHandle && (
-        <div
-          {...attributes}
-          {...listeners}
-          aria-label="Drag to reorder question"
-          style={{
-            cursor: 'grab',
-            padding: '0.25rem',
-            color: '#718096',
-            flexShrink: 0,
-            marginTop: isExpanded ? '0.75rem' : '0.5rem',
-          }}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M5 3.5C5 4.32843 4.32843 5 3.5 5C2.67157 5 2 4.32843 2 3.5C2 2.67157 2.67157 2 3.5 2C4.32843 2 5 2.67157 5 3.5Z"
-              fill="currentColor"
-            />
-            <path
-              d="M5 8C5 8.82843 4.32843 9.5 3.5 9.5C2.67157 9.5 2 8.82843 2 8C2 7.17157 2.67157 6.5 3.5 6.5C4.32843 6.5 5 7.17157 5 8Z"
-              fill="currentColor"
-            />
-            <path
-              d="M5 12.5C5 13.3284 4.32843 14 3.5 14C2.67157 14 2 13.3284 2 12.5C2 11.6716 2.67157 11 3.5 11C4.32843 11 5 11.6716 5 12.5Z"
-              fill="currentColor"
-            />
-            <path
-              d="M14 3.5C14 4.32843 13.3284 5 12.5 5C11.6716 5 11 4.32843 11 3.5C11 2.67157 11.6716 2 12.5 2C13.3284 2 14 2.67157 14 3.5Z"
-              fill="currentColor"
-            />
-            <path
-              d="M14 8C14 8.82843 13.3284 9.5 12.5 9.5C11.6716 9.5 11 8.82843 11 8C11 7.17157 11.6716 6.5 12.5 6.5C13.3284 6.5 14 7.17157 14 8Z"
-              fill="currentColor"
-            />
-            <path
-              d="M14 12.5C14 13.3284 13.3284 14 12.5 14C11.6716 14 11 13.3284 11 12.5C11 11.6716 11.6716 11 12.5 11C13.3284 11 14 11.6716 14 12.5Z"
-              fill="currentColor"
-            />
-          </svg>
-        </div>
-      )}
-      <div
-        style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}
-        className={isExpanded ? "question-item" : ""}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
+import QuestionBuilderNew from '../components/QuestionBuilderNew';
+import { arrayMove } from '@dnd-kit/sortable';
 
 interface LocationState {
   isFollowUp?: boolean;
@@ -284,6 +75,7 @@ function CreateConversationPageContent() {
   const [isGuidedMode, setIsGuidedMode] = useState(true);
   const [selectedIntent, setSelectedIntent] = useState<IntentType | null>(null);
   const [showIntentSelection, setShowIntentSelection] = useState(true);
+
 
   // Don't auto-enable recurring - templates can exist without recurrence
 
@@ -441,21 +233,6 @@ function CreateConversationPageContent() {
     }
   };
 
-  const getQuestionTypeLabel = (type: string | undefined): string => {
-    switch (type) {
-      case 'text':
-        return 'Text Response';
-      case 'rating':
-        return 'Rating';
-      case 'single_choice':
-        return 'Single Choice';
-      case 'multiple_choice':
-        return 'Multiple Choice';
-      default:
-        return 'Text Response';
-    }
-  };
-
   const toggleQuestion = (index: number) => {
     const newExpanded = new Set(expandedQuestions);
     if (newExpanded.has(index)) {
@@ -530,6 +307,12 @@ function CreateConversationPageContent() {
       delete newQuestions[index].options;
     }
 
+    setQuestions(newQuestions);
+  };
+
+  const updateQuestionRequired = (index: number, required: boolean) => {
+    const newQuestions = [...questions];
+    newQuestions[index] = { ...newQuestions[index], is_required: required };
     setQuestions(newQuestions);
   };
 
@@ -627,20 +410,6 @@ function CreateConversationPageContent() {
       setExpandedQuestions(newExpanded);
     }
   };
-
-  const handleQuestionDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      reorderQuestions(active.id as string, over.id as string);
-    }
-  };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -786,8 +555,6 @@ function CreateConversationPageContent() {
       } catch (err) {
         console.warn('Failed to detect timezone, using UTC:', err);
       }
-
-      console.log('Creating conversation with showVerbatimResponses:', showVerbatimResponses);
 
       const conversation = await api.createConversation({
         title,
@@ -1159,10 +926,7 @@ function CreateConversationPageContent() {
                 <input
                   type="checkbox"
                   checked={showVerbatimResponses}
-                  onChange={(e) => {
-                    console.log('Checkbox changed to:', e.target.checked);
-                    setShowVerbatimResponses(e.target.checked);
-                  }}
+                  onChange={(e) => setShowVerbatimResponses(e.target.checked)}
                 />
                 <span>Show individual responses</span>
               </label>
@@ -1523,340 +1287,27 @@ function CreateConversationPageContent() {
           </div>
         )}
 
+        {/* Question Builder */}
         <div className="form-section">
-          <div className="section-header">
-            <h2>Questions</h2>
-            <button type="button" onClick={addQuestion} className="btn btn-secondary btn-small">
-              + Add Question
-            </button>
-          </div>
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleQuestionDragEnd}
-          >
-            <SortableContext
-              items={questions.map(q => q.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {questions.map((question, index) => {
-                const isExpanded = expandedQuestions.has(index);
-                const questionText = question.question_text || 'Untitled question';
-                const questionType = getQuestionTypeLabel(question.question_type);
-                // CreateConversationPage is always in draft mode (creating new conversation)
-                const isDraft = true;
-
-                return (
-                  <SortableQuestion
-                    key={question.id}
-                    id={question.id}
-                    isDraft={isDraft}
-                    questionsCount={questions.length}
-                    isExpanded={isExpanded}
-                  >
-                {/* Collapsed Header */}
-                {!isExpanded && (
-                  <div 
-                    className="question-collapsed-header"
-                    onClick={() => toggleQuestion(index)}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleQuestion(index);
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '0.25rem',
-                        cursor: 'pointer',
-                        color: '#718096',
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginRight: '0.5rem',
-                      }}
-                      aria-label="Expand question"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M6 9l6 6 6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                      <span style={{ color: '#718096', fontWeight: 500 }}>Question {index + 1}</span>
-                      <span style={{ color: '#a0aec0' }}>·</span>
-                      <span style={{ color: '#4299e1', fontSize: '0.9rem' }}>{questionType}</span>
-                      <span style={{ color: '#a0aec0' }}>·</span>
-                      <span style={{ color: '#2d3748', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {questionText}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeQuestion(index);
-                      }}
-                      className="btn-delete-question"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '0.25rem',
-                        cursor: 'pointer',
-                        color: '#e53e3e',
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginLeft: '0.5rem',
-                      }}
-                      aria-label="Delete question"
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <>
-                    <div className="question-header" style={{ width: '100%', marginBottom: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => toggleQuestion(index)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '0.25rem',
-                              cursor: 'pointer',
-                              color: '#718096',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                            aria-label="Collapse question"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M18 15l-6-6-6 6"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <span className="question-number">Question {index + 1}</span>
-                          {questions.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeQuestion(index)}
-                              className="btn-remove"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        <label className="checkbox-label" style={{ margin: 0, border: 'none', padding: 0, background: 'none' }}>
-                          <input
-                            type="checkbox"
-                            checked={question.is_required || false}
-                            onChange={(e) => {
-                              const newQuestions = [...questions];
-                              newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
-                              setQuestions(newQuestions);
-                            }}
-                          />
-                          <span>Required</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Question Type</label>
-                      <select
-                        value={question.question_type || 'text'}
-                        onChange={(e) => updateQuestionType(index, e.target.value)}
-                        style={{ width: '240px', paddingRight: '2.5rem' }}
-                      >
-                        <option value="text">Text Response</option>
-                        <option value="rating">Rating (0-10)</option>
-                        <option value="single_choice">Single Choice</option>
-                        <option value="multiple_choice">Multiple Choice</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Question Text</label>
-                      <textarea
-                        value={question.question_text}
-                        onChange={(e) => updateQuestion(index, e.target.value)}
-                        placeholder="Enter your question..."
-                        required
-                        rows={3}
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                    </div>
-
-                    {/* Question Image */}
-                    <div className="form-group">
-                      <label>Question Image (optional)</label>
-                      {question.question_image_url ? (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <div style={{
-                            position: 'relative',
-                            display: 'inline-block',
-                            marginBottom: '0.5rem'
-                          }}>
-                            <img
-                              src={question.question_image_url}
-                              alt="Question image"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '200px',
-                                borderRadius: '6px',
-                                border: '1px solid #e2e8f0'
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeQuestionImage(index)}
-                              className="btn btn-secondary btn-small"
-                              style={{
-                                position: 'absolute',
-                                top: '0.5rem',
-                                right: '0.5rem',
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                              }}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                            onChange={(e) => handleQuestionImageUpload(e, index)}
-                            disabled={uploadingQuestionImage[index]}
-                          />
-                          {uploadingQuestionImage[index] && (
-                            <p style={{ color: '#4299e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                              Uploading image...
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {question.question_type === 'rating' && (
-                      <div className="question-config">
-                        <p className="config-info">
-                          Participants will rate on a scale from 0 to 10 using a slider.
-                        </p>
-                      </div>
-                    )}
-
-                    {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
-                      <div className="question-config">
-                        <div className="poll-options">
-                          <div className="config-header">
-                            <label>Answer Options</label>
-                            <button
-                              type="button"
-                              onClick={() => addPollOption(index)}
-                              className="btn btn-secondary btn-small"
-                            >
-                              + Add Option
-                            </button>
-                          </div>
-
-                          <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={(event: DragEndEvent) => {
-                              const { active, over } = event;
-                              if (over && active.id !== over.id) {
-                                reorderPollOptions(index, active.id as string, over.id as string);
-                              }
-                            }}
-                          >
-                            <SortableContext
-                              items={question.options?.choices?.map(c => c.id) || []}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {[...(question.options?.choices || [])]
-                                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                .map((choice, choiceIndex) => (
-                                  <SortablePollOption
-                                    key={choice.id}
-                                    choice={choice}
-                                    choiceIndex={choiceIndex}
-                                    questionIndex={index}
-                                    onLabelChange={updatePollOptionLabel}
-                                    onRemove={removePollOption}
-                                    canRemove={(question.options?.choices?.length || 0) > 1}
-                                  />
-                                ))}
-                            </SortableContext>
-                          </DndContext>
-                        </div>
-
-                        {question.question_type === 'multiple_choice' && (
-                          <div className="form-group">
-                            <label>Maximum Selections Allowed</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={question.options?.choices?.length || 1}
-                              value={question.options?.max_selections || 1}
-                              onChange={(e) => updateMaxSelections(index, parseInt(e.target.value) || 1)}
-                            />
-                            <small>Participants can select up to this many options</small>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-                  </SortableQuestion>
-                );
-              })}
-            </SortableContext>
-          </DndContext>
+          <QuestionBuilderNew
+              questions={questions}
+              expandedQuestions={expandedQuestions}
+              onToggleQuestion={toggleQuestion}
+              onAddQuestion={addQuestion}
+              onRemoveQuestion={removeQuestion}
+              onUpdateQuestion={updateQuestion}
+              onUpdateQuestionType={updateQuestionType}
+              onUpdateQuestionRequired={updateQuestionRequired}
+              onQuestionImageUpload={handleQuestionImageUpload}
+              onQuestionImageRemove={removeQuestionImage}
+              uploadingQuestionImage={uploadingQuestionImage}
+              onAddPollOption={addPollOption}
+              onUpdatePollOption={updatePollOptionLabel}
+              onRemovePollOption={removePollOption}
+              onReorderPollOptions={reorderPollOptions}
+              onUpdateMaxSelections={updateMaxSelections}
+              onReorderQuestions={reorderQuestions}
+            />
         </div>
 
         {/* Form Actions */}
