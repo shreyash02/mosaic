@@ -397,7 +397,15 @@ Beyond traditional episodic surveys, Mosaic enables **ambient feedback** - persi
 
 ### Feature Enhancements (Deepen Existing Capabilities)
 
-- [x] **Slack Integration** - ✅ IMPLEMENTED (DMs for invitation notifications, closing reminders for non-respondents)
+- [x] **Slack Integration (Phase 1)** - ✅ IMPLEMENTED (DMs for invitation notifications, closing reminders for non-respondents)
+- [ ] **Slack Integration (Phase 2)** (3-4 days) - Channel notifications for team visibility:
+  - [ ] Channel post when conversation activates: "📊 [Name] is now open for responses"
+  - [ ] Channel post when results ready: "✅ Analysis ready for [Name]" with link
+  - [ ] DM to facilitator when analysis completes
+- [ ] **Slack Integration (Phase 3)** (3-5 days) - Nice-to-have polish:
+  - [ ] Channel notification: conversation closing soon
+  - [ ] Response count updates to channel ("5 of 8 responded")
+  - [ ] Slack App Directory listing
 - [ ] **Action Items from Retrospectives** (1 week) - Track decisions/commitments from feedback, not just what was said. Key differentiator vs Retrium/TeamRetro
 - [ ] **Enhanced Analysis Visualization** (1-2 weeks) - Bar charts for ratings, pie charts for polls, word clouds
 - [ ] **Response Time Analytics** (3-5 days) - Track submission patterns, identify engagement trends
