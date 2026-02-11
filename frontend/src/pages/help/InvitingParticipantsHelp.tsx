@@ -151,6 +151,38 @@ export default function InvitingParticipantsHelp() {
           </div>
         </section>
 
+        <section style={{ marginBottom: '2.5rem' }}>
+          <h2>Slack Notifications</h2>
+          <p>
+            If your organization has Slack connected, participants can receive Slack notifications
+            in addition to email invitations.
+          </p>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <h3>When Notifications Are Sent</h3>
+            <p>
+              Slack notifications are automatically sent when:
+            </p>
+            <ul>
+              <li>A user is invited to a conversation (via email invitation)</li>
+              <li>A conversation they're participating in is about to close</li>
+            </ul>
+
+            <h3>Requirements</h3>
+            <ul>
+              <li>The conversation must be in an organization with Slack connected</li>
+              <li>The participant's email must match their Slack account email</li>
+              <li>Only organization admins can connect Slack (in Organization Settings)</li>
+            </ul>
+
+            <h3>How It Works</h3>
+            <p>
+              Mosaic sends direct messages to participants via the Mosaic Slack app. Users receive
+              a DM with details about the conversation and a link to respond.
+            </p>
+          </div>
+        </section>
+
         <div style={{
           backgroundColor: '#ebf8ff',
           padding: '1.5rem',

@@ -243,6 +243,61 @@ export default function OrganizationsHelp() {
         </section>
 
         <section style={{ marginBottom: '2.5rem' }}>
+          <h2>Slack Integration</h2>
+          <p>
+            Connect your organization to Slack to enable automatic notifications for your team.
+          </p>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <h3>What Slack Integration Does</h3>
+            <p>
+              When Slack is connected, organization members receive Slack notifications when:
+            </p>
+            <ul>
+              <li>They are invited to participate in a conversation</li>
+              <li>A conversation they're participating in is about to close</li>
+            </ul>
+
+            <h3>Connecting Slack (Admin Only)</h3>
+            <ol>
+              <li>Go to <strong>Organization Settings</strong></li>
+              <li>Find the <strong>Slack</strong> integration card</li>
+              <li>Click <strong>"Connect Slack"</strong></li>
+              <li>Authorize Mosaic in your Slack workspace</li>
+              <li>Once connected, you'll see the workspace name and connection date</li>
+            </ol>
+
+            <h3>How It Works</h3>
+            <p>
+              Mosaic uses Slack's email-based user lookup to send direct messages to organization
+              members. When a user's email in Mosaic matches their Slack email, they'll receive
+              DMs from the Mosaic app.
+            </p>
+
+            <h3>Disconnecting Slack (Admin Only)</h3>
+            <p>
+              To disconnect Slack:
+            </p>
+            <ol>
+              <li>Go to <strong>Organization Settings</strong></li>
+              <li>Click <strong>"Disconnect"</strong> on the Slack card</li>
+              <li>Confirm the disconnection</li>
+            </ol>
+            <p>
+              <strong>Note:</strong> Disconnecting Slack stops all notifications immediately. Members
+              will need to rely on email notifications instead.
+            </p>
+
+            <h3>Requirements</h3>
+            <ul>
+              <li>You must be an organization admin to connect or disconnect Slack</li>
+              <li>Only one Slack workspace can be connected per organization</li>
+              <li>Members must have matching email addresses in Slack to receive notifications</li>
+            </ul>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '2.5rem' }}>
           <h2>Best Practices</h2>
 
           <div style={{ marginLeft: '1rem' }}>

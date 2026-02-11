@@ -54,6 +54,7 @@ import AnalysisHelp from './pages/help/AnalysisHelp';
 import FollowUpsHelp from './pages/help/FollowUpsHelp';
 import RecurringConversationsHelp from './pages/help/RecurringConversationsHelp';
 import OrganizationsHelp from './pages/help/OrganizationsHelp';
+import CollectionsHelp from './pages/help/CollectionsHelp';
 import { SlackCallbackPage } from './pages/SlackCallbackPage';
 import { AnalysisViewPage } from './pages/AnalysisViewPage';
 
@@ -331,6 +332,7 @@ function App() {
             <Route path="/help/follow-ups" element={<FollowUpsHelp />} />
             <Route path="/help/recurring-conversations" element={<RecurringConversationsHelp />} />
             <Route path="/help/organizations" element={<OrganizationsHelp />} />
+            <Route path="/help/collections" element={<CollectionsHelp />} />
               </Routes>
               </main>
             </div>

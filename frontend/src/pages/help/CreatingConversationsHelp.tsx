@@ -43,85 +43,123 @@ export default function CreatingConversationsHelp() {
           <p>Control how participant identities are handled:</p>
 
           <div style={{ marginLeft: '1rem' }}>
-            <h3>Fully Anonymous</h3>
+            <h3>Does Not Matter (Open)</h3>
             <p>
-              Responses are completely anonymous. Even you (the creator) cannot see who responded.
-              Best for sensitive topics or when you want completely honest feedback.
+              Anyone can respond. If the respondent is logged in, their identity is recorded.
+              If not logged in, the response is anonymous. This is the most flexible option
+              for broad feedback collection.
             </p>
 
-            <h3>Platform Tracked</h3>
+            <h3>Fully Anonymous</h3>
             <p>
-              The platform tracks who responded, but their identity is not revealed in the results.
-              You can see participation stats but not which specific person said what.
+              Responses are completely anonymous using secret codes. Even you (the creator) cannot
+              see who responded. Participants receive unique codes to submit their responses,
+              ensuring complete privacy. Best for sensitive topics like performance reviews or
+              confidential feedback.
+            </p>
+
+            <h3>Anonymous to You (Platform Tracked)</h3>
+            <p>
+              Requires login. The platform tracks who responded to prevent duplicates, but their
+              identity is hidden from you in the results. You can see participation stats but not
+              which specific person said what. Good for team feedback where you want to ensure
+              everyone responds but don't need to know who said what.
             </p>
 
             <h3>Revealable</h3>
             <p>
-              Participants can choose whether to reveal their identity. They'll be asked for consent
-              when they respond. This gives participants control over their anonymity.
+              Requires login. You can choose to reveal participant identities after the conversation
+              closes. This gives you flexibility - you can start anonymous and reveal later if needed
+              for follow-up discussions.
             </p>
           </div>
         </section>
 
         <section style={{ marginBottom: '2.5rem' }}>
-          <h2>Access Control</h2>
+          <h2>Who Can Respond</h2>
+          <p>This setting depends on your anonymity choice:</p>
 
           <div style={{ marginLeft: '1rem' }}>
-            <h3>Invite Only</h3>
+            <h3>For "Does Not Matter" (Open)</h3>
             <p>
-              When enabled, only people you specifically invite via email can respond.
-              The access code alone won't work without an invitation.
+              Anyone with the link can respond. Share the link publicly or with specific people.
             </p>
 
-            <h3>Link Access</h3>
+            <h3>For "Fully Anonymous"</h3>
             <p>
-              When disabled (default), anyone with the access code or link can respond.
-              Great for gathering broad feedback or public discussions.
+              Anyone with a secret code can respond. Generate codes and distribute them to your
+              participants. Each code can only be used once.
+            </p>
+
+            <h3>For "Anonymous to You" and "Revealable"</h3>
+            <p>
+              You can choose between:
+            </p>
+            <ul>
+              <li><strong>Anyone with the link:</strong> Any logged-in user with the link can respond</li>
+              <li><strong>Only invited users:</strong> Only people you invite by email can respond, even if others have the link</li>
+            </ul>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '2.5rem' }}>
+          <h2>Who Can See Results</h2>
+          <p>Control who can view the responses and analysis:</p>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <h3>Only Me</h3>
+            <p>
+              Participants submit responses and receive a confirmation message only. You're the
+              only one who can see the results and analysis. Perfect for performance reviews,
+              feedback collection, or surveys where responders shouldn't see aggregated data or
+              each other's responses.
+            </p>
+
+            <h3>All Respondents</h3>
+            <p>
+              Anyone who responds can also view all responses and analysis. This creates a
+              transparent, collaborative environment where participants can see how their input
+              fits into the broader conversation. Great for team discussions, brainstorming, or
+              building collective understanding.
+            </p>
+
+            <h3>Anyone with Link</h3>
+            <p>
+              Maximum transparency - anyone with the results link can view responses and analysis,
+              even without responding themselves. Use this for public surveys, community feedback,
+              or when you want to share insights widely.
             </p>
           </div>
         </section>
 
         <section style={{ marginBottom: '2.5rem' }}>
-          <h2>Results Access</h2>
-          <p>Control who can view the results:</p>
+          <h2>Show Verbatim Responses</h2>
+          <p>Control whether viewers can see the raw individual responses:</p>
 
           <div style={{ marginLeft: '1rem' }}>
-            <h3>Creator Only (Feedback Collection)</h3>
+            <h3>Enabled (Default)</h3>
             <p>
-              Participants submit responses and receive a confirmation message only. You're the only one who can see the results and analysis. This mode is perfect for performance reviews, feedback collection, or surveys where responders shouldn't see aggregated data. It creates a focused environment for gathering honest input without participants being influenced by others' responses.
+              Viewers with results access can see both raw individual responses and AI-generated
+              analysis. This provides complete transparency, allowing viewers to read exactly what
+              each participant said.
             </p>
 
-            <h3>All Participants (Collaborative)</h3>
+            <h3>Disabled (AI Summaries Only)</h3>
             <p>
-              Everyone who can respond (has the access code or invitation) can also view all responses and analysis. This creates a transparent, collaborative environment where participants can see how their input fits into the broader conversation. Great for team discussions, brainstorming sessions, or when you want to build collective understanding through shared visibility.
+              Viewers can only see AI-generated summaries, themes, and analysis - not the raw
+              individual responses. This protects participant privacy while still sharing valuable
+              insights. Perfect for sensitive feedback where you want to share findings without
+              exposing individual submissions.
             </p>
 
-            <h3>Anyone with Link (Public)</h3>
+            <h3>Combining with Results Access</h3>
             <p>
-              Maximum transparency - anyone with the results link can view responses and analysis, even without responding themselves. Use this for public surveys, community feedback, or when you want to share insights widely beyond just the participants.
+              This setting works alongside "Who Can See Results" for precise control. For example:
             </p>
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '2.5rem' }}>
-          <h2>Verbatim Responses</h2>
-          <p>Control what viewers can see when they access results:</p>
-
-          <div style={{ marginLeft: '1rem' }}>
-            <h3>Show Verbatim Responses (Default)</h3>
-            <p>
-              When enabled, viewers with results access can see both raw individual responses and AI-generated analysis. This provides complete transparency, allowing viewers to read exactly what each participant said alongside the summarized themes and insights. This is ideal when you want full openness and when individual response privacy isn't a concern.
-            </p>
-
-            <h3>Hide Verbatim Responses (AI Summaries Only)</h3>
-            <p>
-              When disabled, viewers can only see AI-generated summaries, themes, and analysis - not the raw individual responses. This protects participant privacy while still sharing valuable insights. Use this when you want to share what was learned from the conversation without exposing individual submissions. Perfect for sensitive feedback, performance reviews, or when you want to protect anonymity while still sharing aggregated findings.
-            </p>
-
-            <h3>How It Works with Results Access</h3>
-            <p>
-              This setting works alongside "Results Access" to give you precise control. For example, you might set Results Access to "All Participants" but disable verbatim responses - this lets participants see the AI-generated themes and insights without viewing each other's raw submissions. Or you could set Results Access to "Creator Only" with verbatim responses enabled, giving you full access to everything while participants only receive a confirmation.
-            </p>
+            <ul>
+              <li><strong>All Respondents + Hide Verbatim:</strong> Participants see themes and analysis but not each other's exact words</li>
+              <li><strong>Only Me + Show Verbatim:</strong> You see everything, participants only see confirmation</li>
+            </ul>
           </div>
         </section>
 
@@ -211,6 +249,23 @@ export default function CreatingConversationsHelp() {
             <li><strong>Personal workspace:</strong> Creates a personal conversation</li>
             <li><strong>Organization workspace:</strong> Creates an organization conversation visible to all members</li>
           </ul>
+        </section>
+
+        <section style={{ marginBottom: '2.5rem' }}>
+          <h2>Collections</h2>
+          <p>
+            You can add conversations to a collection to group related feedback together.
+            Collections help you track trends over time and run analysis across multiple conversations.
+          </p>
+          <ul style={{ marginLeft: '2rem' }}>
+            <li>Select an existing collection from the dropdown when creating</li>
+            <li>Collections are workspace-specific (personal or organization)</li>
+            <li>You can also add conversations to collections later by editing them</li>
+          </ul>
+          <p>
+            See the <a href="/help/collections" style={{ color: '#4299e1' }}>Collections help page</a> for
+            more details on creating and managing collections.
+          </p>
         </section>
 
         <div style={{

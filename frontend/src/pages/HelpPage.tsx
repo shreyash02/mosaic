@@ -206,6 +206,12 @@ export default function HelpPage() {
         <svg width="40" height="40" viewBox="0 0 16 16" fill="currentColor">
           <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm2-2a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6zm1 0v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1z"/>
         </svg>
+      ),
+      'collection': (
+        <svg width="40" height="40" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5V2zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1H4z"/>
+          <path d="M14 6a1 1 0 0 0 1-1V3.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h2.793L10.146 8.146a.5.5 0 1 0 .708.708L15 4.707V7.5a.5.5 0 0 0 1 0V5z" style={{ opacity: 0 }}/>
+        </svg>
       )
     };
     return icons[iconName];
@@ -255,8 +261,14 @@ export default function HelpPage() {
       link: '/help/recurring-conversations'
     },
     {
+      title: 'Collections',
+      description: 'Group related conversations together to track trends and insights over time.',
+      icon: 'collection',
+      link: '/help/collections'
+    },
+    {
       title: 'Organizations',
-      description: 'Collaborate with teams using organizations, manage members, and organize conversations.',
+      description: 'Collaborate with teams using organizations, manage members, connect Slack, and organize conversations.',
       icon: 'organization',
       link: '/help/organizations'
     }
@@ -290,7 +302,9 @@ export default function HelpPage() {
               <li><strong>AI-Powered Analysis:</strong> Automatically discover themes and insights from text responses</li>
               <li><strong>Follow-up Conversations:</strong> Build on previous discussions to dive deeper</li>
               <li><strong>Recurring Conversations:</strong> Set up templates for regular check-ins</li>
+              <li><strong>Collections:</strong> Group related conversations to track trends over time</li>
               <li><strong>Organizations:</strong> Collaborate with teams and manage conversations together</li>
+              <li><strong>Slack Integration:</strong> Send notifications to participants via Slack</li>
             </ul>
           </div>
 
