@@ -569,7 +569,7 @@ export default function QuestionsStep() {
                             placeholder="Enter your question..."
                             required
                             rows={3}
-                            style={{ width: '100%', padding: spacing[3], border: `1px solid var(--color-primary-300)`, borderRadius: borders.radius.md, fontSize: typography.fontSize.sm, resize: 'vertical', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: spacing[3], border: `1px solid var(--color-primary-300)`, borderRadius: borders.radius.md, fontSize: typography.fontSize.sm, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                           />
                         </div>
 

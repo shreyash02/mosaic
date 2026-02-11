@@ -2,12 +2,57 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
-import ConfigurationSummary from '../../components/ConfigurationSummary';
 import ConversationPreview from '../../components/ConversationPreview';
 import { INTENT_PRESETS } from '../../types/intentPresets';
 import { api } from '../../services/api';
 import type { Series } from '../../types';
-import { typography, spacing, borders, shadows } from '../../styles';
+import { typography, spacing, borders, shadows, transitions } from '../../styles';
+import { AnonymityLevel, ResultsAccess } from '../../types';
+
+// Card component for consistent styling
+const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
+  <div style={{
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-200)',
+    borderRadius: borders.radius.lg,
+    padding: spacing[5],
+    ...style,
+  }}>
+    {children}
+  </div>
+);
+
+// Helper to get question type label
+const getQuestionTypeLabel = (type: string) => {
+  switch (type) {
+    case 'text': return 'text';
+    case 'rating': return 'rating';
+    case 'single_choice': return 'single choice';
+    case 'multiple_choice': return 'multiple choice';
+    default: return type;
+  }
+};
+
+// Helper to get anonymity label
+const getAnonymityLabel = (level: AnonymityLevel) => {
+  switch (level) {
+    case AnonymityLevel.FULLY_ANONYMOUS: return 'Fully Anonymous';
+    case AnonymityLevel.OPEN: return 'Open';
+    case AnonymityLevel.REVEALABLE: return 'Revealable';
+    case AnonymityLevel.PLATFORM_TRACKED: return 'Platform Tracked';
+    default: return level;
+  }
+};
+
+// Helper to get results access label
+const getResultsAccessLabel = (access: ResultsAccess) => {
+  switch (access) {
+    case ResultsAccess.CREATOR_ONLY: return 'Creator only';
+    case ResultsAccess.PARTICIPANTS: return 'All respondents';
+    case ResultsAccess.PUBLIC_LINK: return 'Public';
+    default: return access;
+  }
+};
 
 export default function ReviewStep() {
   const navigate = useNavigate();
@@ -23,6 +68,7 @@ export default function ReviewStep() {
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
   const [creatingSeries, setCreatingSeries] = useState(false);
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
+  const [showCustomizePrivacy, setShowCustomizePrivacy] = useState(false);
   const collectionDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close collection dropdown on outside click
@@ -78,7 +124,7 @@ export default function ReviewStep() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (saveAsDraft = false) => {
     setError('');
     setLoading(true);
 
@@ -168,7 +214,8 @@ export default function ReviewStep() {
         questions: questionsForApi,
         // Duration only applies to limited-time conversations
         ...(!formState.isLongRunning && totalMinutes > 0 && { duration_minutes: totalMinutes }),
-        ...(formState.scheduleActivation && formState.scheduledActivateAt && {
+        // If saving as draft, don't schedule activation
+        ...(formState.scheduleActivation && formState.scheduledActivateAt && !saveAsDraft && {
           scheduled_activate_at: formState.scheduledActivateAt + ':00'
         }),
         ...(formState.isFollowUp && formState.parentConversationId && {
@@ -246,104 +293,545 @@ export default function ReviewStep() {
     }
   };
 
-  return (
-    <div className="conversation-form">
-      <style>{`
-        @media (max-width: 768px) {
-          .review-summary-box {
-            padding: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            background-color: transparent !important;
-            border-bottom: 1px solid #e2e8f0 !important;
-            padding-bottom: 1rem !important;
-          }
-          .conversation-form .checkbox-label {
-            border: none !important;
-            border-radius: 0 !important;
-            background-color: transparent !important;
-            padding: 0.5rem 0 !important;
-          }
-        }
-      `}</style>
-      {error && <div className="error-message">{error}</div>}
+  // Get activation status text
+  const getActivationStatus = () => {
+    if (formState.scheduleActivation && formState.scheduledActivateAt) {
+      return `Scheduled (${new Date(formState.scheduledActivateAt).toLocaleString()})`;
+    }
+    return 'Manual (will be created as draft)';
+  };
 
-      <div className="form-section">
-        <h2>{formState.createTemplate ? 'Review' : 'Review & Launch'}</h2>
-        <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
-          Review your {formState.createTemplate ? 'template' : 'conversation'} and configure final options
-        </p>
+  // Get intent name
+  const getIntentName = () => {
+    if (formState.selectedIntent && INTENT_PRESETS[formState.selectedIntent]) {
+      return INTENT_PRESETS[formState.selectedIntent].label;
+    }
+    return 'Custom';
+  };
 
-        {/* Summary */}
-        <div
-          className="review-summary-box"
-          style={{
-            backgroundColor: '#f7fafc',
-            padding: '1.5rem',
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0',
-            marginBottom: '1.5rem',
-          }}
-        >
-          <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#2d3748', marginBottom: '1rem' }}>
-            Summary
-          </h3>
-          <div style={{ fontSize: '0.875rem', color: '#4a5568', lineHeight: '1.6' }}>
-            <p style={{ margin: '0.5rem 0' }}>
-              <strong>Title:</strong> {formState.title}
-            </p>
-            {formState.participantTitle && (
-              <p style={{ margin: '0.5rem 0' }}>
-                <strong>Display Title:</strong> {formState.participantTitle}
-              </p>
-            )}
-            <p style={{ margin: '0.5rem 0' }}>
-              <strong>Questions:</strong> {formState.questions.length} question{formState.questions.length !== 1 ? 's' : ''}
-            </p>
-            {formState.isLongRunning ? (
-              <p style={{ margin: '0.5rem 0' }}>
-                <strong>Mode:</strong> Long-running feedback ({formState.analysisInterval} analysis)
-              </p>
-            ) : (
-              <>
-                {(formState.durationHours > 0 || formState.durationMinutes > 0) && (
-                  <p style={{ margin: '0.5rem 0' }}>
-                    <strong>Duration:</strong> {formState.durationHours > 0 && `${formState.durationHours} hour${formState.durationHours !== 1 ? 's' : ''}`}
-                    {formState.durationHours > 0 && formState.durationMinutes > 0 && ', '}
-                    {formState.durationMinutes > 0 && `${formState.durationMinutes} minute${formState.durationMinutes !== 1 ? 's' : ''}`}
-                  </p>
-                )}
-              </>
-            )}
-            {formState.scheduleActivation && formState.scheduledActivateAt && (
-              <p style={{ margin: '0.5rem 0' }}>
-                <strong>Scheduled for:</strong> {new Date(formState.scheduledActivateAt).toLocaleString()}
-              </p>
-            )}
-          </div>
+  // Collection dropdown component (shared between views)
+  const CollectionDropdown = () => (
+    <div className="form-group">
+      {formState.selectedSeriesId ? (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: spacing[2],
+          padding: `${spacing[2]} ${spacing[3]}`,
+          backgroundColor: 'var(--color-primary-100)',
+          borderRadius: borders.radius.md,
+          border: '1px solid var(--color-primary-300)',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-primary-600)' }}>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-900)' }}>
+            In collection: <strong>{seriesList.find(s => s.id === formState.selectedSeriesId)?.name}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => updateFormState({ selectedSeriesId: '', addToSeries: false })}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '20px',
+              height: '20px',
+              padding: 0,
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: borders.radius.full,
+              cursor: 'pointer',
+              color: 'var(--color-primary-500)',
+            }}
+            title="Remove from collection"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
+      ) : (
+        <div ref={collectionDropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+          <button
+            type="button"
+            onClick={() => setShowCollectionDropdown(!showCollectionDropdown)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              padding: `${spacing[2]} ${spacing[3]}`,
+              backgroundColor: 'transparent',
+              border: 'none',
+              fontSize: typography.fontSize.sm,
+              color: 'var(--color-primary-600)',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add to collection
+          </button>
 
-        {/* Privacy Configuration (Guided Mode) */}
-        {formState.isGuidedMode && formState.selectedIntent && (
-          <ConfigurationSummary
-            intent={INTENT_PRESETS[formState.selectedIntent]}
-            anonymityLevel={formState.anonymityLevel}
-            resultsAccess={formState.resultsAccess}
-            showVerbatimResponses={formState.showVerbatimResponses}
-            inviteOnly={formState.inviteOnly}
-            inviteEmails={formState.inviteEmails}
-            onAnonymityChange={(val) => updateFormState({ anonymityLevel: val })}
-            onResultsAccessChange={(val) => updateFormState({ resultsAccess: val })}
-            onShowVerbatimChange={(val) => updateFormState({ showVerbatimResponses: val })}
-            onInviteOnlyChange={(val) => updateFormState({ inviteOnly: val })}
-            onInviteEmailsChange={(val) => updateFormState({ inviteEmails: val })}
-          />
-        )}
+          {showCollectionDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: spacing[1],
+              backgroundColor: 'var(--color-primary-50)',
+              border: '1px solid var(--color-primary-300)',
+              borderRadius: borders.radius.md,
+              boxShadow: shadows.lg,
+              minWidth: '240px',
+              maxHeight: '280px',
+              overflowY: 'auto',
+              zIndex: 100,
+            }}>
+              {seriesList.length === 0 ? (
+                <div style={{ padding: spacing[4], textAlign: 'center', color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
+                  No collections yet
+                </div>
+              ) : (
+                seriesList.map((series) => (
+                  <button
+                    key={series.id}
+                    type="button"
+                    onClick={() => {
+                      updateFormState({ selectedSeriesId: series.id, addToSeries: true });
+                      setShowCollectionDropdown(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing[2],
+                      width: '100%',
+                      padding: `${spacing[3]} ${spacing[4]}`,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      textAlign: 'left',
+                      fontSize: typography.fontSize.sm,
+                      color: 'var(--color-primary-900)',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid var(--color-primary-100)',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-primary-400)', flexShrink: 0 }}>
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {series.name}
+                    </span>
+                  </button>
+                ))
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCollectionDropdown(false);
+                  setShowCreateSeriesModal(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  width: '100%',
+                  padding: `${spacing[3]} ${spacing[4]}`,
+                  backgroundColor: 'var(--color-primary-50)',
+                  border: 'none',
+                  textAlign: 'left',
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  color: 'var(--color-primary-700)',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-50)'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Create New Collection
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // New design render
+  const renderNewDesign = () => (
+    <div style={{
+      display: 'flex',
+      gap: spacing[5],
+      alignItems: 'flex-start',
+    }}>
+      {/* Main content column */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Summary Card */}
+        <Card style={{ marginBottom: spacing[4] }}>
+          <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>
+            {/* Conversation Type */}
+            <div style={{ marginBottom: spacing[3] }}>
+              <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Conversation Type</div>
+              <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{getIntentName()}</div>
+            </div>
+
+            {/* Title */}
+            <div style={{ marginBottom: spacing[3] }}>
+              <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Title</div>
+              <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{formState.title}</div>
+            </div>
+
+            {/* Questions */}
+            <div style={{ marginBottom: spacing[3] }}>
+              <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[2] }}>Questions</div>
+              <ol style={{ margin: 0, paddingLeft: spacing[5], color: 'var(--color-primary-900)' }}>
+                {formState.questions.map((q, idx) => (
+                  <li key={q.id || idx} style={{ marginBottom: spacing[1] }}>
+                    {q.question_text || 'Untitled question'}{' '}
+                    <span style={{ color: 'var(--color-primary-400)' }}>({getQuestionTypeLabel(q.question_type || 'text')})</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Duration */}
+            {!formState.isLongRunning && (formState.durationHours > 0 || formState.durationMinutes > 0) && (
+              <div style={{ marginBottom: spacing[3] }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Duration</div>
+                <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  {formState.durationHours} hours {formState.durationMinutes} minutes
+                </div>
+              </div>
+            )}
+
+            {/* Long-running mode */}
+            {formState.isLongRunning && (
+              <div style={{ marginBottom: spacing[3] }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Mode</div>
+                <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  Long-running feedback ({formState.analysisInterval} analysis)
+                </div>
+              </div>
+            )}
+
+            {/* Activation */}
+            <div>
+              <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Activation</div>
+              <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{getActivationStatus()}</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Privacy & Access Settings Card */}
+        <Card style={{ marginBottom: spacing[4] }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
+            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)' }}>
+              Privacy & Access Settings
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowCustomizePrivacy(!showCustomizePrivacy)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[1],
+                backgroundColor: 'transparent',
+                border: 'none',
+                fontSize: typography.fontSize.sm,
+                color: 'var(--color-primary-600)',
+                cursor: 'pointer',
+              }}
+            >
+              {showCustomizePrivacy ? (
+                'Done'
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Customize
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Info banner */}
+          {formState.selectedIntent && (
+            <div style={{
+              backgroundColor: 'var(--color-info-50, #eff6ff)',
+              border: `1px solid var(--color-info-200, #bfdbfe)`,
+              borderRadius: borders.radius.md,
+              padding: spacing[3],
+              marginBottom: spacing[4],
+              fontSize: typography.fontSize.sm,
+              color: 'var(--color-info-700, #1d4ed8)',
+            }}>
+              These settings have been configured for {getIntentName()}. Click "Customize" to adjust them.
+            </div>
+          )}
+
+          {/* 2x2 Grid of settings */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: spacing[4] }}>
+            {/* Anonymity */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <div>
+                <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Anonymity</div>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  {getAnonymityLabel(formState.anonymityLevel)}
+                </div>
+              </div>
+            </div>
+
+            {/* Access */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <div>
+                <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Access</div>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  {formState.inviteOnly ? 'Invite-only' : 'Open to all'}
+                </div>
+              </div>
+            </div>
+
+            {/* Results Visibility */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              <div>
+                <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Results Visibility</div>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  {getResultsAccessLabel(formState.resultsAccess)}
+                </div>
+              </div>
+            </div>
+
+            {/* Verbatim Responses */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <div>
+                <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Verbatim Responses</div>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  {formState.showVerbatimResponses ? 'Visible' : 'Summaries only'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Expandable customization panel */}
+          {showCustomizePrivacy && (
+            <div style={{ marginTop: spacing[4], paddingTop: spacing[4], borderTop: '1px solid var(--color-primary-200)' }}>
+              {/* How anonymous are responses? */}
+              <div style={{ marginBottom: spacing[5] }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[3] }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                    How anonymous are responses?
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                  {[
+                    { value: AnonymityLevel.OPEN, label: 'Does not matter', desc: 'Anyone can respond. Identity recorded if logged in.' },
+                    { value: AnonymityLevel.FULLY_ANONYMOUS, label: 'Fully anonymous', desc: 'No identity tracking. Requires secret codes.' },
+                    { value: AnonymityLevel.PLATFORM_TRACKED, label: 'Anonymous to you', desc: 'Login required. Platform tracks, hidden from you.' },
+                    { value: AnonymityLevel.REVEALABLE, label: 'Revealable', desc: 'Login required. You can reveal identities later.' },
+                  ].map((option) => (
+                    <label
+                      key={option.value}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: spacing[3],
+                        padding: spacing[3],
+                        borderRadius: borders.radius.md,
+                        border: formState.anonymityLevel === option.value ? '1px solid var(--color-primary-500)' : '1px solid var(--color-primary-200)',
+                        backgroundColor: formState.anonymityLevel === option.value ? 'var(--color-primary-50)' : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="anonymity"
+                        checked={formState.anonymityLevel === option.value}
+                        onChange={() => updateFormState({ anonymityLevel: option.value })}
+                        style={{ marginTop: '2px', accentColor: 'var(--color-primary-600)' }}
+                      />
+                      <div>
+                        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{option.label}</div>
+                        <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>{option.desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Who can respond? */}
+              <div style={{ marginBottom: spacing[5] }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[3] }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                    Who can respond?
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                  {[
+                    { value: false, label: 'Anyone with the link', desc: 'Share the link publicly or with specific people.' },
+                    { value: true, label: 'Invite-only', desc: 'Only invited participants can respond.' },
+                  ].map((option) => (
+                    <label
+                      key={String(option.value)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: spacing[3],
+                        padding: spacing[3],
+                        borderRadius: borders.radius.md,
+                        border: formState.inviteOnly === option.value ? '1px solid var(--color-primary-500)' : '1px solid var(--color-primary-200)',
+                        backgroundColor: formState.inviteOnly === option.value ? 'var(--color-primary-50)' : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="access"
+                        checked={formState.inviteOnly === option.value}
+                        onChange={() => updateFormState({ inviteOnly: option.value })}
+                        style={{ marginTop: '2px', accentColor: 'var(--color-primary-600)' }}
+                      />
+                      <div>
+                        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{option.label}</div>
+                        <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>{option.desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Who can see results? */}
+              <div style={{ marginBottom: spacing[5] }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[3] }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                    Who can see results?
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                  {[
+                    { value: ResultsAccess.CREATOR_ONLY, label: 'Only me', desc: 'Respondents see a confirmation but not the results.' },
+                    { value: ResultsAccess.PARTICIPANTS, label: 'All respondents', desc: 'Anyone who responds can view all results and analysis.' },
+                    { value: ResultsAccess.PUBLIC_LINK, label: 'Anyone with link', desc: 'Results are public to anyone with the results link.' },
+                  ].map((option) => (
+                    <label
+                      key={option.value}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: spacing[3],
+                        padding: spacing[3],
+                        borderRadius: borders.radius.md,
+                        border: formState.resultsAccess === option.value ? '1px solid var(--color-primary-500)' : '1px solid var(--color-primary-200)',
+                        backgroundColor: formState.resultsAccess === option.value ? 'var(--color-primary-50)' : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="results"
+                        checked={formState.resultsAccess === option.value}
+                        onChange={() => updateFormState({ resultsAccess: option.value })}
+                        style={{ marginTop: '2px', accentColor: 'var(--color-primary-600)' }}
+                      />
+                      <div>
+                        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{option.label}</div>
+                        <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>{option.desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Show verbatim responses */}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: spacing[3],
+                  padding: spacing[3],
+                  borderRadius: borders.radius.md,
+                  border: '1px solid var(--color-primary-200)',
+                  backgroundColor: formState.showVerbatimResponses ? 'var(--color-primary-50)' : 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formState.showVerbatimResponses}
+                  onChange={(e) => updateFormState({ showVerbatimResponses: e.target.checked })}
+                  style={{ marginTop: '2px', accentColor: 'var(--color-primary-600)' }}
+                />
+                <div>
+                  <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>Show verbatim responses</div>
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>When disabled, viewers only see AI-generated summaries.</div>
+                </div>
+              </label>
+            </div>
+          )}
+        </Card>
+
+        {/* Collection Card */}
+        <Card style={{ marginBottom: spacing[4] }}>
+          <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[2] }}>
+            Collection (Optional)
+          </h3>
+          <p style={{ margin: 0, fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', marginBottom: spacing[3] }}>
+            {formState.createTemplate
+              ? 'Instances created from this template will automatically join the selected collection.'
+              : 'Group this conversation with related conversations in a collection.'}
+          </p>
+          <CollectionDropdown />
+        </Card>
 
         {/* Invite Users (Manual Mode) */}
         {!formState.isGuidedMode && formState.inviteOnly && (
-          <div className="form-section">
-            <h3>Invite Users</h3>
+          <Card style={{ marginBottom: spacing[4] }}>
+            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[3] }}>
+              Invite Users
+            </h3>
             <div className="form-group">
               <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
               <textarea
@@ -352,183 +840,76 @@ export default function ReviewStep() {
                 onChange={(e) => updateFormState({ inviteEmails: e.target.value })}
                 placeholder="user1@example.com, user2@example.com"
                 rows={3}
+                style={{ fontFamily: 'inherit' }}
               />
               <p className="form-help-text">
                 Enter email addresses separated by commas. You can also add more invitations after creating the conversation.
               </p>
             </div>
-          </div>
+          </Card>
         )}
-
-        {/* Collection */}
-        <div className="form-section">
-          <h3>Collection (Optional)</h3>
-          <p className="form-help-text" style={{ marginBottom: spacing[4] }}>
-            {formState.createTemplate
-              ? 'Instances created from this template will automatically join the selected collection.'
-              : 'Group this conversation with related conversations in a collection.'}
-          </p>
-
-          <div className="form-group">
-            {formState.selectedSeriesId ? (
-              // Show selected collection with remove option
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: spacing[2],
-                padding: `${spacing[2]} ${spacing[3]}`,
-                backgroundColor: 'var(--color-primary-100)',
-                borderRadius: borders.radius.md,
-                border: '1px solid var(--color-primary-300)',
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-primary-600)' }}>
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-900)' }}>
-                  In collection: <strong>{seriesList.find(s => s.id === formState.selectedSeriesId)?.name}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateFormState({ selectedSeriesId: '', addToSeries: false });
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '20px',
-                    height: '20px',
-                    padding: 0,
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    borderRadius: borders.radius.full,
-                    cursor: 'pointer',
-                    color: 'var(--color-primary-500)',
-                  }}
-                  title="Remove from collection"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              // Show "Add to Collection" dropdown
-              <div ref={collectionDropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCollectionDropdown(!showCollectionDropdown)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: spacing[2],
-                    padding: `${spacing[2]} ${spacing[3]}`,
-                    backgroundColor: 'transparent',
-                    border: '1px dashed var(--color-primary-400)',
-                    borderRadius: borders.radius.md,
-                    fontSize: typography.fontSize.sm,
-                    color: 'var(--color-primary-600)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add to Collection
-                </button>
-
-                {showCollectionDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: spacing[1],
-                    backgroundColor: 'var(--color-primary-50)',
-                    border: '1px solid var(--color-primary-300)',
-                    borderRadius: borders.radius.md,
-                    boxShadow: shadows.lg,
-                    minWidth: '240px',
-                    maxHeight: '280px',
-                    overflowY: 'auto',
-                    zIndex: 100,
-                  }}>
-                    {seriesList.length === 0 ? (
-                      <div style={{ padding: spacing[4], textAlign: 'center', color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
-                        No collections yet
-                      </div>
-                    ) : (
-                      seriesList.map((series) => (
-                        <button
-                          key={series.id}
-                          type="button"
-                          onClick={() => {
-                            updateFormState({ selectedSeriesId: series.id, addToSeries: true });
-                            setShowCollectionDropdown(false);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: spacing[2],
-                            width: '100%',
-                            padding: `${spacing[3]} ${spacing[4]}`,
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            textAlign: 'left',
-                            fontSize: typography.fontSize.sm,
-                            color: 'var(--color-primary-900)',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid var(--color-primary-100)',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-50)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-primary-400)', flexShrink: 0 }}>
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                          </svg>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {series.name}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCollectionDropdown(false);
-                        setShowCreateSeriesModal(true);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: spacing[2],
-                        width: '100%',
-                        padding: `${spacing[3]} ${spacing[4]}`,
-                        backgroundColor: 'var(--color-primary-50)',
-                        border: 'none',
-                        textAlign: 'left',
-                        fontSize: typography.fontSize.sm,
-                        fontWeight: typography.fontWeight.medium,
-                        color: 'var(--color-primary-700)',
-                        cursor: 'pointer',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-50)'}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                      Create New Collection
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
+
+      {/* Sidebar - Respondent Preview */}
+      <div style={{ width: '260px', flexShrink: 0 }}>
+        <Card>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[4] }}>
+            Respondent Preview
+          </h3>
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing[2],
+              width: '100%',
+              padding: spacing[3],
+              backgroundColor: 'var(--color-primary-50)',
+              border: '1px solid var(--color-primary-300)',
+              borderRadius: borders.radius.md,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              color: 'var(--color-primary-700)',
+              cursor: 'pointer',
+              transition: `all ${transitions.duration.fast} ${transitions.timing.ease}`,
+              marginBottom: spacing[3],
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Show Preview
+          </button>
+          <div style={{
+            backgroundColor: 'var(--color-info-50, #eff6ff)',
+            border: `1px solid var(--color-info-200, #bfdbfe)`,
+            borderRadius: borders.radius.md,
+            padding: spacing[3],
+            fontSize: typography.fontSize.xs,
+            color: 'var(--color-info-700, #1d4ed8)',
+          }}>
+            This is how respondents will see your conversation
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="conversation-form">
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="section-header">
+        <h2>{formState.createTemplate ? 'Review' : 'Review & Launch'}</h2>
+      </div>
+      <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
+        Review your {formState.createTemplate ? 'template' : 'conversation'} and configure final options
+      </p>
+
+      {renderNewDesign()}
 
       {/* Navigation */}
       <div className="form-actions" style={{
@@ -541,7 +922,6 @@ export default function ReviewStep() {
         <button
           type="button"
           onClick={() => {
-            // If creating from template, go back to template page
             if (formState.parentConversation?.is_template && formState.parentConversationId) {
               navigate(`/templates/${formState.parentConversationId}`);
             } else {
@@ -553,19 +933,28 @@ export default function ReviewStep() {
           ← {formState.parentConversation?.is_template ? 'Back to Template' : 'Back'}
         </button>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          {!formState.isEditMode && (
+            <button
+              type="button"
+              onClick={() => handleSubmit(true)}
+              disabled={loading}
+              className="btn btn-secondary btn-large"
+            >
+              Save as Draft
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setShowPreview(true)}
-            className="btn btn-secondary btn-large"
-          >
-            Preview
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
+            onClick={() => handleSubmit(false)}
             disabled={loading}
             className="btn btn-primary btn-large"
+            style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}
           >
+            {!loading && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
             {loading
               ? (formState.isEditMode ? 'Updating...' : 'Creating...')
               : formState.isEditMode

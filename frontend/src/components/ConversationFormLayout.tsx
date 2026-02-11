@@ -195,7 +195,7 @@ export default function ConversationFormLayout() {
       backgroundColor: 'var(--color-primary-100)',
       padding: spacing[8],
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
         {/* Header */}
         <div
           className="form-layout-header"
@@ -317,7 +317,7 @@ export default function ConversationFormLayout() {
           <div
             className="form-layout-progress"
             style={{
-              maxWidth: '700px',
+              maxWidth: '600px',
               margin: '0 auto',
               marginBottom: spacing[8],
             }}
@@ -415,7 +415,7 @@ export default function ConversationFormLayout() {
           </div>
 
           {/* Step Content */}
-          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <Outlet />
           </div>
         </div>

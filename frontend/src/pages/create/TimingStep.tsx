@@ -442,6 +442,34 @@ export default function TimingStep() {
           </div>
         )}
 
+        {/* Flexible timing info banner */}
+        {!isTemplate && !formState.isLongRunning && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: spacing[3],
+            padding: spacing[4],
+            backgroundColor: 'var(--color-info-50, #eff6ff)',
+            border: `1px solid var(--color-info-200, #bfdbfe)`,
+            borderRadius: borders.radius.lg,
+            marginBottom: spacing[4],
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-500, #3b82f6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <div>
+              <div style={{ fontWeight: typography.fontWeight.semibold, color: 'var(--color-info-700, #1d4ed8)', marginBottom: spacing[1] }}>
+                Flexible timing
+              </div>
+              <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-info-600, #2563eb)' }}>
+                You can manually close the conversation early or extend it at any time from the dashboard, regardless of these settings.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Recurring Schedule - Only for templates and when NOT long-running */}
         {isTemplate && !formState.isLongRunning && (
           <div className="form-group" style={s.sectionDivider}>
