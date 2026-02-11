@@ -327,6 +327,106 @@ class SlackService:
 
         return blocks, fallback_text
 
+    def build_analysis_ready_message(
+        self,
+        conversation_title: str,
+        results_url: str,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for analysis completion.
+
+        Args:
+            conversation_title: Title of the conversation
+            results_url: URL to view analysis results
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        fallback_text = f"Analysis is ready for \"{conversation_title}\"!"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":bar_chart: *Analysis Ready!*",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"The analysis for *{conversation_title}* is complete. See what insights emerged from the conversation.",
+                },
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "View Analysis"},
+                        "url": results_url,
+                        "style": "primary",
+                    }
+                ],
+            },
+        ]
+
+        return blocks, fallback_text
+
+    def build_response_confirmation_message(
+        self,
+        conversation_title: str,
+        results_url: str,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for response submission confirmation.
+
+        Args:
+            conversation_title: Title of the conversation
+            results_url: URL to view analysis results
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        fallback_text = f"Thanks for submitting your response to \"{conversation_title}\"!"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":white_check_mark: *Thanks for your response!*",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Your response to *{conversation_title}* has been received.",
+                },
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "Once the conversation closes and analysis is complete, you can view the results below.",
+                    }
+                ],
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "View Results"},
+                        "url": results_url,
+                    }
+                ],
+            },
+        ]
+
+        return blocks, fallback_text
+
 
 # Singleton instance
 slack_service = SlackService()

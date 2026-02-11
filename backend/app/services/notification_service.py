@@ -165,6 +165,162 @@ class NotificationService:
 
         return success
 
+    async def notify_analysis_ready(
+        self,
+        conversation: Conversation,
+        db: Session,
+    ) -> int:
+        """
+        Send Slack notification to all participants when analysis is ready.
+
+        Only sends if results_access allows participants to view results.
+
+        Args:
+            conversation: The conversation that was analyzed
+            db: Database session
+
+        Returns:
+            Number of notifications sent successfully
+        """
+        if not settings.slack_enabled:
+            return 0
+
+        # Only notify if participants can actually view the results
+        if conversation.results_access == "creator_only":
+            logger.debug("Skipping analysis notification - results_access is creator_only")
+            return 0
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            return 0
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            return 0
+
+        # Import here to avoid circular imports
+        from app.models.response import Response
+
+        # Get all unique participants who submitted responses
+        participant_ids = db.query(Response.participant_id).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id.isnot(None),
+            Response.status == "submitted",
+        ).distinct().all()
+
+        participant_ids = [p[0] for p in participant_ids]
+
+        if not participant_ids:
+            return 0
+
+        # Build the message
+        results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
+
+        blocks, fallback_text = slack_service.build_analysis_ready_message(
+            conversation_title=conversation.title,
+            results_url=results_url,
+        )
+
+        sent_count = 0
+        for participant_id in participant_ids:
+            user = db.query(User).filter(User.id == participant_id).first()
+            if not user:
+                continue
+
+            slack_user_id = await self._get_slack_user_id(
+                user=user,
+                slack_connection=slack_connection,
+                db=db,
+            )
+
+            if not slack_user_id:
+                continue
+
+            success = await slack_service.send_dm(
+                encrypted_token=slack_connection.bot_access_token_encrypted,
+                slack_user_id=slack_user_id,
+                blocks=blocks,
+                fallback_text=fallback_text,
+            )
+
+            if success:
+                sent_count += 1
+                logger.info(f"Sent Slack analysis notification to user {participant_id}")
+
+        return sent_count
+
+    async def notify_response_submitted(
+        self,
+        user_id: UUID,
+        conversation: Conversation,
+        db: Session,
+    ) -> bool:
+        """
+        Send Slack notification when a user submits a response.
+
+        Args:
+            user_id: The user who submitted
+            conversation: The conversation they responded to
+            db: Database session
+
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not settings.slack_enabled:
+            return False
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            return False
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            return False
+
+        # Get the user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
+
+        # Find user's Slack ID
+        slack_user_id = await self._get_slack_user_id(
+            user=user,
+            slack_connection=slack_connection,
+            db=db,
+        )
+
+        if not slack_user_id:
+            return False
+
+        # Build the message
+        results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
+
+        blocks, fallback_text = slack_service.build_response_confirmation_message(
+            conversation_title=conversation.title,
+            results_url=results_url,
+        )
+
+        # Send the DM
+        success = await slack_service.send_dm(
+            encrypted_token=slack_connection.bot_access_token_encrypted,
+            slack_user_id=slack_user_id,
+            blocks=blocks,
+            fallback_text=fallback_text,
+        )
+
+        if success:
+            logger.info(f"Sent Slack response confirmation to user {user_id} for conversation {conversation.id}")
+
+        return success
+
     async def _get_slack_user_id(
         self,
         user: User,

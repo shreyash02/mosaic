@@ -34,6 +34,7 @@ from app.schemas.response import (
 from app.schemas.participant_code import CodeValidation
 from app.schemas.common import SuccessResponse
 from app.schemas.conversation import ConversationState, AnonymityLevel
+from app.services.notification_service import notification_service
 
 router = APIRouter()
 
@@ -897,6 +898,17 @@ async def submit_response(
             invitation.accepted_at = datetime.utcnow()
 
     db.commit()
+
+    # Send Slack confirmation if user is authenticated
+    if current_user:
+        try:
+            await notification_service.notify_response_submitted(
+                user_id=current_user.id,
+                conversation=conversation,
+                db=db,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send Slack response confirmation: {e}", exc_info=True)
 
     return SuccessResponse(
         success=True,

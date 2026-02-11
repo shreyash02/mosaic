@@ -55,6 +55,7 @@ import FollowUpsHelp from './pages/help/FollowUpsHelp';
 import RecurringConversationsHelp from './pages/help/RecurringConversationsHelp';
 import OrganizationsHelp from './pages/help/OrganizationsHelp';
 import { SlackCallbackPage } from './pages/SlackCallbackPage';
+import { AnalysisViewPage } from './pages/AnalysisViewPage';
 
 import './App.css';
 
@@ -302,6 +303,16 @@ function App() {
 
             {/* Slack OAuth callback */}
             <Route path="/slack/callback" element={<SlackCallbackPage />} />
+
+            {/* Direct analysis view for participants */}
+            <Route
+              path="/analysis/:id"
+              element={
+                <ProtectedRoute>
+                  <AnalysisViewPage />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />

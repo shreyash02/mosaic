@@ -51,7 +51,7 @@ export async function generateAnalysisPDF(input: PDFGeneratorInput): Promise<Blo
 
   // Generate analysis URL for the header link
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const analysisUrl = `${baseUrl}/conversations/${conversation.id}/analysis`;
+  const analysisUrl = `${baseUrl}/analysis/${conversation.id}`;
 
   // 1. Render cover page - returns the Y position after content
   let currentY = renderCoverPage(doc, analysis, conversation, options, analysisUrl, fontFamily);

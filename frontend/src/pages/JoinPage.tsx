@@ -8,7 +8,7 @@ import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { typography, spacing, borders, shadows, transitions } from '../styles';
+import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles';
 
 const styles = {
   page: {
@@ -119,6 +119,7 @@ const styles = {
     borderRadius: borders.radius.md,
     boxSizing: 'border-box' as const,
     transition: transitions.duration.normal,
+    minHeight: '44px',
   },
   textarea: {
     width: '100%',
@@ -130,6 +131,7 @@ const styles = {
     resize: 'vertical' as const,
     boxSizing: 'border-box' as const,
     transition: transitions.duration.normal,
+    minHeight: '100px',
   },
   charCount: {
     fontSize: typography.fontSize.xs,
@@ -369,13 +371,14 @@ const styles = {
   radioLabel: {
     display: 'flex',
     alignItems: 'center',
-    gap: spacing[2],
+    gap: spacing[3],
     padding: spacing[3],
     backgroundColor: 'var(--color-primary-50)',
     border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     cursor: 'pointer',
     transition: transitions.duration.normal,
+    minHeight: '48px',
   },
   checkboxGroup: {
     display: 'flex',
@@ -534,6 +537,40 @@ const hoverStyles = `
   .join-radio-label:hover {
     border-color: ${'var(--color-primary-400)'};
     background-color: ${'var(--color-primary-50)'};
+  }
+
+  /* Mobile responsiveness */
+  @media ${mediaQueries.mobile} {
+    .join-page {
+      padding: ${spacing[4]} !important;
+    }
+    .join-card {
+      padding: ${spacing[4]} !important;
+    }
+    .join-card-centered {
+      padding: ${spacing[5]} !important;
+    }
+    .join-form-actions {
+      flex-direction: column !important;
+    }
+    .join-form-actions button {
+      width: 100% !important;
+      min-width: unset !important;
+    }
+    .join-modal-content {
+      padding: ${spacing[4]} !important;
+    }
+    .join-modal-actions {
+      flex-direction: column !important;
+    }
+    .join-modal-actions button {
+      width: 100% !important;
+    }
+    .join-draft-status {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: ${spacing[2]} !important;
+    }
   }
 `;
 
@@ -730,7 +767,7 @@ export default function JoinPage() {
           }
         } else if (state === 'analyzed') {
           if (hasSubmitted) {
-            navigate(`/conversations/${validationResult.conversation_id}/analysis`);
+            navigate(`/analysis/${validationResult.conversation_id}`);
           } else {
             setError('This conversation has been closed. It is no longer accepting responses.');
           }
@@ -789,7 +826,7 @@ export default function JoinPage() {
           }
         } else if (state === 'analyzed') {
           if (hasSubmitted) {
-            navigate(`/conversations/${validationResult.conversation_id}/analysis`);
+            navigate(`/analysis/${validationResult.conversation_id}`);
           } else {
             setError('This conversation has been closed. It is no longer accepting responses.');
           }
@@ -1000,9 +1037,9 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
-            <div style={styles.cardCentered}>
+            <div style={styles.cardCentered} className="join-card-centered">
               <h1 style={styles.title}>Enter Access Code</h1>
               <p style={{ ...styles.description, marginBottom: spacing[6] }}>
                 Please enter the access code for the conversation.
@@ -1045,7 +1082,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.loading}>Validating access code...</div>
           </div>
@@ -1059,9 +1096,9 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
-            <div style={styles.cardCentered}>
+            <div style={styles.cardCentered} className="join-card-centered">
               <h2 style={styles.title}>Unable to Load Conversation</h2>
               <p style={{ ...styles.description, marginBottom: spacing[5] }}>{error}</p>
               <button
@@ -1087,7 +1124,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.trustScreen}>
               <div style={styles.conflictCard}>
@@ -1128,7 +1165,7 @@ export default function JoinPage() {
 
             {showIncognitoModal && (
               <div style={styles.modalOverlay} onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }}>
-                <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalContent} className="join-modal-content" onClick={(e) => e.stopPropagation()}>
                   <h2 style={styles.modalTitle}>Open in Incognito/Private Window</h2>
 
                   {linkCopied && (
@@ -1148,7 +1185,7 @@ export default function JoinPage() {
                     </ol>
                   </div>
 
-                  <div style={styles.modalActions}>
+                  <div style={styles.modalActions} className="join-modal-actions">
                     {!linkCopied && (
                       <button
                         onClick={async () => {
@@ -1185,7 +1222,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.cardCentered}>
               <h1 style={styles.title}>Enter Participant Code</h1>
@@ -1232,7 +1269,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.loading}>Loading conversation...</div>
           </div>
@@ -1245,12 +1282,12 @@ export default function JoinPage() {
   if (success) {
     const viewResultsLink = conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
       ? `/join/${accessCode}?participant_code=${participantCode}`
-      : `/conversations/${conversation?.id}/analysis`;
+      : `/analysis/${conversation?.id}`;
 
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.cardCentered}>
               <div style={styles.successState}>
@@ -1290,7 +1327,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <header style={styles.header}>
               {conversation.header_image_url && (
@@ -1315,7 +1352,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.error}>Conversation not found</div>
           </div>
@@ -1329,7 +1366,7 @@ export default function JoinPage() {
     return (
       <>
         <style>{hoverStyles}</style>
-        <div style={styles.page}>
+        <div style={styles.page} className="join-page">
           <div style={styles.container}>
             <div style={styles.trustScreen}>
               <div style={styles.trustCard}>
@@ -1396,7 +1433,7 @@ export default function JoinPage() {
   return (
     <>
       <style>{hoverStyles}</style>
-      <div style={styles.page}>
+      <div style={styles.page} className="join-page">
         <div style={styles.container}>
           <header style={styles.header}>
             {conversation.header_image_url && (
@@ -1459,7 +1496,7 @@ export default function JoinPage() {
               const response = responses.find((r) => r.question_id === question.id);
 
               return (
-                <div key={question.id} style={styles.card}>
+                <div key={question.id} style={styles.card} className="join-card">
                   <label style={{ ...styles.label, fontSize: typography.fontSize.base }}>
                     {index + 1}. {question.question_text}
                     {question.is_required && <span style={{ color: 'var(--color-primary-600)', marginLeft: '4px' }}>*</span>}
@@ -1580,7 +1617,7 @@ export default function JoinPage() {
             )}
 
             {conversation.anonymity_level !== AnonymityLevel.OPEN && (
-              <div style={styles.draftStatus}>
+              <div style={styles.draftStatus} className="join-draft-status">
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   {isDraftSaving && (
                     <>
@@ -1608,7 +1645,7 @@ export default function JoinPage() {
               </div>
             )}
 
-            <div style={styles.formActions}>
+            <div style={styles.formActions} className="join-form-actions">
               {conversation.anonymity_level !== AnonymityLevel.OPEN && (
                 <button
                   type="button"

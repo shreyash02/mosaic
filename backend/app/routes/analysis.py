@@ -1,5 +1,7 @@
 """Analysis routes."""
 
+import asyncio
+import logging
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -20,6 +22,9 @@ from app.schemas.analysis import (
 from app.schemas.conversation import ConversationState
 from app.schemas.common import SuccessResponse
 from app.services.analysis_service import AnalysisService
+from app.services.notification_service import notification_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -96,10 +101,22 @@ def run_analysis_task(
 
         db.commit()
 
+        # Send Slack notifications to participants
+        if conversation:
+            try:
+                asyncio.run(
+                    notification_service.notify_analysis_ready(
+                        conversation=conversation,
+                        db=db,
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Failed to send analysis ready notifications: {e}", exc_info=True)
+
     except Exception as e:
         db.rollback()
         # Log error (in production, use proper logging)
-        print(f"Analysis failed for conversation {conversation_id}: {str(e)}")
+        logger.error(f"Analysis failed for conversation {conversation_id}: {str(e)}")
         raise
     finally:
         db.close()
