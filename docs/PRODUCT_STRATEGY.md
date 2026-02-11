@@ -694,6 +694,109 @@ Based on comprehensive architecture review (2026-01-31):
 
 ---
 
+## Market Viability Assessment
+
+**Assessment Date:** 2026-02-10
+
+### Sellability Verdict
+
+**YES, with conditions** (Confidence: 70%)
+
+Mosaic has a viable commercial foundation with genuine technical differentiation. The product can sell to a specific buyer profile, but success depends on execution of go-to-market and resisting feature creep toward commodity survey tools.
+
+### Why It Would Sell
+
+| Factor | Evidence |
+|--------|----------|
+| **Real pain, proven budget** | Agile teams already pay $25-50/user/month for retro tools (Retrium). Market exists and is validated. |
+| **Genuine technical differentiation** | Embedding + DBSCAN clustering is non-trivial. Most competitors have no AI or just basic sentiment analysis. |
+| **Price-value advantage** | $49/month team-based vs $250-500/month for 10-person team on Retrium (per-seat pricing). |
+| **Continuous mode is unique** | No competitor offers ambient feedback with periodic AI extraction. Novel workflow. |
+| **Longitudinal tracking fills gap** | "Are we getting better?" question is unanswered by session-based retro tools. |
+
+### Why It Might NOT Sell
+
+| Risk | Mitigation |
+|------|------------|
+| **Missing table-stakes features** | Export, Slack integration, rate limiting are straightforward to implement (days, not weeks) |
+| **Crowded market** | Focus on one segment (Agile teams) and win there before expanding |
+| **Differentiation requires education** | Invest in comparison content, demos, case studies showing concrete value |
+| **CAC concerns at $49/month** | Product-led growth is the only viable path; paid ads won't work at this price point |
+
+### Probability of Success
+
+**Defined as $500K+ ARR within 3 years:**
+
+| Scenario | Probability |
+|----------|-------------|
+| With focused execution | 40-50% |
+| Without addressing gaps | 10-20% |
+
+### Revenue Projections (Conservative)
+
+| Scenario | Year 1 Customers | ARPU | ARR |
+|----------|------------------|------|-----|
+| Conservative | 50 | $60 | $36K |
+| Moderate | 150 | $75 | $135K |
+| Optimistic | 300 | $90 | $324K |
+
+### Competitive Window
+
+The technical differentiation (embedding-based clustering, continuous mode) provides a **12-18 month window** before serious competitors can catch up. During this window, Mosaic must:
+
+1. Establish brand recognition in Agile/Scrum niche
+2. Accumulate customers to generate benchmark data
+3. Build integrations (Slack, Jira) that create switching costs
+
+### Market Readiness Blockers
+
+These are **not technically hard problems** — each can be completed in days:
+
+| Blocker | Effort | Impact |
+|---------|--------|--------|
+| Export (PDF/CSV) | 2-3 days | Unblocks enterprise evaluations |
+| Rate limiting | 1-2 days | Addresses security concerns |
+| Slack integration | 1-2 weeks | #1 lever for team adoption and viral growth |
+| Mobile optimization | 1 week | Required for participant experience |
+
+**Assessment:** Product is post-MVP but not yet market-ready. A focused 30-day sprint can close all gaps.
+
+### Target Buyer Profile
+
+**Primary: Scrum Master / Engineering Manager**
+- 10-100 person tech company
+- Runs biweekly retrospectives with 5-15 person team
+- Has discretionary budget ($49-149/month without VP approval)
+- Buying trigger: "Our retros have gotten stale" or "I want to prove we're improving"
+
+### Go-to-Market Viability
+
+**Viable channels for a small team:**
+1. Content marketing / SEO (6-12 month timeline)
+2. Product Hunt launch (one-time visibility spike)
+3. Community engagement (Agile/Scrum communities)
+4. Slack App Directory listing (distribution + viral mechanics)
+
+**Channels to avoid:**
+- Paid advertising (CAC exceeds LTV at $49/month)
+- Enterprise sales (requires SSO, SOC2, dedicated sales team)
+- Trade shows (expensive, wrong audience density)
+
+### Key Success Factors
+
+1. **Fix blockers in next 30 days** — Export, rate limiting, mobile optimization
+2. **Ship Slack integration** — Highest leverage feature for adoption
+3. **Secure 5 design partners** — Free pilots in exchange for feedback and case studies
+4. **Focus on one segment** — Win Agile/Scrum before chasing hospitality or HR
+
+### Bottom Line
+
+> "The product vision is sound, the technical foundation is solid, and the market need is real. The difference between success and failure comes down to execution speed on critical features and focus on one segment."
+
+The window of opportunity is real but finite. If Mosaic establishes brand recognition in the next 12-18 months before competitors add similar AI features, it has a defensible position.
+
+---
+
 ## Strategic Decisions & Open Questions
 
 ### 1. Monetization Strategy (CRITICAL - Month 1)
@@ -838,3 +941,4 @@ Based on comprehensive architecture review (2026-01-31):
 - **2026-02-10:** Added missing features from competitive analysis: Response Threshold, Slack Integration, Action Items, Conditional Logic
 - **2026-02-10:** Added "Ambient Feedback" concept - continuous conversation mode for persistent feedback channels with periodic AI extraction. Added customer-facing businesses persona (restaurants, hotels, retail) and expanded use cases
 - **2026-02-10:** Updated positioning strategy to "Unified Platform, Segmented Messaging" with master tagline "Honest feedback. Continuous insight." Added segment-specific landing pages, value propositions, competitive messaging, and staged go-to-market plan
+- **2026-02-10:** Added Market Viability Assessment - sellability verdict (YES, 70% confidence), revenue projections, competitive window analysis, and go-to-market feasibility. Blockers identified are straightforward (days, not weeks)
