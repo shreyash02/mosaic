@@ -398,12 +398,12 @@ Beyond traditional episodic surveys, Mosaic enables **ambient feedback** - persi
 ### Feature Enhancements (Deepen Existing Capabilities)
 
 - [x] **Slack Integration (Phase 1)** - ✅ IMPLEMENTED (DMs for invitation notifications, closing reminders for non-respondents)
-- [ ] **Slack Integration (Phase 2)** (3-4 days) - Notifications for team visibility and participant engagement:
+- [ ] **Slack Integration (Phase 2)** (2-3 days remaining) - Notifications for team visibility and participant engagement:
   - [ ] Channel post when conversation activates: "📊 [Name] is now open for responses"
   - [ ] Channel post when results ready: "✅ Analysis ready for [Name]" with link
   - [ ] DM to facilitator when analysis completes
-  - [ ] DM to participant on response submission: "Thanks! Your response was received" + link to results
-  - [ ] DM to participants when analysis is ready for a conversation they participated in
+  - [x] DM to participant on response submission: "Thanks! Your response was received" + link to results - ✅ DONE
+  - [x] DM to participants when analysis is ready - ✅ DONE
 - [ ] **Slack Integration (Phase 3)** (3-5 days) - Nice-to-have polish:
   - [ ] Channel notification: conversation closing soon
   - [ ] Response count updates to channel ("5 of 8 responded")
