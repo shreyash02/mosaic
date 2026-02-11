@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { PeriodicAnalysis, Conversation, ResponseWithQuestion } from '../types';
+import type { PeriodicAnalysis, Conversation, ResponseWithQuestion, Analysis } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
@@ -236,6 +237,24 @@ const styles = {
     cursor: 'pointer',
     transition: transitions.duration.normal,
   },
+  buttonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-700)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
   noAnalysis: {
     fontSize: typography.fontSize.sm,
     color: 'var(--color-primary-500)',
@@ -323,6 +342,10 @@ const hoverStyles = `
   .periodic-btn-primary:hover:not(:disabled) {
     background-color: ${'var(--color-primary-800)'};
   }
+  .periodic-btn-secondary:hover:not(:disabled) {
+    background-color: ${'var(--color-primary-100)'};
+    border-color: ${'var(--color-primary-400)'};
+  }
 `;
 
 export default function PeriodicAnalysisPage() {
@@ -335,6 +358,7 @@ export default function PeriodicAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [groupBy, setGroupBy] = useState<'question' | 'responder'>('question');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (id && periodLabel) {
@@ -401,6 +425,69 @@ export default function PeriodicAnalysisPage() {
 
   const handleBackClick = () => {
     navigate(`/conversations/${id}/analysis`);
+  };
+
+  const handleExportPDF = async () => {
+    if (!analysis || !conversation || isExporting) return;
+
+    setIsExporting(true);
+    try {
+      // Convert PeriodicAnalysis to Analysis-compatible object for PDF export
+      const analysisForPDF: Analysis = {
+        id: analysis.id,
+        conversation_id: analysis.conversation_id,
+        overall_summary: analysis.overall_summary || '',
+        themes: analysis.themes || [],
+        question_analyses: analysis.question_analyses || [],
+        surprising_insights: analysis.surprising_insights,
+        embedding_provider: '',
+        embedding_model: '',
+        clustering_algorithm: '',
+        llm_provider: '',
+        llm_model: '',
+        total_responses_analyzed: analysis.total_responses_analyzed || 0,
+        num_clusters_found: 0,
+        analysis_duration_ms: 0,
+        created_at: analysis.created_at,
+        conversation_title: conversation.title,
+        conversation_timezone: conversation.timezone,
+        show_verbatim_responses: conversation.show_verbatim_responses,
+        organization_id: conversation.organization_id || undefined,
+        unique_participants: responses.length,
+        conversation_activated_at: analysis.period_start,
+        conversation_closed_at: analysis.period_end,
+      };
+
+      const blob = await generateAnalysisPDF({
+        analysis: analysisForPDF,
+        conversation,
+        responses: conversation.show_verbatim_responses ? responses : undefined,
+        options: {
+          includeSurprisingInsights: true,
+          includeVerbatim: conversation.show_verbatim_responses && responses.length > 0,
+          fontFamily: 'lora',
+        },
+      });
+
+      // Create filename with period label
+      const periodStr = sanitizeFilename(formatPeriodLabel(analysis.period_label));
+      const titleStr = sanitizeFilename(conversation.title);
+      const filename = `${titleStr}_${periodStr}_Analysis.pdf`;
+
+      // Download the PDF
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const formatPeriodDate = (dateStr: string) => {
@@ -513,6 +600,17 @@ export default function PeriodicAnalysisPage() {
                 {formatPeriodDate(analysis.period_start)} — {formatPeriodDate(analysis.period_end)}
               </span>
             </div>
+            <button
+              onClick={handleExportPDF}
+              style={{
+                ...styles.buttonSecondary,
+                ...(isExporting ? styles.buttonDisabled : {}),
+              }}
+              className="periodic-btn-secondary"
+              disabled={isExporting}
+            >
+              {isExporting ? 'Exporting...' : 'Export PDF'}
+            </button>
           </header>
 
           {/* Overall Summary */}
