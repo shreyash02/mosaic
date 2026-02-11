@@ -642,8 +642,8 @@ export default function ConversationDetailPage() {
         try {
           const analysisData = await api.getAnalysis(id!);
           setAnalysis(analysisData);
-        } catch (err) {
-          console.log('No analysis available yet');
+        } catch {
+          // Analysis not available yet
         }
       }
     } catch (err: any) {
