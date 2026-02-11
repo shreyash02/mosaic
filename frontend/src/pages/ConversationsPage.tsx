@@ -772,7 +772,7 @@ export default function ConversationsPage() {
   const renderInvitationCard = (invitation: ConversationInvitationWithConversation) => {
     const { conversation } = invitation;
     const linkTo = conversation.state === ConversationState.ACTIVE
-      ? `/conversations/${conversation.access_code}`
+      ? `/join/${conversation.access_code}`
       : null;
 
     const card = (
