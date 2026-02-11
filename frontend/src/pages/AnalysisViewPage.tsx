@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Analysis } from '../types';
-import { colors, spacing, typography, borders, shadows } from '../styles/tokens';
+import { spacing, typography, borders, shadows } from '../styles/tokens';
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
@@ -245,12 +245,12 @@ export function AnalysisViewPage() {
                   <div style={{ marginTop: spacing[3] }}>
                     {qa.themes.map((theme, tIndex) => (
                       <div key={tIndex} style={styles.themeItem}>
-                        <div style={styles.themeName}>{theme.name}</div>
-                        {theme.description && (
-                          <div style={styles.themeDescription}>{theme.description}</div>
+                        <div style={styles.themeName}>{theme.theme}</div>
+                        {theme.summary && (
+                          <div style={styles.themeDescription}>{theme.summary}</div>
                         )}
                         <div style={styles.responseCount}>
-                          {theme.response_count} response{theme.response_count !== 1 ? 's' : ''}
+                          {theme.frequency} response{theme.frequency !== 1 ? 's' : ''}
                         </div>
                       </div>
                     ))}

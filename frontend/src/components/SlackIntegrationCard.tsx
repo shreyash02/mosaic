@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { SlackWorkspaceStatus } from '../types';
-import { colors, spacing, typography, borders, shadows } from '../styles/tokens';
+import { colors, spacing, typography, borders } from '../styles/tokens';
 
 interface SlackIntegrationCardProps {
   organizationId: string;
