@@ -54,6 +54,7 @@ import AnalysisHelp from './pages/help/AnalysisHelp';
 import FollowUpsHelp from './pages/help/FollowUpsHelp';
 import RecurringConversationsHelp from './pages/help/RecurringConversationsHelp';
 import OrganizationsHelp from './pages/help/OrganizationsHelp';
+import { SlackCallbackPage } from './pages/SlackCallbackPage';
 
 import './App.css';
 
@@ -298,6 +299,9 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Slack OAuth callback */}
+            <Route path="/slack/callback" element={<SlackCallbackPage />} />
 
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />

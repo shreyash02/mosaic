@@ -711,3 +711,24 @@ export interface CollectionAnalysis {
   computed_at: string;
   computation_duration_ms?: number;
 }
+
+// Slack integration types
+export interface SlackWorkspaceStatus {
+  connected: boolean;
+  slack_team_id?: string;
+  slack_team_name?: string;
+  installed_at?: string;
+  installed_by_name?: string;
+}
+
+export interface UserSlackStatus {
+  linked: boolean;
+  slack_user_id?: string;
+  slack_team_id?: string;
+  slack_display_name?: string;
+  connected_at?: string;
+}
+
+export interface SlackInstallInitiate {
+  redirect_url: string;
+}

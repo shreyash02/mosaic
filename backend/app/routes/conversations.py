@@ -55,6 +55,7 @@ from app.routes.upload import delete_image_file
 from app.services.email_service import email_service
 from app.services.organization_service import check_organization_membership
 from app.services.scheduler_service import calculate_next_analysis_time
+from app.services.notification_service import notification_service
 
 router = APIRouter()
 
@@ -100,10 +101,11 @@ async def send_pending_invitation_emails(
         if inviter:
             inviter_name = inviter.full_name or inviter.email
 
-    # Send invitation emails asynchronously
-    # Don't block if email sending fails
+    # Send invitation emails and Slack notifications asynchronously
+    # Don't block if sending fails
     logger = logging.getLogger(__name__)
     for invitation in pending_invitations:
+        # Send email
         try:
             await email_service.send_invitation_email(
                 to_email=invitation.email,
@@ -117,6 +119,18 @@ async def send_pending_invitation_emails(
             # Log error but don't fail the request
             # Email sending failures shouldn't prevent activation
             logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+
+        # Send Slack DM if user is registered
+        if invitation.invited_user_id:
+            try:
+                await notification_service.notify_user_added_to_conversation(
+                    user_id=invitation.invited_user_id,
+                    conversation=conversation,
+                    inviter=inviter_user,
+                    db=db,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send Slack notification to user {invitation.invited_user_id}: {str(e)}", exc_info=True)
 
 
 def get_conversation_or_404(

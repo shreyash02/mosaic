@@ -43,6 +43,9 @@ import type {
   SeriesUpdate,
   SeriesWithConversations,
   CollectionAnalysis,
+  SlackWorkspaceStatus,
+  SlackInstallInitiate,
+  UserSlackStatus,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -597,6 +600,39 @@ class ApiService {
       }
     );
     return response.data;
+  }
+
+  // Slack integration endpoints
+  async getSlackStatus(orgId: string): Promise<SlackWorkspaceStatus> {
+    const response = await this.client.get<SlackWorkspaceStatus>(
+      `/organizations/${orgId}/slack/status`
+    );
+    return response.data;
+  }
+
+  async initiateSlackInstall(orgId: string): Promise<SlackInstallInitiate> {
+    const response = await this.client.get<SlackInstallInitiate>(
+      `/organizations/${orgId}/slack/install`
+    );
+    return response.data;
+  }
+
+  async disconnectSlack(orgId: string): Promise<void> {
+    await this.client.delete(`/organizations/${orgId}/slack`);
+  }
+
+  async getUserSlackStatus(): Promise<UserSlackStatus> {
+    const response = await this.client.get<UserSlackStatus>('/user/slack/status');
+    return response.data;
+  }
+
+  async initiateUserSlackLink(): Promise<SlackInstallInitiate> {
+    const response = await this.client.get<SlackInstallInitiate>('/user/slack/link');
+    return response.data;
+  }
+
+  async unlinkUserSlack(): Promise<void> {
+    await this.client.delete('/user/slack');
   }
 }
 

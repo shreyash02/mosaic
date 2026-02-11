@@ -93,6 +93,17 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""  # Set in .env file
     SMTP_USE_TLS: bool = True
 
+    # Slack Integration (optional)
+    SLACK_CLIENT_ID: str = ""
+    SLACK_CLIENT_SECRET: str = ""
+    SLACK_SIGNING_SECRET: str = ""
+    SLACK_BOT_SCOPES: str = "chat:write,im:write,users:read,users:read.email"
+
+    @property
+    def slack_enabled(self) -> bool:
+        """Check if Slack integration is configured."""
+        return bool(self.SLACK_CLIENT_ID and self.SLACK_CLIENT_SECRET)
+
     class Config:
         env_file = get_env_files()
         case_sensitive = True

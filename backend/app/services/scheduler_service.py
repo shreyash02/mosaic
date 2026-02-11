@@ -18,6 +18,7 @@ from app.schemas.conversation import ConversationState
 from app.routes.analysis import run_analysis_task
 from app.utils.access_code import generate_access_code
 from app.services.email_service import email_service
+from app.services.notification_service import notification_service
 from typing import Optional
 import logging
 import asyncio
@@ -58,9 +59,15 @@ async def send_pending_invitation_emails(
         if inviter:
             inviter_name = inviter.full_name or inviter.email
 
-    # Send invitation emails asynchronously
-    # Don't block if email sending fails
+    # Get inviter for Slack notifications
+    inviter = None
+    if pending_invitations and pending_invitations[0].invited_by_id:
+        inviter = db.query(User).filter(User.id == pending_invitations[0].invited_by_id).first()
+
+    # Send invitation emails and Slack notifications asynchronously
+    # Don't block if sending fails
     for invitation in pending_invitations:
+        # Send email
         try:
             await email_service.send_invitation_email(
                 to_email=invitation.email,
@@ -74,6 +81,18 @@ async def send_pending_invitation_emails(
             # Log error but don't fail the request
             # Email sending failures shouldn't prevent activation
             logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+
+        # Send Slack DM if user is registered
+        if invitation.invited_user_id:
+            try:
+                await notification_service.notify_user_added_to_conversation(
+                    user_id=invitation.invited_user_id,
+                    conversation=conversation,
+                    inviter=inviter,
+                    db=db,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send Slack notification to user {invitation.invited_user_id}: {str(e)}", exc_info=True)
 
 
 async def check_scheduled_activations():
@@ -191,6 +210,88 @@ async def check_scheduled_closures():
         db.rollback()
     finally:
         db.close()
+
+
+async def check_closing_warnings():
+    """
+    Check for conversations that are closing soon and notify users who haven't responded.
+
+    Sends Slack DMs to users who:
+    - Are invited to a conversation
+    - Haven't submitted a response
+    - The conversation is closing within the next hour
+
+    Runs every 15 minutes.
+    """
+    db: Session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        # Look for conversations closing in the next hour
+        warning_window = now + timedelta(hours=1)
+
+        # Find active conversations closing soon
+        conversations = db.query(Conversation).filter(
+            Conversation.state == ConversationState.ACTIVE.value,
+            Conversation.auto_close_at.isnot(None),
+            Conversation.auto_close_at > now,
+            Conversation.auto_close_at <= warning_window,
+            Conversation.organization_id.isnot(None),  # Only org conversations have Slack
+        ).all()
+
+        if not conversations:
+            return
+
+        logger.info(f"Found {len(conversations)} conversation(s) closing soon")
+
+        for conv in conversations:
+            await _send_closing_warnings_for_conversation(conv, db)
+
+    except Exception as e:
+        logger.error(f"Error checking closing warnings: {e}", exc_info=True)
+    finally:
+        db.close()
+
+
+async def _send_closing_warnings_for_conversation(
+    conversation: Conversation,
+    db: Session,
+) -> None:
+    """Send closing warnings to users who haven't responded to a conversation."""
+    from app.models.response import Response
+
+    # Get all invited users for this conversation
+    invitations = db.query(ConversationInvitation).filter(
+        ConversationInvitation.conversation_id == conversation.id,
+        ConversationInvitation.invited_user_id.isnot(None),  # Only registered users
+    ).all()
+
+    if not invitations:
+        return
+
+    # Get users who have already responded
+    responded_user_ids = set(
+        r.participant_id for r in db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id.isnot(None),
+        ).all()
+    )
+
+    # Send warnings to users who haven't responded
+    for invitation in invitations:
+        if invitation.invited_user_id in responded_user_ids:
+            continue  # User has responded, no warning needed
+
+        try:
+            await notification_service.notify_conversation_closing_soon(
+                user_id=invitation.invited_user_id,
+                conversation=conversation,
+                db=db,
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to send closing warning to user {invitation.invited_user_id}: {e}",
+                exc_info=True
+            )
 
 
 async def create_recurring_instances():
@@ -786,8 +887,17 @@ def start_scheduler():
         max_instances=1
     )
 
+    # Add job to send closing warning notifications every 15 minutes
+    scheduler.add_job(
+        check_closing_warnings,
+        trigger=IntervalTrigger(minutes=15),
+        id='check_closing_warnings',
+        replace_existing=True,
+        max_instances=1
+    )
+
     scheduler.start()
-    logger.info("Scheduler started with activation, closure, recurring instance, and periodic analysis check jobs")
+    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, and closing warning jobs")
 
 
 def shutdown_scheduler():

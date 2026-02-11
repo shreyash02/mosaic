@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizationWithMembers } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
+import { SlackIntegrationCard } from '../components/SlackIntegrationCard';
 
 const styles = {
   page: {
@@ -649,6 +650,12 @@ export default function OrganizationSettingsPage() {
             </Link>
           </div>
           </form>
+
+          {/* Integrations */}
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Integrations</h2>
+            <SlackIntegrationCard organizationId={id!} isAdmin={true} />
+          </div>
 
           {/* Danger Zone */}
           {isCreator && (
