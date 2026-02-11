@@ -5,6 +5,8 @@ from fastapi.responses import RedirectResponse
 from jose import JWTError
 from sqlalchemy.orm import Session
 from authlib.integrations.httpx_client import AsyncOAuth2Client
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import httpx
 
 from app.core.database import get_db
@@ -27,10 +29,13 @@ from app.schemas.user import (
 )
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db)
 ):
@@ -76,7 +81,9 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     login_data: LoginRequest,
     db: Session = Depends(get_db)
 ):

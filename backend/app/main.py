@@ -9,12 +9,18 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import Message
 from starlette.responses import Response as StarletteResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from datetime import datetime
 import os
 
 from app.core.config import settings
 from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack
 from app.services.scheduler_service import start_scheduler, shutdown_scheduler
+
+# Rate limiter setup (in-memory, use Redis for multi-instance deployments)
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 
 @asynccontextmanager
@@ -32,6 +38,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware - only needed if you have external API calls
 # For same-origin, you can remove this or keep it for API flexibility

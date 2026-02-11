@@ -6,8 +6,10 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -27,6 +29,7 @@ from app.services.notification_service import notification_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 def run_analysis_task(
@@ -123,7 +126,9 @@ def run_analysis_task(
 
 
 @router.post("/conversations/{conversation_id}/analyze", response_model=SuccessResponse)
+@limiter.limit("10/minute")
 async def trigger_analysis(
+    request: Request,
     conversation_id: UUID,
     analyze_request: Optional[AnalyzeRequest] = None,
     background_tasks: BackgroundTasks = None,

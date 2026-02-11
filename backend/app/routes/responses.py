@@ -5,7 +5,9 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import func, or_
@@ -37,10 +39,13 @@ from app.schemas.conversation import ConversationState, AnonymityLevel
 from app.services.notification_service import notification_service
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/conversations/{access_code}/validate")
+@limiter.limit("30/minute")
 async def validate_code(
+    request: Request,
     access_code: str,
     db: Session = Depends(get_db)
 ) -> CodeValidation:
@@ -253,7 +258,9 @@ async def check_user_response(
 
 
 @router.post("/conversations/{access_code}/responses/draft", response_model=DraftSaveResponse)
+@limiter.limit("60/minute")
 async def save_draft(
+    request: Request,
     access_code: str,
     draft_data: DraftSaveRequest,
     db: Session = Depends(get_db),
@@ -562,7 +569,9 @@ async def delete_draft(
 
 
 @router.post("/conversations/{access_code}/responses", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
 async def submit_response(
+    request: Request,
     access_code: str,
     response_data: ResponseSubmit,
     db: Session = Depends(get_db),
