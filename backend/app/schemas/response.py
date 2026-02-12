@@ -67,6 +67,10 @@ class Response(BaseModel):
     last_saved_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None  # Nullable for drafts
 
+    # Editing tracking
+    edited_at: Optional[datetime] = None
+    is_edited: bool = False
+
     # Only included for owner viewing revealed responses
     participant_id: Optional[UUID] = None
     participant_code_used: Optional[str] = None
@@ -107,4 +111,6 @@ class ResponseCheck(BaseModel):
     """Schema for checking if user has already submitted a response."""
 
     has_submitted: bool
+    can_edit: bool = False
     message: Optional[str] = None
+    existing_responses: Optional[List[ResponseItemCreate]] = None

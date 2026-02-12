@@ -49,6 +49,10 @@ class Response(Base):
     # Flag for test/generated data (for cleanup purposes)
     is_test_data = Column(Boolean, default=False, nullable=False)
 
+    # Editing tracking
+    edited_at = Column(DateTime, nullable=True)
+    is_edited = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     conversation = relationship("Conversation", back_populates="responses")
     question = relationship("Question", back_populates="responses")

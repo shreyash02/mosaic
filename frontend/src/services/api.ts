@@ -280,6 +280,14 @@ class ApiService {
     return response.data;
   }
 
+  async updateResponse(accessCode: string, data: ResponseSubmit): Promise<SuccessResponse> {
+    const response = await this.client.put<SuccessResponse>(
+      `/conversations/${accessCode}/responses`,
+      data
+    );
+    return response.data;
+  }
+
   async saveDraft(accessCode: string, data: DraftSaveRequest, sessionToken?: string): Promise<DraftSaveResponse> {
     const config: any = {};
     if (sessionToken) {

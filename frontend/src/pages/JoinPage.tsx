@@ -598,6 +598,8 @@ export default function JoinPage() {
   const [success, setSuccess] = useState(false);
   const [hasAlreadySubmitted, setHasAlreadySubmitted] = useState(false);
   const [alreadySubmittedMessage, setAlreadySubmittedMessage] = useState('');
+  const [canEdit, setCanEdit] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [showTrustScreen, setShowTrustScreen] = useState(false);
   const [canProceedFromTrustScreen, setCanProceedFromTrustScreen] = useState(false);
   const [trustScreenAcknowledged, setTrustScreenAcknowledged] = useState(false);
@@ -861,6 +863,7 @@ export default function JoinPage() {
 
       // Only check for prior submissions if user is logged in and anonymity level tracks identity
       // Skip for OPEN (no login required) and FULLY_ANONYMOUS (uses participant codes instead)
+      let responsesPopulated = false;
       if (convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS &&
           convData.anonymity_level !== AnonymityLevel.OPEN) {
         try {
@@ -868,15 +871,51 @@ export default function JoinPage() {
           if (responseCheck.has_submitted) {
             setHasAlreadySubmitted(true);
             setAlreadySubmittedMessage(responseCheck.message || 'Your responses have been recorded. You can only submit once');
-            setLoading(false);
-            return;
+
+            // Check if editing is allowed
+            if (responseCheck.can_edit && responseCheck.existing_responses) {
+              setCanEdit(true);
+              // Pre-populate responses with existing values
+              if (convData.questions) {
+                const existingMap = new Map(
+                  responseCheck.existing_responses.map(r => [r.question_id, r])
+                );
+                setResponses(
+                  convData.questions.map((q) => {
+                    const existing = existingMap.get(q.id);
+                    if (existing) {
+                      return {
+                        question_id: q.id,
+                        response_text: existing.response_text,
+                        response_data: existing.response_data,
+                      };
+                    }
+                    return {
+                      question_id: q.id,
+                      response_text: q.question_type === 'text' ? '' : undefined,
+                      response_data: q.question_type !== 'text' ? (
+                        q.question_type === 'rating' ? { rating: 5 } :
+                        q.question_type === 'multiple_choice' ? { selected: [] } :
+                        {}
+                      ) : undefined,
+                    };
+                  })
+                );
+                responsesPopulated = true;
+              }
+              // Don't return - continue to set up trust screen etc.
+            } else {
+              setLoading(false);
+              return;
+            }
           }
         } catch (checkErr: any) {
           // Continue normally
         }
       }
 
-      if (convData.questions) {
+      // Only initialize responses if not already populated (e.g., for edit mode)
+      if (convData.questions && !responsesPopulated) {
         setResponses(
           convData.questions.map((q) => ({
             question_id: q.id,
@@ -1018,9 +1057,15 @@ export default function JoinPage() {
         submitData.participant_code = participantCode;
       }
 
-      await api.submitResponse(accessCode!, submitData);
-      await clearDraft();
-      setSuccess(true);
+      if (isEditMode) {
+        await api.updateResponse(accessCode!, submitData);
+        setIsEditMode(false);
+        setSuccess(true);
+      } else {
+        await api.submitResponse(accessCode!, submitData);
+        await clearDraft();
+        setSuccess(true);
+      }
     } catch (err: any) {
       if (err.response?.status === 403) {
         setError(err.response?.data?.detail || 'You must be invited to submit a response to this conversation');
@@ -1294,6 +1339,26 @@ export default function JoinPage() {
                 <h2 style={styles.successTitle}>Thank You!</h2>
                 <p style={styles.successText}>Your response has been submitted successfully.</p>
 
+                {conversation?.allow_response_editing && conversation?.state === 'active' && (
+                  <div style={{ ...styles.resultsBox, marginBottom: spacing[6] }}>
+                    <p style={{ ...styles.resultsText, marginBottom: spacing[4] }}>
+                      Changed your mind? You can edit your response while the conversation is still open.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSuccess(false);
+                        setIsEditMode(true);
+                        setHasAlreadySubmitted(true);
+                        setCanEdit(true);
+                      }}
+                      style={{ ...styles.buttonSecondary, width: '100%' }}
+                      className="join-btn-secondary"
+                    >
+                      Edit Response
+                    </button>
+                  </div>
+                )}
+
                 {conversation?.results_access !== ResultsAccess.CREATOR_ONLY && (
                   <div style={styles.resultsBox}>
                     <h3 style={styles.resultsTitle}>View Results</h3>
@@ -1322,8 +1387,43 @@ export default function JoinPage() {
     );
   }
 
-  // Already submitted
-  if (hasAlreadySubmitted && conversation) {
+  // Already submitted (but can edit)
+  if (hasAlreadySubmitted && canEdit && !isEditMode && conversation) {
+    return (
+      <>
+        <style>{hoverStyles}</style>
+        <div style={styles.page} className="join-page">
+          <div style={styles.container}>
+            <header style={styles.header}>
+              {conversation.header_image_url && (
+                <div style={styles.headerImage}>
+                  <img src={conversation.header_image_url} alt="Conversation header" style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'cover' }} />
+                </div>
+              )}
+              <h1 style={styles.title}>{conversation.participant_title || conversation.title}</h1>
+              {conversation.description && <p style={styles.description}>{conversation.description}</p>}
+            </header>
+            <div style={styles.cardCentered}>
+              <h2 style={styles.successTitle}>Response Submitted</h2>
+              <p style={styles.successText}>{alreadySubmittedMessage}</p>
+              <button
+                onClick={() => setIsEditMode(true)}
+                style={{
+                  ...styles.buttonPrimary,
+                  marginTop: spacing[4],
+                }}
+              >
+                Edit Response
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Already submitted (cannot edit)
+  if (hasAlreadySubmitted && !canEdit && conversation) {
     return (
       <>
         <style>{hoverStyles}</style>
@@ -1405,6 +1505,15 @@ export default function JoinPage() {
                         : 'Viewers can only see AI-generated summaries. Your exact responses remain private.'}
                     </p>
                   </div>
+
+                  <div style={styles.trustDetailItem}>
+                    <strong style={styles.trustDetailLabel}>Editing Your Response:</strong>
+                    <p style={styles.trustDetailText}>
+                      {conversation.allow_response_editing
+                        ? 'You can edit your response while the conversation is still active.'
+                        : 'Once submitted, your response cannot be edited.'}
+                    </p>
+                  </div>
                 </div>
 
                 <button
@@ -1478,6 +1587,48 @@ export default function JoinPage() {
 
           <form onSubmit={handleSubmit}>
             {error && <div style={styles.error}>{error}</div>}
+
+            {isEditMode && (
+              <div style={{
+                padding: spacing[4],
+                marginBottom: spacing[4],
+                backgroundColor: 'var(--color-primary-100)',
+                border: '1px solid var(--color-primary-300)',
+                borderRadius: borders.radius.md,
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[3],
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-600)" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                <div>
+                  <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-800)' }}>
+                    Editing your response
+                  </div>
+                  <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+                    Make your changes and save when ready.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(false)}
+                  style={{
+                    marginLeft: 'auto',
+                    padding: `${spacing[1]} ${spacing[3]}`,
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--color-primary-400)',
+                    borderRadius: borders.radius.md,
+                    cursor: 'pointer',
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-700)',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
             {showDraftRestoredNotice && conversation.anonymity_level !== AnonymityLevel.OPEN && (
               <div style={styles.draftNotice}>
@@ -1663,7 +1814,9 @@ export default function JoinPage() {
                 style={{ ...styles.buttonPrimary, flex: 1, ...(submitting ? styles.buttonDisabled : {}) }}
                 className="join-btn-primary"
               >
-                {submitting ? 'Submitting...' : 'Submit Response'}
+                {submitting
+                  ? (isEditMode ? 'Saving...' : 'Submitting...')
+                  : (isEditMode ? 'Save Changes' : 'Submit Response')}
               </button>
             </div>
           </form>

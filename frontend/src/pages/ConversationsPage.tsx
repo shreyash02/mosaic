@@ -738,9 +738,19 @@ export default function ConversationsPage() {
 
   // Render: Participated card
   const renderParticipatedCard = (conversation: ConversationListItem) => {
-    const linkTo = conversation.state === ConversationState.ANALYZED
-      ? `/conversations/${conversation.id}/analysis`
-      : null;
+    // Link to join page for active conversations (to edit response)
+    // Link to analysis page for analyzed conversations (to view results)
+    const linkTo = conversation.state === ConversationState.ACTIVE
+      ? `/join/${conversation.access_code}`
+      : conversation.state === ConversationState.ANALYZED
+        ? `/conversations/${conversation.id}/analysis`
+        : null;
+
+    const actionText = conversation.state === ConversationState.ACTIVE
+      ? 'Edit response →'
+      : conversation.state === ConversationState.ANALYZED
+        ? 'View results →'
+        : null;
 
     const card = (
       <div style={s.card}>
@@ -752,9 +762,9 @@ export default function ConversationsPage() {
         </div>
         <div style={s.cardMeta}>
           <span>Responded {formatDateShort(conversation.created_at, conversation.timezone)}</span>
-          {conversation.state === ConversationState.ANALYZED && (
+          {actionText && (
             <span style={{ color: 'var(--color-info)', fontWeight: typography.fontWeight.medium }}>
-              View results →
+              {actionText}
             </span>
           )}
         </div>

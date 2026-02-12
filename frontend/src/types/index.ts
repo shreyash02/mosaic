@@ -118,6 +118,7 @@ export interface Conversation {
   results_access: ResultsAccess;
   show_verbatim_responses: boolean;
   invite_only: boolean;
+  allow_response_editing: boolean;
   access_code: string;
   state: ConversationState;
   auto_analyze: boolean;
@@ -148,6 +149,7 @@ export interface Conversation {
   recurrence_pattern?: RecurrencePattern;
   next_instance_date?: string;
   recurrence_end_date?: string;
+  recurrence_paused?: boolean;
   // Continuous conversation fields
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
@@ -167,6 +169,7 @@ export interface ConversationCreate {
   results_access: ResultsAccess;
   show_verbatim_responses?: boolean;
   invite_only?: boolean;
+  allow_response_editing?: boolean;
   questions: QuestionCreate[];
   auto_analyze?: boolean;
   max_response_length?: number;
@@ -186,6 +189,7 @@ export interface ConversationCreate {
   recurrence_pattern?: RecurrencePattern;
   next_instance_date?: string;
   recurrence_end_date?: string;
+  recurrence_paused?: boolean;
   // Continuous conversation fields
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
@@ -215,6 +219,7 @@ export interface ConversationListItem {
   series_id?: string;
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
+  recurrence_paused?: boolean;
   // Continuous conversation fields
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
@@ -256,6 +261,8 @@ export interface Response {
   anonymity_level: string;
   reveal_consent: boolean;
   submitted_at: string;
+  edited_at?: string;
+  is_edited?: boolean;
   participant_id?: string;
   participant_code_used?: string;
 }
@@ -273,7 +280,9 @@ export interface ResponseStats {
 
 export interface ResponseCheck {
   has_submitted: boolean;
+  can_edit?: boolean;
   message?: string;
+  existing_responses?: ResponseItem[];
 }
 
 // Draft types

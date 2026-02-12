@@ -239,20 +239,45 @@ async def check_user_response(
         )
     
     # Check if user already submitted (not drafts)
-    existing_response = db.query(Response).filter(
+    existing_responses = db.query(Response).filter(
         Response.conversation_id == conversation.id,
         Response.participant_id == current_user.id,
         Response.status == "submitted"
-    ).first()
+    ).all()
 
-    if existing_response:
+    if existing_responses:
+        # Check if editing is allowed
+        can_edit = (
+            conversation.allow_response_editing and
+            conversation.state == ConversationState.ACTIVE.value
+        )
+
+        if can_edit:
+            # Return existing responses so they can be edited
+            existing_response_items = [
+                ResponseItemCreate(
+                    question_id=r.question_id,
+                    response_text=r.response_text,
+                    response_data=r.response_data
+                )
+                for r in existing_responses
+            ]
+            return ResponseCheck(
+                has_submitted=True,
+                can_edit=True,
+                message="You can edit your response while the conversation is active.",
+                existing_responses=existing_response_items
+            )
+
         return ResponseCheck(
             has_submitted=True,
+            can_edit=False,
             message="Your responses have been recorded. You can only submit once"
         )
 
     return ResponseCheck(
         has_submitted=False,
+        can_edit=False,
         message=None
     )
 
@@ -925,6 +950,186 @@ async def submit_response(
     )
 
 
+@router.put("/conversations/{access_code}/responses", response_model=SuccessResponse)
+@limiter.limit("20/minute")
+async def update_response(
+    request: Request,
+    access_code: str,
+    response_data: ResponseSubmit,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Update an existing response to a conversation.
+
+    Requirements:
+    - Conversation must be active
+    - Conversation must have allow_response_editing enabled
+    - User must have previously submitted a response
+    - For fully_anonymous: must provide same participant_code
+    - For platform_tracked/revealable: must be authenticated
+
+    Args:
+        access_code: Conversation access code
+        response_data: Updated response data
+        db: Database session
+        current_user: Optional authenticated user
+
+    Returns:
+        Success confirmation
+
+    Raises:
+        HTTPException: If conversation not found, not active, editing not allowed, or validation fails
+    """
+    # Find conversation by access code
+    conversation = db.query(Conversation).options(
+        joinedload(Conversation.questions)
+    ).filter(
+        Conversation.access_code == access_code
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Check if conversation is active
+    if conversation.state != ConversationState.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation is not active"
+        )
+
+    # Check if editing is allowed
+    if not conversation.allow_response_editing:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Response editing is not enabled for this conversation"
+        )
+
+    # Find existing responses based on anonymity level
+    existing_responses = []
+    used_participant_code = None
+
+    if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+        # Require participant code
+        if not response_data.participant_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Participant code required for editing"
+            )
+
+        # Validate participant code
+        participant_code_obj = db.query(ParticipantCode).filter(
+            ParticipantCode.participant_code == response_data.participant_code,
+            ParticipantCode.conversation_id == conversation.id
+        ).first()
+
+        if not participant_code_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid participant code"
+            )
+
+        used_participant_code = response_data.participant_code
+
+        # Find existing submitted responses
+        existing_responses = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used == used_participant_code,
+            Response.status == "submitted"
+        ).all()
+
+    elif conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
+        # Must be authenticated
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+
+        # Find existing submitted responses
+        existing_responses = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id == current_user.id,
+            Response.status == "submitted"
+        ).all()
+
+    else:
+        # OPEN mode - editing not supported (can't identify participant)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Response editing is not supported for open conversations"
+        )
+
+    if not existing_responses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No existing response found to edit"
+        )
+
+    # Validate question IDs
+    conversation_question_ids = {q.id for q in conversation.questions}
+    for response_item in response_data.responses:
+        if response_item.question_id not in conversation_question_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid question ID: {response_item.question_id}"
+            )
+
+    # Validate response text length
+    for response_item in response_data.responses:
+        if response_item.response_text and len(response_item.response_text) > conversation.max_response_length:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Response text exceeds maximum length of {conversation.max_response_length} characters"
+            )
+
+    # Create a map of existing responses by question_id
+    existing_by_question = {r.question_id: r for r in existing_responses}
+
+    # Update responses
+    now = datetime.utcnow()
+    for response_item in response_data.responses:
+        existing = existing_by_question.get(response_item.question_id)
+        if existing:
+            # Update existing response
+            existing.response_text = response_item.response_text
+            existing.response_data = response_item.response_data
+            existing.edited_at = now
+            existing.is_edited = True
+        else:
+            # Create new response for this question (in case a question was added)
+            new_response = Response(
+                conversation_id=conversation.id,
+                question_id=response_item.question_id,
+                response_text=response_item.response_text,
+                response_data=response_item.response_data,
+                anonymity_level=conversation.anonymity_level,
+                participant_id=current_user.id if current_user else None,
+                participant_code_used=used_participant_code,
+                reveal_consent=response_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
+                status="submitted",
+                submitted_at=now,
+                edited_at=now,
+                is_edited=True
+            )
+            db.add(new_response)
+
+    # Update reveal_consent if applicable
+    if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value:
+        for existing in existing_responses:
+            existing.reveal_consent = response_data.reveal_consent
+
+    db.commit()
+
+    return SuccessResponse(
+        success=True,
+        message="Response updated successfully"
+    )
+
+
 @router.get("/conversations/{conversation_id}/responses", response_model=ResponseList)
 async def get_responses(
     conversation_id: UUID,
@@ -1023,6 +1228,8 @@ async def get_responses(
             "status": response.status,
             "last_saved_at": response.last_saved_at,
             "submitted_at": response.submitted_at,
+            "edited_at": response.edited_at,
+            "is_edited": response.is_edited,
             "participant_id": response.participant_id if response.reveal_consent else None,
             "participant_code_used": response.participant_code_used,
             "question_text": question_text

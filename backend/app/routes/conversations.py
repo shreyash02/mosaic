@@ -808,9 +808,8 @@ async def update_conversation(
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
 
-    # Check if this is a template (has recurrence_pattern and no series_id)
-    is_template = (conversation.series_id is None and
-                   conversation.recurrence_pattern is not None)
+    # Check if this is a template
+    is_template = conversation.is_template
 
     # Handle questions update separately (if provided)
     questions_to_update = update_data.questions
