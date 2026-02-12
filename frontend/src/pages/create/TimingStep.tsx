@@ -490,19 +490,39 @@ export default function TimingStep() {
 
             {formState.enableRecurring && (
               <div className="recurring-schedule-config" style={{ paddingLeft: '1.5rem', borderLeft: '3px solid var(--color-primary-500)' }}>
+                {/* Timezone indicator */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  marginBottom: spacing[4],
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  backgroundColor: 'var(--color-primary-100)',
+                  borderRadius: borders.radius.md,
+                  fontSize: typography.fontSize.sm,
+                  color: 'var(--color-primary-700)',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  All times are in {Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ')}
+                </div>
+
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label htmlFor="recurrencePattern">Frequency</label>
-                  <select
+                  <CustomSelect
                     id="recurrencePattern"
                     value={formState.recurrencePattern}
-                    onChange={(e) => updateFormState({ recurrencePattern: e.target.value as RecurrencePattern })}
-                    required
-                  >
-                    <option value={RecurrencePattern.WEEKLY}>Weekly</option>
-                    <option value={RecurrencePattern.BIWEEKLY}>Every 2 weeks</option>
-                    <option value={RecurrencePattern.MONTHLY}>Monthly</option>
-                    <option value={RecurrencePattern.QUARTERLY}>Quarterly (every 3 months)</option>
-                  </select>
+                    options={[
+                      { value: RecurrencePattern.WEEKLY, label: 'Weekly' },
+                      { value: RecurrencePattern.BIWEEKLY, label: 'Every 2 weeks' },
+                      { value: RecurrencePattern.MONTHLY, label: 'Monthly' },
+                      { value: RecurrencePattern.QUARTERLY, label: 'Quarterly (every 3 months)' },
+                    ]}
+                    onChange={(value) => updateFormState({ recurrencePattern: value as RecurrencePattern })}
+                    minWidth="220px"
+                  />
                   <p className="form-help-text">
                     How often should new instances be created automatically?
                   </p>

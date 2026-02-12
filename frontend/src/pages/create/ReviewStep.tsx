@@ -7,7 +7,7 @@ import { INTENT_PRESETS } from '../../types/intentPresets';
 import { api } from '../../services/api';
 import type { Series } from '../../types';
 import { typography, spacing, borders, shadows, transitions } from '../../styles';
-import { AnonymityLevel, ResultsAccess } from '../../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern } from '../../types';
 
 // Card component for consistent styling
 const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
@@ -52,6 +52,30 @@ const getResultsAccessLabel = (access: ResultsAccess) => {
     case ResultsAccess.PUBLIC_LINK: return 'Public';
     default: return access;
   }
+};
+
+// Helper to get recurrence pattern label
+const getRecurrencePatternLabel = (pattern: RecurrencePattern) => {
+  switch (pattern) {
+    case RecurrencePattern.WEEKLY: return 'Weekly';
+    case RecurrencePattern.BIWEEKLY: return 'Every 2 weeks';
+    case RecurrencePattern.MONTHLY: return 'Monthly';
+    case RecurrencePattern.QUARTERLY: return 'Quarterly';
+    default: return pattern;
+  }
+};
+
+// Helper to format date for display
+const formatScheduleDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 };
 
 export default function ReviewStep() {
@@ -210,6 +234,7 @@ export default function ReviewStep() {
         results_access: formState.resultsAccess,
         show_verbatim_responses: formState.showVerbatimResponses,
         invite_only: formState.inviteOnly,
+        allow_response_editing: formState.allowResponseEditing,
         timezone: userTimezone,
         questions: questionsForApi,
         // Duration only applies to limited-time conversations
@@ -524,11 +549,58 @@ export default function ReviewStep() {
               </div>
             )}
 
-            {/* Activation */}
-            <div>
-              <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Activation</div>
-              <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{getActivationStatus()}</div>
-            </div>
+            {/* Activation - only show for non-templates */}
+            {!formState.createTemplate && (
+              <div style={{ marginBottom: spacing[3] }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Activation</div>
+                <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{getActivationStatus()}</div>
+              </div>
+            )}
+
+            {/* Recurring Schedule - only show for templates with recurring enabled */}
+            {formState.createTemplate && formState.enableRecurring && (
+              <div style={{
+                marginTop: spacing[3],
+                paddingTop: spacing[3],
+                borderTop: '1px solid var(--color-primary-200)',
+              }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[2], display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                  </svg>
+                  Recurring Schedule
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
+                  <div>
+                    <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Frequency</div>
+                    <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                      {getRecurrencePatternLabel(formState.recurrencePattern)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>First Instance</div>
+                    <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                      {formState.nextInstanceDate ? formatScheduleDate(formState.nextInstanceDate) : 'Not set'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Timezone</div>
+                    <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                      {Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ')}
+                    </div>
+                  </div>
+                  {formState.recurrenceEndDate && (
+                    <div>
+                      <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Ends</div>
+                      <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                        {formatScheduleDate(formState.recurrenceEndDate)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -808,6 +880,31 @@ export default function ReviewStep() {
                 <div>
                   <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>Show verbatim responses</div>
                   <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>When disabled, viewers only see AI-generated summaries.</div>
+                </div>
+              </label>
+
+              {/* Allow response editing */}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: spacing[3],
+                  padding: spacing[3],
+                  borderRadius: borders.radius.md,
+                  border: '1px solid var(--color-primary-200)',
+                  backgroundColor: formState.allowResponseEditing ? 'var(--color-primary-50)' : 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formState.allowResponseEditing}
+                  onChange={(e) => updateFormState({ allowResponseEditing: e.target.checked })}
+                  style={{ marginTop: '2px', accentColor: 'var(--color-primary-600)' }}
+                />
+                <div>
+                  <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>Allow response editing</div>
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>Participants can edit their submitted responses while the conversation is active.</div>
                 </div>
               </label>
             </div>

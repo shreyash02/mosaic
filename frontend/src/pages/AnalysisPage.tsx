@@ -1406,7 +1406,21 @@ export default function AnalysisPage() {
                         <div key={response.id} style={styles.responseItem}>
                           <div style={styles.responseHeader}>
                             <span style={styles.responseNumber}>#{index + 1}</span>
-                            <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                              {response.is_edited && (
+                                <span style={{
+                                  fontSize: typography.fontSize.xs,
+                                  backgroundColor: 'var(--color-primary-200)',
+                                  color: 'var(--color-primary-700)',
+                                  padding: `${spacing[0.5]} ${spacing[2]}`,
+                                  borderRadius: borders.radius.sm,
+                                  fontWeight: typography.fontWeight.medium,
+                                }}>
+                                  Edited
+                                </span>
+                              )}
+                              <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                            </div>
                           </div>
                           <p style={styles.responseContent}>
                             {response.response_text || <em>No text response</em>}
@@ -1425,7 +1439,21 @@ export default function AnalysisPage() {
                         <div key={response.id} style={styles.responseItem}>
                           <div style={styles.responseHeader}>
                             <span style={styles.responseNumber}>{response.question_text}</span>
-                            <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                              {response.is_edited && (
+                                <span style={{
+                                  fontSize: typography.fontSize.xs,
+                                  backgroundColor: 'var(--color-primary-200)',
+                                  color: 'var(--color-primary-700)',
+                                  padding: `${spacing[0.5]} ${spacing[2]}`,
+                                  borderRadius: borders.radius.sm,
+                                  fontWeight: typography.fontWeight.medium,
+                                }}>
+                                  Edited
+                                </span>
+                              )}
+                              <span style={styles.responseDate}>{formatDate(response.submitted_at, conversation?.timezone)}</span>
+                            </div>
                           </div>
                           <p style={styles.responseContent}>
                             {response.response_text || <em>No text response</em>}

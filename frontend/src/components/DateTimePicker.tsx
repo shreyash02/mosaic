@@ -341,7 +341,7 @@ export default function DateTimePicker({
         id={id}
         selected={selectedDate}
         onChange={handleDateChange}
-        dateFormat="MM/dd/yyyy, h:mm aa"
+        dateFormat="d MMM yyyy, h:mm aa"
         minDate={minDate || undefined}
         maxDate={maxDate || undefined}
         disabled={disabled}

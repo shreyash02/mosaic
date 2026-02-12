@@ -2,6 +2,25 @@ import { createContext, useContext, useState, ReactNode, useEffect, useCallback 
 import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation, type AnalysisInterval } from '../types';
 import { IntentType, INTENT_PRESETS } from '../types/intentPresets';
 
+// Convert UTC ISO string to local datetime-local format (YYYY-MM-DDTHH:mm)
+function utcToLocalDatetimeString(utcString: string | undefined | null): string {
+  if (!utcString) return '';
+  // Ensure the string is treated as UTC by appending 'Z' if no timezone indicator exists
+  let dateStr = utcString;
+  if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !/[+-]\d{2}:\d{2}$/.test(dateStr)) {
+    dateStr = dateStr + 'Z';
+  }
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+  // Format as local datetime-local string
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export interface ConversationFormState {
   // Mode and intent
   isGuidedMode: boolean;
@@ -22,6 +41,7 @@ export interface ConversationFormState {
   resultsAccess: ResultsAccess;
   showVerbatimResponses: boolean;
   inviteOnly: boolean;
+  allowResponseEditing: boolean;
 
   // Step 3: Questions
   questions: (QuestionCreate & { id: string })[];
@@ -90,6 +110,7 @@ const getDefaultFormState = (): ConversationFormState => ({
   resultsAccess: ResultsAccess.PARTICIPANTS,
   showVerbatimResponses: false,
   inviteOnly: false,
+  allowResponseEditing: false,
 
   // Questions
   questions: [
@@ -223,16 +244,17 @@ export function ConversationFormProvider({
       resultsAccess: conversation.results_access,
       showVerbatimResponses: conversation.show_verbatim_responses,
       inviteOnly: conversation.invite_only,
+      allowResponseEditing: conversation.allow_response_editing,
       questions,
       expandedQuestions: new Set([0]), // Expand first question by default
       durationHours,
       durationMinutes,
       scheduleActivation: !!conversation.scheduled_activate_at,
-      scheduledActivateAt: conversation.scheduled_activate_at ? conversation.scheduled_activate_at.slice(0, 16) : '',
+      scheduledActivateAt: utcToLocalDatetimeString(conversation.scheduled_activate_at),
       enableRecurring: !!conversation.recurrence_pattern,
       recurrencePattern: conversation.recurrence_pattern || RecurrencePattern.WEEKLY,
-      nextInstanceDate: conversation.next_instance_date ? conversation.next_instance_date.slice(0, 16) : '',
-      recurrenceEndDate: conversation.recurrence_end_date ? conversation.recurrence_end_date.slice(0, 16) : '',
+      nextInstanceDate: utcToLocalDatetimeString(conversation.next_instance_date),
+      recurrenceEndDate: utcToLocalDatetimeString(conversation.recurrence_end_date),
       isLongRunning: !!conversation.is_continuous,
       analysisInterval: conversation.analysis_interval || 'weekly',
       // Parse next_analysis_at to extract day and time if available
