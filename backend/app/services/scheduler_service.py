@@ -315,7 +315,9 @@ async def create_recurring_instances():
             Conversation.next_instance_date <= now,
             Conversation.next_instance_date.isnot(None),
             # Either no end date, or end date hasn't passed
-            (Conversation.recurrence_end_date.is_(None)) | (Conversation.recurrence_end_date > now)
+            (Conversation.recurrence_end_date.is_(None)) | (Conversation.recurrence_end_date > now),
+            # Skip paused templates
+            Conversation.recurrence_paused == False
         ).all()
 
         if templates:

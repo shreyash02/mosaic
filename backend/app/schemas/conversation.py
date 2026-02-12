@@ -105,6 +105,7 @@ class ConversationBase(BaseModel):
     results_access: ResultsAccess
     show_verbatim_responses: bool = False
     invite_only: bool = False
+    allow_response_editing: bool = False
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
@@ -126,6 +127,7 @@ class ConversationBase(BaseModel):
     recurrence_pattern: Optional[RecurrencePattern] = Field(None, description="Pattern for recurring conversations (only set on template)")
     next_instance_date: Optional[datetime] = Field(None, description="When to create the next instance (only set on template)")
     recurrence_end_date: Optional[datetime] = Field(None, description="When to stop creating instances (only set on template)")
+    recurrence_paused: bool = Field(False, description="If True, automatic instance creation is paused (only set on template)")
 
     # Continuous conversation fields
     is_continuous: bool = Field(False, description="True if this conversation stays open indefinitely for ongoing feedback collection")
@@ -168,6 +170,7 @@ class ConversationUpdate(BaseModel):
     results_access: Optional[ResultsAccess] = None
     show_verbatim_responses: Optional[bool] = None
     invite_only: Optional[bool] = None
+    allow_response_editing: Optional[bool] = None
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
@@ -183,6 +186,7 @@ class ConversationUpdate(BaseModel):
     recurrence_pattern: Optional[RecurrencePattern] = None
     next_instance_date: Optional[datetime] = None
     recurrence_end_date: Optional[datetime] = None
+    recurrence_paused: Optional[bool] = None
 
     # Continuous conversation fields
     is_continuous: Optional[bool] = None
@@ -244,6 +248,7 @@ class Conversation(ConversationBase):
     recurrence_pattern: Optional[RecurrencePattern] = None
     next_instance_date: Optional[datetime] = None
     recurrence_end_date: Optional[datetime] = None
+    recurrence_paused: bool = False
 
     # Continuous conversation fields
     is_continuous: bool = False
@@ -328,6 +333,7 @@ class ConversationListItem(BaseModel):
     # Recurring conversation fields
     is_recurring_instance: bool = False
     recurrence_pattern: Optional[RecurrencePattern] = None
+    recurrence_paused: bool = False
 
     # Continuous conversation fields
     is_continuous: bool = False

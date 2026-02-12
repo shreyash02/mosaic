@@ -44,6 +44,8 @@ class Conversation(Base):
     # When to create the next instance - only set on template
     recurrence_end_date = Column(DateTime, nullable=True)
     # Optional end date for recurring series - only set on template
+    recurrence_paused = Column(Boolean, default=False, nullable=False)
+    # If True, automatic instance creation is paused (only set on template)
 
     # Basic info
     title = Column(String(500), nullable=False)
@@ -74,6 +76,9 @@ class Conversation(Base):
 
     invite_only = Column(Boolean, default=False, nullable=False)
     # if true, only invited users can access the conversation
+
+    allow_response_editing = Column(Boolean, default=False, nullable=False)
+    # if true, participants can edit their submitted responses while conversation is active
 
     auto_analyze = Column(Boolean, default=False, nullable=False)
     # if true, trigger analysis automatically when conversation closes
