@@ -30,7 +30,10 @@ class ConversationInvitation(Base):
     # Status tracking
     is_accepted = Column(Boolean, default=False, nullable=False)
     accepted_at = Column(DateTime, nullable=True)
-    
+
+    # Notification tracking
+    closing_warning_sent_at = Column(DateTime, nullable=True)  # When closing warning email was sent
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=True)  # Optional expiration

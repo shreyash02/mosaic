@@ -165,25 +165,32 @@ async def check_scheduled_closures():
             logger.info(f"Found {len(conversations)} conversation(s) to close")
 
         conversations_to_analyze = []
+        conversations_to_notify = []
 
         for conv in conversations:
             logger.info(f"Closing conversation {conv.id} (auto_close_at: {conv.auto_close_at})")
             conv.state = ConversationState.CLOSED.value
             conv.closed_at = datetime.utcnow()
 
-            # Collect conversations that need auto-analysis
-            if conv.auto_analyze:
-                # Check if there are responses to analyze
-                response_count = db.query(Response).filter(
-                    Response.conversation_id == conv.id
-                ).count()
+            # Check if there are responses
+            response_count = db.query(Response).filter(
+                Response.conversation_id == conv.id
+            ).count()
 
-                if response_count > 0:
-                    conversations_to_analyze.append(conv.id)
+            # Collect conversations that need auto-analysis
+            if conv.auto_analyze and response_count > 0:
+                conversations_to_analyze.append(conv.id)
+
+            # Collect conversations for closed notifications
+            conversations_to_notify.append((conv, response_count))
 
         if conversations:
             db.commit()
             logger.info(f"Successfully closed {len(conversations)} conversation(s)")
+
+        # Send closed notifications
+        for conv, response_count in conversations_to_notify:
+            await _send_conversation_closed_notifications(conv, response_count, db)
 
         # Trigger auto-analysis for conversations that have it enabled
         # Do this after committing the close, and run in background
@@ -216,7 +223,7 @@ async def check_closing_warnings():
     """
     Check for conversations that are closing soon and notify users who haven't responded.
 
-    Sends Slack DMs to users who:
+    Sends Slack DMs and/or emails to users who:
     - Are invited to a conversation
     - Haven't submitted a response
     - The conversation is closing within the next hour
@@ -229,13 +236,12 @@ async def check_closing_warnings():
         # Look for conversations closing in the next hour
         warning_window = now + timedelta(hours=1)
 
-        # Find active conversations closing soon
+        # Find active conversations closing soon (include all conversations, not just org ones)
         conversations = db.query(Conversation).filter(
             Conversation.state == ConversationState.ACTIVE.value,
             Conversation.auto_close_at.isnot(None),
             Conversation.auto_close_at > now,
             Conversation.auto_close_at <= warning_window,
-            Conversation.organization_id.isnot(None),  # Only org conversations have Slack
         ).all()
 
         if not conversations:
@@ -256,13 +262,12 @@ async def _send_closing_warnings_for_conversation(
     conversation: Conversation,
     db: Session,
 ) -> None:
-    """Send closing warnings to users who haven't responded to a conversation."""
+    """Send closing warnings (Slack + email) to users who haven't responded to a conversation."""
     from app.models.response import Response
 
-    # Get all invited users for this conversation
+    # Get all invitations for this conversation (with or without user accounts)
     invitations = db.query(ConversationInvitation).filter(
         ConversationInvitation.conversation_id == conversation.id,
-        ConversationInvitation.invited_user_id.isnot(None),  # Only registered users
     ).all()
 
     if not invitations:
@@ -276,22 +281,112 @@ async def _send_closing_warnings_for_conversation(
         ).all()
     )
 
+    respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+
     # Send warnings to users who haven't responded
     for invitation in invitations:
-        if invitation.invited_user_id in responded_user_ids:
-            continue  # User has responded, no warning needed
+        # Skip if user has responded
+        if invitation.invited_user_id and invitation.invited_user_id in responded_user_ids:
+            continue
 
-        try:
-            await notification_service.notify_conversation_closing_soon(
-                user_id=invitation.invited_user_id,
-                conversation=conversation,
-                db=db,
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to send closing warning to user {invitation.invited_user_id}: {e}",
-                exc_info=True
-            )
+        # Skip if we've already sent a closing warning for this conversation
+        if invitation.closing_warning_sent_at:
+            continue
+
+        slack_sent = False
+        email_sent = False
+
+        # Try Slack notification for registered users (if org has Slack)
+        if invitation.invited_user_id and conversation.organization_id:
+            try:
+                slack_sent = await notification_service.notify_conversation_closing_soon(
+                    user_id=invitation.invited_user_id,
+                    conversation=conversation,
+                    db=db,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to send Slack closing warning to user {invitation.invited_user_id}: {e}",
+                    exc_info=True
+                )
+
+        # Send email to all invited users (as primary for non-Slack users, or as backup)
+        if invitation.email:
+            try:
+                email_sent = await email_service.send_closing_warning_email(
+                    to_email=invitation.email,
+                    conversation_title=conversation.title,
+                    closes_at=conversation.auto_close_at,
+                    respond_url=respond_url,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to send closing warning email to {invitation.email}: {e}",
+                    exc_info=True
+                )
+
+        # Mark warning as sent if either channel succeeded
+        if slack_sent or email_sent:
+            invitation.closing_warning_sent_at = datetime.utcnow()
+
+    # Commit the tracking updates
+    try:
+        db.commit()
+    except Exception as e:
+        logger.error(f"Failed to commit closing warning tracking: {e}", exc_info=True)
+        db.rollback()
+
+
+async def _send_conversation_closed_notifications(
+    conversation: Conversation,
+    response_count: int,
+    db: Session,
+) -> None:
+    """Send email notifications when a conversation is closed."""
+    # Determine results URL based on results_access
+    results_url = None
+    if conversation.results_access != "creator_only":
+        results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
+
+    # Send to creator
+    if conversation.creator_id:
+        creator = db.query(User).filter(User.id == conversation.creator_id).first()
+        if creator and creator.email:
+            try:
+                await email_service.send_conversation_closed_email(
+                    to_email=creator.email,
+                    conversation_title=conversation.title,
+                    response_count=response_count,
+                    results_url=f"{settings.FRONTEND_URL}/analysis/{conversation.id}",  # Creator always gets link
+                    is_creator=True,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send closed email to creator {creator.email}: {e}", exc_info=True)
+
+    # Send to participants who submitted responses (if results are accessible)
+    if results_url:
+        # Get unique participants who responded
+        participant_ids = db.query(Response.participant_id).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id.isnot(None),
+            Response.status == "submitted",
+        ).distinct().all()
+
+        participant_ids = [p[0] for p in participant_ids if p[0] != conversation.creator_id]
+
+        for participant_id in participant_ids:
+            user = db.query(User).filter(User.id == participant_id).first()
+            if user and user.email:
+                try:
+                    await email_service.send_conversation_closed_email(
+                        to_email=user.email,
+                        conversation_title=conversation.title,
+                        response_count=response_count,
+                        results_url=results_url,
+                        is_creator=False,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send closed email to participant {user.email}: {e}", exc_info=True)
 
 
 async def create_recurring_instances():
@@ -440,6 +535,15 @@ async def create_recurring_instances():
                 logger.info(f"Successfully created recurring instance {new_instance.id} for template {template.id}")
                 logger.info(f"Next instance scheduled for {next_date}")
 
+                # Send email notifications
+                await _send_recurring_instance_notifications(
+                    new_instance=new_instance,
+                    template=template,
+                    instance_number=instance_number,
+                    template_invitations=template_invitations,
+                    db=db,
+                )
+
             except Exception as e:
                 logger.error(f"Error creating instance for template {template.id}: {e}", exc_info=True)
                 db.rollback()
@@ -450,6 +554,35 @@ async def create_recurring_instances():
         logger.error(f"Error in create_recurring_instances: {e}", exc_info=True)
     finally:
         db.close()
+
+
+async def _send_recurring_instance_notifications(
+    new_instance: Conversation,
+    template: Conversation,
+    instance_number: int,
+    template_invitations: list,
+    db: Session,
+) -> None:
+    """Send email notifications when a new recurring instance is created."""
+    # Send to creator
+    if template.creator_id:
+        creator = db.query(User).filter(User.id == template.creator_id).first()
+        if creator and creator.email:
+            # Creator gets link to manage/activate the conversation
+            manage_url = f"{settings.FRONTEND_URL}/conversations/{new_instance.id}"
+            try:
+                await email_service.send_recurring_instance_created_email(
+                    to_email=creator.email,
+                    conversation_title=new_instance.title,
+                    instance_number=instance_number,
+                    join_url=manage_url,
+                    is_creator=True,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send recurring instance email to creator {creator.email}: {e}", exc_info=True)
+
+    # Note: Don't notify invitees yet - the instance is in DRAFT state
+    # They'll be notified when the conversation is activated (via send_pending_invitation_emails)
 
 
 def calculate_next_instance_date(current_date: datetime, pattern: str) -> datetime:
@@ -765,6 +898,26 @@ def run_periodic_analysis_task(
 
             db.commit()
             logger.info(f"Trends updated for conversation {conversation_id}")
+
+        # Send email notification to creator
+        if conversation.creator_id:
+            creator = db.query(User).filter(User.id == conversation.creator_id).first()
+            if creator and creator.email:
+                results_url = f"{settings.FRONTEND_URL}/conversations/{conversation_id}/continuous"
+                responses_analyzed = analysis_result.get("total_responses_analyzed", 0)
+                try:
+                    import asyncio
+                    asyncio.run(
+                        email_service.send_periodic_analysis_ready_email(
+                            to_email=creator.email,
+                            conversation_title=conversation.title,
+                            period_label=period_label,
+                            results_url=results_url,
+                            responses_analyzed=responses_analyzed,
+                        )
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send periodic analysis email to {creator.email}: {e}", exc_info=True)
 
     except Exception as e:
         logger.error(f"Error running periodic analysis for conversation {conversation_id}: {e}", exc_info=True)

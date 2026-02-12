@@ -25,6 +25,7 @@ from app.schemas.conversation import ConversationState
 from app.schemas.common import SuccessResponse
 from app.services.analysis_service import AnalysisService
 from app.services.notification_service import notification_service
+from app.services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +105,11 @@ def run_analysis_task(
 
         db.commit()
 
-        # Send Slack notifications to participants
+        # Send notifications to participants
         if conversation:
+            results_url = f"https://mosaic.app/analysis/{conversation.id}"  # Will be replaced by settings
+
+            # Send Slack notifications
             try:
                 asyncio.run(
                     notification_service.notify_analysis_ready(
@@ -114,7 +118,15 @@ def run_analysis_task(
                     )
                 )
             except Exception as e:
-                logger.error(f"Failed to send analysis ready notifications: {e}", exc_info=True)
+                logger.error(f"Failed to send Slack analysis ready notifications: {e}", exc_info=True)
+
+            # Send email notifications
+            try:
+                asyncio.run(
+                    _send_analysis_ready_emails(conversation, db)
+                )
+            except Exception as e:
+                logger.error(f"Failed to send email analysis ready notifications: {e}", exc_info=True)
 
     except Exception as e:
         db.rollback()
@@ -123,6 +135,52 @@ def run_analysis_task(
         raise
     finally:
         db.close()
+
+
+async def _send_analysis_ready_emails(
+    conversation: Conversation,
+    db: Session,
+) -> None:
+    """Send analysis ready email notifications."""
+    from app.core.config import settings
+
+    results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
+
+    # Send to creator
+    if conversation.creator_id:
+        creator = db.query(User).filter(User.id == conversation.creator_id).first()
+        if creator and creator.email:
+            try:
+                await email_service.send_analysis_ready_email(
+                    to_email=creator.email,
+                    conversation_title=conversation.title,
+                    results_url=results_url,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send analysis ready email to creator {creator.email}: {e}", exc_info=True)
+
+    # Send to participants if results are accessible
+    if conversation.results_access != "creator_only":
+        # Get unique participants who responded
+        participant_ids = db.query(Response.participant_id).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_id.isnot(None),
+            Response.status == "submitted",
+        ).distinct().all()
+
+        participant_ids = [p[0] for p in participant_ids if p[0] != conversation.creator_id]
+
+        for participant_id in participant_ids:
+            user = db.query(User).filter(User.id == participant_id).first()
+            if user and user.email:
+                try:
+                    await email_service.send_analysis_ready_email(
+                        to_email=user.email,
+                        conversation_title=conversation.title,
+                        results_url=results_url,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send analysis ready email to participant {user.email}: {e}", exc_info=True)
 
 
 @router.post("/conversations/{conversation_id}/analyze", response_model=SuccessResponse)

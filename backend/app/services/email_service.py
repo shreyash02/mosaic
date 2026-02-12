@@ -1,6 +1,7 @@
 """Email service for sending invitations and notifications."""
 
 import logging
+from datetime import datetime
 from typing import Optional
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from app.core.config import settings
@@ -277,6 +278,474 @@ If you did not expect this invitation, you can safely ignore this email.
 
         except Exception as e:
             logger.error(f"Failed to send organization invitation email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_closing_warning_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        closes_at: datetime,
+        respond_url: str,
+    ) -> bool:
+        """
+        Send closing warning email when a conversation is about to close.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the conversation
+            closes_at: When the conversation will close (UTC)
+            respond_url: URL to respond to the conversation
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping closing warning to {to_email}")
+            return False
+
+        try:
+            # Format the closing time
+            closes_at_formatted = closes_at.strftime("%B %d, %Y at %I:%M %p UTC")
+
+            subject = f"Reminder: '{conversation_title}' is closing soon"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
+                                Mosaic
+                            </div>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #c53030; margin-top: 0;">Time is Running Out!</h2>
+                        <p style="color: #4a5568; font-size: 16px;">The following conversation is closing soon and we haven't received your response yet:</p>
+                        <div style="background-color: #fff5f5; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #c53030;">
+                            <h3 style="margin-top: 0; color: #2d3748; font-size: 20px;">{conversation_title}</h3>
+                            <p style="color: #718096; margin-bottom: 0;">
+                                <strong>Closes:</strong> {closes_at_formatted}
+                            </p>
+                        </div>
+                        <p style="color: #4a5568; font-size: 16px;">Please submit your response before the deadline:</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{respond_url}"
+                               style="background-color: #c53030; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Respond Now
+                            </a>
+                        </div>
+                        <div style="background-color: #edf2f7; padding: 15px; border-radius: 6px; margin: 25px 0;">
+                            <p style="color: #718096; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #4299e1; font-size: 14px; margin: 0; word-break: break-all;">
+                                {respond_url}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Closing warning email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send closing warning email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_conversation_closed_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        response_count: int,
+        results_url: Optional[str] = None,
+        is_creator: bool = False,
+    ) -> bool:
+        """
+        Send notification that a conversation has closed.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the conversation
+            response_count: Number of responses received
+            results_url: URL to view results (if available)
+            is_creator: Whether the recipient is the creator
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping closed notification to {to_email}")
+            return False
+
+        try:
+            subject = f"'{conversation_title}' has closed"
+
+            if is_creator:
+                intro_text = "Your conversation has closed and feedback collection is complete."
+                response_text = f"<strong>{response_count}</strong> response{'s' if response_count != 1 else ''} received"
+            else:
+                intro_text = "The following conversation has closed."
+                response_text = ""
+
+            results_section = ""
+            if results_url:
+                results_section = f"""
+                        <p style="color: #4a5568; font-size: 16px;">{'You can now analyze the results:' if is_creator else 'Results are now available:'}</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{results_url}"
+                               style="background-color: #4299e1; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                View Results
+                            </a>
+                        </div>
+                """
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
+                                Mosaic
+                            </div>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #2d3748; margin-top: 0;">Conversation Closed</h2>
+                        <p style="color: #4a5568; font-size: 16px;">{intro_text}</p>
+                        <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4299e1;">
+                            <h3 style="margin-top: 0; color: #2d3748; font-size: 20px;">{conversation_title}</h3>
+                            {f'<p style="color: #718096; margin-bottom: 0;">{response_text}</p>' if response_text else ''}
+                        </div>
+                        {results_section}
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Conversation closed email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send conversation closed email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_analysis_ready_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        results_url: str,
+    ) -> bool:
+        """
+        Send notification that analysis is ready.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the conversation
+            results_url: URL to view analysis results
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping analysis ready to {to_email}")
+            return False
+
+        try:
+            subject = f"Analysis ready for '{conversation_title}'"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
+                                Mosaic
+                            </div>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #38a169; margin-top: 0;">Analysis Complete!</h2>
+                        <p style="color: #4a5568; font-size: 16px;">The analysis for your conversation is now ready to view:</p>
+                        <div style="background-color: #f0fff4; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #38a169;">
+                            <h3 style="margin-top: 0; color: #2d3748; font-size: 20px;">{conversation_title}</h3>
+                            <p style="color: #718096; margin-bottom: 0;">Themes, insights, and patterns have been identified.</p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{results_url}"
+                               style="background-color: #38a169; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                View Analysis
+                            </a>
+                        </div>
+                        <div style="background-color: #edf2f7; padding: 15px; border-radius: 6px; margin: 25px 0;">
+                            <p style="color: #718096; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #4299e1; font-size: 14px; margin: 0; word-break: break-all;">
+                                {results_url}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Analysis ready email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send analysis ready email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_periodic_analysis_ready_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        period_label: str,
+        results_url: str,
+        responses_analyzed: int,
+    ) -> bool:
+        """
+        Send notification that periodic analysis is ready for a continuous conversation.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the conversation
+            period_label: Label for the analysis period (e.g., "2024-W01")
+            results_url: URL to view analysis results
+            responses_analyzed: Number of responses in this period
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping periodic analysis email to {to_email}")
+            return False
+
+        try:
+            subject = f"New insights for '{conversation_title}' ({period_label})"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
+                                Mosaic
+                            </div>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #805ad5; margin-top: 0;">New Periodic Insights</h2>
+                        <p style="color: #4a5568; font-size: 16px;">A new analysis period has completed for your continuous feedback conversation:</p>
+                        <div style="background-color: #faf5ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #805ad5;">
+                            <h3 style="margin-top: 0; color: #2d3748; font-size: 20px;">{conversation_title}</h3>
+                            <p style="color: #718096; margin-bottom: 5px;">
+                                <strong>Period:</strong> {period_label}
+                            </p>
+                            <p style="color: #718096; margin-bottom: 0;">
+                                <strong>Responses analyzed:</strong> {responses_analyzed}
+                            </p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{results_url}"
+                               style="background-color: #805ad5; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                View Insights
+                            </a>
+                        </div>
+                        <div style="background-color: #edf2f7; padding: 15px; border-radius: 6px; margin: 25px 0;">
+                            <p style="color: #718096; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #4299e1; font-size: 14px; margin: 0; word-break: break-all;">
+                                {results_url}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Periodic analysis ready email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send periodic analysis ready email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_recurring_instance_created_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        instance_number: int,
+        join_url: str,
+        is_creator: bool = False,
+    ) -> bool:
+        """
+        Send notification that a new recurring conversation instance has been created.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the new conversation instance
+            instance_number: Instance number in the series
+            join_url: URL to join the conversation
+            is_creator: Whether the recipient is the creator
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping recurring instance email to {to_email}")
+            return False
+
+        try:
+            subject = f"New round started: {conversation_title}"
+
+            if is_creator:
+                intro_text = f"A new instance of your recurring conversation has been created (Round #{instance_number})."
+                action_text = "Review and activate the conversation:"
+                button_text = "Review Conversation"
+            else:
+                intro_text = f"A new round of feedback collection has started (Round #{instance_number})."
+                action_text = "You're invited to participate:"
+                button_text = "Join Conversation"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e2e8f0; padding: 1rem 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <div style="font-size: 2rem; font-weight: 600; color: #000000; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;">
+                                Mosaic
+                            </div>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #dd6b20; margin-top: 0;">New Round Started</h2>
+                        <p style="color: #4a5568; font-size: 16px;">{intro_text}</p>
+                        <div style="background-color: #fffaf0; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #dd6b20;">
+                            <h3 style="margin-top: 0; color: #2d3748; font-size: 20px;">{conversation_title}</h3>
+                            <p style="color: #718096; margin-bottom: 0;">
+                                <span style="background-color: #feebc8; color: #c05621; padding: 4px 8px; border-radius: 4px; font-size: 13px;">Round #{instance_number}</span>
+                            </p>
+                        </div>
+                        <p style="color: #4a5568; font-size: 16px;">{action_text}</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{join_url}"
+                               style="background-color: #dd6b20; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                {button_text}
+                            </a>
+                        </div>
+                        <div style="background-color: #edf2f7; padding: 15px; border-radius: 6px; margin: 25px 0;">
+                            <p style="color: #718096; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #4299e1; font-size: 14px; margin: 0; word-break: break-all;">
+                                {join_url}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Recurring instance created email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send recurring instance created email to {to_email}: {str(e)}", exc_info=True)
             return False
 
 
