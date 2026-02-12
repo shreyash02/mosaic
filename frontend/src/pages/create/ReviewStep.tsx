@@ -508,7 +508,8 @@ export default function ReviewStep() {
               <div style={{ marginBottom: spacing[3] }}>
                 <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Duration</div>
                 <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
-                  {formState.durationHours} hours {formState.durationMinutes} minutes
+                  {formState.durationHours} {formState.durationHours === 1 ? 'hour' : 'hours'}
+                  {formState.durationMinutes > 0 && ` ${formState.durationMinutes} ${formState.durationMinutes === 1 ? 'minute' : 'minutes'}`}
                 </div>
               </div>
             )}

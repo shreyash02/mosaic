@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -429,7 +429,7 @@ const s = {
   // Stats row
   statsRow: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: spacing[4],
     marginBottom: spacing[6],
   },
@@ -550,6 +550,10 @@ export default function ConversationDetailPage() {
   const [updatingAnalysisSchedule, setUpdatingAnalysisSchedule] = useState(false);
   const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
   const analysisDropdownRef = useRef<HTMLDivElement>(null);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendHours, setExtendHours] = useState(1);
+  const [extending, setExtending] = useState(false);
 
   usePageTitle(conversation?.title);
 
@@ -594,6 +598,95 @@ export default function ConversationDetailPage() {
       navigate(`/templates/${id}`, { replace: true });
     }
   }, [conversation, id, navigate]);
+
+  // Calculate time remaining from auto_close_at
+  const calculateTimeRemaining = useCallback((autoCloseAt: string | null | undefined, state: ConversationState, durationMinutes?: number, isContinuous?: boolean) => {
+    if (state === ConversationState.ACTIVE && autoCloseAt) {
+      const now = new Date();
+      // Backend sends naive datetime (no timezone), treat as UTC
+      const closeAtStr = autoCloseAt.endsWith('Z') ? autoCloseAt : autoCloseAt + 'Z';
+      const closeAt = new Date(closeAtStr);
+      const diffMs = closeAt.getTime() - now.getTime();
+
+      if (diffMs <= 0) {
+        return '< 1m';
+      }
+
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffDays > 0) {
+        const remainingHours = diffHours % 24;
+        return `${diffDays}d ${remainingHours}h`;
+      } else if (diffHours > 0) {
+        const remainingMins = diffMins % 60;
+        return remainingMins > 0 ? `${diffHours}h ${remainingMins}m` : `${diffHours}h`;
+      } else if (diffMins > 0) {
+        return `${diffMins}m`;
+      } else {
+        return '< 1m';
+      }
+    } else if (state === ConversationState.DRAFT && durationMinutes) {
+      const hours = Math.floor(durationMinutes / 60);
+      const mins = durationMinutes % 60;
+      if (hours > 0 && mins > 0) {
+        return `${hours}h ${mins}m`;
+      } else if (hours > 0) {
+        return `${hours}h`;
+      } else {
+        return `${mins}m`;
+      }
+    } else if (isContinuous) {
+      return 'Ongoing';
+    } else {
+      return '--';
+    }
+  }, []);
+
+  // Countdown timer for active conversations
+  useEffect(() => {
+    if (!conversation) return;
+
+    // Initial calculation
+    setTimeRemaining(calculateTimeRemaining(
+      conversation.auto_close_at,
+      conversation.state,
+      conversation.duration_minutes,
+      conversation.is_continuous
+    ));
+
+    // Update every minute for active conversations, synced to minute boundaries
+    if (conversation.state === ConversationState.ACTIVE && conversation.auto_close_at) {
+      let intervalId: NodeJS.Timeout | null = null;
+
+      const updateTime = () => {
+        setTimeRemaining(calculateTimeRemaining(
+          conversation.auto_close_at,
+          conversation.state,
+          conversation.duration_minutes,
+          conversation.is_continuous
+        ));
+      };
+
+      // Calculate ms until the next minute boundary
+      const now = new Date();
+      const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+
+      // First update at the next minute boundary, then every 60 seconds
+      const timeoutId = setTimeout(() => {
+        updateTime();
+        intervalId = setInterval(updateTime, 60000);
+      }, msUntilNextMinute);
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }
+  }, [conversation, conversation?.auto_close_at, conversation?.state, calculateTimeRemaining]);
 
   useEffect(() => {
     if (!conversation || conversation.state !== ConversationState.ANALYZING) {
@@ -701,6 +794,24 @@ export default function ConversationDetailPage() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete conversation');
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleExtend = async () => {
+    if (!conversation || extendHours < 1) return;
+
+    setExtending(true);
+    setError('');
+    try {
+      await api.extendConversation(id!, extendHours);
+      // Reload conversation to get fresh data
+      await loadConversation();
+      setShowExtendModal(false);
+      setExtendHours(1);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to extend conversation');
+    } finally {
+      setExtending(false);
     }
   };
 
@@ -1242,6 +1353,29 @@ export default function ConversationDetailPage() {
             </div>
             <div style={s.statLabel}>Status</div>
           </div>
+          <div style={s.statItem}>
+            <div style={s.statValue}>{timeRemaining}</div>
+            <div style={s.statLabel}>
+              {conversation.state === ConversationState.ACTIVE ? 'Time Left' : 'Duration'}
+            </div>
+            {conversation.state === ConversationState.ACTIVE && conversation.auto_close_at && (
+              <button
+                type="button"
+                onClick={() => setShowExtendModal(true)}
+                style={{
+                  marginTop: spacing[2],
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-primary-600)',
+                  fontSize: typography.fontSize.xs,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                + Add more time
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1567,6 +1701,106 @@ export default function ConversationDetailPage() {
         </div>
       )}
 
+      {/* Extend Time Modal */}
+      {showExtendModal && (
+        <div style={s.modalOverlay} onClick={() => setShowExtendModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Add More Time</h2>
+            <p style={s.modalText}>
+              Extend the conversation by adding more hours. Current end time:{' '}
+              {conversation.auto_close_at ? new Date(conversation.auto_close_at).toLocaleString() : 'Not set'}
+            </p>
+
+            <div style={s.formGroup}>
+              <label style={s.formLabel}>Add hours</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                <button
+                  type="button"
+                  onClick={() => setExtendHours(Math.max(1, extendHours - 1))}
+                  style={{
+                    ...s.buttonSecondary,
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    minWidth: '40px',
+                  }}
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max="168"
+                  value={extendHours}
+                  onChange={(e) => setExtendHours(Math.max(1, Math.min(168, parseInt(e.target.value) || 1)))}
+                  style={{
+                    width: '80px',
+                    textAlign: 'center',
+                    padding: spacing[2],
+                    border: '1px solid var(--color-primary-300)',
+                    borderRadius: borders.radius.md,
+                    fontSize: typography.fontSize.lg,
+                    fontWeight: typography.fontWeight.bold,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setExtendHours(Math.min(168, extendHours + 1))}
+                  style={{
+                    ...s.buttonSecondary,
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    minWidth: '40px',
+                  }}
+                >
+                  +
+                </button>
+                <span style={{ color: 'var(--color-primary-600)', fontSize: typography.fontSize.sm }}>
+                  hour{extendHours !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div style={{ marginTop: spacing[2], fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)' }}>
+                New end time:{' '}
+                {conversation.auto_close_at
+                  ? new Date(new Date(conversation.auto_close_at).getTime() + extendHours * 60 * 60 * 1000).toLocaleString()
+                  : 'N/A'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
+              {[1, 6, 12, 24, 48].map((hours) => (
+                <button
+                  key={hours}
+                  type="button"
+                  onClick={() => setExtendHours(hours)}
+                  style={{
+                    padding: `${spacing[1]} ${spacing[2]}`,
+                    backgroundColor: extendHours === hours ? 'var(--color-primary-900)' : 'var(--color-primary-100)',
+                    color: extendHours === hours ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                    border: 'none',
+                    borderRadius: borders.radius.md,
+                    fontSize: typography.fontSize.xs,
+                    cursor: 'pointer',
+                  }}
+                >
+                  +{hours}h
+                </button>
+              ))}
+            </div>
+
+            <div style={s.modalActions}>
+              <button onClick={() => setShowExtendModal(false)} style={s.buttonSecondary}>
+                Cancel
+              </button>
+              <button
+                onClick={handleExtend}
+                style={s.buttonPrimary}
+                disabled={extending || extendHours < 1}
+              >
+                {extending ? 'Extending...' : `Add ${extendHours} hour${extendHours !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Activate Modal */}
       {showActivateModal && (
         <div style={s.modalOverlay} onClick={() => setShowActivateModal(false)}>
@@ -1816,6 +2050,7 @@ export default function ConversationDetailPage() {
             text-align: center !important;
           }
           .convo-detail-stats {
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: ${spacing[2]} !important;
           }
           .convo-detail-stats > div {
@@ -1823,6 +2058,9 @@ export default function ConversationDetailPage() {
           }
         }
         @media ${mediaQueries.mobile} {
+          .convo-detail-stats {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
           .convo-detail-page {
             padding: ${spacing[3]} !important;
           }
