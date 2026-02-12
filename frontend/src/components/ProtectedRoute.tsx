@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { SkeletonPageLoading } from './Skeleton';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,7 +12,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="loading">
+        <SkeletonPageLoading />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

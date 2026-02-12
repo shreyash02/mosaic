@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { AdminConversationInfo, AdminUserInfo, AdminResponseInfo, Analysis } from '../types';
 import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess } from '../types';
+import { SkeletonAdminDetail } from '../components/Skeleton';
 import './AdminPortalPage.css';
 
 export default function AdminConversationDetailPage() {
@@ -199,7 +200,7 @@ export default function AdminConversationDetailPage() {
     return (
       <div className="admin-portal">
         <div className="admin-content">
-          <p>Loading...</p>
+          <SkeletonAdminDetail />
         </div>
       </div>
     );

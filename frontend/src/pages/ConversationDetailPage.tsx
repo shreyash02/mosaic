@@ -1500,7 +1500,7 @@ export default function ConversationDetailPage() {
                   style={merge(s.buttonSecondary, { width: '100%' })}
                   disabled={loadingCodes}
                 >
-                  {loadingCodes ? 'Loading...' : 'View All Codes'}
+                  {loadingCodes ? 'Loading codes...' : 'View All Codes'}
                 </button>
 
                 {/* Show codes */}

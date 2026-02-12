@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { SlackWorkspaceStatus } from '../types';
 import { colors, spacing, typography, borders } from '../styles/tokens';
+import { SkeletonText } from './Skeleton';
 
 interface SlackIntegrationCardProps {
   organizationId: string;
@@ -174,7 +175,7 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
           <SlackIcon />
           <h3 style={styles.title}>Slack</h3>
         </div>
-        <p style={styles.description}>Loading...</p>
+        <SkeletonText lines={2} lineHeight="1rem" />
       </div>
     );
   }

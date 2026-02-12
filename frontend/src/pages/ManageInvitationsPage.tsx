@@ -5,6 +5,7 @@ import type { Conversation, InvitationListResponse, CSVUploadResult } from '../t
 import { formatRelativeTime } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, transitions } from '../styles';
+import { SkeletonInvitationPage } from '../components/Skeleton';
 
 const styles = {
   page: {
@@ -466,7 +467,7 @@ export default function ManageInvitationsPage() {
         <style>{hoverStyles}</style>
         <div style={styles.page}>
           <div style={styles.container}>
-            <div style={styles.loading}>Loading...</div>
+            <SkeletonInvitationPage />
           </div>
         </div>
       </>

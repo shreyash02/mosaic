@@ -319,4 +319,82 @@ export function SkeletonAnalysis() {
   );
 }
 
+// Simple centered page loading skeleton
+export function SkeletonPageLoading() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '200px',
+        gap: spacing[4],
+      }}
+    >
+      <Skeleton width="200px" height="1.5rem" />
+      <Skeleton width="300px" height="1rem" />
+    </div>
+  );
+}
+
+// Invitation/member list page skeleton
+export function SkeletonInvitationPage() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[6] }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Skeleton width="200px" height="2rem" />
+        <Skeleton width="120px" height="2.5rem" borderRadius={borders.radius.md} />
+      </div>
+      {/* List items */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-primary-50)',
+          border: '1px solid var(--color-primary-300)',
+          borderRadius: borders.radius.lg,
+          padding: spacing[6],
+        }}
+      >
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonListItem key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Admin detail page skeleton
+export function SkeletonAdminDetail() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[6] }}>
+      <Skeleton width="150px" height="1rem" />
+      <Skeleton width="300px" height="2rem" />
+      <div
+        style={{
+          backgroundColor: 'var(--color-primary-50)',
+          border: '1px solid var(--color-primary-300)',
+          borderRadius: borders.radius.lg,
+          padding: spacing[6],
+          display: 'flex',
+          flexDirection: 'column',
+          gap: spacing[4],
+        }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', gap: spacing[4] }}>
+            <Skeleton width="120px" height="1rem" />
+            <Skeleton width="200px" height="1rem" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Small card loading skeleton (for inline cards like SlackIntegrationCard)
+export function SkeletonCardLoading() {
+  return <SkeletonText lines={2} lineHeight="1rem" gap={spacing[2]} />;
+}
+
 export default Skeleton;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import { SkeletonPageLoading } from '../components/Skeleton';
 
 export default function AcceptOrganizationInvitePage() {
   const { token } = useParams<{ token: string }>();
@@ -70,7 +71,7 @@ export default function AcceptOrganizationInvitePage() {
   if (authLoading) {
     return (
       <div className="page-container">
-        <div className="loading">Loading...</div>
+        <SkeletonPageLoading />
       </div>
     );
   }

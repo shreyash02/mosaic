@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { AdminUserInfo, AdminConversationInfo, AdminResponseInfo } from '../types';
+import { SkeletonAdminDetail } from '../components/Skeleton';
 import './AdminPortalPage.css';
 
 export default function AdminUserDetailPage() {
@@ -70,7 +71,7 @@ export default function AdminUserDetailPage() {
     return (
       <div className="admin-portal">
         <div className="admin-content">
-          <p>Loading...</p>
+          <SkeletonAdminDetail />
         </div>
       </div>
     );

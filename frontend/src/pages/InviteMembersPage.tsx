@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { OrganizationWithMembers, OrganizationInvitationListResponse } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
 import { typography, spacing, borders, transitions } from '../styles';
+import { SkeletonInvitationPage } from '../components/Skeleton';
 
 const styles = {
   page: {
@@ -320,7 +321,7 @@ export default function InviteMembersPage() {
         <style>{hoverStyles}</style>
         <div style={styles.page}>
           <div style={styles.container}>
-            <div style={styles.loading}>Loading...</div>
+            <SkeletonInvitationPage />
           </div>
         </div>
       </>
