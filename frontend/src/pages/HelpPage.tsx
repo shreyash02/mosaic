@@ -212,6 +212,11 @@ export default function HelpPage() {
           <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5V2zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1H4z"/>
           <path d="M14 6a1 1 0 0 0 1-1V3.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h2.793L10.146 8.146a.5.5 0 1 0 .708.708L15 4.707V7.5a.5.5 0 0 0 1 0V5z" style={{ opacity: 0 }}/>
         </svg>
+      ),
+      'slack': (
+        <svg width="40" height="40" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M3.362 10.11c0 .926-.756 1.681-1.681 1.681S0 11.036 0 10.111C0 9.186.756 8.43 1.68 8.43h1.682v1.68zm.846 0c0-.924.756-1.68 1.681-1.68s1.681.756 1.681 1.68v4.21c0 .924-.756 1.68-1.68 1.68a1.685 1.685 0 0 1-1.682-1.68v-4.21zM5.89 3.362c-.926 0-1.682-.756-1.682-1.681S4.964 0 5.89 0s1.68.756 1.68 1.68v1.682H5.89zm0 .846c.924 0 1.68.756 1.68 1.681S6.814 7.57 5.89 7.57H1.68C.757 7.57 0 6.814 0 5.89c0-.926.756-1.682 1.68-1.682h4.21zm6.749 1.682c0-.926.755-1.682 1.68-1.682.925 0 1.681.756 1.681 1.681s-.756 1.681-1.68 1.681h-1.681V5.89zm-.848 0c0 .924-.755 1.68-1.68 1.68A1.685 1.685 0 0 1 8.43 5.89V1.68C8.43.757 9.186 0 10.11 0c.926 0 1.681.756 1.681 1.68v4.21zm-1.681 6.748c.926 0 1.682.756 1.682 1.681S11.036 16 10.11 16s-1.681-.756-1.681-1.68v-1.682h1.68zm0-.847c-.924 0-1.68-.755-1.68-1.68 0-.925.756-1.681 1.68-1.681h4.21c.924 0 1.68.756 1.68 1.68 0 .926-.756 1.681-1.68 1.681h-4.21z"/>
+        </svg>
       )
     };
     return icons[iconName];
@@ -271,6 +276,12 @@ export default function HelpPage() {
       description: 'Collaborate with teams using organizations, manage members, connect Slack, and organize conversations.',
       icon: 'organization',
       link: '/help/organizations'
+    },
+    {
+      title: 'Slack Integration',
+      description: 'Connect Slack to send notifications directly to your team members via DM.',
+      icon: 'slack',
+      link: '/help/slack-integration'
     }
   ];
 

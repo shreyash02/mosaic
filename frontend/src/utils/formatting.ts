@@ -239,6 +239,40 @@ export function convertUTCToLocalDateTimeString(utcDateString: string): string {
 }
 
 /**
+ * Format duration in minutes to human-friendly format
+ * Examples:
+ * - 30 -> "30 minutes"
+ * - 60 -> "1 hour"
+ * - 90 -> "1 hour 30 minutes"
+ * - 1440 -> "1 day"
+ * - 2880 -> "2 days"
+ * - 1500 -> "1 day 1 hour"
+ * - 1530 -> "1 day 1 hour 30 minutes"
+ */
+export function formatDuration(minutes: number): string {
+  if (minutes <= 0) return '0 minutes';
+
+  const days = Math.floor(minutes / 1440);
+  const remainingAfterDays = minutes % 1440;
+  const hours = Math.floor(remainingAfterDays / 60);
+  const mins = remainingAfterDays % 60;
+
+  const parts: string[] = [];
+
+  if (days > 0) {
+    parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+  }
+  if (hours > 0) {
+    parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
+  }
+  if (mins > 0) {
+    parts.push(`${mins} ${mins === 1 ? 'minute' : 'minutes'}`);
+  }
+
+  return parts.join(' ') || '0 minutes';
+}
+
+/**
  * Format a date as relative time (e.g., "2 days ago", "yesterday", "3 hours ago")
  */
 export function formatRelativeTime(dateString: string): string {

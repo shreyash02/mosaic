@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { AdminConversationInfo, AdminUserInfo, AdminResponseInfo, Analysis } from '../types';
 import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess } from '../types';
+import { formatDuration } from '../utils/formatting';
 import { SkeletonAdminDetail } from '../components/Skeleton';
 import './AdminPortalPage.css';
 
@@ -413,7 +414,7 @@ export default function AdminConversationDetailPage() {
             )}
             {conversation.duration_minutes && (
               <div className="detail-row">
-                <strong>Duration:</strong> <span>{conversation.duration_minutes} minutes</span>
+                <strong>Duration:</strong> <span>{formatDuration(conversation.duration_minutes)}</span>
               </div>
             )}
           </div>
