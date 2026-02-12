@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, ConversationListItem } from '../types';
 import { ConversationState, RecurrencePattern } from '../types';
-import { formatDate } from '../utils/formatting';
+import { formatDate, formatDuration } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
@@ -335,6 +335,14 @@ export default function TemplateDetailPage() {
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingPattern, setEditingPattern] = useState(false);
+
+  const patternOptions = [
+    { value: RecurrencePattern.WEEKLY, label: 'Weekly' },
+    { value: RecurrencePattern.BIWEEKLY, label: 'Every 2 weeks' },
+    { value: RecurrencePattern.MONTHLY, label: 'Monthly' },
+    { value: RecurrencePattern.QUARTERLY, label: 'Quarterly' },
+  ];
 
   useEffect(() => {
     if (id) {
@@ -425,6 +433,37 @@ export default function TemplateDetailPage() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete template');
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    if (!template) return;
+    setActionLoading(true);
+    try {
+      const updated = await api.updateConversation(id!, {
+        recurrence_paused: !template.recurrence_paused,
+      });
+      setTemplate(updated);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update template');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePatternChange = async (newPattern: string | number) => {
+    if (!template) return;
+    setActionLoading(true);
+    try {
+      const updated = await api.updateConversation(id!, {
+        recurrence_pattern: newPattern as RecurrencePattern,
+      });
+      setTemplate(updated);
+      setEditingPattern(false);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update pattern');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -642,15 +681,115 @@ export default function TemplateDetailPage() {
           <div style={styles.grid}>
             {/* Recurrence Schedule */}
             <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Recurrence Schedule</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
+                <h2 style={{ ...styles.cardTitle, marginBottom: 0 }}>Recurrence Schedule</h2>
+                {template.recurrence_paused && (
+                  <span style={{
+                    ...styles.badge,
+                    backgroundColor: 'var(--color-warning-100, #fef3c7)',
+                    color: 'var(--color-warning-700, #b45309)',
+                  }}>
+                    Paused
+                  </span>
+                )}
+              </div>
+
+              {/* Next occurrence highlight - only show when not paused and published */}
+              {!template.recurrence_paused && template.state !== ConversationState.DRAFT && template.next_instance_date && (
+                <div style={{
+                  backgroundColor: 'var(--color-primary-100)',
+                  borderRadius: borders.radius.md,
+                  padding: spacing[4],
+                  marginBottom: spacing[4],
+                  border: '1px solid var(--color-primary-200)',
+                }}>
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[1], textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Next conversation creates
+                  </div>
+                  <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-900)' }}>
+                    {formatDate(template.next_instance_date)}
+                  </div>
+                  {template.timezone && (
+                    <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginTop: spacing[1] }}>
+                      {template.timezone.replace(/_/g, ' ')}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={styles.infoItem}>
                 <span style={styles.infoLabel}>Pattern</span>
-                <span style={styles.infoValue}>{formatRecurrencePattern(template.recurrence_pattern)}</span>
+                {editingPattern ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {patternOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handlePatternChange(option.value)}
+                        style={{
+                          padding: `${spacing[1]} ${spacing[3]}`,
+                          borderRadius: borders.radius.md,
+                          border: option.value === template.recurrence_pattern
+                            ? '1px solid var(--color-primary-900)'
+                            : '1px solid var(--color-primary-300)',
+                          backgroundColor: option.value === template.recurrence_pattern
+                            ? 'var(--color-primary-900)'
+                            : 'var(--color-primary-50)',
+                          color: option.value === template.recurrence_pattern
+                            ? 'var(--color-primary-50)'
+                            : 'var(--color-primary-700)',
+                          fontSize: typography.fontSize.xs,
+                          fontWeight: typography.fontWeight.medium,
+                          cursor: 'pointer',
+                          transition: transitions.duration.fast,
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setEditingPattern(false)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: spacing[1],
+                        cursor: 'pointer',
+                        color: 'var(--color-primary-400)',
+                        fontSize: typography.fontSize.xs,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                    <button
+                      onClick={() => setEditingPattern(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        color: 'var(--color-primary-500)',
+                        fontSize: typography.fontSize.xs,
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <span style={styles.infoValue}>{formatRecurrencePattern(template.recurrence_pattern)}</span>
+                  </div>
+                )}
               </div>
+              {template.recurrence_paused && template.next_instance_date && (
+                <div style={styles.infoItem}>
+                  <span style={styles.infoLabel}>Resumes at</span>
+                  <span style={styles.infoValue}>{formatDate(template.next_instance_date)}</span>
+                </div>
+              )}
               <div style={styles.infoItem}>
-                <span style={styles.infoLabel}>Next Conversation</span>
+                <span style={styles.infoLabel}>Timezone</span>
                 <span style={styles.infoValue}>
-                  {template.next_instance_date ? formatDate(template.next_instance_date) : 'Not scheduled'}
+                  {template.timezone ? template.timezone.replace(/_/g, ' ') : 'UTC'}
                 </span>
               </div>
               <div style={styles.infoItemLast}>
@@ -659,6 +798,38 @@ export default function TemplateDetailPage() {
                   {template.recurrence_end_date ? formatDate(template.recurrence_end_date) : 'Never'}
                 </span>
               </div>
+
+              {/* Pause/Resume button - only show for published templates with recurrence */}
+              {template.state !== ConversationState.DRAFT && template.recurrence_pattern && (
+                <div style={{ marginTop: spacing[4], paddingTop: spacing[4], borderTop: '1px solid var(--color-primary-100)' }}>
+                  <button
+                    onClick={handleTogglePause}
+                    style={{
+                      ...styles.buttonSecondary,
+                      width: '100%',
+                      ...(actionLoading ? styles.buttonDisabled : {}),
+                    }}
+                    className="template-btn-secondary"
+                    disabled={actionLoading}
+                  >
+                    {template.recurrence_paused ? (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: spacing[2] }}>
+                          <path d="M4 2.5a.5.5 0 0 1 .724-.447l10 5.5a.5.5 0 0 1 0 .894l-10 5.5A.5.5 0 0 1 4 13.5V2.5z"/>
+                        </svg>
+                        Resume Schedule
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: spacing[2] }}>
+                          <path d="M5 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm5.5 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>
+                        </svg>
+                        Pause Schedule
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Template Settings */}
@@ -679,7 +850,7 @@ export default function TemplateDetailPage() {
               <div style={styles.infoItemLast}>
                 <span style={styles.infoLabel}>Duration</span>
                 <span style={styles.infoValue}>
-                  {template.duration_minutes ? `${template.duration_minutes} minutes` : 'Not set'}
+                  {template.duration_minutes ? formatDuration(template.duration_minutes) : 'Not set'}
                 </span>
               </div>
             </div>
