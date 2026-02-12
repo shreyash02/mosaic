@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { formatDuration } from '../utils/formatting';
 import { SkeletonAdminDetail } from '../components/Skeleton';
+import { colors, spacing, typography } from '../styles/tokens';
 import './AdminPortalPage.css';
 
 export default function AdminConversationDetailPage() {
@@ -229,14 +230,14 @@ export default function AdminConversationDetailPage() {
         {error && <div className="error-message">{error}</div>}
         
         <div className="admin-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
             <h2 style={{ margin: 0 }}>Conversation Information</h2>
             {!isEditing ? (
               <button onClick={() => setIsEditing(true)} className="btn btn-primary">
                 Edit Configuration
               </button>
             ) : (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: spacing[2] }}>
                 <button onClick={handleSave} disabled={saving} className="btn btn-primary">
                   {saving ? 'Saving...' : 'Save'}
                 </button>
@@ -249,12 +250,12 @@ export default function AdminConversationDetailPage() {
           
           {isEditing ? (
             <div className="detail-card">
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gap: spacing[6] }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <label style={{ display: 'block', marginBottom: spacing[2], fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>
                     Show Verbatim Responses
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer', color: colors.primary[700] }}>
                     <input
                       type="checkbox"
                       checked={showVerbatimResponses}
@@ -265,13 +266,13 @@ export default function AdminConversationDetailPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <label style={{ display: 'block', marginBottom: spacing[2], fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>
                     Results Access
                   </label>
                   <select
                     value={resultsAccess}
                     onChange={(e) => setResultsAccess(e.target.value as ResultsAccess)}
-                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: spacing[2], fontSize: typography.fontSize.sm, borderRadius: '6px', border: `1px solid ${colors.primary[400]}` }}
                   >
                     <option value={ResultsAccess.CREATOR_ONLY}>Creator Only</option>
                     <option value={ResultsAccess.PARTICIPANTS}>Participants</option>
@@ -280,13 +281,13 @@ export default function AdminConversationDetailPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <label style={{ display: 'block', marginBottom: spacing[2], fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>
                     Anonymity Level
                   </label>
                   <select
                     value={anonymityLevel}
                     onChange={(e) => setAnonymityLevel(e.target.value as AnonymityLevel)}
-                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: spacing[2], fontSize: typography.fontSize.sm, borderRadius: '6px', border: `1px solid ${colors.primary[400]}` }}
                   >
                     <option value={AnonymityLevel.FULLY_ANONYMOUS}>Fully Anonymous</option>
                     <option value={AnonymityLevel.PLATFORM_TRACKED}>Platform Tracked</option>
@@ -295,29 +296,29 @@ export default function AdminConversationDetailPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer', color: colors.primary[700] }}>
                     <input
                       type="checkbox"
                       checked={inviteOnly}
                       onChange={(e) => setInviteOnly(e.target.checked)}
                     />
-                    <span style={{ fontWeight: '600' }}>Invite Only</span>
+                    <span style={{ fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>Invite Only</span>
                   </label>
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer', color: colors.primary[700] }}>
                     <input
                       type="checkbox"
                       checked={autoAnalyze}
                       onChange={(e) => setAutoAnalyze(e.target.checked)}
                     />
-                    <span style={{ fontWeight: '600' }}>Auto Analyze</span>
+                    <span style={{ fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>Auto Analyze</span>
                   </label>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <label style={{ display: 'block', marginBottom: spacing[2], fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>
                     Max Response Length
                   </label>
                   <input
@@ -326,12 +327,12 @@ export default function AdminConversationDetailPage() {
                     onChange={(e) => setMaxResponseLength(parseInt(e.target.value) || 10000)}
                     min={100}
                     max={50000}
-                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: spacing[2], fontSize: typography.fontSize.sm, borderRadius: '6px', border: `1px solid ${colors.primary[400]}` }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <label style={{ display: 'block', marginBottom: spacing[2], fontWeight: typography.fontWeight.semibold, color: colors.primary[900] }}>
                     Duration (minutes) - Leave empty for no limit
                   </label>
                   <input
@@ -341,7 +342,7 @@ export default function AdminConversationDetailPage() {
                     min={1}
                     max={2880}
                     placeholder="No limit"
-                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: spacing[2], fontSize: typography.fontSize.sm, borderRadius: '6px', border: `1px solid ${colors.primary[400]}` }}
                   />
                 </div>
               </div>
@@ -471,19 +472,19 @@ export default function AdminConversationDetailPage() {
         {/* Show Re-run Analysis button when conversation is analyzed, even if analysis data is missing/invalid */}
         {conversation?.state === 'analyzed' && !analysis && (
           <div className="admin-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
               <h2 style={{ margin: 0 }}>Analysis</h2>
               <button
                 onClick={handleReanalyze}
                 disabled={reanalyzing}
                 className="btn btn-primary"
-                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                style={{ fontSize: typography.fontSize.sm, padding: `${spacing[2]} ${spacing[4]}` }}
               >
                 {reanalyzing ? 'Re-analyzing...' : 'Re-run Analysis'}
               </button>
             </div>
             <div className="detail-card">
-              <p style={{ color: '#718096', fontStyle: 'italic' }}>
+              <p style={{ color: colors.primary[600], fontStyle: 'italic' }}>
                 Analysis data is not available or invalid. Click "Re-run Analysis" to generate new analysis.
               </p>
             </div>
@@ -493,14 +494,14 @@ export default function AdminConversationDetailPage() {
         {/* Show full analysis section when data is valid */}
         {analysis && (
           <div className="admin-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
               <h2 style={{ margin: 0 }}>Analysis</h2>
               {conversation?.state === 'analyzed' && (
                 <button
                   onClick={handleReanalyze}
                   disabled={reanalyzing}
                   className="btn btn-primary"
-                  style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                  style={{ fontSize: typography.fontSize.sm, padding: `${spacing[2]} ${spacing[4]}` }}
                 >
                   {reanalyzing ? 'Re-analyzing...' : 'Re-run Analysis'}
                 </button>
@@ -522,24 +523,24 @@ export default function AdminConversationDetailPage() {
               </div>
             </div>
 
-            <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
+            <div className="analysis-section" style={{ marginTop: spacing[6] }}>
               <h3>Overall Summary</h3>
               <div className="detail-card">
-                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                <p style={{ whiteSpace: 'pre-wrap', lineHeight: typography.lineHeight.relaxed, color: colors.primary[700] }}>
                   {analysis.overall_summary}
                 </p>
               </div>
             </div>
 
             {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
-              <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
+              <div className="analysis-section" style={{ marginTop: spacing[6] }}>
                 <h3>What Surprised Us</h3>
                 {analysis.surprising_insights.map((insight, index) => (
-                  <div key={index} className="detail-card" style={{ marginBottom: '1rem' }}>
-                    <h4 style={{ marginTop: 0, color: '#2c5282', marginBottom: '0.5rem' }}>
+                  <div key={index} className="detail-card" style={{ marginBottom: spacing[4] }}>
+                    <h4 style={{ marginTop: 0, color: colors.primary[900], marginBottom: spacing[2], fontWeight: typography.fontWeight.semibold }}>
                       {insight.title}
                     </h4>
-                    <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', margin: 0 }}>
+                    <p style={{ whiteSpace: 'pre-wrap', lineHeight: typography.lineHeight.relaxed, margin: 0, color: colors.primary[700] }}>
                       {insight.description}
                     </p>
                   </div>
@@ -548,48 +549,48 @@ export default function AdminConversationDetailPage() {
             )}
 
             {analysis.question_analyses && analysis.question_analyses.length > 0 && (
-              <div className="analysis-section" style={{ marginTop: '1.5rem' }}>
+              <div className="analysis-section" style={{ marginTop: spacing[6] }}>
                 <h3>Question-Level Analysis</h3>
                 {analysis.question_analyses.map((qa, index) => (
-                  <div key={qa.question_id} className="detail-card" style={{ marginBottom: '1rem' }}>
-                    <h4 style={{ marginTop: 0, color: '#2c5282' }}>
+                  <div key={qa.question_id} className="detail-card" style={{ marginBottom: spacing[4] }}>
+                    <h4 style={{ marginTop: 0, color: colors.primary[900], fontWeight: typography.fontWeight.semibold }}>
                       Question {index + 1}: {qa.question_text}
                     </h4>
-                    <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>
+                    <p style={{ fontSize: typography.fontSize.sm, color: colors.primary[600], marginBottom: spacing[2] }}>
                       Type: {qa.question_type} | Responses: {qa.response_count}
                     </p>
 
                     {/* Show summary if no themes available */}
                     {qa.question_type === 'text' && (!qa.themes || qa.themes.length === 0) && qa.summary && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <strong>Summary:</strong>
-                        <p style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                      <div style={{ marginTop: spacing[4] }}>
+                        <strong style={{ color: colors.primary[900] }}>Summary:</strong>
+                        <p style={{ marginTop: spacing[2], whiteSpace: 'pre-wrap', lineHeight: typography.lineHeight.relaxed, color: colors.primary[700] }}>
                           {qa.summary}
                         </p>
                       </div>
                     )}
 
                     {qa.themes && qa.themes.length > 0 && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <strong>Themes:</strong>
+                      <div style={{ marginTop: spacing[4] }}>
+                        <strong style={{ color: colors.primary[900] }}>Themes:</strong>
                         {qa.themes.map((theme, themeIndex) => (
-                          <div key={themeIndex} style={{ marginLeft: '1rem', marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f7fafc', borderRadius: '4px' }}>
-                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '1rem' }}>
+                          <div key={themeIndex} style={{ marginLeft: spacing[4], marginTop: spacing[3], padding: spacing[3], backgroundColor: colors.primary[100], borderRadius: '4px' }}>
+                            <div style={{ fontWeight: typography.fontWeight.semibold, color: colors.primary[900], fontSize: typography.fontSize.base }}>
                               {theme.theme} ({theme.frequency} responses)
                             </div>
-                            <div style={{ marginTop: '0.5rem', color: '#4a5568', fontSize: '0.875rem' }}>
+                            <div style={{ marginTop: spacing[2], color: colors.primary[700], fontSize: typography.fontSize.sm }}>
                               {theme.summary}
                             </div>
 
                             {theme.perspectives && theme.perspectives.length > 0 && (
-                              <div style={{ marginLeft: '1rem', marginTop: '0.75rem' }}>
-                                <strong style={{ fontSize: '0.875rem', color: '#2d3748' }}>Perspectives:</strong>
+                              <div style={{ marginLeft: spacing[4], marginTop: spacing[3] }}>
+                                <strong style={{ fontSize: typography.fontSize.sm, color: colors.primary[900] }}>Perspectives:</strong>
                                 {theme.perspectives.map((perspective, perspectiveIndex) => (
-                                  <div key={perspectiveIndex} style={{ marginTop: '0.5rem', marginLeft: '0.5rem' }}>
-                                    <div style={{ fontWeight: '500', color: '#2c5282' }}>
+                                  <div key={perspectiveIndex} style={{ marginTop: spacing[2], marginLeft: spacing[2] }}>
+                                    <div style={{ fontWeight: typography.fontWeight.medium, color: colors.primary[800] }}>
                                       {perspective.name} ({perspective.count})
                                     </div>
-                                    <div style={{ marginLeft: '0.5rem', color: '#718096', fontSize: '0.875rem' }}>
+                                    <div style={{ marginLeft: spacing[2], color: colors.primary[600], fontSize: typography.fontSize.sm }}>
                                       {perspective.summary}
                                     </div>
                                   </div>
@@ -598,9 +599,9 @@ export default function AdminConversationDetailPage() {
                             )}
 
                             {theme.key_points && theme.key_points.length > 0 && (
-                              <div style={{ marginLeft: '1rem', marginTop: '0.75rem' }}>
-                                <strong style={{ fontSize: '0.875rem', color: '#2d3748' }}>Key Points:</strong>
-                                <ul style={{ marginTop: '0.25rem', marginLeft: '1rem', color: '#4a5568', fontSize: '0.875rem' }}>
+                              <div style={{ marginLeft: spacing[4], marginTop: spacing[3] }}>
+                                <strong style={{ fontSize: typography.fontSize.sm, color: colors.primary[900] }}>Key Points:</strong>
+                                <ul style={{ marginTop: spacing[1], marginLeft: spacing[4], color: colors.primary[700], fontSize: typography.fontSize.sm }}>
                                   {theme.key_points.map((point, pointIndex) => (
                                     <li key={pointIndex}>{point}</li>
                                   ))}
@@ -613,9 +614,9 @@ export default function AdminConversationDetailPage() {
                     )}
 
                     {qa.rating_stats && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <strong>Rating Statistics:</strong>
-                        <div style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+                      <div style={{ marginTop: spacing[4] }}>
+                        <strong style={{ color: colors.primary[900] }}>Rating Statistics:</strong>
+                        <div style={{ marginLeft: spacing[4], marginTop: spacing[2], color: colors.primary[700], fontSize: typography.fontSize.sm }}>
                           <p>Average: {qa.rating_stats.average.toFixed(2)}</p>
                           <p>Min: {qa.rating_stats.min_value} | Max: {qa.rating_stats.max_value}</p>
                           <p>Distribution:</p>
@@ -631,9 +632,9 @@ export default function AdminConversationDetailPage() {
                     )}
 
                     {qa.poll_stats && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <strong>Poll Results:</strong>
-                        <div style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+                      <div style={{ marginTop: spacing[4] }}>
+                        <strong style={{ color: colors.primary[900] }}>Poll Results:</strong>
+                        <div style={{ marginLeft: spacing[4], marginTop: spacing[2], color: colors.primary[700], fontSize: typography.fontSize.sm }}>
                           <p>Total Responses: {qa.poll_stats.total_responses}</p>
                           <ul>
                             {qa.poll_stats.choices.map((choice) => (
