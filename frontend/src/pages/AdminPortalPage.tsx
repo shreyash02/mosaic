@@ -11,7 +11,7 @@ import type {
 import { usePageTitle } from '../hooks/usePageTitle';
 import './AdminPortalPage.css';
 
-type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'test-tools';
+type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations';
 
 export default function AdminPortalPage() {
   const navigate = useNavigate();
@@ -25,9 +25,12 @@ export default function AdminPortalPage() {
   const [loading, setLoading] = useState(false);
 
   // Get active tab from URL, default to 'users'
-  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations', 'test-tools'].includes(tab))
+  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations'].includes(tab))
     ? tab as TabType
     : 'users';
+
+  // Test Tools dropdown state
+  const [showTestToolsDropdown, setShowTestToolsDropdown] = useState(false);
   
   // Users state
   const [users, setUsers] = useState<AdminUserInfo[]>([]);
@@ -50,19 +53,6 @@ export default function AdminPortalPage() {
   // Organizations state
   const [organizations, setOrganizations] = useState<AdminOrganizationInfo[]>([]);
   const [organizationNameFilter, setOrganizationNameFilter] = useState('');
-
-  // Test Tools state
-  const [testToolsConversationId, setTestToolsConversationId] = useState('');
-  const [testToolsNumRespondents, setTestToolsNumRespondents] = useState(10);
-  const [testToolsStartTime, setTestToolsStartTime] = useState('');
-  const [testToolsEndTime, setTestToolsEndTime] = useState('');
-  const [testToolsLoading, setTestToolsLoading] = useState(false);
-  const [testToolsResult, setTestToolsResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  // Cleanup state
-  const [cleanupConversationId, setCleanupConversationId] = useState('');
-  const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     // Check if admin token exists
@@ -196,100 +186,6 @@ export default function AdminPortalPage() {
     loadData();
   };
 
-  const handleGenerateTestData = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTestToolsLoading(true);
-    setTestToolsResult(null);
-    setError('');
-
-    try {
-      const adminToken = localStorage.getItem('admin_token');
-      if (!adminToken) {
-        handleLogout();
-        return;
-      }
-
-      const axios = (await import('axios')).default;
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-
-      const adminClient = axios.create({
-        baseURL: API_BASE_URL,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`,
-        },
-      });
-
-      const response = await adminClient.post('/admin/test-tools/generate-responses', {
-        conversation_id: testToolsConversationId,
-        num_respondents: testToolsNumRespondents,
-        start_time: new Date(testToolsStartTime).toISOString(),
-        end_time: new Date(testToolsEndTime).toISOString(),
-      });
-
-      setTestToolsResult({
-        success: true,
-        message: response.data.message,
-      });
-    } catch (err: any) {
-      setTestToolsResult({
-        success: false,
-        message: err.response?.data?.detail || 'Failed to generate test data',
-      });
-    } finally {
-      setTestToolsLoading(false);
-    }
-  };
-
-  const handleCleanupTestData = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCleanupLoading(true);
-    setCleanupResult(null);
-    setError('');
-
-    try {
-      const adminToken = localStorage.getItem('admin_token');
-      if (!adminToken) {
-        handleLogout();
-        return;
-      }
-
-      const axios = (await import('axios')).default;
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-
-      const adminClient = axios.create({
-        baseURL: API_BASE_URL,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`,
-        },
-      });
-
-      const params = new URLSearchParams();
-      if (cleanupConversationId) {
-        params.append('conversation_id', cleanupConversationId);
-      }
-
-      const response = await adminClient.delete(
-        `/admin/test-tools/cleanup-test-data${params.toString() ? `?${params.toString()}` : ''}`
-      );
-
-      setCleanupResult({
-        success: true,
-        message: response.data.message,
-      });
-    } catch (err: any) {
-      setCleanupResult({
-        success: false,
-        message: err.response?.data?.detail || 'Failed to cleanup test data',
-      });
-    } finally {
-      setCleanupLoading(false);
-    }
-  };
-
   if (!isAuthenticated) {
     return (
       <div className="admin-portal">
@@ -370,12 +266,25 @@ export default function AdminPortalPage() {
         >
           Organizations
         </Link>
-        <Link
-          to="/adminportal/test-tools"
-          className={`tab ${activeTab === 'test-tools' ? 'active' : ''}`}
-        >
-          Test Tools
-        </Link>
+        <div className="tab-dropdown-container">
+          <button
+            className="tab"
+            onClick={() => setShowTestToolsDropdown(!showTestToolsDropdown)}
+          >
+            Test Tools
+            <span style={{ marginLeft: '4px', fontSize: '10px' }}>{showTestToolsDropdown ? '▲' : '▼'}</span>
+          </button>
+          {showTestToolsDropdown && (
+            <div className="tab-dropdown-menu">
+              <Link to="/adminportal/test-generation" className="tab-dropdown-item" onClick={() => setShowTestToolsDropdown(false)}>
+                Test Response Generation
+              </Link>
+              <Link to="/adminportal/email-preview" className="tab-dropdown-item" onClick={() => setShowTestToolsDropdown(false)}>
+                Email Template Preview
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -684,116 +593,6 @@ export default function AdminPortalPage() {
           </div>
         )}
 
-        {activeTab === 'test-tools' && (
-          <div className="admin-section">
-            <h2>Test Tools</h2>
-            <p className="section-description">
-              Generate test responses for a conversation. Text responses will be generated using AI to be relevant to the questions.
-              Rating and poll responses will be randomly generated.
-            </p>
-
-            <form onSubmit={handleGenerateTestData} className="test-tools-form">
-              <div className="form-group">
-                <label htmlFor="conversation-id">Conversation ID:</label>
-                <input
-                  id="conversation-id"
-                  type="text"
-                  value={testToolsConversationId}
-                  onChange={(e) => setTestToolsConversationId(e.target.value)}
-                  placeholder="Enter conversation UUID"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="num-respondents">Number of Respondents:</label>
-                <input
-                  id="num-respondents"
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={testToolsNumRespondents}
-                  onChange={(e) => setTestToolsNumRespondents(parseInt(e.target.value) || 1)}
-                  required
-                />
-                <small className="form-help">Between 1 and 100 respondents</small>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="start-time">Start Time:</label>
-                  <input
-                    id="start-time"
-                    type="datetime-local"
-                    value={testToolsStartTime}
-                    onChange={(e) => setTestToolsStartTime(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="end-time">End Time:</label>
-                  <input
-                    id="end-time"
-                    type="datetime-local"
-                    value={testToolsEndTime}
-                    onChange={(e) => setTestToolsEndTime(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={testToolsLoading}
-              >
-                {testToolsLoading ? 'Generating...' : 'Generate Test Responses'}
-              </button>
-            </form>
-
-            {testToolsResult && (
-              <div className={`result-message ${testToolsResult.success ? 'success' : 'error'}`}>
-                {testToolsResult.message}
-              </div>
-            )}
-
-            <hr className="section-divider" />
-
-            <h3>Cleanup Test Data</h3>
-            <p className="section-description">
-              Delete all test responses (responses generated with the tool above). You can optionally filter by conversation ID.
-            </p>
-
-            <form onSubmit={handleCleanupTestData} className="test-tools-form">
-              <div className="form-group">
-                <label htmlFor="cleanup-conversation-id">Conversation ID (optional):</label>
-                <input
-                  id="cleanup-conversation-id"
-                  type="text"
-                  value={cleanupConversationId}
-                  onChange={(e) => setCleanupConversationId(e.target.value)}
-                  placeholder="Leave empty to delete all test data"
-                />
-                <small className="form-help">Leave empty to delete test data from all conversations</small>
-              </div>
-
-              <button
-                type="submit"
-                className="btn btn-danger"
-                disabled={cleanupLoading}
-              >
-                {cleanupLoading ? 'Deleting...' : 'Delete Test Data'}
-              </button>
-            </form>
-
-            {cleanupResult && (
-              <div className={`result-message ${cleanupResult.success ? 'success' : 'error'}`}>
-                {cleanupResult.message}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -798,3 +798,662 @@ async def cleanup_test_data(
             detail=f"Failed to cleanup test data: {str(e)}"
         )
 
+
+# Email template types with their required fields
+EMAIL_TEMPLATES = {
+    "invitation": {
+        "name": "Conversation Invitation",
+        "description": "Sent when a user is invited to participate in a conversation",
+        "fields": ["to_email", "conversation_title", "conversation_description", "inviter_name"],
+    },
+    "organization_invitation": {
+        "name": "Organization Invitation",
+        "description": "Sent when a user is invited to join an organization",
+        "fields": ["to_email", "organization_name", "organization_description", "inviter_name", "role"],
+    },
+    "closing_warning": {
+        "name": "Closing Soon Warning",
+        "description": "Sent 1 hour before a conversation closes to users who haven't responded",
+        "fields": ["to_email", "conversation_title", "closes_at"],
+    },
+    "conversation_closed": {
+        "name": "Conversation Closed",
+        "description": "Sent when a conversation closes",
+        "fields": ["to_email", "conversation_title", "response_count", "is_creator"],
+    },
+    "analysis_ready": {
+        "name": "Analysis Ready",
+        "description": "Sent when analysis is complete for a conversation",
+        "fields": ["to_email", "conversation_title"],
+    },
+    "periodic_analysis_ready": {
+        "name": "Periodic Analysis Ready",
+        "description": "Sent when periodic analysis completes for continuous conversations",
+        "fields": ["to_email", "conversation_title", "period_label", "responses_analyzed"],
+    },
+    "recurring_instance_created": {
+        "name": "Recurring Instance Created",
+        "description": "Sent when a new recurring conversation instance is created",
+        "fields": ["to_email", "conversation_title", "instance_number", "is_creator"],
+    },
+}
+
+
+@router.get("/email-templates")
+async def list_email_templates(
+    admin: Admin = Depends(get_admin),
+):
+    """
+    List all available email templates with their required fields.
+
+    Returns:
+        List of email template types
+    """
+    return [
+        {"id": key, **value}
+        for key, value in EMAIL_TEMPLATES.items()
+    ]
+
+
+@router.post("/email-templates/preview")
+async def preview_email_template(
+    template_id: str,
+    to_email: str = "test@example.com",
+    conversation_title: str = "Weekly Team Feedback",
+    conversation_description: Optional[str] = "Share your thoughts on how the team is doing this week.",
+    inviter_name: Optional[str] = "John Smith",
+    organization_name: Optional[str] = "Acme Corp",
+    organization_description: Optional[str] = "A company that makes everything.",
+    role: Optional[str] = "member",
+    closes_at: Optional[str] = None,
+    response_count: int = 12,
+    is_creator: bool = True,
+    period_label: Optional[str] = "2026-W07",
+    responses_analyzed: int = 25,
+    instance_number: int = 3,
+    admin: Admin = Depends(get_admin),
+):
+    """
+    Generate HTML preview for an email template.
+
+    Args:
+        template_id: Email template type to preview
+        Various template-specific parameters
+
+    Returns:
+        HTML content of the email
+    """
+    from datetime import datetime, timedelta
+    from app.services.email_service import email_service
+    from app.core.config import settings
+
+    if template_id not in EMAIL_TEMPLATES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown template: {template_id}"
+        )
+
+    # Generate sample URLs
+    access_code = "SAMPLE123"
+    sample_url = f"{settings.FRONTEND_URL}/join/{access_code}"
+    results_url = f"{settings.FRONTEND_URL}/analysis/sample-id"
+
+    # Parse closes_at or use default (1 hour from now)
+    if closes_at:
+        try:
+            closes_at_dt = datetime.fromisoformat(closes_at.replace('Z', '+00:00'))
+        except ValueError:
+            closes_at_dt = datetime.utcnow() + timedelta(hours=1)
+    else:
+        closes_at_dt = datetime.utcnow() + timedelta(hours=1)
+
+    # Generate HTML based on template type
+    # We'll call the email service methods but extract just the HTML
+    try:
+        if template_id == "invitation":
+            html = _generate_invitation_html(
+                conversation_title=conversation_title,
+                conversation_description=conversation_description,
+                inviter_name=inviter_name,
+                invite_link=sample_url,
+            )
+        elif template_id == "organization_invitation":
+            html = _generate_org_invitation_html(
+                organization_name=organization_name,
+                organization_description=organization_description,
+                inviter_name=inviter_name,
+                role=role,
+                accept_url=f"{settings.FRONTEND_URL}/organizations/accept-invite/sample-token",
+            )
+        elif template_id == "closing_warning":
+            html = _generate_closing_warning_html(
+                conversation_title=conversation_title,
+                closes_at=closes_at_dt,
+                respond_url=sample_url,
+            )
+        elif template_id == "conversation_closed":
+            html = _generate_conversation_closed_html(
+                conversation_title=conversation_title,
+                response_count=response_count,
+                results_url=results_url,
+                is_creator=is_creator,
+            )
+        elif template_id == "analysis_ready":
+            html = _generate_analysis_ready_html(
+                conversation_title=conversation_title,
+                results_url=results_url,
+            )
+        elif template_id == "periodic_analysis_ready":
+            html = _generate_periodic_analysis_html(
+                conversation_title=conversation_title,
+                period_label=period_label,
+                results_url=results_url,
+                responses_analyzed=responses_analyzed,
+            )
+        elif template_id == "recurring_instance_created":
+            html = _generate_recurring_instance_html(
+                conversation_title=conversation_title,
+                instance_number=instance_number,
+                join_url=sample_url,
+                is_creator=is_creator,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Template {template_id} not implemented"
+            )
+
+        return {"html": html, "template_id": template_id}
+
+    except Exception as e:
+        logger.error(f"Failed to generate email preview: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate preview: {str(e)}"
+        )
+
+
+@router.post("/email-templates/send-test")
+async def send_test_email(
+    template_id: str,
+    to_email: str,
+    conversation_title: str = "Weekly Team Feedback",
+    conversation_description: Optional[str] = "Share your thoughts on how the team is doing this week.",
+    inviter_name: Optional[str] = "John Smith",
+    organization_name: Optional[str] = "Acme Corp",
+    organization_description: Optional[str] = "A company that makes everything.",
+    role: Optional[str] = "member",
+    closes_at: Optional[str] = None,
+    response_count: int = 12,
+    is_creator: bool = True,
+    period_label: Optional[str] = "2026-W07",
+    responses_analyzed: int = 25,
+    instance_number: int = 3,
+    admin: Admin = Depends(get_admin),
+):
+    """
+    Send a test email using a specific template.
+
+    Args:
+        template_id: Email template type to send
+        to_email: Recipient email address
+        Various template-specific parameters
+
+    Returns:
+        Success response
+    """
+    from datetime import datetime, timedelta
+    from app.services.email_service import email_service
+    from app.core.config import settings
+
+    if template_id not in EMAIL_TEMPLATES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown template: {template_id}"
+        )
+
+    # Generate sample URLs
+    access_code = "TEST123"
+    sample_url = f"{settings.FRONTEND_URL}/join/{access_code}"
+    results_url = f"{settings.FRONTEND_URL}/analysis/test-id"
+
+    # Parse closes_at or use default
+    if closes_at:
+        try:
+            closes_at_dt = datetime.fromisoformat(closes_at.replace('Z', '+00:00'))
+        except ValueError:
+            closes_at_dt = datetime.utcnow() + timedelta(hours=1)
+    else:
+        closes_at_dt = datetime.utcnow() + timedelta(hours=1)
+
+    try:
+        success = False
+
+        if template_id == "invitation":
+            success = await email_service.send_invitation_email(
+                to_email=to_email,
+                conversation_title=conversation_title,
+                conversation_description=conversation_description,
+                access_code=access_code,
+                invitation_token="test-token",
+                inviter_name=inviter_name,
+            )
+        elif template_id == "organization_invitation":
+            success = await email_service.send_organization_invitation_email(
+                to_email=to_email,
+                organization_name=organization_name,
+                organization_description=organization_description,
+                invitation_token="test-org-token",
+                inviter_name=inviter_name,
+                role=role,
+            )
+        elif template_id == "closing_warning":
+            success = await email_service.send_closing_warning_email(
+                to_email=to_email,
+                conversation_title=conversation_title,
+                closes_at=closes_at_dt,
+                respond_url=sample_url,
+            )
+        elif template_id == "conversation_closed":
+            success = await email_service.send_conversation_closed_email(
+                to_email=to_email,
+                conversation_title=conversation_title,
+                response_count=response_count,
+                results_url=results_url,
+                is_creator=is_creator,
+            )
+        elif template_id == "analysis_ready":
+            success = await email_service.send_analysis_ready_email(
+                to_email=to_email,
+                conversation_title=conversation_title,
+                results_url=results_url,
+            )
+        elif template_id == "periodic_analysis_ready":
+            success = await email_service.send_periodic_analysis_ready_email(
+                to_email=to_email,
+                conversation_title=conversation_title,
+                period_label=period_label,
+                results_url=results_url,
+                responses_analyzed=responses_analyzed,
+            )
+        elif template_id == "recurring_instance_created":
+            success = await email_service.send_recurring_instance_created_email(
+                to_email=to_email,
+                conversation_title=conversation_title,
+                instance_number=instance_number,
+                join_url=sample_url,
+                is_creator=is_creator,
+            )
+
+        if success:
+            return {"success": True, "message": f"Test email sent to {to_email}"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send email - check email service configuration"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send test email: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send test email: {str(e)}"
+        )
+
+
+# Helper functions to generate HTML for each template type
+def _generate_invitation_html(conversation_title, conversation_description, inviter_name, invite_link):
+    from app.core.config import settings
+    inviter_text = f" by {inviter_name}" if inviter_name else ""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">You're Invited!</h2>
+                <p style="color: #6b7280; font-size: 16px;">You've been invited{inviter_text} to participate in a conversation:</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                    {f'<p style="color: #6b7280; margin-bottom: 0;">{conversation_description}</p>' if conversation_description else ''}
+                </div>
+                <p style="color: #6b7280; font-size: 16px;">Click the button below to join the conversation:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{invite_link}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Join Conversation</a>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
+                    <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">{invite_link}</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _generate_org_invitation_html(organization_name, organization_description, inviter_name, role, accept_url):
+    from app.core.config import settings
+    inviter_text = f" by {inviter_name}" if inviter_name else ""
+    role_display = "Admin" if role == "admin" else "Member"
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">Organization Invitation</h2>
+                <p style="color: #6b7280; font-size: 16px;">You've been invited{inviter_text} to join an organization on Mosaic:</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{organization_name}</h3>
+                    {f'<p style="color: #6b7280; margin-bottom: 10px;">{organization_description}</p>' if organization_description else ''}
+                    <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                        <strong>Role:</strong> <span style="background-color: #f3f4f6; color: #1a1a2e; padding: 4px 8px; border-radius: 4px; font-size: 13px;">{role_display}</span>
+                    </p>
+                </div>
+                <p style="color: #6b7280; font-size: 16px;">Click the button below to accept the invitation:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{accept_url}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Accept Invitation</a>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
+                    <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">{accept_url}</p>
+                </div>
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">If you did not expect this invitation, you can safely ignore this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _generate_closing_warning_html(conversation_title, closes_at, respond_url):
+    from app.core.config import settings
+    closes_at_formatted = closes_at.strftime("%B %d, %Y at %I:%M %p UTC")
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">Reminder: Closing Soon</h2>
+                <p style="color: #6b7280; font-size: 16px;">The following conversation is closing soon and we haven't received your response yet:</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                    <p style="color: #6b7280; margin-bottom: 0;"><strong>Closes:</strong> {closes_at_formatted}</p>
+                </div>
+                <p style="color: #6b7280; font-size: 16px;">Please submit your response before the deadline:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{respond_url}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Respond Now</a>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
+                    <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">{respond_url}</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _generate_conversation_closed_html(conversation_title, response_count, results_url, is_creator):
+    from app.core.config import settings
+    if is_creator:
+        intro_text = "Your conversation has closed and feedback collection is complete."
+        response_text = f"<strong>{response_count}</strong> response{'s' if response_count != 1 else ''} received"
+    else:
+        intro_text = "The following conversation has closed."
+        response_text = ""
+
+    results_section = ""
+    if results_url and is_creator:
+        results_section = f"""
+            <p style="color: #6b7280; font-size: 16px;">You can now run the analysis to discover insights:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{results_url}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">View Conversation</a>
+            </div>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">Conversation Closed</h2>
+                <p style="color: #6b7280; font-size: 16px;">{intro_text}</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                    {f'<p style="color: #6b7280; margin-bottom: 0;">{response_text}</p>' if response_text else ''}
+                </div>
+                {results_section}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _generate_analysis_ready_html(conversation_title, results_url):
+    from app.core.config import settings
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">Analysis Complete!</h2>
+                <p style="color: #6b7280; font-size: 16px;">The analysis for your conversation is now ready to view:</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                    <p style="color: #6b7280; margin-bottom: 0;">Themes, insights, and patterns have been identified.</p>
+                </div>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{results_url}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">View Analysis</a>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
+                    <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">{results_url}</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _generate_periodic_analysis_html(conversation_title, period_label, results_url, responses_analyzed):
+    from app.core.config import settings
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">New Periodic Insights</h2>
+                <p style="color: #6b7280; font-size: 16px;">A new analysis period has completed for your continuous feedback conversation:</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                    <p style="color: #6b7280; margin-bottom: 5px;"><strong>Period:</strong> {period_label}</p>
+                    <p style="color: #6b7280; margin-bottom: 0;"><strong>Responses analyzed:</strong> {responses_analyzed}</p>
+                </div>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{results_url}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">View Insights</a>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
+                    <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">{results_url}</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _generate_recurring_instance_html(conversation_title, instance_number, join_url, is_creator):
+    from app.core.config import settings
+    if is_creator:
+        intro_text = f"A new instance of your recurring conversation has been created (Round #{instance_number})."
+        action_text = "Review and activate the conversation:"
+        button_text = "Review Conversation"
+    else:
+        intro_text = f"A new round of feedback collection has started (Round #{instance_number})."
+        action_text = "You're invited to participate:"
+        button_text = "Join Conversation"
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                    <table cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td style="vertical-align: middle; padding-right: 10px;">
+                            <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                        </td>
+                    </tr></table>
+                </a>
+            </div>
+            <div style="padding: 30px 20px;">
+                <h2 style="color: #1a1a2e; margin-top: 0;">New Round Started</h2>
+                <p style="color: #6b7280; font-size: 16px;">{intro_text}</p>
+                <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                    <p style="color: #6b7280; margin-bottom: 0;">Round #{instance_number}</p>
+                </div>
+                <p style="color: #6b7280; font-size: 16px;">{action_text}</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{join_url}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">{button_text}</a>
+                </div>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
+                    <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">{join_url}</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+

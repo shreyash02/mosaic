@@ -36,6 +36,8 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AdminPortalPage from './pages/AdminPortalPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import AdminConversationDetailPage from './pages/AdminConversationDetailPage';
+import AdminEmailPreviewPage from './pages/AdminEmailPreviewPage';
+import AdminTestGenerationPage from './pages/AdminTestGenerationPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -322,6 +324,8 @@ function App() {
             <Route path="/adminportal/:tab" element={<AdminPortalPage />} />
             <Route path="/adminportal/user/:id" element={<AdminUserDetailPage />} />
             <Route path="/adminportal/conversation/:id" element={<AdminConversationDetailPage />} />
+            <Route path="/adminportal/email-preview" element={<AdminEmailPreviewPage />} />
+            <Route path="/adminportal/test-generation" element={<AdminTestGenerationPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />
