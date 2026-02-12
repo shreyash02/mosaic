@@ -38,6 +38,10 @@ from app.schemas.conversation import (
     GenerateParticipantCodes,
     ConversationState,
     AnonymityLevel,
+    BulkOperationType,
+    BulkOperationRequest,
+    BulkOperationResultItem,
+    BulkOperationResponse,
 )
 from app.schemas.participant_code import (
     ParticipantCodeList,
@@ -345,6 +349,8 @@ async def list_conversations(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     state: Optional[ConversationState] = None,
+    include_archived: bool = Query(False, description="Include archived conversations"),
+    archived_only: bool = Query(False, description="Only show archived conversations"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -359,6 +365,8 @@ async def list_conversations(
         skip: Number of conversations to skip
         limit: Maximum number of conversations to return
         state: Optional filter by conversation state
+        include_archived: If True, include archived conversations (default False)
+        archived_only: If True, only show archived conversations (default False)
         current_user: Current authenticated user
         db: Database session
 
@@ -386,6 +394,12 @@ async def list_conversations(
         ),
         Conversation.state != ConversationState.DELETED
     ).group_by(Conversation.id)
+
+    # Filter by archived status
+    if archived_only:
+        query = query.filter(Conversation.is_archived == True)
+    elif not include_archived:
+        query = query.filter(Conversation.is_archived == False)
 
     if state:
         query = query.filter(Conversation.state == state.value)
@@ -954,6 +968,199 @@ async def delete_conversation(
         message="Conversation deleted successfully",
         deleted_id=str(conversation_id)
     )
+
+
+@router.post("/bulk", response_model=BulkOperationResponse)
+async def bulk_operation(
+    request: BulkOperationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Perform bulk operations on multiple conversations.
+
+    Supported operations:
+    - close: Close active conversations (requires manual_close_enabled)
+    - delete: Soft delete conversations
+    - archive: Archive conversations
+    - unarchive: Restore archived conversations
+
+    Each operation is processed individually, allowing partial success.
+
+    Args:
+        request: Bulk operation request with conversation IDs and operation type
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        BulkOperationResponse with results for each conversation
+    """
+    results = []
+    succeeded = 0
+    failed = 0
+
+    # Get user's organizations for permission check
+    user_org_ids = set(
+        m.organization_id for m in db.query(OrganizationMember).filter(
+            OrganizationMember.user_id == current_user.id
+        ).all()
+    )
+
+    for conv_id in request.conversation_ids:
+        try:
+            # Get conversation with ownership/org membership check
+            conversation = db.query(Conversation).filter(
+                Conversation.id == conv_id,
+                Conversation.state != ConversationState.DELETED.value,
+                or_(
+                    Conversation.creator_id == current_user.id,
+                    Conversation.organization_id.in_(user_org_ids) if user_org_ids else False
+                )
+            ).first()
+
+            if not conversation:
+                results.append(BulkOperationResultItem(
+                    conversation_id=str(conv_id),
+                    success=False,
+                    error="Conversation not found or access denied"
+                ))
+                failed += 1
+                continue
+
+            # Operation-specific logic
+            if request.operation == BulkOperationType.CLOSE:
+                if conversation.state != ConversationState.ACTIVE.value:
+                    raise ValueError("Can only close active conversations")
+                if not conversation.manual_close_enabled:
+                    raise ValueError("Manual close is disabled for this conversation")
+                conversation.state = ConversationState.CLOSED.value
+                conversation.closed_at = datetime.utcnow()
+
+            elif request.operation == BulkOperationType.DELETE:
+                # Clean up images before soft delete
+                questions = db.query(Question).filter(
+                    Question.conversation_id == conversation.id
+                ).all()
+                for q in questions:
+                    if q.question_image_url:
+                        delete_image_file(q.question_image_url)
+                if conversation.header_image_url:
+                    delete_image_file(conversation.header_image_url)
+                conversation.state = ConversationState.DELETED.value
+
+            elif request.operation == BulkOperationType.ARCHIVE:
+                if conversation.is_archived:
+                    raise ValueError("Conversation is already archived")
+                conversation.is_archived = True
+                conversation.archived_at = datetime.utcnow()
+
+            elif request.operation == BulkOperationType.UNARCHIVE:
+                if not conversation.is_archived:
+                    raise ValueError("Conversation is not archived")
+                conversation.is_archived = False
+                conversation.archived_at = None
+
+            results.append(BulkOperationResultItem(
+                conversation_id=str(conv_id),
+                success=True
+            ))
+            succeeded += 1
+
+        except ValueError as e:
+            results.append(BulkOperationResultItem(
+                conversation_id=str(conv_id),
+                success=False,
+                error=str(e)
+            ))
+            failed += 1
+        except Exception as e:
+            logging.error(f"Bulk operation error for {conv_id}: {e}")
+            results.append(BulkOperationResultItem(
+                conversation_id=str(conv_id),
+                success=False,
+                error="An unexpected error occurred"
+            ))
+            failed += 1
+
+    db.commit()
+
+    return BulkOperationResponse(
+        operation=request.operation,
+        total_requested=len(request.conversation_ids),
+        succeeded=succeeded,
+        failed=failed,
+        results=results
+    )
+
+
+@router.post("/{conversation_id}/archive", response_model=ConversationWithQuestions)
+async def archive_conversation(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Archive a conversation.
+
+    Archived conversations are hidden from the main list but can be restored.
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Updated conversation
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    if conversation.is_archived:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation is already archived"
+        )
+
+    conversation.is_archived = True
+    conversation.archived_at = datetime.utcnow()
+    db.commit()
+    db.refresh(conversation)
+
+    return conversation
+
+
+@router.post("/{conversation_id}/unarchive", response_model=ConversationWithQuestions)
+async def unarchive_conversation(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Unarchive a conversation.
+
+    Restores an archived conversation to the main list.
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Updated conversation
+    """
+    conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    if not conversation.is_archived:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation is not archived"
+        )
+
+    conversation.is_archived = False
+    conversation.archived_at = None
+    db.commit()
+    db.refresh(conversation)
+
+    return conversation
 
 
 @router.post("/{conversation_id}/duplicate", response_model=ConversationWithQuestions, status_code=status.HTTP_201_CREATED)

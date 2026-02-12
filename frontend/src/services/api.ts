@@ -47,6 +47,8 @@ import type {
   SlackWorkspaceStatus,
   SlackInstallInitiate,
   UserSlackStatus,
+  BulkOperationRequest,
+  BulkOperationResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -158,8 +160,13 @@ class ApiService {
     return response.data;
   }
 
-  async getConversations(): Promise<ConversationListItem[]> {
-    const response = await this.client.get<ConversationListItem[]>('/conversations');
+  async getConversations(options?: { includeArchived?: boolean; archivedOnly?: boolean }): Promise<ConversationListItem[]> {
+    const params = new URLSearchParams();
+    if (options?.includeArchived) params.append('include_archived', 'true');
+    if (options?.archivedOnly) params.append('archived_only', 'true');
+    const queryString = params.toString();
+    const url = queryString ? `/conversations?${queryString}` : '/conversations';
+    const response = await this.client.get<ConversationListItem[]>(url);
     return response.data;
   }
 
@@ -180,6 +187,21 @@ class ApiService {
 
   async deleteConversation(id: string): Promise<SuccessResponse> {
     const response = await this.client.delete<SuccessResponse>(`/conversations/${id}`);
+    return response.data;
+  }
+
+  async archiveConversation(id: string): Promise<Conversation> {
+    const response = await this.client.post<Conversation>(`/conversations/${id}/archive`);
+    return response.data;
+  }
+
+  async unarchiveConversation(id: string): Promise<Conversation> {
+    const response = await this.client.post<Conversation>(`/conversations/${id}/unarchive`);
+    return response.data;
+  }
+
+  async bulkConversationOperation(request: BulkOperationRequest): Promise<BulkOperationResponse> {
+    const response = await this.client.post<BulkOperationResponse>('/conversations/bulk', request);
     return response.data;
   }
 

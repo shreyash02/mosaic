@@ -256,6 +256,10 @@ class Conversation(ConversationBase):
     next_analysis_at: Optional[datetime] = None
     analysis_timezone: Optional[str] = None
 
+    # Archiving
+    is_archived: bool = False
+    archived_at: Optional[datetime] = None
+
     model_config = {"from_attributes": True}
 
 
@@ -338,4 +342,42 @@ class ConversationListItem(BaseModel):
     # Continuous conversation fields
     is_continuous: bool = False
 
+    # Archiving
+    is_archived: bool = False
+
     model_config = {"from_attributes": True}
+
+
+# Bulk operation schemas
+class BulkOperationType(str, Enum):
+    """Bulk operation types."""
+
+    CLOSE = "close"
+    DELETE = "delete"
+    ARCHIVE = "archive"
+    UNARCHIVE = "unarchive"
+
+
+class BulkOperationRequest(BaseModel):
+    """Request schema for bulk conversation operations."""
+
+    conversation_ids: List[UUID] = Field(..., min_length=1, max_length=100)
+    operation: BulkOperationType
+
+
+class BulkOperationResultItem(BaseModel):
+    """Result for a single conversation in a bulk operation."""
+
+    conversation_id: str
+    success: bool
+    error: Optional[str] = None
+
+
+class BulkOperationResponse(BaseModel):
+    """Response schema for bulk operations."""
+
+    operation: BulkOperationType
+    total_requested: int
+    succeeded: int
+    failed: int
+    results: List[BulkOperationResultItem]

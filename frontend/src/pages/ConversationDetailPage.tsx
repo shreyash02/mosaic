@@ -530,6 +530,7 @@ export default function ConversationDetailPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedAllCodes, setCopiedAllCodes] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showAnalysisSuccess, setShowAnalysisSuccess] = useState(false);
   const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
   const [showActivateModal, setShowActivateModal] = useState(false);
@@ -794,6 +795,25 @@ export default function ConversationDetailPage() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete conversation');
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      await api.archiveConversation(id!);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to archive conversation');
+      setShowArchiveModal(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    try {
+      await api.unarchiveConversation(id!);
+      await loadConversation(); // Reload to update the state
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to unarchive conversation');
     }
   };
 
@@ -1289,13 +1309,33 @@ export default function ConversationDetailPage() {
           Preview
         </button>
 
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          style={s.buttonSecondary}
-          disabled={actionLoading}
-        >
-          Delete
-        </button>
+        {conversation.is_archived ? (
+          <button
+            onClick={handleUnarchive}
+            style={s.buttonSecondary}
+            disabled={actionLoading}
+          >
+            Unarchive
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowArchiveModal(true)}
+            style={s.buttonSecondary}
+            disabled={actionLoading}
+          >
+            Archive
+          </button>
+        )}
+
+        {conversation.is_archived && (
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            style={s.buttonSecondary}
+            disabled={actionLoading}
+          >
+            Delete
+          </button>
+        )}
       </div>
 
       {/* Activation blockers */}
@@ -1675,6 +1715,30 @@ export default function ConversationDetailPage() {
           conversation={conversation}
           onClose={() => setShowPreview(false)}
         />
+      )}
+
+      {/* Archive Modal */}
+      {showArchiveModal && (
+        <div style={s.modalOverlay} onClick={() => setShowArchiveModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Archive Conversation</h2>
+            <p style={s.modalText}>
+              Archive this conversation? It will be hidden from your main list but can be restored later from the Archived tab.
+            </p>
+            <div style={s.modalActions}>
+              <button onClick={() => setShowArchiveModal(false)} style={s.buttonSecondary}>
+                Cancel
+              </button>
+              <button
+                onClick={handleArchive}
+                style={s.buttonPrimary}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Archiving...' : 'Archive'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Modal */}

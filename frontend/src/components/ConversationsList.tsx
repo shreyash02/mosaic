@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
-import type { ConversationListItem, Series } from '../types';
+import type { ConversationListItem, Series, BulkOperationResponse } from '../types';
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { typography, spacing, borders, shadows } from '../styles';
@@ -11,6 +11,9 @@ import {
   GridIcon,
   ListIcon,
 } from './icons';
+import { useSelection } from '../hooks/useSelection';
+import BulkActionToolbar from './BulkActionToolbar';
+import BulkConfirmDialog from './BulkConfirmDialog';
 
 type ViewMode = 'tile' | 'list';
 type DateRange = 'all' | '7' | '30' | '90';
@@ -25,6 +28,13 @@ interface ConversationsListProps {
   showMenu?: boolean;
   onDuplicate?: (conversationId: string) => Promise<void>;
   onDelete?: (conversationId: string) => void;
+  deleteLabel?: string; // Custom label for delete button (e.g., "Archive")
+  // Bulk operations
+  enableBulkSelect?: boolean;
+  onBulkClose?: (ids: string[]) => Promise<BulkOperationResponse>;
+  onBulkDelete?: (ids: string[]) => Promise<BulkOperationResponse>;
+  onBulkArchive?: (ids: string[]) => Promise<BulkOperationResponse>;
+  onBulkUnarchive?: (ids: string[]) => Promise<BulkOperationResponse>;
 }
 
 const s = {
@@ -454,6 +464,41 @@ const s = {
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
   },
+  // Bulk selection styles
+  checkbox: {
+    width: '18px',
+    height: '18px',
+    accentColor: 'var(--color-primary-900)',
+    cursor: 'pointer',
+    margin: 0,
+  },
+  tileCheckbox: {
+    position: 'absolute' as const,
+    top: spacing[5],
+    left: spacing[4],
+    zIndex: 11,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listCheckboxCell: {
+    width: '48px',
+    padding: `${spacing[4]} ${spacing[3]}`,
+    verticalAlign: 'middle' as const,
+    textAlign: 'center' as const,
+  },
+  cardSelected: {
+    outline: '2px solid var(--color-primary-900)',
+    outlineOffset: '-2px',
+  },
+  rowSelected: {
+    backgroundColor: 'var(--color-primary-100)',
+  },
+  selectAllContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    marginRight: spacing[2],
+  },
 };
 
 const merge = (...styles: (React.CSSProperties | false | undefined)[]) =>
@@ -466,6 +511,12 @@ export default function ConversationsList({
   showMenu = true,
   onDuplicate,
   onDelete,
+  deleteLabel = 'Delete',
+  enableBulkSelect = false,
+  onBulkClose,
+  onBulkDelete,
+  onBulkArchive,
+  onBulkUnarchive,
 }: ConversationsListProps) {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('tile');
@@ -481,6 +532,21 @@ export default function ConversationsList({
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [nestFollowUps, setNestFollowUps] = useState(false);
   const [showGroupByDropdown, setShowGroupByDropdown] = useState(false);
+
+  // Bulk selection state
+  const [selectMode, setSelectMode] = useState(false); // For tile view only
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState<{
+    type: 'close' | 'delete' | 'archive' | 'unarchive';
+    count: number;
+  } | null>(null);
+  const [bulkResults, setBulkResults] = useState<BulkOperationResponse | null>(null);
+
+  // Exit select mode when switching to list view or when selection is cleared
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    deselectAll();
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -555,6 +621,68 @@ export default function ConversationsList({
 
     return sorted;
   }, [conversations, searchQuery, selectedStates, dateRange, sortColumn, sortDirection]);
+
+  // Bulk selection
+  const {
+    selectedItems,
+    selectionState,
+    isSelected,
+    toggleItem,
+    toggleAll,
+    selectAll,
+    deselectAll,
+  } = useSelection({
+    items: filteredConversations,
+    getItemId: (c) => c.id,
+  });
+
+  // Handle bulk operations
+  const handleBulkAction = async (type: 'close' | 'delete' | 'archive' | 'unarchive') => {
+    const ids = selectedItems.map(c => c.id);
+    setBulkLoading(true);
+    try {
+      let result: BulkOperationResponse | undefined;
+      switch (type) {
+        case 'close':
+          result = await onBulkClose?.(ids);
+          break;
+        case 'delete':
+          result = await onBulkDelete?.(ids);
+          break;
+        case 'archive':
+          result = await onBulkArchive?.(ids);
+          break;
+        case 'unarchive':
+          result = await onBulkUnarchive?.(ids);
+          break;
+      }
+      if (result) {
+        setBulkResults(result);
+        // Clear selection on full success
+        if (result.failed === 0) {
+          if (viewMode === 'tile') {
+            exitSelectMode();
+          } else {
+            deselectAll();
+          }
+          setShowBulkConfirm(null);
+          setBulkResults(null);
+        }
+      }
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const getConfirmMessage = (type: string, count: number): string => {
+    const messages: Record<string, string> = {
+      close: `Are you sure you want to close ${count} conversation${count !== 1 ? 's' : ''}? This will stop accepting new responses.`,
+      delete: `Are you sure you want to delete ${count} conversation${count !== 1 ? 's' : ''}? This action cannot be undone.`,
+      archive: `Archive ${count} conversation${count !== 1 ? 's' : ''}? They will be hidden from the main list but can be restored later.`,
+      unarchive: `Restore ${count} conversation${count !== 1 ? 's' : ''} to the main list?`,
+    };
+    return messages[type] || '';
+  };
 
   // Helper functions
   const getStateLabel = (state: ConversationState) => {
@@ -797,6 +925,15 @@ export default function ConversationsList({
       ? seriesList.find(s => s.id === conversation.series_id)
       : null;
     const followUps = getFollowUps(conversation.id);
+    const isChecked = selectMode && isSelected(conversation.id);
+
+    // In select mode for tiles, clicking toggles selection instead of navigating
+    const handleCardClick = (e: React.MouseEvent) => {
+      if (selectMode) {
+        e.preventDefault();
+        toggleItem(conversation.id);
+      }
+    };
 
     return (
       <div key={conversation.id}>
@@ -804,7 +941,8 @@ export default function ConversationsList({
           <Link
             to={`/conversations/${conversation.id}`}
             className="conversations-list-card"
-            style={s.card}
+            style={merge(s.card, isChecked && s.cardSelected)}
+            onClick={handleCardClick}
           >
             <div style={s.cardHeader}>
               <h3 style={s.cardTitle}>
@@ -863,10 +1001,10 @@ export default function ConversationsList({
                   )}
                   {onDelete && (
                     <button
-                      style={merge(s.menuItem, s.menuItemDanger)}
+                      style={merge(s.menuItem, deleteLabel === 'Delete' ? s.menuItemDanger : {})}
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
                     >
-                      Delete
+                      {deleteLabel}
                     </button>
                   )}
                 </div>
@@ -888,15 +1026,32 @@ export default function ConversationsList({
       ? seriesList.find(s => s.id === conversation.series_id)
       : null;
     const followUps = getFollowUps(conversation.id);
+    const isChecked = enableBulkSelect && isSelected(conversation.id);
 
     return (
       <React.Fragment key={conversation.id}>
         <tr
-          style={merge(s.tr, isHovered && s.trHover, isNested && s.nestedRow)}
+          style={merge(s.tr, isHovered && s.trHover, isNested && s.nestedRow, isChecked && s.rowSelected)}
           onMouseEnter={() => setHoveredRowId(conversation.id)}
           onMouseLeave={() => setHoveredRowId(null)}
           onClick={() => navigate(`/conversations/${conversation.id}`)}
         >
+          {enableBulkSelect && (
+            <td
+              style={s.listCheckboxCell}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleItem(conversation.id);
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={() => {}}
+                style={s.checkbox}
+              />
+            </td>
+          )}
           <td style={merge(s.td, s.tdTitle, isNested && s.nestedTitleCell)}>
             {isNested && (
               <span style={s.followUpIndicator}>
@@ -970,10 +1125,10 @@ export default function ConversationsList({
                   )}
                   {onDelete && (
                     <button
-                      style={merge(s.menuItem, s.menuItemDanger)}
+                      style={merge(s.menuItem, deleteLabel === 'Delete' ? s.menuItemDanger : {})}
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
                     >
-                      Delete
+                      {deleteLabel}
                     </button>
                   )}
                 </div>,
@@ -1007,8 +1162,79 @@ export default function ConversationsList({
         }
       `}</style>
 
+      {/* Bulk action toolbar */}
+      {enableBulkSelect && selectionState.count > 0 && (
+        <BulkActionToolbar
+          selectedItems={selectedItems}
+          onClose={onBulkClose ? () => setShowBulkConfirm({
+            type: 'close',
+            count: selectedItems.filter(c => c.state === ConversationState.ACTIVE).length
+          }) : undefined}
+          onDelete={onBulkDelete ? () => setShowBulkConfirm({
+            type: 'delete',
+            count: selectedItems.length
+          }) : undefined}
+          onArchive={onBulkArchive ? () => setShowBulkConfirm({
+            type: 'archive',
+            count: selectedItems.filter(c => !c.is_archived).length
+          }) : undefined}
+          onUnarchive={onBulkUnarchive ? () => setShowBulkConfirm({
+            type: 'unarchive',
+            count: selectedItems.filter(c => c.is_archived).length
+          }) : undefined}
+          onClearSelection={viewMode === 'tile' ? exitSelectMode : deselectAll}
+          isLoading={bulkLoading}
+        />
+      )}
+
       {/* Toolbar */}
       <div style={s.toolbar}>
+        {/* Select mode toggle for tile view */}
+        {enableBulkSelect && viewMode === 'tile' && !selectMode && (
+          <span
+            style={{
+              color: '#2563eb',
+              fontSize: typography.fontSize.sm,
+              cursor: 'pointer',
+            }}
+            onClick={() => setSelectMode(true)}
+          >
+            Select
+          </span>
+        )}
+        {/* Cancel + Select all for tile view (only in select mode) */}
+        {enableBulkSelect && viewMode === 'tile' && selectMode && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+            <span
+              style={{
+                color: '#2563eb',
+                fontSize: typography.fontSize.sm,
+                cursor: 'pointer',
+              }}
+              onClick={exitSelectMode}
+            >
+              Cancel
+            </span>
+            <span
+              style={{
+                color: 'var(--color-primary-400)',
+                fontSize: typography.fontSize.sm,
+              }}
+            >
+              |
+            </span>
+            <span
+              style={{
+                color: '#2563eb',
+                fontSize: typography.fontSize.sm,
+                cursor: 'pointer',
+              }}
+              onClick={selectionState.isAllSelected ? deselectAll : selectAll}
+            >
+              {selectionState.isAllSelected ? 'Deselect all' : 'Select all'}
+            </span>
+          </div>
+        )}
         {/* Search */}
         <div style={s.searchContainer}>
           <div style={s.searchIcon}>
@@ -1197,6 +1423,19 @@ export default function ConversationsList({
               <table style={s.table}>
                 <thead style={s.tableHeader}>
                   <tr>
+                    {enableBulkSelect && (
+                      <th style={{ ...s.th, width: '48px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectionState.isAllSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = selectionState.isPartiallySelected;
+                          }}
+                          onChange={toggleAll}
+                          style={s.checkbox}
+                        />
+                      </th>
+                    )}
                     <th
                       style={merge(s.th, s.thSortable)}
                       onClick={() => handleSort('title')}
@@ -1251,6 +1490,30 @@ export default function ConversationsList({
             </div>
           </div>
         ))
+      )}
+
+      {/* Bulk confirmation dialog */}
+      {showBulkConfirm && (
+        <BulkConfirmDialog
+          isOpen={true}
+          title={`${showBulkConfirm.type.charAt(0).toUpperCase() + showBulkConfirm.type.slice(1)} ${showBulkConfirm.count} Conversation${showBulkConfirm.count !== 1 ? 's' : ''}`}
+          message={getConfirmMessage(showBulkConfirm.type, showBulkConfirm.count)}
+          confirmLabel={showBulkConfirm.type.charAt(0).toUpperCase() + showBulkConfirm.type.slice(1)}
+          isDanger={showBulkConfirm.type === 'delete'}
+          isLoading={bulkLoading}
+          onConfirm={() => handleBulkAction(showBulkConfirm.type)}
+          onCancel={() => {
+            setShowBulkConfirm(null);
+            setBulkResults(null);
+          }}
+          results={bulkResults ? {
+            succeeded: bulkResults.succeeded,
+            failed: bulkResults.failed,
+            errors: bulkResults.results
+              .filter(r => !r.success)
+              .map(r => ({ id: r.conversation_id, error: r.error || 'Unknown error' })),
+          } : undefined}
+        />
       )}
     </div>
   );

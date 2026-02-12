@@ -158,6 +158,9 @@ export interface Conversation {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
+  // Archiving
+  is_archived?: boolean;
+  archived_at?: string;
 }
 
 export interface ConversationCreate {
@@ -224,6 +227,8 @@ export interface ConversationListItem {
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
   next_analysis_at?: string;
+  // Archiving
+  is_archived?: boolean;
 }
 
 export interface CreateFollowUpRequest {
@@ -750,4 +755,26 @@ export interface UserSlackStatus {
 
 export interface SlackInstallInitiate {
   redirect_url: string;
+}
+
+// Bulk operation types
+export type BulkOperationType = 'close' | 'delete' | 'archive' | 'unarchive';
+
+export interface BulkOperationRequest {
+  conversation_ids: string[];
+  operation: BulkOperationType;
+}
+
+export interface BulkOperationResultItem {
+  conversation_id: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkOperationResponse {
+  operation: BulkOperationType;
+  total_requested: number;
+  succeeded: number;
+  failed: number;
+  results: BulkOperationResultItem[];
 }

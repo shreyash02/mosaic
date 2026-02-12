@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { ConversationListItem, ConversationInvitationWithConversation, Series } from '../types';
+import type { ConversationListItem, ConversationInvitationWithConversation, Series, BulkOperationResponse } from '../types';
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -570,10 +570,15 @@ export default function ConversationsPage() {
   const [invitations, setInvitations] = useState<ConversationInvitationWithConversation[]>([]);
   const [invitationsLoading, setInvitationsLoading] = useState(false);
   const [invitationsLoaded, setInvitationsLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'owned' | 'participated' | 'invitations'>('owned');
+  const [archivedConversations, setArchivedConversations] = useState<ConversationListItem[]>([]);
+  const [archivedLoading, setArchivedLoading] = useState(false);
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState<'owned' | 'participated' | 'invitations' | 'archived'>('owned');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveConversationId, setArchiveConversationId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
 
@@ -596,6 +601,26 @@ export default function ConversationsPage() {
       setInvitationsLoading(false);
     }
   }, []);
+
+  const loadArchivedConversations = useCallback(async () => {
+    try {
+      setArchivedLoading(true);
+      const data = await api.getConversations({ archivedOnly: true });
+      // Filter by organization if not in personal workspace
+      if (isPersonalWorkspace) {
+        setArchivedConversations(data.filter(c => !c.organization_id));
+      } else {
+        setArchivedConversations(data.filter(c => c.organization_id === currentOrgId));
+      }
+      setArchivedLoaded(true);
+    } catch (err: any) {
+      console.error('Failed to load archived conversations:', err);
+      setArchivedConversations([]);
+      setArchivedLoaded(true);
+    } finally {
+      setArchivedLoading(false);
+    }
+  }, [isPersonalWorkspace, currentOrgId]);
 
   const loadConversations = async () => {
     try {
@@ -662,6 +687,12 @@ export default function ConversationsPage() {
   }, [activeTab, loadInvitations, invitationsLoaded, invitationsLoading, isPersonalWorkspace]);
 
   useEffect(() => {
+    if (activeTab === 'archived' && !archivedLoaded && !archivedLoading) {
+      loadArchivedConversations();
+    }
+  }, [activeTab, loadArchivedConversations, archivedLoaded, archivedLoading]);
+
+  useEffect(() => {
     if (activeTab === 'owned') {
       loadSeries();
     }
@@ -670,17 +701,23 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showDeleteModal && !actionLoading) {
-        setShowDeleteModal(false);
-        setDeleteConversationId(null);
+      if (event.key === 'Escape' && !actionLoading) {
+        if (showArchiveModal) {
+          setShowArchiveModal(false);
+          setArchiveConversationId(null);
+        }
+        if (showDeleteModal) {
+          setShowDeleteModal(false);
+          setDeleteConversationId(null);
+        }
       }
     };
 
-    if (showDeleteModal) {
+    if (showArchiveModal || showDeleteModal) {
       document.addEventListener('keydown', handleEscape);
     }
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [showDeleteModal, actionLoading]);
+  }, [showArchiveModal, showDeleteModal, actionLoading]);
 
   // Computed values
   const actualConversations = useMemo(() =>
@@ -716,6 +753,25 @@ export default function ConversationsPage() {
 
 
   // Actions
+  const handleArchiveConfirm = async () => {
+    if (!archiveConversationId) return;
+
+    try {
+      setActionLoading(true);
+      await api.archiveConversation(archiveConversationId);
+      setShowArchiveModal(false);
+      setArchiveConversationId(null);
+      await loadConversations();
+    } catch (err) {
+      console.error('Failed to archive conversation:', err);
+      setError('Failed to archive conversation');
+      setShowArchiveModal(false);
+      setArchiveConversationId(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!deleteConversationId) return;
 
@@ -724,7 +780,13 @@ export default function ConversationsPage() {
       await api.deleteConversation(deleteConversationId);
       setShowDeleteModal(false);
       setDeleteConversationId(null);
-      await loadConversations();
+      // Reload archived list if we're deleting from there
+      if (activeTab === 'archived') {
+        setArchivedLoaded(false);
+        await loadArchivedConversations();
+      } else {
+        await loadConversations();
+      }
     } catch (err) {
       console.error('Failed to delete conversation:', err);
       setError('Failed to delete conversation');
@@ -733,6 +795,45 @@ export default function ConversationsPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Bulk operation handlers
+  const handleBulkClose = async (ids: string[]): Promise<BulkOperationResponse> => {
+    const result = await api.bulkConversationOperation({
+      conversation_ids: ids,
+      operation: 'close',
+    });
+    await loadConversations();
+    return result;
+  };
+
+  const handleBulkDelete = async (ids: string[]): Promise<BulkOperationResponse> => {
+    const result = await api.bulkConversationOperation({
+      conversation_ids: ids,
+      operation: 'delete',
+    });
+    await loadConversations();
+    return result;
+  };
+
+  const handleBulkArchive = async (ids: string[]): Promise<BulkOperationResponse> => {
+    const result = await api.bulkConversationOperation({
+      conversation_ids: ids,
+      operation: 'archive',
+    });
+    await loadConversations();
+    return result;
+  };
+
+  const handleBulkUnarchive = async (ids: string[]): Promise<BulkOperationResponse> => {
+    const result = await api.bulkConversationOperation({
+      conversation_ids: ids,
+      operation: 'unarchive',
+    });
+    setArchivedLoaded(false);
+    await loadConversations();
+    await loadArchivedConversations();
+    return result;
   };
 
 
@@ -947,6 +1048,17 @@ export default function ConversationsPage() {
               </span>
             )}
           </button>
+          <button
+            style={merge(s.tab, activeTab === 'archived' && s.tabActive)}
+            onClick={() => setActiveTab('archived')}
+          >
+            Archived
+            {archivedConversations.length > 0 && (
+              <span style={merge(s.tabCount, activeTab === 'archived' && s.tabCountActive)}>
+                {archivedConversations.length}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -998,9 +1110,40 @@ export default function ConversationsPage() {
               await loadConversations();
             }}
             onDelete={(id) => {
+              // Use archive instead of delete for active conversations
+              setArchiveConversationId(id);
+              setShowArchiveModal(true);
+            }}
+            deleteLabel="Archive"
+            enableBulkSelect={true}
+            onBulkClose={handleBulkClose}
+            onBulkDelete={handleBulkDelete}
+            onBulkArchive={handleBulkArchive}
+          />
+        )
+      ) : activeTab === 'archived' ? (
+        archivedLoading ? (
+          <SkeletonConversationGrid count={3} />
+        ) : archivedConversations.length === 0 ? (
+          <EmptyState
+            type="conversations"
+            title="No archived conversations"
+            description="Archived conversations will appear here. Archive conversations you no longer need but want to keep for reference."
+          />
+        ) : (
+          <ConversationsList
+            conversations={archivedConversations}
+            seriesList={seriesList}
+            showCollectionColumn={true}
+            showMenu={true}
+            onDelete={(id) => {
               setDeleteConversationId(id);
               setShowDeleteModal(true);
             }}
+            deleteLabel="Delete"
+            enableBulkSelect={true}
+            onBulkDelete={handleBulkDelete}
+            onBulkUnarchive={handleBulkUnarchive}
           />
         )
       ) : activeTab === 'participated' ? (
@@ -1016,6 +1159,34 @@ export default function ConversationsPage() {
           </div>
         )
       ) : null}
+
+      {/* Archive Modal */}
+      {showArchiveModal && (
+        <div style={s.modalOverlay} onClick={() => !actionLoading && setShowArchiveModal(false)}>
+          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 style={s.modalTitle}>Archive Conversation</h2>
+            <p style={s.modalText}>
+              Archive this conversation? It will be hidden from your main list but can be restored later from the Archived tab.
+            </p>
+            <div style={s.modalActions}>
+              <button
+                onClick={() => setShowArchiveModal(false)}
+                style={s.buttonSecondary}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArchiveConfirm}
+                style={s.buttonPrimary}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Archiving...' : 'Archive'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Modal */}
       {showDeleteModal && (

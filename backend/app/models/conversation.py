@@ -118,6 +118,10 @@ class Conversation(Base):
     closed_at = Column(DateTime, nullable=True)
     analyzed_at = Column(DateTime, nullable=True)
 
+    # Archiving
+    is_archived = Column(Boolean, default=False, nullable=False)
+    archived_at = Column(DateTime, nullable=True)
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
