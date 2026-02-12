@@ -9,6 +9,7 @@ import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import { RefreshIcon } from '../components/icons';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
+import { InlineHint } from '../components/ContextualHint';
 
 // Use CSS custom properties for dark mode support
 const s = {
@@ -264,6 +265,15 @@ export default function TemplatesPage() {
           }
         />
       ) : (
+        <>
+        {/* Hint for first template */}
+        <InlineHint
+          hintId="create-template"
+          title="Templates save time"
+          message="Use templates to quickly create conversations with pre-configured questions and settings. Set up recurring conversations for regular feedback cycles."
+          icon="tip"
+          variant="info"
+        />
         <div className="templates-grid">
           {templates.map((template) => (
             <Link
@@ -285,6 +295,7 @@ export default function TemplatesPage() {
             </Link>
           ))}
         </div>
+        </>
       )}
     </div>
   );

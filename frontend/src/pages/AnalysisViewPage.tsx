@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Analysis } from '../types';
 import { spacing, typography, borders, shadows } from '../styles/tokens';
+import { InlineHint } from '../components/ContextualHint';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
@@ -149,6 +151,7 @@ export function AnalysisViewPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { completeStep } = useOnboarding();
 
   useEffect(() => {
     if (id) {
@@ -162,6 +165,9 @@ export function AnalysisViewPage() {
       setError(null);
       const data = await api.getAnalysis(id!);
       setAnalysis(data);
+      // Mark onboarding steps as complete when viewing analysis
+      completeStep('run-analysis');
+      completeStep('view-insights');
     } catch (err: any) {
       if (err.response?.status === 404) {
         setError('Analysis not found or you don\'t have access to view it.');
@@ -211,6 +217,15 @@ export function AnalysisViewPage() {
           </button>
           <h1 style={styles.title}>{analysis.conversation_title || 'Analysis Results'}</h1>
         </header>
+
+        {/* Contextual hint about analysis */}
+        <InlineHint
+          hintId="first-response-received"
+          title="Understanding your analysis"
+          message="AI has identified key themes and patterns from your responses. Scroll down to see insights for each question."
+          icon="info"
+          variant="info"
+        />
 
         {/* Overall Summary */}
         {analysis.overall_summary && (

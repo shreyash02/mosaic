@@ -6,6 +6,7 @@ import { formatRelativeTime } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, transitions } from '../styles';
 import { SkeletonInvitationPage } from '../components/Skeleton';
+import { InlineHint } from '../components/ContextualHint';
 
 const styles = {
   page: {
@@ -531,6 +532,15 @@ export default function ManageInvitationsPage() {
           </header>
 
           {error && <div style={styles.error}>{error}</div>}
+
+          {/* Contextual hint for invitations */}
+          <InlineHint
+            hintId="invite-participants"
+            title="Invite via email"
+            message="Send personalized invitations to specific participants. They'll receive an email with a direct link to respond."
+            icon="info"
+            variant="info"
+          />
 
           {/* Invite Form */}
           {showInviteForm && (

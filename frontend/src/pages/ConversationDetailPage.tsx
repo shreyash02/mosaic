@@ -9,6 +9,8 @@ import ConversationPreview from '../components/ConversationPreview';
 import QRCodePoster from '../components/QRCodePoster';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
+import ContextualHint, { InlineHint } from '../components/ContextualHint';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 // Design tokens based styles
 const s = {
@@ -510,6 +512,7 @@ export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
+  const { completeStep } = useOnboarding();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [stats, setStats] = useState<ResponseStats | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -895,6 +898,7 @@ export default function ConversationDetailPage() {
     try {
       await navigator.clipboard.writeText(link);
       setLinkCopied(true);
+      completeStep('share-link'); // Mark onboarding step as complete
       setTimeout(() => setLinkCopied(false), 2000);
     } catch (err) {
       const textArea = document.createElement('textarea');
@@ -906,6 +910,7 @@ export default function ConversationDetailPage() {
       try {
         document.execCommand('copy');
         setLinkCopied(true);
+        completeStep('share-link'); // Mark onboarding step as complete
         setTimeout(() => setLinkCopied(false), 2000);
       } catch (fallbackErr) {
         console.error('Failed to copy link', fallbackErr);
@@ -1264,13 +1269,22 @@ export default function ConversationDetailPage() {
 
         {conversation.state === ConversationState.CLOSED && (
           <>
-            <button
-              onClick={handleAnalyze}
-              style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
-              disabled={actionLoading}
+            <ContextualHint
+              hintId="run-analysis"
+              message="Your responses are in! Run AI analysis to discover themes and insights."
+              position="bottom"
+              condition={(stats?.unique_participants || 0) > 0}
+              icon="lightbulb"
+              delay={800}
             >
-              Run Analysis
-            </button>
+              <button
+                onClick={handleAnalyze}
+                style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
+                disabled={actionLoading}
+              >
+                Run Analysis
+              </button>
+            </ContextualHint>
             <button
               onClick={() => setShowFollowUpModal(true)}
               style={s.buttonSecondary}
@@ -1292,9 +1306,17 @@ export default function ConversationDetailPage() {
 
         {conversation.state === ConversationState.ANALYZED && (
           <>
-            <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
-              View Analysis
-            </Link>
+            <ContextualHint
+              hintId="analysis-complete"
+              message="AI analysis is ready! View insights, themes, and summaries from your responses."
+              position="bottom"
+              icon="lightbulb"
+              delay={500}
+            >
+              <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
+                View Analysis
+              </Link>
+            </ContextualHint>
             <button
               onClick={() => setShowFollowUpModal(true)}
               style={s.buttonSecondary}
@@ -1492,6 +1514,14 @@ export default function ConversationDetailPage() {
           {/* Share Card */}
           <div style={s.card}>
             <h2 style={s.cardTitle}>Share</h2>
+            {/* Contextual hint for sharing */}
+            <InlineHint
+              hintId="share-conversation-link"
+              title="Share with your team"
+              message="Copy this link and share it with participants to start collecting responses."
+              condition={conversation.state === ConversationState.ACTIVE}
+              icon="tip"
+            />
             <div style={s.shareSection}>
               <p style={s.shareDescription}>
                 {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
