@@ -15,6 +15,7 @@ from app.models.periodic_analysis import PeriodicAnalysis
 from app.models.continuous_trends import ContinuousTrends
 from app.models.conversation_reminder import ConversationReminder
 from app.models.conversation_announcement import ConversationAnnouncement
+from app.models.scheduler_job_log import SchedulerJobLog
 
 __all__ = [
     "User",
@@ -33,4 +34,5 @@ __all__ = [
     "ContinuousTrends",
     "ConversationReminder",
     "ConversationAnnouncement",
+    "SchedulerJobLog",
 ]

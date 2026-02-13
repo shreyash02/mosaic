@@ -11,7 +11,7 @@ import type {
 import { usePageTitle } from '../hooks/usePageTitle';
 import './AdminPortalPage.css';
 
-type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations';
+type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'scheduler';
 
 export default function AdminPortalPage() {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ export default function AdminPortalPage() {
   const [loading, setLoading] = useState(false);
 
   // Get active tab from URL, default to 'users'
-  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations'].includes(tab))
+  const activeTab: TabType = (tab && ['users', 'conversations', 'responses', 'analyses', 'organizations', 'scheduler'].includes(tab))
     ? tab as TabType
     : 'users';
 
@@ -265,6 +265,12 @@ export default function AdminPortalPage() {
           className={`tab ${activeTab === 'organizations' ? 'active' : ''}`}
         >
           Organizations
+        </Link>
+        <Link
+          to="/adminportal/scheduler"
+          className={`tab ${activeTab === 'scheduler' ? 'active' : ''}`}
+        >
+          Scheduler
         </Link>
         <div className="tab-dropdown-container">
           <button

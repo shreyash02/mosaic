@@ -29,6 +29,11 @@ from app.schemas.admin import (
     AdminResponseInfo,
     GenerateTestDataRequest,
     GenerateTestDataResponse,
+    SchedulerJobLogInfo,
+    SchedulerJobSummary,
+    SchedulerStatusResponse,
+    SchedulerLogsResponse,
+    SchedulerLogsCleanupResponse,
 )
 from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
@@ -1101,6 +1106,174 @@ async def send_test_email(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send test email: {str(e)}"
         )
+
+
+# Scheduler monitoring endpoints
+
+# Job definitions for UI display
+SCHEDULER_JOBS = {
+    'check_activations': {'display_name': 'Scheduled Activations', 'interval_minutes': 1},
+    'check_closures': {'display_name': 'Scheduled Closures', 'interval_minutes': 1},
+    'create_recurring_instances': {'display_name': 'Recurring Instances', 'interval_minutes': 15},
+    'check_periodic_analyses': {'display_name': 'Periodic Analyses', 'interval_minutes': 15},
+    'check_closing_warnings': {'display_name': 'Closing Warnings', 'interval_minutes': 15},
+    'check_scheduled_reminders': {'display_name': 'Scheduled Reminders', 'interval_minutes': 5},
+    'cleanup_job_logs': {'display_name': 'Log Cleanup', 'interval_minutes': 1440},  # 24 hours
+}
+
+
+@router.get("/scheduler/status", response_model=SchedulerStatusResponse)
+async def get_scheduler_status(
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current scheduler status and recent activity summary.
+
+    Returns the scheduler running state and summary statistics for each job.
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import desc, func
+    from app.services.scheduler_service import scheduler
+    from app.models.scheduler_job_log import SchedulerJobLog
+
+    jobs_summary = []
+    now = datetime.utcnow()
+    lookback = now - timedelta(hours=24)  # Last 24 hours for stats
+
+    for job_id, job_info in SCHEDULER_JOBS.items():
+        # Get job from scheduler
+        apscheduler_job = scheduler.get_job(job_id) if scheduler.running else None
+        next_run = apscheduler_job.next_run_time.replace(tzinfo=None) if apscheduler_job and apscheduler_job.next_run_time else None
+
+        # Get last completed log
+        last_log = db.query(SchedulerJobLog).filter(
+            SchedulerJobLog.job_name == job_id,
+            SchedulerJobLog.status.in_(['completed', 'failed'])
+        ).order_by(desc(SchedulerJobLog.started_at)).first()
+
+        # Get recent logs for stats (last 24 hours)
+        recent_logs = db.query(SchedulerJobLog).filter(
+            SchedulerJobLog.job_name == job_id,
+            SchedulerJobLog.started_at >= lookback,
+            SchedulerJobLog.status.in_(['completed', 'failed'])
+        ).all()
+
+        success_count = sum(1 for log in recent_logs if log.status == 'completed')
+        failure_count = sum(1 for log in recent_logs if log.status == 'failed')
+
+        # Calculate health status
+        if not recent_logs:
+            health = 'unknown'
+        elif failure_count == 0:
+            health = 'healthy'
+        elif failure_count <= 2:
+            health = 'warning'
+        else:
+            health = 'error'
+
+        # Average duration of successful runs
+        completed_logs = [log for log in recent_logs if log.status == 'completed' and log.duration_ms]
+        avg_duration = int(sum(log.duration_ms for log in completed_logs) / len(completed_logs)) if completed_logs else None
+
+        jobs_summary.append(SchedulerJobSummary(
+            job_name=job_id,
+            display_name=job_info['display_name'],
+            interval_minutes=job_info['interval_minutes'],
+            last_run_at=last_log.started_at if last_log else None,
+            last_status=last_log.status if last_log else None,
+            last_duration_ms=last_log.duration_ms if last_log else None,
+            next_run_at=next_run,
+            recent_success_count=success_count,
+            recent_failure_count=failure_count,
+            avg_duration_ms=avg_duration,
+            health_status=health,
+        ))
+
+    return SchedulerStatusResponse(
+        scheduler_running=scheduler.running,
+        jobs=jobs_summary,
+        last_checked_at=now,
+    )
+
+
+@router.get("/scheduler/logs", response_model=SchedulerLogsResponse)
+async def get_scheduler_logs(
+    job_name: Optional[str] = None,
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get paginated scheduler job logs with optional filtering.
+
+    Args:
+        job_name: Filter by job name (e.g., 'check_activations')
+        status: Filter by status ('started', 'completed', 'failed')
+        page: Page number (default 1)
+        page_size: Results per page (default 50, max 100)
+    """
+    from sqlalchemy import desc
+    from app.models.scheduler_job_log import SchedulerJobLog
+
+    # Limit page size
+    page_size = min(page_size, 100)
+
+    query = db.query(SchedulerJobLog)
+
+    if job_name:
+        query = query.filter(SchedulerJobLog.job_name == job_name)
+    if status:
+        query = query.filter(SchedulerJobLog.status == status)
+
+    total = query.count()
+    logs = query.order_by(desc(SchedulerJobLog.started_at))\
+        .offset((page - 1) * page_size)\
+        .limit(page_size)\
+        .all()
+
+    total_pages = (total + page_size - 1) // page_size if page_size > 0 else 0
+
+    return SchedulerLogsResponse(
+        logs=[SchedulerJobLogInfo.model_validate(log) for log in logs],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
+@router.delete("/scheduler/logs", response_model=SchedulerLogsCleanupResponse)
+async def cleanup_scheduler_logs(
+    days_to_keep: int = 7,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete old scheduler logs.
+
+    Args:
+        days_to_keep: Number of days of logs to retain (default 7)
+    """
+    from datetime import datetime, timedelta
+    from app.models.scheduler_job_log import SchedulerJobLog
+
+    # Minimum 1 day retention
+    days_to_keep = max(days_to_keep, 1)
+
+    cutoff = datetime.utcnow() - timedelta(days=days_to_keep)
+    deleted = db.query(SchedulerJobLog).filter(
+        SchedulerJobLog.started_at < cutoff
+    ).delete()
+    db.commit()
+
+    return SchedulerLogsCleanupResponse(
+        success=True,
+        deleted_count=deleted,
+        message=f"Deleted {deleted} log entries older than {days_to_keep} days",
+    )
 
 
 # Helper functions to generate HTML for each template type

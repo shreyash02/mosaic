@@ -848,3 +848,48 @@ export interface Announcement {
 export interface AnnouncementListResponse {
   announcements: Announcement[];
 }
+
+// Scheduler types (Admin)
+export type SchedulerJobStatus = 'started' | 'completed' | 'failed';
+export type SchedulerHealthStatus = 'healthy' | 'warning' | 'error' | 'unknown';
+
+export interface SchedulerJobLogInfo {
+  id: string;
+  job_name: string;
+  status: SchedulerJobStatus;
+  started_at: string;
+  completed_at?: string;
+  duration_ms?: number;
+  items_processed?: number;
+  items_failed?: number;
+  error_message?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface SchedulerJobSummary {
+  job_name: string;
+  display_name: string;
+  interval_minutes: number;
+  last_run_at?: string;
+  last_status?: string;
+  last_duration_ms?: number;
+  next_run_at?: string;
+  recent_success_count: number;
+  recent_failure_count: number;
+  avg_duration_ms?: number;
+  health_status: SchedulerHealthStatus;
+}
+
+export interface SchedulerStatusResponse {
+  scheduler_running: boolean;
+  jobs: SchedulerJobSummary[];
+  last_checked_at: string;
+}
+
+export interface SchedulerLogsResponse {
+  logs: SchedulerJobLogInfo[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}

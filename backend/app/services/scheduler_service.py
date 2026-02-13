@@ -21,6 +21,7 @@ from app.services.email_service import email_service
 from app.services.notification_service import notification_service
 from app.utils.email_preferences import should_send_email
 from typing import Optional
+from contextlib import asynccontextmanager
 import logging
 import asyncio
 import uuid
@@ -29,6 +30,107 @@ logger = logging.getLogger(__name__)
 
 # Initialize scheduler
 scheduler = AsyncIOScheduler()
+
+
+class JobContext:
+    """Context object for tracking job execution metrics."""
+
+    def __init__(self):
+        self.items_processed = 0
+        self.items_failed = 0
+        self.details = {}
+
+    def add_processed(self, count: int = 1) -> None:
+        """Increment the count of successfully processed items."""
+        self.items_processed += count
+
+    def add_failed(self, count: int = 1) -> None:
+        """Increment the count of failed items."""
+        self.items_failed += count
+
+    def set_details(self, data: dict) -> None:
+        """Update the details dictionary with job-specific data."""
+        self.details.update(data)
+
+
+@asynccontextmanager
+async def log_job_execution(job_name: str):
+    """
+    Context manager to automatically log job execution with timing and results.
+
+    Creates a 'started' log entry at the beginning, then updates it to
+    'completed' or 'failed' when the job finishes.
+
+    Usage:
+        async with log_job_execution('check_scheduled_activations') as ctx:
+            # Do work...
+            ctx.add_processed(5)
+            ctx.set_details({'conversations_found': 5})
+
+    Args:
+        job_name: The name of the scheduler job being executed
+    """
+    from app.models.scheduler_job_log import SchedulerJobLog
+
+    db = SessionLocal()
+    log_id = uuid.uuid4()
+    start_time = datetime.utcnow()
+    context = JobContext()
+
+    # Create started log entry
+    job_log = SchedulerJobLog(
+        id=log_id,
+        job_name=job_name,
+        status='started',
+        started_at=start_time,
+    )
+    try:
+        db.add(job_log)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Failed to create job log for {job_name}: {e}")
+        db.rollback()
+
+    try:
+        yield context
+
+        # Update with success
+        end_time = datetime.utcnow()
+        try:
+            # Re-fetch the log entry in case db session was closed
+            job_log = db.query(SchedulerJobLog).filter(SchedulerJobLog.id == log_id).first()
+            if job_log:
+                job_log.status = 'completed'
+                job_log.completed_at = end_time
+                job_log.duration_ms = int((end_time - start_time).total_seconds() * 1000)
+                job_log.items_processed = context.items_processed
+                job_log.items_failed = context.items_failed
+                job_log.details = context.details if context.details else None
+                db.commit()
+        except Exception as e:
+            logger.error(f"Failed to update job log for {job_name}: {e}")
+            db.rollback()
+
+    except Exception as e:
+        # Update with failure
+        end_time = datetime.utcnow()
+        try:
+            job_log = db.query(SchedulerJobLog).filter(SchedulerJobLog.id == log_id).first()
+            if job_log:
+                job_log.status = 'failed'
+                job_log.completed_at = end_time
+                job_log.duration_ms = int((end_time - start_time).total_seconds() * 1000)
+                job_log.items_processed = context.items_processed
+                job_log.items_failed = context.items_failed
+                job_log.error_message = str(e)[:1000]  # Truncate long error messages
+                job_log.details = context.details if context.details else None
+                db.commit()
+        except Exception as log_error:
+            logger.error(f"Failed to update job log for {job_name}: {log_error}")
+            db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 async def send_pending_invitation_emails(
@@ -106,46 +208,55 @@ async def check_scheduled_activations():
     Note: scheduled_activate_at is stored in UTC in the database.
     The comparison is done in UTC, so this works correctly regardless of server timezone.
     """
-    db: Session = SessionLocal()
-    try:
-        # Compare UTC to UTC (all stored times are in UTC)
-        now = datetime.utcnow()
-        conversations = db.query(Conversation).filter(
-            Conversation.state == ConversationState.DRAFT.value,
-            Conversation.scheduled_activate_at <= now,
-            Conversation.scheduled_activate_at.isnot(None),
-            Conversation.is_template == False  # Templates are never activated
-        ).all()
+    async with log_job_execution('check_scheduled_activations') as ctx:
+        db: Session = SessionLocal()
+        try:
+            # Compare UTC to UTC (all stored times are in UTC)
+            now = datetime.utcnow()
+            conversations = db.query(Conversation).filter(
+                Conversation.state == ConversationState.DRAFT.value,
+                Conversation.scheduled_activate_at <= now,
+                Conversation.scheduled_activate_at.isnot(None),
+                Conversation.is_template == False  # Templates are never activated
+            ).all()
 
-        if conversations:
-            logger.info(f"Found {len(conversations)} conversation(s) to activate")
+            ctx.set_details({'conversations_found': len(conversations)})
 
-        for conv in conversations:
-            logger.info(f"Activating conversation {conv.id} (scheduled for {conv.scheduled_activate_at})")
-            conv.state = ConversationState.ACTIVE.value
-            conv.activated_at = datetime.utcnow()
-            conv.scheduled_activate_at = None  # Clear scheduled time after activation
+            if conversations:
+                logger.info(f"Found {len(conversations)} conversation(s) to activate")
 
-            # Calculate auto_close_at from duration_minutes if set
-            if conv.duration_minutes:
-                conv.auto_close_at = conv.activated_at + timedelta(minutes=conv.duration_minutes)
-
-        if conversations:
-            db.commit()
-            logger.info(f"Successfully activated {len(conversations)} conversation(s)")
-
-            # Send invitation emails for all activated conversations
             for conv in conversations:
                 try:
-                    await send_pending_invitation_emails(conv, db)
+                    logger.info(f"Activating conversation {conv.id} (scheduled for {conv.scheduled_activate_at})")
+                    conv.state = ConversationState.ACTIVE.value
+                    conv.activated_at = datetime.utcnow()
+                    conv.scheduled_activate_at = None  # Clear scheduled time after activation
+
+                    # Calculate auto_close_at from duration_minutes if set
+                    if conv.duration_minutes:
+                        conv.auto_close_at = conv.activated_at + timedelta(minutes=conv.duration_minutes)
+                    ctx.add_processed()
                 except Exception as e:
-                    # Log error but don't fail - emails are sent asynchronously
-                    logger.error(f"Failed to send invitation emails for conversation {conv.id}: {str(e)}", exc_info=True)
-    except Exception as e:
-        logger.error(f"Error checking scheduled activations: {e}", exc_info=True)
-        db.rollback()
-    finally:
-        db.close()
+                    ctx.add_failed()
+                    logger.error(f"Failed to activate conversation {conv.id}: {e}", exc_info=True)
+
+            if conversations:
+                db.commit()
+                logger.info(f"Successfully activated {len(conversations)} conversation(s)")
+
+                # Send invitation emails for all activated conversations
+                for conv in conversations:
+                    try:
+                        await send_pending_invitation_emails(conv, db)
+                    except Exception as e:
+                        # Log error but don't fail - emails are sent asynchronously
+                        logger.error(f"Failed to send invitation emails for conversation {conv.id}: {str(e)}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Error checking scheduled activations: {e}", exc_info=True)
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
 
 async def check_scheduled_closures():
@@ -155,72 +266,81 @@ async def check_scheduled_closures():
     Note: auto_close_at is stored in UTC in the database.
     The comparison is done in UTC, so this works correctly regardless of server timezone.
     """
-    db: Session = SessionLocal()
-    try:
-        # Compare UTC to UTC (all stored times are in UTC)
-        now = datetime.utcnow()
-        conversations = db.query(Conversation).filter(
-            Conversation.state == ConversationState.ACTIVE.value,
-            Conversation.auto_close_at <= now,
-            Conversation.auto_close_at.isnot(None)
-        ).all()
+    async with log_job_execution('check_scheduled_closures') as ctx:
+        db: Session = SessionLocal()
+        try:
+            # Compare UTC to UTC (all stored times are in UTC)
+            now = datetime.utcnow()
+            conversations = db.query(Conversation).filter(
+                Conversation.state == ConversationState.ACTIVE.value,
+                Conversation.auto_close_at <= now,
+                Conversation.auto_close_at.isnot(None)
+            ).all()
 
-        if conversations:
-            logger.info(f"Found {len(conversations)} conversation(s) to close")
+            ctx.set_details({'conversations_found': len(conversations)})
 
-        conversations_to_analyze = []
-        conversations_to_notify = []
+            if conversations:
+                logger.info(f"Found {len(conversations)} conversation(s) to close")
 
-        for conv in conversations:
-            logger.info(f"Closing conversation {conv.id} (auto_close_at: {conv.auto_close_at})")
-            conv.state = ConversationState.CLOSED.value
-            conv.closed_at = datetime.utcnow()
+            conversations_to_analyze = []
+            conversations_to_notify = []
 
-            # Check if there are responses
-            response_count = db.query(Response).filter(
-                Response.conversation_id == conv.id
-            ).count()
+            for conv in conversations:
+                try:
+                    logger.info(f"Closing conversation {conv.id} (auto_close_at: {conv.auto_close_at})")
+                    conv.state = ConversationState.CLOSED.value
+                    conv.closed_at = datetime.utcnow()
 
-            # Collect conversations that need auto-analysis
-            if conv.auto_analyze and response_count > 0:
-                conversations_to_analyze.append(conv.id)
+                    # Check if there are responses
+                    response_count = db.query(Response).filter(
+                        Response.conversation_id == conv.id
+                    ).count()
 
-            # Collect conversations for closed notifications
-            conversations_to_notify.append((conv, response_count))
+                    # Collect conversations that need auto-analysis
+                    if conv.auto_analyze and response_count > 0:
+                        conversations_to_analyze.append(conv.id)
 
-        if conversations:
-            db.commit()
-            logger.info(f"Successfully closed {len(conversations)} conversation(s)")
+                    # Collect conversations for closed notifications
+                    conversations_to_notify.append((conv, response_count))
+                    ctx.add_processed()
+                except Exception as e:
+                    ctx.add_failed()
+                    logger.error(f"Failed to close conversation {conv.id}: {e}", exc_info=True)
 
-        # Send closed notifications
-        for conv, response_count in conversations_to_notify:
-            await _send_conversation_closed_notifications(conv, response_count, db)
+            if conversations:
+                db.commit()
+                logger.info(f"Successfully closed {len(conversations)} conversation(s)")
 
-        # Trigger auto-analysis for conversations that have it enabled
-        # Do this after committing the close, and run in background
-        for conv_id in conversations_to_analyze:
-            logger.info(f"Triggering auto-analysis for conversation {conv_id}")
-            # Run analysis in background thread (non-blocking)
-            try:
-                # Use asyncio.to_thread to run the sync function in a thread pool
-                # This returns a coroutine that we can schedule
-                task = asyncio.create_task(
-                    asyncio.to_thread(
-                        run_analysis_task,
-                        conv_id,
-                        settings.DATABASE_URL,
-                        2  # min_cluster_size
+            # Send closed notifications
+            for conv, response_count in conversations_to_notify:
+                await _send_conversation_closed_notifications(conv, response_count, db)
+
+            # Trigger auto-analysis for conversations that have it enabled
+            # Do this after committing the close, and run in background
+            for conv_id in conversations_to_analyze:
+                logger.info(f"Triggering auto-analysis for conversation {conv_id}")
+                # Run analysis in background thread (non-blocking)
+                try:
+                    # Use asyncio.to_thread to run the sync function in a thread pool
+                    # This returns a coroutine that we can schedule
+                    task = asyncio.create_task(
+                        asyncio.to_thread(
+                            run_analysis_task,
+                            conv_id,
+                            settings.DATABASE_URL,
+                            2  # min_cluster_size
+                        )
                     )
-                )
-                # Don't await - let it run in background
-                # The task will complete independently
-            except Exception as e:
-                logger.error(f"Failed to trigger auto-analysis for conversation {conv_id}: {e}", exc_info=True)
-    except Exception as e:
-        logger.error(f"Error checking scheduled closures: {e}", exc_info=True)
-        db.rollback()
-    finally:
-        db.close()
+                    # Don't await - let it run in background
+                    # The task will complete independently
+                except Exception as e:
+                    logger.error(f"Failed to trigger auto-analysis for conversation {conv_id}: {e}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Error checking scheduled closures: {e}", exc_info=True)
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
 
 async def check_closing_warnings():
@@ -234,32 +354,41 @@ async def check_closing_warnings():
 
     Runs every 15 minutes.
     """
-    db: Session = SessionLocal()
-    try:
-        now = datetime.utcnow()
-        # Look for conversations closing in the next hour
-        warning_window = now + timedelta(hours=1)
+    async with log_job_execution('check_closing_warnings') as ctx:
+        db: Session = SessionLocal()
+        try:
+            now = datetime.utcnow()
+            # Look for conversations closing in the next hour
+            warning_window = now + timedelta(hours=1)
 
-        # Find active conversations closing soon (include all conversations, not just org ones)
-        conversations = db.query(Conversation).filter(
-            Conversation.state == ConversationState.ACTIVE.value,
-            Conversation.auto_close_at.isnot(None),
-            Conversation.auto_close_at > now,
-            Conversation.auto_close_at <= warning_window,
-        ).all()
+            # Find active conversations closing soon (include all conversations, not just org ones)
+            conversations = db.query(Conversation).filter(
+                Conversation.state == ConversationState.ACTIVE.value,
+                Conversation.auto_close_at.isnot(None),
+                Conversation.auto_close_at > now,
+                Conversation.auto_close_at <= warning_window,
+            ).all()
 
-        if not conversations:
-            return
+            ctx.set_details({'conversations_found': len(conversations)})
 
-        logger.info(f"Found {len(conversations)} conversation(s) closing soon")
+            if not conversations:
+                return
 
-        for conv in conversations:
-            await _send_closing_warnings_for_conversation(conv, db)
+            logger.info(f"Found {len(conversations)} conversation(s) closing soon")
 
-    except Exception as e:
-        logger.error(f"Error checking closing warnings: {e}", exc_info=True)
-    finally:
-        db.close()
+            for conv in conversations:
+                try:
+                    await _send_closing_warnings_for_conversation(conv, db)
+                    ctx.add_processed()
+                except Exception as e:
+                    ctx.add_failed()
+                    logger.error(f"Failed to send closing warnings for {conv.id}: {e}", exc_info=True)
+
+        except Exception as e:
+            logger.error(f"Error checking closing warnings: {e}", exc_info=True)
+            raise
+        finally:
+            db.close()
 
 
 async def _send_closing_warnings_for_conversation(
@@ -402,162 +531,168 @@ async def create_recurring_instances():
     - recurrence_pattern is set
     - recurrence_end_date has not passed (or is None)
     """
-    db: Session = SessionLocal()
-    try:
-        now = datetime.utcnow()
+    async with log_job_execution('create_recurring_instances') as ctx:
+        db: Session = SessionLocal()
+        try:
+            now = datetime.utcnow()
 
-        # Find templates that need new instances
-        # Templates are conversations with is_template = True and recurrence_pattern set
-        templates = db.query(Conversation).filter(
-            Conversation.is_template == True,
-            Conversation.recurrence_pattern.isnot(None),
-            Conversation.next_instance_date <= now,
-            Conversation.next_instance_date.isnot(None),
-            # Either no end date, or end date hasn't passed
-            (Conversation.recurrence_end_date.is_(None)) | (Conversation.recurrence_end_date > now),
-            # Skip paused templates
-            Conversation.recurrence_paused == False
-        ).all()
+            # Find templates that need new instances
+            # Templates are conversations with is_template = True and recurrence_pattern set
+            templates = db.query(Conversation).filter(
+                Conversation.is_template == True,
+                Conversation.recurrence_pattern.isnot(None),
+                Conversation.next_instance_date <= now,
+                Conversation.next_instance_date.isnot(None),
+                # Either no end date, or end date hasn't passed
+                (Conversation.recurrence_end_date.is_(None)) | (Conversation.recurrence_end_date > now),
+                # Skip paused templates
+                Conversation.recurrence_paused == False
+            ).all()
 
-        if templates:
-            logger.info(f"Found {len(templates)} recurring template(s) to create instances for")
+            ctx.set_details({'templates_found': len(templates)})
 
-        for template in templates:
-            try:
-                logger.info(f"Creating recurring instance for template {template.id} ({template.title})")
+            if templates:
+                logger.info(f"Found {len(templates)} recurring template(s) to create instances for")
 
-                # Calculate instance number for title
-                # Count instances that belong to template's series (if any)
-                if template.template_series_id:
-                    existing_instances = db.query(Conversation).filter(
-                        Conversation.series_id == template.template_series_id
-                    ).count()
-                else:
-                    # Count instances with this template as parent (fallback)
-                    existing_instances = db.query(Conversation).filter(
-                        Conversation.parent_conversation_id == template.id
-                    ).count()
-                instance_number = existing_instances + 1
+            for template in templates:
+                try:
+                    logger.info(f"Creating recurring instance for template {template.id} ({template.title})")
 
-                # Determine title for new instance
-                # Try to increment existing number or add new number
-                import re
-                match = re.search(r'#(\d+)$', template.title)
-                if match:
-                    base_title = template.title[:match.start()].strip()
-                    new_title = f"{base_title} #{instance_number}"
-                else:
-                    new_title = f"{template.title} #{instance_number}"
+                    # Calculate instance number for title
+                    # Count instances that belong to template's series (if any)
+                    if template.template_series_id:
+                        existing_instances = db.query(Conversation).filter(
+                            Conversation.series_id == template.template_series_id
+                        ).count()
+                    else:
+                        # Count instances with this template as parent (fallback)
+                        existing_instances = db.query(Conversation).filter(
+                            Conversation.parent_conversation_id == template.id
+                        ).count()
+                    instance_number = existing_instances + 1
 
-                # Generate unique access code
-                access_code = generate_access_code()
-                while db.query(Conversation).filter(Conversation.access_code == access_code).first():
+                    # Determine title for new instance
+                    # Try to increment existing number or add new number
+                    import re
+                    match = re.search(r'#(\d+)$', template.title)
+                    if match:
+                        base_title = template.title[:match.start()].strip()
+                        new_title = f"{base_title} #{instance_number}"
+                    else:
+                        new_title = f"{template.title} #{instance_number}"
+
+                    # Generate unique access code
                     access_code = generate_access_code()
+                    while db.query(Conversation).filter(Conversation.access_code == access_code).first():
+                        access_code = generate_access_code()
 
-                # Find the latest instance to use as parent
-                if template.template_series_id:
-                    latest_instance = db.query(Conversation).filter(
-                        Conversation.series_id == template.template_series_id
-                    ).order_by(Conversation.created_at.desc()).first()
-                else:
-                    latest_instance = db.query(Conversation).filter(
-                        Conversation.parent_conversation_id == template.id
-                    ).order_by(Conversation.created_at.desc()).first()
+                    # Find the latest instance to use as parent
+                    if template.template_series_id:
+                        latest_instance = db.query(Conversation).filter(
+                            Conversation.series_id == template.template_series_id
+                        ).order_by(Conversation.created_at.desc()).first()
+                    else:
+                        latest_instance = db.query(Conversation).filter(
+                            Conversation.parent_conversation_id == template.id
+                        ).order_by(Conversation.created_at.desc()).first()
 
-                parent_id = latest_instance.id if latest_instance else template.id
+                    parent_id = latest_instance.id if latest_instance else template.id
 
-                # Determine series_id for new instance
-                # If template has template_series_id, instances join that series
-                instance_series_id = template.template_series_id
+                    # Determine series_id for new instance
+                    # If template has template_series_id, instances join that series
+                    instance_series_id = template.template_series_id
 
-                # Create new instance
-                new_instance = Conversation(
-                    creator_id=template.creator_id,
-                    organization_id=template.organization_id,
-                    parent_conversation_id=parent_id,
-                    series_id=instance_series_id,
-                    is_recurring_instance=True,
-                    title=new_title,
-                    description=template.description,
-                    access_code=access_code,
-                    state=ConversationState.DRAFT.value,
-                    anonymity_level=template.anonymity_level,
-                    results_access=template.results_access,
-                    invite_only=template.invite_only,
-                    auto_analyze=template.auto_analyze,
-                    max_response_length=template.max_response_length,
-                    duration_minutes=template.duration_minutes,
-                    manual_close_enabled=template.manual_close_enabled,
-                    time_extension_enabled=template.time_extension_enabled,
-                    timezone=template.timezone,
-                )
-
-                db.add(new_instance)
-                db.flush()  # Get the new instance ID
-
-                # Copy questions from template
-                template_questions = db.query(Question).filter(
-                    Question.conversation_id == template.id
-                ).order_by(Question.question_order).all()
-
-                for q in template_questions:
-                    new_question = Question(
-                        conversation_id=new_instance.id,
-                        question_text=q.question_text,
-                        question_type=q.question_type,
-                        question_order=q.question_order,
-                        options=q.options,
-                        is_required=q.is_required
+                    # Create new instance
+                    new_instance = Conversation(
+                        creator_id=template.creator_id,
+                        organization_id=template.organization_id,
+                        parent_conversation_id=parent_id,
+                        series_id=instance_series_id,
+                        is_recurring_instance=True,
+                        title=new_title,
+                        description=template.description,
+                        access_code=access_code,
+                        state=ConversationState.DRAFT.value,
+                        anonymity_level=template.anonymity_level,
+                        results_access=template.results_access,
+                        invite_only=template.invite_only,
+                        auto_analyze=template.auto_analyze,
+                        max_response_length=template.max_response_length,
+                        duration_minutes=template.duration_minutes,
+                        manual_close_enabled=template.manual_close_enabled,
+                        time_extension_enabled=template.time_extension_enabled,
+                        timezone=template.timezone,
                     )
-                    db.add(new_question)
 
-                # Copy invitations from template
-                template_invitations = db.query(ConversationInvitation).filter(
-                    ConversationInvitation.conversation_id == template.id
-                ).all()
+                    db.add(new_instance)
+                    db.flush()  # Get the new instance ID
 
-                for inv in template_invitations:
-                    if inv.invited_user_id:
-                        new_invitation = ConversationInvitation(
+                    # Copy questions from template
+                    template_questions = db.query(Question).filter(
+                        Question.conversation_id == template.id
+                    ).order_by(Question.question_order).all()
+
+                    for q in template_questions:
+                        new_question = Question(
                             conversation_id=new_instance.id,
-                            invited_by_user_id=template.creator_id,
-                            invited_user_id=inv.invited_user_id,
-                            status="pending"
+                            question_text=q.question_text,
+                            question_type=q.question_type,
+                            question_order=q.question_order,
+                            options=q.options,
+                            is_required=q.is_required
                         )
-                        db.add(new_invitation)
+                        db.add(new_question)
 
-                # Calculate next instance date based on recurrence pattern
-                next_date = calculate_next_instance_date(
-                    template.next_instance_date,
-                    template.recurrence_pattern
-                )
+                    # Copy invitations from template
+                    template_invitations = db.query(ConversationInvitation).filter(
+                        ConversationInvitation.conversation_id == template.id
+                    ).all()
 
-                # Update template's next_instance_date
-                template.next_instance_date = next_date
+                    for inv in template_invitations:
+                        if inv.invited_user_id:
+                            new_invitation = ConversationInvitation(
+                                conversation_id=new_instance.id,
+                                invited_by_user_id=template.creator_id,
+                                invited_user_id=inv.invited_user_id,
+                                status="pending"
+                            )
+                            db.add(new_invitation)
 
-                db.commit()
-                logger.info(f"Successfully created recurring instance {new_instance.id} for template {template.id}")
-                logger.info(f"Next instance scheduled for {next_date}")
+                    # Calculate next instance date based on recurrence pattern
+                    next_date = calculate_next_instance_date(
+                        template.next_instance_date,
+                        template.recurrence_pattern
+                    )
 
-                # Send email notifications
-                await _send_recurring_instance_notifications(
-                    new_instance=new_instance,
-                    template=template,
-                    instance_number=instance_number,
-                    template_invitations=template_invitations,
-                    db=db,
-                )
+                    # Update template's next_instance_date
+                    template.next_instance_date = next_date
 
-            except Exception as e:
-                logger.error(f"Error creating instance for template {template.id}: {e}", exc_info=True)
-                db.rollback()
-                # Continue with other templates
-                continue
+                    db.commit()
+                    logger.info(f"Successfully created recurring instance {new_instance.id} for template {template.id}")
+                    logger.info(f"Next instance scheduled for {next_date}")
 
-    except Exception as e:
-        logger.error(f"Error in create_recurring_instances: {e}", exc_info=True)
-    finally:
-        db.close()
+                    # Send email notifications
+                    await _send_recurring_instance_notifications(
+                        new_instance=new_instance,
+                        template=template,
+                        instance_number=instance_number,
+                        template_invitations=template_invitations,
+                        db=db,
+                    )
+                    ctx.add_processed()
+
+                except Exception as e:
+                    ctx.add_failed()
+                    logger.error(f"Error creating instance for template {template.id}: {e}", exc_info=True)
+                    db.rollback()
+                    # Continue with other templates
+                    continue
+
+        except Exception as e:
+            logger.error(f"Error in create_recurring_instances: {e}", exc_info=True)
+            raise
+        finally:
+            db.close()
 
 
 async def _send_recurring_instance_notifications(
@@ -943,56 +1078,64 @@ async def check_scheduled_reminders():
     from app.models.conversation_reminder import ConversationReminder
     from app.services.reminder_service import reminder_service
 
-    db: Session = SessionLocal()
+    async with log_job_execution('check_scheduled_reminders') as ctx:
+        db: Session = SessionLocal()
 
-    try:
-        now = datetime.utcnow()
+        try:
+            now = datetime.utcnow()
 
-        # Find scheduled reminders that are due
-        reminders = db.query(ConversationReminder).filter(
-            ConversationReminder.status == "pending",
-            ConversationReminder.reminder_type == "scheduled",
-            ConversationReminder.scheduled_at <= now,
-        ).all()
+            # Find scheduled reminders that are due
+            reminders = db.query(ConversationReminder).filter(
+                ConversationReminder.status == "pending",
+                ConversationReminder.reminder_type == "scheduled",
+                ConversationReminder.scheduled_at <= now,
+            ).all()
 
-        if not reminders:
-            return
+            ctx.set_details({'reminders_found': len(reminders)})
 
-        logger.info(f"Found {len(reminders)} scheduled reminder(s) to send")
+            if not reminders:
+                return
 
-        for reminder in reminders:
-            try:
-                # Get the conversation
-                conversation = db.query(Conversation).filter(
-                    Conversation.id == reminder.conversation_id
-                ).first()
+            logger.info(f"Found {len(reminders)} scheduled reminder(s) to send")
 
-                if not conversation:
-                    logger.warning(f"Conversation not found for reminder {reminder.id}")
-                    reminder.status = "cancelled"
-                    db.commit()
+            for reminder in reminders:
+                try:
+                    # Get the conversation
+                    conversation = db.query(Conversation).filter(
+                        Conversation.id == reminder.conversation_id
+                    ).first()
+
+                    if not conversation:
+                        logger.warning(f"Conversation not found for reminder {reminder.id}")
+                        reminder.status = "cancelled"
+                        db.commit()
+                        ctx.add_processed()  # Still counts as processed (cancelled)
+                        continue
+
+                    # Skip if conversation is no longer active
+                    if conversation.state != "active":
+                        logger.info(f"Skipping reminder {reminder.id} - conversation is not active")
+                        reminder.status = "cancelled"
+                        db.commit()
+                        ctx.add_processed()  # Still counts as processed (cancelled)
+                        continue
+
+                    # Send the reminders
+                    await reminder_service.send_reminders(reminder, conversation, db)
+                    logger.info(f"Successfully sent scheduled reminder {reminder.id}")
+                    ctx.add_processed()
+
+                except Exception as e:
+                    ctx.add_failed()
+                    logger.error(f"Error sending scheduled reminder {reminder.id}: {e}", exc_info=True)
+                    # Don't mark as failed, let it retry next cycle
                     continue
 
-                # Skip if conversation is no longer active
-                if conversation.state != "active":
-                    logger.info(f"Skipping reminder {reminder.id} - conversation is not active")
-                    reminder.status = "cancelled"
-                    db.commit()
-                    continue
-
-                # Send the reminders
-                await reminder_service.send_reminders(reminder, conversation, db)
-                logger.info(f"Successfully sent scheduled reminder {reminder.id}")
-
-            except Exception as e:
-                logger.error(f"Error sending scheduled reminder {reminder.id}: {e}", exc_info=True)
-                # Don't mark as failed, let it retry next cycle
-                continue
-
-    except Exception as e:
-        logger.error(f"Error in check_scheduled_reminders: {e}", exc_info=True)
-    finally:
-        db.close()
+        except Exception as e:
+            logger.error(f"Error in check_scheduled_reminders: {e}", exc_info=True)
+            raise
+        finally:
+            db.close()
 
 
 async def check_periodic_analyses():
@@ -1005,67 +1148,100 @@ async def check_periodic_analyses():
     - next_analysis_at <= now
     - state is ACTIVE
     """
-    db: Session = SessionLocal()
-    try:
-        now = datetime.utcnow()
+    async with log_job_execution('check_periodic_analyses') as ctx:
+        db: Session = SessionLocal()
+        try:
+            now = datetime.utcnow()
 
-        # Find continuous conversations needing analysis
-        conversations = db.query(Conversation).filter(
-            Conversation.is_continuous == True,
-            Conversation.state == ConversationState.ACTIVE.value,
-            Conversation.analysis_interval.isnot(None),
-            Conversation.next_analysis_at <= now,
-            Conversation.next_analysis_at.isnot(None)
-        ).all()
+            # Find continuous conversations needing analysis
+            conversations = db.query(Conversation).filter(
+                Conversation.is_continuous == True,
+                Conversation.state == ConversationState.ACTIVE.value,
+                Conversation.analysis_interval.isnot(None),
+                Conversation.next_analysis_at <= now,
+                Conversation.next_analysis_at.isnot(None)
+            ).all()
 
-        if conversations:
-            logger.info(f"Found {len(conversations)} continuous conversation(s) needing periodic analysis")
+            ctx.set_details({'conversations_found': len(conversations)})
 
-        for conv in conversations:
-            try:
-                logger.info(f"Triggering periodic analysis for conversation {conv.id}")
+            if conversations:
+                logger.info(f"Found {len(conversations)} continuous conversation(s) needing periodic analysis")
 
-                # Calculate analysis window
-                period_end = conv.next_analysis_at
-                period_start = calculate_period_start(period_end, conv.analysis_interval)
+            for conv in conversations:
+                try:
+                    logger.info(f"Triggering periodic analysis for conversation {conv.id}")
 
-                # Check if there are responses in this window
-                response_count = db.query(Response).filter(
-                    Response.conversation_id == conv.id,
-                    Response.submitted_at >= period_start,
-                    Response.submitted_at < period_end
-                ).count()
+                    # Calculate analysis window
+                    period_end = conv.next_analysis_at
+                    period_start = calculate_period_start(period_end, conv.analysis_interval)
 
-                if response_count > 0:
-                    # Trigger analysis in background
-                    task = asyncio.create_task(
-                        asyncio.to_thread(
-                            run_periodic_analysis_task,
-                            conv.id,
-                            period_start,
-                            period_end,
-                            conv.analysis_interval,
-                            settings.DATABASE_URL
+                    # Check if there are responses in this window
+                    response_count = db.query(Response).filter(
+                        Response.conversation_id == conv.id,
+                        Response.submitted_at >= period_start,
+                        Response.submitted_at < period_end
+                    ).count()
+
+                    if response_count > 0:
+                        # Trigger analysis in background
+                        task = asyncio.create_task(
+                            asyncio.to_thread(
+                                run_periodic_analysis_task,
+                                conv.id,
+                                period_start,
+                                period_end,
+                                conv.analysis_interval,
+                                settings.DATABASE_URL
+                            )
                         )
-                    )
-                    # Don't await - let it run in background
-                else:
-                    logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
+                        # Don't await - let it run in background
+                    else:
+                        logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
 
-                # Update next_analysis_at regardless (even if no responses, move to next period)
-                conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
+                    # Update next_analysis_at regardless (even if no responses, move to next period)
+                    conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
+                    ctx.add_processed()
 
-            except Exception as e:
-                logger.error(f"Error processing periodic analysis for {conv.id}: {e}", exc_info=True)
+                except Exception as e:
+                    ctx.add_failed()
+                    logger.error(f"Error processing periodic analysis for {conv.id}: {e}", exc_info=True)
 
-        if conversations:
+            if conversations:
+                db.commit()
+
+        except Exception as e:
+            logger.error(f"Error in check_periodic_analyses: {e}", exc_info=True)
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+
+async def cleanup_old_job_logs():
+    """
+    Auto-cleanup scheduler logs older than 7 days.
+
+    Runs daily to prevent unbounded growth of the scheduler_job_logs table.
+    """
+    from app.models.scheduler_job_log import SchedulerJobLog
+
+    async with log_job_execution('cleanup_job_logs') as ctx:
+        db: Session = SessionLocal()
+        try:
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            deleted = db.query(SchedulerJobLog).filter(
+                SchedulerJobLog.started_at < cutoff
+            ).delete()
             db.commit()
-
-    except Exception as e:
-        logger.error(f"Error in check_periodic_analyses: {e}", exc_info=True)
-        db.rollback()
-    finally:
-        db.close()
+            ctx.add_processed(deleted)
+            ctx.set_details({'deleted_count': deleted, 'cutoff_date': cutoff.isoformat()})
+            logger.info(f"Cleaned up {deleted} old scheduler job logs")
+        except Exception as e:
+            logger.error(f"Error cleaning up old job logs: {e}", exc_info=True)
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
 
 def start_scheduler():
@@ -1128,8 +1304,17 @@ def start_scheduler():
         max_instances=1
     )
 
+    # Add job to cleanup old scheduler logs daily
+    scheduler.add_job(
+        cleanup_old_job_logs,
+        trigger=IntervalTrigger(hours=24),
+        id='cleanup_job_logs',
+        replace_existing=True,
+        max_instances=1
+    )
+
     scheduler.start()
-    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, closing warning, and scheduled reminder jobs")
+    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, closing warning, scheduled reminder, and log cleanup jobs")
 
 
 def shutdown_scheduler():

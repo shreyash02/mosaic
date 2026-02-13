@@ -1,0 +1,508 @@
+/* Admin Scheduler Page Styles - Using Design Tokens */
+
+.admin-scheduler-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--spacing-8);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.admin-scheduler-page .admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-8);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 2px solid var(--color-primary-300);
+}
+
+.admin-scheduler-page .admin-header h1 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+  color: var(--color-primary-900);
+  font-weight: 700;
+}
+
+.admin-scheduler-page .back-link {
+  display: inline-block;
+  margin-bottom: var(--spacing-2);
+  color: var(--color-primary-600);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.admin-scheduler-page .back-link:hover {
+  color: var(--color-primary-900);
+}
+
+.admin-scheduler-page .loading {
+  text-align: center;
+  padding: var(--spacing-16);
+  color: var(--color-primary-500);
+  font-size: var(--font-size-lg);
+}
+
+/* Scheduler Status Section */
+.scheduler-status-section {
+  background: var(--color-primary-50);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-6);
+  margin-bottom: var(--spacing-8);
+  border: 1px solid var(--color-primary-200);
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.status-indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--spacing-2);
+}
+
+.status-indicator.running {
+  background: var(--color-success-light);
+  color: #166534;
+}
+
+.status-indicator.running::before {
+  background: var(--color-success);
+}
+
+.status-indicator.stopped {
+  background: var(--color-error-light);
+  color: #991b1b;
+}
+
+.status-indicator.stopped::before {
+  background: var(--color-error);
+}
+
+.last-checked {
+  color: var(--color-primary-500);
+  font-size: var(--font-size-sm);
+}
+
+/* Admin Section */
+.admin-scheduler-page .admin-section {
+  background: var(--color-primary-50);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-8);
+  margin-bottom: var(--spacing-8);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-primary-200);
+}
+
+.admin-scheduler-page .admin-section h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-6);
+  color: var(--color-primary-900);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+/* Jobs Grid */
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.job-card {
+  background: var(--color-primary-100);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+  border: 1px solid var(--color-primary-200);
+  transition: box-shadow var(--transition-fast);
+}
+
+.job-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.job-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.job-header h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-primary-900);
+}
+
+.health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-dot.health-healthy {
+  background: var(--color-success);
+}
+
+.health-dot.health-warning {
+  background: var(--color-warning);
+}
+
+.health-dot.health-error {
+  background: var(--color-error);
+}
+
+.health-dot.health-unknown {
+  background: var(--color-primary-400);
+}
+
+.job-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.job-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+}
+
+.job-detail .label {
+  color: var(--color-primary-500);
+}
+
+.job-detail .value {
+  color: var(--color-primary-800);
+  font-weight: 500;
+}
+
+.job-stats {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+  padding-top: var(--spacing-2);
+  border-top: 1px solid var(--color-primary-300);
+}
+
+.success-count,
+.failure-count {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.success-count::before,
+.failure-count::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: var(--spacing-1);
+}
+
+.success-count {
+  background: var(--color-success-light);
+  color: #166534;
+}
+
+.success-count::before {
+  background: var(--color-success);
+}
+
+.failure-count {
+  background: var(--color-error-light);
+  color: #991b1b;
+}
+
+.failure-count::before {
+  background: var(--color-error);
+}
+
+/* Filters */
+.admin-scheduler-page .filters {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+  padding: var(--spacing-4);
+  background: var(--color-primary-100);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.admin-scheduler-page .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 180px;
+}
+
+.admin-scheduler-page .filter-group label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-primary-700);
+}
+
+.admin-scheduler-page .filter-group select,
+.admin-scheduler-page .filter-group input {
+  padding: var(--spacing-2);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-primary-50);
+  color: var(--color-primary-900);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.admin-scheduler-page .filter-group select:focus,
+.admin-scheduler-page .filter-group input:focus {
+  outline: none;
+  border-color: var(--color-primary-900);
+  box-shadow: 0 0 0 2px rgba(26, 26, 46, 0.1);
+}
+
+/* Table */
+.admin-scheduler-page .table-container {
+  overflow-x: auto;
+}
+
+.admin-scheduler-page .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.admin-scheduler-page .admin-table thead {
+  background: var(--color-primary-100);
+}
+
+.admin-scheduler-page .admin-table th {
+  padding: var(--spacing-3);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-primary-900);
+  border-bottom: 2px solid var(--color-primary-300);
+}
+
+.admin-scheduler-page .admin-table td {
+  padding: var(--spacing-3);
+  border-bottom: 1px solid var(--color-primary-300);
+  color: var(--color-primary-800);
+}
+
+.admin-scheduler-page .admin-table tbody tr:hover {
+  background: var(--color-primary-100);
+}
+
+.admin-scheduler-page .no-data {
+  text-align: center;
+  padding: var(--spacing-8);
+  color: var(--color-primary-500);
+  font-style: italic;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.status-completed {
+  background: var(--color-success-light);
+  color: #166534;
+}
+
+.status-badge.status-failed {
+  background: var(--color-error-light);
+  color: #991b1b;
+}
+
+.status-badge.status-started {
+  background: var(--color-warning-light);
+  color: #92400e;
+}
+
+/* Details Cell */
+.details-cell {
+  max-width: 200px;
+}
+
+.error-text {
+  color: var(--color-error);
+  cursor: help;
+}
+
+.details-text {
+  color: var(--color-primary-600);
+  cursor: help;
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-primary-300);
+}
+
+.page-info {
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+}
+
+/* Cleanup Controls */
+.cleanup-controls {
+  display: flex;
+  gap: var(--spacing-4);
+  align-items: flex-end;
+}
+
+.cleanup-controls .filter-group {
+  min-width: 120px;
+}
+
+.cleanup-controls input[type="number"] {
+  width: 100%;
+}
+
+/* Section Description */
+.admin-scheduler-page .section-description {
+  color: var(--color-primary-600);
+  margin-bottom: var(--spacing-4);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+/* Result Message */
+.admin-scheduler-page .result-message {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+}
+
+.admin-scheduler-page .result-message.success {
+  background: var(--color-success-light);
+  color: #166534;
+  border: 1px solid var(--color-success);
+}
+
+.admin-scheduler-page .result-message.error {
+  background: var(--color-error-light);
+  color: #991b1b;
+  border: 1px solid var(--color-error);
+}
+
+/* Buttons */
+.admin-scheduler-page .btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-scheduler-page .btn-primary {
+  background: var(--color-primary-900);
+  color: var(--color-primary-50);
+}
+
+.admin-scheduler-page .btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-800);
+}
+
+.admin-scheduler-page .btn-secondary {
+  background: transparent;
+  color: var(--color-primary-900);
+  border: 1px solid var(--color-primary-400);
+}
+
+.admin-scheduler-page .btn-secondary:hover:not(:disabled) {
+  background: var(--color-primary-100);
+}
+
+.admin-scheduler-page .btn-danger {
+  background: var(--color-error);
+  color: var(--color-primary-50);
+}
+
+.admin-scheduler-page .btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.admin-scheduler-page .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error Message */
+.admin-scheduler-page .error-message {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-6);
+  border: 1px solid var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-scheduler-page {
+    padding: var(--spacing-4);
+  }
+
+  .jobs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-scheduler-page .filters {
+    flex-direction: column;
+  }
+
+  .admin-scheduler-page .filter-group {
+    width: 100%;
+  }
+
+  .cleanup-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+}
