@@ -417,35 +417,18 @@ async def save_draft(
 
 @router.get("/conversations/{access_code}/responses/draft", response_model=DraftLoadResponse)
 async def load_draft(
-    access_code: str,
     participant_code: Optional[str] = Query(None, description="Participant code for fully anonymous conversations"),
+    access: ConversationAccess = Depends(require_draft_access),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Load existing draft responses for a conversation.
 
+    Access control handled by ConversationAccess dependency.
     Returns draft data if exists, or empty response if no draft found.
-
-    Args:
-        access_code: Conversation access code
-        participant_code: Optional participant code for fully anonymous
-        db: Database session
-        current_user: Optional authenticated user
-
-    Returns:
-        DraftLoadResponse with draft data
     """
-    # Find conversation by access code
-    conversation = db.query(Conversation).filter(
-        Conversation.access_code == access_code
-    ).first()
-
-    if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found"
-        )
+    conversation = access.conversation
+    current_user = access.user
 
     # Build query based on anonymity level
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
@@ -461,27 +444,7 @@ async def load_draft(
             Response.status == "draft"
         ).all()
     else:
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required"
-            )
-
-        # For invite-only conversations, verify user was invited
-        if conversation.invite_only:
-            invitation = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id,
-                or_(
-                    ConversationInvitation.invited_user_id == current_user.id,
-                    ConversationInvitation.email == current_user.email.lower()
-                )
-            ).first()
-            if not invitation:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You were not invited to this conversation"
-                )
-
+        # Auth and invite-only already checked by dependency
         drafts = db.query(Response).filter(
             Response.conversation_id == conversation.id,
             Response.participant_id == current_user.id,
@@ -520,33 +483,17 @@ async def load_draft(
 
 @router.delete("/conversations/{access_code}/responses/draft", response_model=SuccessResponse)
 async def delete_draft(
-    access_code: str,
     participant_code: Optional[str] = Query(None, description="Participant code for fully anonymous conversations"),
+    access: ConversationAccess = Depends(require_draft_access),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Delete draft responses (called after successful submission or explicit discard).
 
-    Args:
-        access_code: Conversation access code
-        participant_code: Optional participant code for fully anonymous
-        db: Database session
-        current_user: Optional authenticated user
-
-    Returns:
-        Success response
+    Access control handled by ConversationAccess dependency.
     """
-    # Find conversation by access code
-    conversation = db.query(Conversation).filter(
-        Conversation.access_code == access_code
-    ).first()
-
-    if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found"
-        )
+    conversation = access.conversation
+    current_user = access.user
 
     # Delete drafts based on anonymity level
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
@@ -562,27 +509,7 @@ async def delete_draft(
             Response.status == "draft"
         ).delete()
     else:
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required"
-            )
-
-        # For invite-only conversations, verify user was invited
-        if conversation.invite_only:
-            invitation = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id,
-                or_(
-                    ConversationInvitation.invited_user_id == current_user.id,
-                    ConversationInvitation.email == current_user.email.lower()
-                )
-            ).first()
-            if not invitation:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You were not invited to this conversation"
-                )
-
+        # Auth and invite-only already checked by dependency
         deleted = db.query(Response).filter(
             Response.conversation_id == conversation.id,
             Response.participant_id == current_user.id,
