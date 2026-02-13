@@ -1633,7 +1633,7 @@ export default function ConversationDetailPage() {
                   onClick={() => navigate(`/preview/${conversation.access_code}`)}
                   style={s.buttonSecondary}
                 >
-                  Preview
+                  Test as Participant
                 </button>
               </div>
             </div>

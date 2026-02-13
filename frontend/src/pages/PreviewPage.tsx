@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Conversation } from '../types';
-import { LockIcon } from '../components/icons';
+import type { Conversation, ResponseItem } from '../types';
+import { LockIcon, EyeIcon } from '../components/icons';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { typography, spacing, borders, shadows } from '../styles';
+import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
   page: {
@@ -37,7 +37,9 @@ const styles = {
     gap: spacing[3],
   },
   previewIcon: {
-    fontSize: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewText: {
     margin: 0,
@@ -164,6 +166,7 @@ const styles = {
     borderRadius: borders.radius.md,
     resize: 'vertical' as const,
     fontFamily: 'inherit',
+    boxSizing: 'border-box' as const,
   },
   ratingContainer: {
     display: 'flex',
@@ -180,6 +183,11 @@ const styles = {
     fontWeight: typography.fontWeight.medium,
     cursor: 'pointer',
   },
+  ratingButtonSelected: {
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
+    borderColor: 'var(--color-primary-900)',
+  },
   choiceOption: {
     display: 'flex',
     alignItems: 'center',
@@ -189,17 +197,19 @@ const styles = {
     borderRadius: borders.radius.md,
     marginBottom: spacing[2],
     cursor: 'pointer',
+    transition: transitions.duration.normal,
   },
   submitButton: {
     width: '100%',
     padding: spacing[4],
-    backgroundColor: 'var(--color-primary-400)',
+    backgroundColor: 'var(--color-primary-900)',
     color: 'var(--color-primary-50)',
     border: 'none',
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    cursor: 'not-allowed',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
   },
   loading: {
     textAlign: 'center' as const,
@@ -222,6 +232,113 @@ const styles = {
   errorText: {
     color: 'var(--color-primary-600)',
     marginBottom: spacing[4],
+  },
+  trustScreen: {
+    maxWidth: '600px',
+    margin: '0 auto',
+    padding: spacing[6],
+    textAlign: 'center' as const,
+  },
+  trustCard: {
+    backgroundColor: 'var(--color-primary-50)',
+    border: `2px solid ${'var(--color-primary-400)'}`,
+    borderRadius: borders.radius.xl,
+    padding: spacing[6],
+    marginBottom: spacing[6],
+  },
+  trustIcon: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: spacing[5],
+    color: 'var(--color-primary-600)',
+  },
+  trustTitle: {
+    color: 'var(--color-primary-900)',
+    marginBottom: spacing[4],
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  trustText: {
+    color: 'var(--color-primary-600)',
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.lineHeight.relaxed,
+    marginBottom: spacing[5],
+  },
+  trustDetails: {
+    textAlign: 'left' as const,
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.md,
+    padding: spacing[5],
+    marginBottom: spacing[5],
+  },
+  trustDetailItem: {
+    marginBottom: spacing[4],
+  },
+  trustDetailLabel: {
+    color: 'var(--color-primary-900)',
+    display: 'block',
+    marginBottom: spacing[1],
+    fontWeight: typography.fontWeight.semibold,
+  },
+  trustDetailText: {
+    margin: 0,
+    color: 'var(--color-primary-600)',
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  buttonPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${spacing[3]} ${spacing[6]}`,
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    width: '100%',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
+  successState: {
+    textAlign: 'center' as const,
+    padding: spacing[8],
+  },
+  successTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: 'var(--color-primary-900)',
+    marginTop: 0,
+    marginBottom: spacing[3],
+  },
+  successText: {
+    fontSize: typography.fontSize.base,
+    color: 'var(--color-primary-600)',
+    margin: 0,
+    marginBottom: spacing[2],
+  },
+  cardCentered: {
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.lg,
+    border: `1px solid ${'var(--color-primary-200)'}`,
+    padding: spacing[8],
+    textAlign: 'center' as const,
+    boxShadow: shadows.sm,
+  },
+  previewNotice: {
+    backgroundColor: 'var(--color-primary-100)',
+    border: `1px solid ${'var(--color-primary-300)'}`,
+    borderRadius: borders.radius.md,
+    padding: spacing[4],
+    marginTop: spacing[5],
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+    justifyContent: 'center',
   },
 };
 
@@ -250,6 +367,12 @@ export default function PreviewPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showTrustScreen, setShowTrustScreen] = useState(true);
+  const [trustScreenAcknowledged, setTrustScreenAcknowledged] = useState(false);
+  const [canProceedFromTrustScreen, setCanProceedFromTrustScreen] = useState(false);
+  const [trustScreenCountdown, setTrustScreenCountdown] = useState(5);
+  const [responses, setResponses] = useState<ResponseItem[]>([]);
+  const [submitted, setSubmitted] = useState(false);
 
   usePageTitle(conversation ? `Preview: ${conversation.title}` : 'Preview');
 
@@ -259,10 +382,54 @@ export default function PreviewPage() {
     }
   }, [accessCode]);
 
+  // Trust screen countdown
+  useEffect(() => {
+    if (showTrustScreen && !canProceedFromTrustScreen && conversation) {
+      setTrustScreenCountdown(5);
+      const countdownInterval = setInterval(() => {
+        setTrustScreenCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      const enableTimer = setTimeout(() => {
+        setCanProceedFromTrustScreen(true);
+      }, 5000);
+      return () => {
+        clearInterval(countdownInterval);
+        clearTimeout(enableTimer);
+      };
+    }
+  }, [showTrustScreen, conversation]);
+
   const loadPreview = async () => {
     try {
       const data = await api.getConversationPreview(accessCode!);
       setConversation(data);
+
+      // Initialize responses
+      if (data.questions) {
+        setResponses(
+          data.questions.map((q) => ({
+            question_id: q.id,
+            response_text: q.question_type === 'text' ? '' : undefined,
+            response_data: q.question_type !== 'text' ? (
+              q.question_type === 'rating' ? { rating: 5 } :
+              q.question_type === 'multiple_choice' ? { selected: [] } :
+              {}
+            ) : undefined,
+          }))
+        );
+      }
+
+      // Skip trust screen for OPEN anonymity level
+      if (data.anonymity_level === AnonymityLevel.OPEN) {
+        setShowTrustScreen(false);
+        setTrustScreenAcknowledged(true);
+      }
     } catch (err: any) {
       if (err.response?.status === 403) {
         setError('You do not have permission to preview this conversation.');
@@ -282,6 +449,34 @@ export default function PreviewPage() {
     } else {
       navigate('/dashboard');
     }
+  };
+
+  const updateResponse = (questionId: string, text: string) => {
+    setResponses((prev) =>
+      prev.map((r) => (r.question_id === questionId ? { ...r, response_text: text } : r))
+    );
+  };
+
+  const updateRatingResponse = (questionId: string, rating: number) => {
+    setResponses((prev) =>
+      prev.map((r) =>
+        r.question_id === questionId ? { ...r, response_data: { rating } } : r
+      )
+    );
+  };
+
+  const updatePollResponse = (questionId: string, selected: string | string[]) => {
+    setResponses((prev) =>
+      prev.map((r) =>
+        r.question_id === questionId ? { ...r, response_data: { selected } } : r
+      )
+    );
+  };
+
+  const handlePreviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Don't actually submit - just show the success message
+    setSubmitted(true);
   };
 
   if (loading) {
@@ -310,6 +505,145 @@ export default function PreviewPage() {
     );
   }
 
+  // Submitted state (preview only)
+  if (submitted) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>
+          {/* Preview Banner */}
+          <div style={styles.previewBanner}>
+            <div style={styles.previewBannerContent}>
+              <span style={styles.previewIcon}>
+                <EyeIcon size={24} />
+              </span>
+              <div style={styles.previewText}>
+                <div style={styles.previewTitle}>Preview Mode</div>
+                <div style={styles.previewSubtitle}>
+                  This is how participants will see your conversation.
+                </div>
+              </div>
+            </div>
+            <button onClick={handleExit} style={styles.exitButton}>
+              Exit Preview
+            </button>
+          </div>
+
+          <div style={styles.cardCentered}>
+            <div style={styles.successState}>
+              <h2 style={styles.successTitle}>Thank You!</h2>
+              <p style={styles.successText}>Your response has been submitted successfully.</p>
+
+              <div style={styles.previewNotice}>
+                <EyeIcon size={20} />
+                <span style={{ color: 'var(--color-primary-700)' }}>
+                  <strong>Preview Mode:</strong> This response was not saved. This is what participants will see after submitting.
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSubmitted(false)}
+              style={{ ...styles.buttonPrimary, marginTop: spacing[5] }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Trust screen
+  if (showTrustScreen && !trustScreenAcknowledged) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>
+          {/* Preview Banner */}
+          <div style={styles.previewBanner}>
+            <div style={styles.previewBannerContent}>
+              <span style={styles.previewIcon}>
+                <EyeIcon size={24} />
+              </span>
+              <div style={styles.previewText}>
+                <div style={styles.previewTitle}>Preview Mode</div>
+                <div style={styles.previewSubtitle}>
+                  This is how participants will see your conversation. Responses won't be saved.
+                </div>
+              </div>
+            </div>
+            <button onClick={handleExit} style={styles.exitButton}>
+              Exit Preview
+            </button>
+          </div>
+
+          <div style={styles.trustScreen}>
+            <div style={styles.trustCard}>
+              <div style={styles.trustIcon}>
+                <LockIcon size={48} />
+              </div>
+              <h2 style={styles.trustTitle}>Before You Respond</h2>
+              <p style={styles.trustText}>
+                Please take a moment to understand how your privacy is protected in this conversation.
+              </p>
+
+              <div style={styles.trustDetails}>
+                <div style={styles.trustDetailItem}>
+                  <strong style={styles.trustDetailLabel}>Your Identity:</strong>
+                  <p style={styles.trustDetailText}>
+                    {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && 'Your responses are completely anonymous. Not even the conversation creator can identify you.'}
+                    {conversation.anonymity_level === AnonymityLevel.PLATFORM_TRACKED && 'The platform tracks that you responded, but your identity is not revealed in the results.'}
+                    {conversation.anonymity_level === AnonymityLevel.REVEALABLE && 'You can choose whether to reveal your identity with your responses.'}
+                  </p>
+                </div>
+
+                <div style={styles.trustDetailItem}>
+                  <strong style={styles.trustDetailLabel}>Who Can See Results:</strong>
+                  <p style={styles.trustDetailText}>
+                    {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results and analysis.'}
+                    {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results and analysis.'}
+                    {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
+                  </p>
+                </div>
+
+                <div style={styles.trustDetailItem}>
+                  <strong style={styles.trustDetailLabel}>What Can Be Seen:</strong>
+                  <p style={styles.trustDetailText}>
+                    {conversation.show_verbatim_responses
+                      ? 'Viewers can see your exact responses along with AI-generated summaries.'
+                      : 'Viewers can only see AI-generated summaries. Your exact responses remain private.'}
+                  </p>
+                </div>
+
+                <div>
+                  <strong style={styles.trustDetailLabel}>Editing Your Response:</strong>
+                  <p style={styles.trustDetailText}>
+                    {conversation.allow_response_editing
+                      ? 'You can edit your response while the conversation is still active.'
+                      : 'Once submitted, your response cannot be edited.'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setTrustScreenAcknowledged(true)}
+                disabled={!canProceedFromTrustScreen}
+                style={{ ...styles.buttonPrimary, ...(canProceedFromTrustScreen ? {} : styles.buttonDisabled) }}
+              >
+                {canProceedFromTrustScreen ? 'I Understand, Continue' : `Please read (${trustScreenCountdown}s)`}
+              </button>
+
+              {!canProceedFromTrustScreen && (
+                <p style={{ marginTop: spacing[3], color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
+                  Please take a moment to review the privacy settings above.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const questions = conversation.questions?.sort((a, b) => a.question_order - b.question_order) || [];
   const displayTitle = conversation.participant_title || conversation.title;
 
@@ -319,7 +653,9 @@ export default function PreviewPage() {
         {/* Preview Banner */}
         <div style={styles.previewBanner}>
           <div style={styles.previewBannerContent}>
-            <span style={styles.previewIcon}>👁</span>
+            <span style={styles.previewIcon}>
+              <EyeIcon size={24} />
+            </span>
             <div style={styles.previewText}>
               <div style={styles.previewTitle}>Preview Mode</div>
               <div style={styles.previewSubtitle}>
@@ -350,75 +686,142 @@ export default function PreviewPage() {
         </div>
 
         {/* Privacy Info */}
-        <div style={styles.privacyCard}>
-          <div style={styles.privacyHeader}>
-            <span style={{ color: 'var(--color-primary-700)' }}>
-              <LockIcon size={20} />
-            </span>
-            <h3 style={styles.privacyTitle}>Privacy Settings</h3>
+        {conversation.anonymity_level !== AnonymityLevel.OPEN && (
+          <div style={styles.privacyCard}>
+            <div style={styles.privacyHeader}>
+              <span style={{ color: 'var(--color-primary-700)' }}>
+                <LockIcon size={20} />
+              </span>
+              <h3 style={styles.privacyTitle}>Privacy Settings</h3>
+            </div>
+            <div style={styles.privacyItem}>
+              <span style={styles.privacyLabel}>Anonymity</span>
+              <p style={styles.privacyText}>{getAnonymityDescription(conversation.anonymity_level)}</p>
+            </div>
+            <div style={{ ...styles.privacyItem, marginBottom: 0 }}>
+              <span style={styles.privacyLabel}>Results Access</span>
+              <p style={styles.privacyText}>{getResultsAccessDescription(conversation.results_access)}</p>
+            </div>
           </div>
-          <div style={styles.privacyItem}>
-            <span style={styles.privacyLabel}>Anonymity</span>
-            <p style={styles.privacyText}>{getAnonymityDescription(conversation.anonymity_level)}</p>
-          </div>
-          <div style={{ ...styles.privacyItem, marginBottom: 0 }}>
-            <span style={styles.privacyLabel}>Results Access</span>
-            <p style={styles.privacyText}>{getResultsAccessDescription(conversation.results_access)}</p>
-          </div>
-        </div>
+        )}
 
-        {/* Questions */}
-        {questions.map((question, index) => (
-          <div key={question.id} style={styles.questionCard}>
-            <div style={styles.questionNumber}>Question {index + 1} of {questions.length}</div>
-            <h3 style={styles.questionText}>
-              {question.question_text}
-              {question.is_required && <span style={styles.questionRequired}>*</span>}
-            </h3>
+        {/* Questions Form */}
+        <form onSubmit={handlePreviewSubmit}>
+          {questions.map((question, index) => {
+            const response = responses.find((r) => r.question_id === question.id);
 
-            {question.question_type === 'text' && (
-              <textarea
-                style={styles.textarea}
-                placeholder="Participants will type their response here..."
-                disabled
-              />
-            )}
+            return (
+              <div key={question.id} style={styles.questionCard}>
+                <div style={styles.questionNumber}>Question {index + 1} of {questions.length}</div>
+                <h3 style={styles.questionText}>
+                  {question.question_text}
+                  {question.is_required && <span style={styles.questionRequired}>*</span>}
+                </h3>
 
-            {question.question_type === 'rating' && (
-              <div style={styles.ratingContainer}>
-                {Array.from({ length: (question.options?.max || 5) - (question.options?.min || 1) + 1 }, (_, i) => (
-                  <button
-                    key={i}
-                    style={styles.ratingButton}
-                    disabled
-                  >
-                    {(question.options?.min || 1) + i}
-                  </button>
-                ))}
-              </div>
-            )}
+                {question.question_type === 'text' && (
+                  <textarea
+                    style={styles.textarea}
+                    placeholder="Type your response here..."
+                    value={response?.response_text || ''}
+                    onChange={(e) => updateResponse(question.id, e.target.value)}
+                  />
+                )}
 
-            {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && (
-              <div>
-                {question.options?.choices?.map((choice, choiceIndex: number) => (
-                  <div key={choice.id || choiceIndex} style={styles.choiceOption}>
-                    <input
-                      type={question.question_type === 'single_choice' ? 'radio' : 'checkbox'}
-                      disabled
-                      style={{ width: '18px', height: '18px' }}
-                    />
-                    <span>{choice.label}</span>
+                {question.question_type === 'rating' && (
+                  <div style={styles.ratingContainer}>
+                    {Array.from({ length: (question.options?.max || 5) - (question.options?.min || 1) + 1 }, (_, i) => {
+                      const value = (question.options?.min || 1) + i;
+                      const isSelected = response?.response_data?.rating === value;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          style={{
+                            ...styles.ratingButton,
+                            ...(isSelected ? styles.ratingButtonSelected : {}),
+                          }}
+                          onClick={() => updateRatingResponse(question.id, value)}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+                )}
 
-        {/* Submit Button (Disabled) */}
-        <button style={styles.submitButton} disabled>
-          Submit Response (Disabled in Preview)
-        </button>
+                {question.question_type === 'single_choice' && (
+                  <div>
+                    {question.options?.choices?.map((choice, choiceIndex: number) => {
+                      const isSelected = response?.response_data?.selected === choice.id;
+                      return (
+                        <div
+                          key={choice.id || choiceIndex}
+                          style={{
+                            ...styles.choiceOption,
+                            backgroundColor: isSelected ? 'var(--color-primary-100)' : 'var(--color-primary-50)',
+                            borderColor: isSelected ? 'var(--color-primary-400)' : 'var(--color-primary-200)',
+                          }}
+                          onClick={() => updatePollResponse(question.id, choice.id)}
+                        >
+                          <input
+                            type="radio"
+                            checked={isSelected}
+                            onChange={() => updatePollResponse(question.id, choice.id)}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
+                          />
+                          <span>{choice.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {question.question_type === 'multiple_choice' && (
+                  <div>
+                    {question.options?.choices?.map((choice, choiceIndex: number) => {
+                      const selectedArray = (response?.response_data?.selected as string[]) || [];
+                      const isSelected = selectedArray.includes(choice.id);
+                      return (
+                        <div
+                          key={choice.id || choiceIndex}
+                          style={{
+                            ...styles.choiceOption,
+                            backgroundColor: isSelected ? 'var(--color-primary-100)' : 'var(--color-primary-50)',
+                            borderColor: isSelected ? 'var(--color-primary-400)' : 'var(--color-primary-200)',
+                          }}
+                          onClick={() => {
+                            const newSelected = isSelected
+                              ? selectedArray.filter(id => id !== choice.id)
+                              : [...selectedArray, choice.id];
+                            updatePollResponse(question.id, newSelected);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              const newSelected = isSelected
+                                ? selectedArray.filter(id => id !== choice.id)
+                                : [...selectedArray, choice.id];
+                              updatePollResponse(question.id, newSelected);
+                            }}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
+                          />
+                          <span>{choice.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Submit Button */}
+          <button type="submit" style={styles.submitButton}>
+            Submit Response
+          </button>
+        </form>
       </div>
     </div>
   );
