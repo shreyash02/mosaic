@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Announcement } from '../types';
 import { typography, spacing, borders } from '../styles';
+import { MegaphoneIcon } from './icons';
 
 interface Props {
   announcements: Announcement[];
@@ -11,8 +12,8 @@ const styles = {
     marginBottom: spacing[5],
   },
   banner: {
-    backgroundColor: 'var(--color-warning-light)',
-    borderLeft: '4px solid var(--color-warning)',
+    backgroundColor: 'var(--color-info-light)',
+    borderLeft: '4px solid var(--color-info)',
     borderRadius: `0 ${borders.radius.md} ${borders.radius.md} 0`,
     padding: spacing[4],
     marginBottom: spacing[3],
@@ -32,7 +33,8 @@ const styles = {
     gap: spacing[2],
   },
   icon: {
-    fontSize: typography.fontSize.base,
+    flexShrink: 0,
+    color: 'var(--color-info-text)',
   },
   message: {
     fontSize: typography.fontSize.sm,
@@ -77,8 +79,10 @@ export default function AnnouncementBanner({ announcements }: Props) {
   }
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, {
+    // Backend stores dates in UTC without timezone suffix, so we need to parse as UTC
+    const utcDateStr = dateStr.endsWith('Z') ? dateStr : `${dateStr}Z`;
+    const date = new Date(utcDateStr);
+    return date.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -97,7 +101,9 @@ export default function AnnouncementBanner({ announcements }: Props) {
         <div key={announcement.id} style={styles.banner}>
           <div style={styles.header}>
             <span style={styles.title}>
-              <span style={styles.icon}>&#128227;</span>
+              <span style={styles.icon}>
+                <MegaphoneIcon size={16} />
+              </span>
               Announcement from the creator
             </span>
           </div>

@@ -1,7 +1,7 @@
 """Reminder routes for managing conversation reminders."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -139,23 +139,30 @@ async def create_reminder(
 
     # Validate scheduled time
     if is_scheduled:
-        if request.scheduled_at <= datetime.utcnow():
+        # Make scheduled_at naive (UTC) for comparison
+        scheduled_at_utc = request.scheduled_at.replace(tzinfo=None) if request.scheduled_at.tzinfo else request.scheduled_at
+        if scheduled_at_utc <= datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Scheduled time must be in the future",
             )
         # Don't allow scheduling past conversation close time
-        if conversation.auto_close_at and request.scheduled_at >= conversation.auto_close_at:
+        if conversation.auto_close_at and scheduled_at_utc >= conversation.auto_close_at:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Scheduled time must be before conversation closes",
             )
 
     # Create reminder record
+    # Store scheduled_at as naive UTC
+    stored_scheduled_at = None
+    if is_scheduled:
+        stored_scheduled_at = request.scheduled_at.replace(tzinfo=None) if request.scheduled_at.tzinfo else request.scheduled_at
+
     reminder = ConversationReminder(
         conversation_id=conversation_id,
         reminder_type=reminder_type,
-        scheduled_at=request.scheduled_at,
+        scheduled_at=stored_scheduled_at,
         status="pending",
         created_by_id=current_user.id,
         created_at=datetime.utcnow(),

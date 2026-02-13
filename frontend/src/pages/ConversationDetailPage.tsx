@@ -13,6 +13,7 @@ import ContextualHint, { InlineHint } from '../components/ContextualHint';
 import { useOnboarding } from '../hooks/useOnboarding';
 import ReminderManager from '../components/ReminderManager';
 import AnnouncementManager from '../components/AnnouncementManager';
+import CollapsibleSection from '../components/CollapsibleSection';
 
 // Design tokens based styles
 const s = {
@@ -1513,9 +1514,94 @@ export default function ConversationDetailPage() {
 
         {/* Sidebar */}
         <div style={s.sidebar}>
+          {/* Details Card - Now at the top */}
+          <CollapsibleSection title="Details" defaultExpanded={true}>
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Anonymity</span>
+              <span style={s.infoValue}>{formatAnonymityLevel(conversation.anonymity_level)}</span>
+            </div>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Results Access</span>
+              <span style={s.infoValue}>{formatResultsAccess(conversation.results_access)}</span>
+            </div>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Verbatim</span>
+              <span style={s.infoValue}>{conversation.show_verbatim_responses ? 'Visible' : 'Hidden'}</span>
+            </div>
+
+            <div style={s.infoItem}>
+              <span style={s.infoLabel}>Created</span>
+              <span style={s.infoValue}>{formatDate(conversation.created_at, conversation.timezone)}</span>
+            </div>
+
+            {conversation.activated_at && (
+              <div style={s.infoItem}>
+                <span style={s.infoLabel}>Activated</span>
+                <span style={s.infoValue}>{formatDate(conversation.activated_at, conversation.timezone)}</span>
+              </div>
+            )}
+
+            {conversation.closed_at && (
+              <div style={s.infoItem}>
+                <span style={s.infoLabel}>Closed</span>
+                <span style={s.infoValue}>{formatDate(conversation.closed_at, conversation.timezone)}</span>
+              </div>
+            )}
+
+            {conversation.is_continuous && (
+              <>
+                <div style={s.infoItem}>
+                  <span style={s.infoLabel}>Analysis</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                    <span style={s.infoValue}>
+                      {conversation.analysis_interval?.charAt(0).toUpperCase()}
+                      {conversation.analysis_interval?.slice(1)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedAnalysisInterval(conversation.analysis_interval || 'weekly');
+                        setShowAnalysisScheduleModal(true);
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+                {conversation.next_analysis_at && (
+                  <div style={s.infoItem}>
+                    <span style={s.infoLabel}>Next Analysis</span>
+                    <span style={s.infoValue}>{formatDate(conversation.next_analysis_at, conversation.timezone)}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div style={merge(s.infoItem, s.infoItemLast)}>
+              <span style={s.infoLabel}>Collection</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                <span style={s.infoValue}>
+                  {conversation.series_id
+                    ? seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown'
+                    : 'None'}
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedSeriesId(conversation.series_id || '');
+                    setShowSeriesModal(true);
+                  }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          </CollapsibleSection>
+
           {/* Share Card */}
-          <div style={s.card}>
-            <h2 style={s.cardTitle}>Share</h2>
+          <CollapsibleSection title="Share" defaultExpanded={true}>
             {/* Contextual hint for sharing */}
             <InlineHint
               hintId="share-conversation-link"
@@ -1649,7 +1735,7 @@ export default function ConversationDetailPage() {
                 </Link>
               </div>
             )}
-          </div>
+          </CollapsibleSection>
 
           {/* Reminders Card (invite-only conversations) */}
           {conversation.invite_only && (
@@ -1664,94 +1750,6 @@ export default function ConversationDetailPage() {
             conversationId={conversation.id}
             isActive={conversation.state === ConversationState.ACTIVE}
           />
-
-          {/* Details Card */}
-          <div style={s.card}>
-            <h2 style={s.cardTitle}>Details</h2>
-
-            <div style={s.infoItem}>
-              <span style={s.infoLabel}>Anonymity</span>
-              <span style={s.infoValue}>{formatAnonymityLevel(conversation.anonymity_level)}</span>
-            </div>
-
-            <div style={s.infoItem}>
-              <span style={s.infoLabel}>Results Access</span>
-              <span style={s.infoValue}>{formatResultsAccess(conversation.results_access)}</span>
-            </div>
-
-            <div style={s.infoItem}>
-              <span style={s.infoLabel}>Verbatim</span>
-              <span style={s.infoValue}>{conversation.show_verbatim_responses ? 'Visible' : 'Hidden'}</span>
-            </div>
-
-            <div style={s.infoItem}>
-              <span style={s.infoLabel}>Created</span>
-              <span style={s.infoValue}>{formatDate(conversation.created_at, conversation.timezone)}</span>
-            </div>
-
-            {conversation.activated_at && (
-              <div style={s.infoItem}>
-                <span style={s.infoLabel}>Activated</span>
-                <span style={s.infoValue}>{formatDate(conversation.activated_at, conversation.timezone)}</span>
-              </div>
-            )}
-
-            {conversation.closed_at && (
-              <div style={s.infoItem}>
-                <span style={s.infoLabel}>Closed</span>
-                <span style={s.infoValue}>{formatDate(conversation.closed_at, conversation.timezone)}</span>
-              </div>
-            )}
-
-            {conversation.is_continuous && (
-              <>
-                <div style={s.infoItem}>
-                  <span style={s.infoLabel}>Analysis</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                    <span style={s.infoValue}>
-                      {conversation.analysis_interval?.charAt(0).toUpperCase()}
-                      {conversation.analysis_interval?.slice(1)}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSelectedAnalysisInterval(conversation.analysis_interval || 'weekly');
-                        setShowAnalysisScheduleModal(true);
-                      }}
-                      style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </div>
-                {conversation.next_analysis_at && (
-                  <div style={s.infoItem}>
-                    <span style={s.infoLabel}>Next Analysis</span>
-                    <span style={s.infoValue}>{formatDate(conversation.next_analysis_at, conversation.timezone)}</span>
-                  </div>
-                )}
-              </>
-            )}
-
-            <div style={merge(s.infoItem, s.infoItemLast)}>
-              <span style={s.infoLabel}>Collection</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <span style={s.infoValue}>
-                  {conversation.series_id
-                    ? seriesList.find(s => s.id === conversation.series_id)?.name || 'Unknown'
-                    : 'None'}
-                </span>
-                <button
-                  onClick={() => {
-                    setSelectedSeriesId(conversation.series_id || '');
-                    setShowSeriesModal(true);
-                  }}
-                  style={{ background: 'none', border: 'none', color: 'var(--color-primary-600)', cursor: 'pointer', fontSize: typography.fontSize.xs, textDecoration: 'underline' }}
-                >
-                  Change
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

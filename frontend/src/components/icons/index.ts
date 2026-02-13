@@ -21,4 +21,4 @@ export { default as ChatBubbleIcon } from './ChatBubbleIcon';
 export { default as StarRatingIcon } from './StarRatingIcon';
 export { default as CheckCircleIcon } from './CheckCircleIcon';
 export { default as CheckListIcon } from './CheckListIcon';
-
+export { default as MegaphoneIcon } from './MegaphoneIcon';

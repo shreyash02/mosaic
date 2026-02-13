@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import type { Announcement } from '../types';
 import { typography, spacing, borders } from '../styles';
+import CollapsibleSection from './CollapsibleSection';
+import { getErrorMessage } from '../utils/errorMessages';
+import { formatDate } from '../utils/formatting';
 
 interface Props {
   conversationId: string;
@@ -9,23 +12,6 @@ interface Props {
 }
 
 const styles = {
-  container: {
-    backgroundColor: 'var(--color-primary-50)',
-    border: '1px solid var(--color-primary-300)',
-    borderRadius: borders.radius.lg,
-    padding: spacing[5],
-  },
-  title: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: 'var(--color-primary-900)',
-    marginBottom: spacing[4],
-    paddingBottom: spacing[3],
-    borderBottom: '1px solid var(--color-primary-200)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   form: {
     marginBottom: spacing[4],
   },
@@ -79,8 +65,8 @@ const styles = {
   },
   announcementItem: {
     padding: spacing[4],
-    backgroundColor: 'var(--color-warning-light)',
-    borderLeft: '4px solid var(--color-warning)',
+    backgroundColor: 'var(--color-primary-100)',
+    borderLeft: '4px solid var(--color-primary-400)',
     borderRadius: `0 ${borders.radius.md} ${borders.radius.md} 0`,
     marginBottom: spacing[3],
   },
@@ -102,16 +88,32 @@ const styles = {
     fontSize: typography.fontSize.sm,
     marginTop: spacing[2],
   },
-  success: {
-    color: 'var(--color-success)',
+  successToast: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: 'var(--color-success-light)',
+    border: '1px solid var(--color-success)',
+    color: 'var(--color-success-text)',
+    padding: spacing[3],
+    borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
-    marginTop: spacing[2],
+    marginTop: spacing[3],
   },
   noData: {
     fontSize: typography.fontSize.sm,
     color: 'var(--color-primary-500)',
     fontStyle: 'italic',
     padding: `${spacing[3]} 0`,
+  },
+  historyTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-700)',
+    marginTop: spacing[5],
+    marginBottom: spacing[3],
+    paddingTop: spacing[4],
+    borderTop: '1px solid var(--color-primary-200)',
   },
 };
 
@@ -141,6 +143,14 @@ export default function AnnouncementManager({ conversationId, isActive }: Props)
     loadAnnouncements();
   }, [loadAnnouncements]);
 
+  // Auto-dismiss success message after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const handleSend = async () => {
     if (!message.trim()) {
       setError('Please enter a message');
@@ -161,14 +171,10 @@ export default function AnnouncementManager({ conversationId, isActive }: Props)
       setMessage('');
       await loadAnnouncements();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send announcement');
+      setError(getErrorMessage(err, 'send the announcement'));
     } finally {
       setSending(false);
     }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
   };
 
   const getCharCountStyle = () => {
@@ -181,86 +187,100 @@ export default function AnnouncementManager({ conversationId, isActive }: Props)
     return styles.charCount;
   };
 
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.title}>Announcements</div>
-        <div style={styles.noData}>Loading...</div>
-      </div>
-    );
-  }
+  // Badge showing announcements count
+  const badge = announcements.length > 0 ? (
+    <span style={{
+      fontSize: typography.fontSize.xs,
+      backgroundColor: 'var(--color-primary-200)',
+      color: 'var(--color-primary-700)',
+      padding: `${spacing[1]} ${spacing[2]}`,
+      borderRadius: borders.radius.full,
+      fontWeight: typography.fontWeight.medium,
+    }}>
+      {announcements.length}
+    </span>
+  ) : null;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.title}>
-        <span>Announcements</span>
-      </div>
-
-      {isActive && (
-        <div style={styles.form}>
-          <textarea
-            style={styles.textarea}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Write an announcement to share with participants..."
-            maxLength={MAX_MESSAGE_LENGTH + 100}
-          />
-          <div style={getCharCountStyle()}>
-            {message.length} / {MAX_MESSAGE_LENGTH}
-          </div>
-          <div style={styles.buttonRow}>
-            <button
-              style={{
-                ...styles.buttonPrimary,
-                ...(sending || !message.trim() || message.length > MAX_MESSAGE_LENGTH
-                  ? styles.buttonDisabled
-                  : {}),
-              }}
-              onClick={handleSend}
-              disabled={sending || !message.trim() || message.length > MAX_MESSAGE_LENGTH}
-            >
-              {sending ? 'Sending...' : 'Send Announcement'}
-            </button>
-          </div>
-          {error && <div style={styles.error}>{error}</div>}
-          {success && <div style={styles.success}>{success}</div>}
-        </div>
-      )}
-
-      {!isActive && (
-        <div style={styles.noData}>
-          Announcements can only be sent for active conversations.
-        </div>
-      )}
-
-      {announcements.length > 0 && (
-        <div style={styles.announcementList}>
-          <div style={{ ...styles.title, marginTop: isActive ? spacing[4] : 0 }}>
-            Past Announcements
-          </div>
-          {announcements.map((announcement) => (
-            <div key={announcement.id} style={styles.announcementItem}>
-              <div style={styles.announcementMessage}>
-                {announcement.message}
+    <CollapsibleSection title="Announcements" defaultExpanded={true} badge={badge}>
+      {loading ? (
+        <div style={styles.noData}>Loading...</div>
+      ) : (
+        <>
+          {isActive && (
+            <div style={styles.form}>
+              <textarea
+                style={styles.textarea}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Write an announcement to share with participants..."
+                maxLength={MAX_MESSAGE_LENGTH + 100}
+              />
+              <div style={getCharCountStyle()}>
+                {message.length} / {MAX_MESSAGE_LENGTH}
               </div>
-              <div style={styles.announcementMeta}>
-                <span>
-                  {announcement.sent_at
-                    ? formatDate(announcement.sent_at)
-                    : formatDate(announcement.created_at)}
-                </span>
-                <span>Sent to {announcement.recipients_count} participant(s)</span>
+              <div style={styles.buttonRow}>
+                <button
+                  style={{
+                    ...styles.buttonPrimary,
+                    ...(sending || !message.trim() || message.length > MAX_MESSAGE_LENGTH
+                      ? styles.buttonDisabled
+                      : {}),
+                  }}
+                  onClick={handleSend}
+                  disabled={sending || !message.trim() || message.length > MAX_MESSAGE_LENGTH}
+                >
+                  {sending ? 'Sending...' : 'Send Announcement'}
+                </button>
               </div>
+              {error && <div style={styles.error}>{error}</div>}
+              {success && (
+                <div style={styles.successToast}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {success}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {announcements.length === 0 && isActive && (
-        <div style={styles.noData}>
-          No announcements yet. Use the form above to send one.
-        </div>
+          {!isActive && (
+            <div style={styles.noData}>
+              Announcements can only be sent for active conversations.
+            </div>
+          )}
+
+          {announcements.length > 0 && (
+            <div style={styles.announcementList}>
+              <div style={styles.historyTitle}>
+                Past Announcements
+              </div>
+              {announcements.map((announcement) => (
+                <div key={announcement.id} style={styles.announcementItem}>
+                  <div style={styles.announcementMessage}>
+                    {announcement.message}
+                  </div>
+                  <div style={styles.announcementMeta}>
+                    <span>
+                      {announcement.sent_at
+                        ? formatDate(announcement.sent_at)
+                        : formatDate(announcement.created_at)}
+                    </span>
+                    <span>Sent to {announcement.recipients_count} participant(s)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {announcements.length === 0 && isActive && (
+            <div style={styles.noData}>
+              No announcements yet. Use the form above to send one.
+            </div>
+          )}
+        </>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }

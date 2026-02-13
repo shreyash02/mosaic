@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import type { Reminder, NonRespondersCount } from '../types';
 import { typography, spacing, borders } from '../styles';
 import DateTimePicker from './DateTimePicker';
+import CollapsibleSection from './CollapsibleSection';
+import { getErrorMessage } from '../utils/errorMessages';
+import { formatDate } from '../utils/formatting';
 
 interface Props {
   conversationId: string;
@@ -10,23 +13,6 @@ interface Props {
 }
 
 const styles = {
-  container: {
-    backgroundColor: 'var(--color-primary-50)',
-    border: '1px solid var(--color-primary-300)',
-    borderRadius: borders.radius.lg,
-    padding: spacing[5],
-  },
-  title: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: 'var(--color-primary-900)',
-    marginBottom: spacing[4],
-    paddingBottom: spacing[3],
-    borderBottom: '1px solid var(--color-primary-200)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   statsRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -146,16 +132,55 @@ const styles = {
     fontSize: typography.fontSize.sm,
     marginTop: spacing[2],
   },
-  success: {
-    color: 'var(--color-success)',
+  successToast: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: 'var(--color-success-light)',
+    border: '1px solid var(--color-success)',
+    color: 'var(--color-success-text)',
+    padding: spacing[3],
+    borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
-    marginTop: spacing[2],
+    marginTop: spacing[3],
   },
   noData: {
     fontSize: typography.fontSize.sm,
     color: 'var(--color-primary-500)',
     fontStyle: 'italic',
     padding: `${spacing[3]} 0`,
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: `${spacing[6]} ${spacing[4]}`,
+  },
+  emptyIcon: {
+    width: '48px',
+    height: '48px',
+    margin: '0 auto',
+    marginBottom: spacing[3],
+    color: 'var(--color-primary-300)',
+  },
+  emptyTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-700)',
+    marginBottom: spacing[2],
+  },
+  emptyText: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    marginBottom: spacing[4],
+    lineHeight: '1.5',
+  },
+  historyTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-700)',
+    marginTop: spacing[5],
+    marginBottom: spacing[3],
+    paddingTop: spacing[4],
+    borderTop: '1px solid var(--color-primary-200)',
   },
 };
 
@@ -189,6 +214,14 @@ export default function ReminderManager({ conversationId, isActive }: Props) {
     loadData();
   }, [loadData]);
 
+  // Auto-dismiss success message after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const handleSendNow = async () => {
     if (!nonRespondersCount || nonRespondersCount.non_responders === 0) return;
 
@@ -200,7 +233,7 @@ export default function ReminderManager({ conversationId, isActive }: Props) {
       setSuccess('Reminder sent successfully!');
       await loadData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send reminder');
+      setError(getErrorMessage(err, 'send the reminder'));
     } finally {
       setSending(false);
     }
@@ -222,7 +255,7 @@ export default function ReminderManager({ conversationId, isActive }: Props) {
       setScheduledDate('');
       await loadData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to schedule reminder');
+      setError(getErrorMessage(err, 'schedule the reminder'));
     } finally {
       setSending(false);
     }
@@ -235,10 +268,6 @@ export default function ReminderManager({ conversationId, isActive }: Props) {
     } catch (err) {
       console.error('Failed to cancel reminder:', err);
     }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
   };
 
   const getStatusStyle = (status: string) => {
@@ -254,129 +283,194 @@ export default function ReminderManager({ conversationId, isActive }: Props) {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.title}>Reminders</div>
-        <div style={styles.noData}>Loading...</div>
-      </div>
-    );
-  }
+  const hasReminders = reminders.length > 0;
+  const hasNonResponders = nonRespondersCount && nonRespondersCount.non_responders > 0;
+  const showEmptyState = !loading && !hasReminders && isActive && !showScheduleForm;
+
+  // Badge showing pending reminders count
+  const pendingCount = reminders.filter(r => r.status === 'pending').length;
+  const badge = pendingCount > 0 ? (
+    <span style={{
+      fontSize: typography.fontSize.xs,
+      backgroundColor: 'var(--color-warning-light)',
+      color: 'var(--color-warning-text)',
+      padding: `${spacing[1]} ${spacing[2]}`,
+      borderRadius: borders.radius.full,
+      fontWeight: typography.fontWeight.medium,
+    }}>
+      {pendingCount} scheduled
+    </span>
+  ) : null;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.title}>
-        <span>Reminders</span>
-      </div>
-
-      {nonRespondersCount && (
+    <CollapsibleSection title="Reminders" defaultExpanded={true} badge={badge}>
+      {loading ? (
+        <div style={styles.noData}>Loading...</div>
+      ) : (
         <>
-          <div style={styles.statsRow}>
-            <span style={styles.statLabel}>Total invited</span>
-            <span style={styles.statValue}>{nonRespondersCount.total_invitations}</span>
-          </div>
-          <div style={styles.statsRow}>
-            <span style={styles.statLabel}>Responded</span>
-            <span style={styles.statValue}>{nonRespondersCount.responded}</span>
-          </div>
-          <div style={{ ...styles.statsRow, borderBottom: 'none' }}>
-            <span style={styles.statLabel}>Not responded</span>
-            <span style={styles.statValue}>{nonRespondersCount.non_responders}</span>
-          </div>
+          {/* Empty state when no reminders have been set up */}
+          {showEmptyState && !hasNonResponders && (
+            <div style={styles.emptyState}>
+              <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <div style={styles.emptyTitle}>No reminders yet</div>
+              <div style={styles.emptyText}>
+                All participants have responded. You can send reminders when new non-responders appear.
+              </div>
+            </div>
+          )}
+
+          {showEmptyState && hasNonResponders && (
+            <div style={styles.emptyState}>
+              <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <div style={styles.emptyTitle}>No reminders sent yet</div>
+              <div style={styles.emptyText}>
+                Send a reminder to {nonRespondersCount?.non_responders} participant{nonRespondersCount?.non_responders !== 1 ? 's' : ''} who haven't responded yet.
+              </div>
+              <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  style={{
+                    ...styles.buttonPrimary,
+                    ...(sending ? styles.buttonDisabled : {}),
+                  }}
+                  onClick={handleSendNow}
+                  disabled={sending}
+                >
+                  {sending ? 'Sending...' : 'Send Now'}
+                </button>
+                <button
+                  style={styles.buttonSecondary}
+                  onClick={() => setShowScheduleForm(true)}
+                >
+                  Schedule
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stats and actions when we have data or reminders */}
+          {!showEmptyState && nonRespondersCount && (
+            <>
+              <div style={styles.statsRow}>
+                <span style={styles.statLabel}>Total invited</span>
+                <span style={styles.statValue}>{nonRespondersCount.total_invitations}</span>
+              </div>
+              <div style={styles.statsRow}>
+                <span style={styles.statLabel}>Responded</span>
+                <span style={styles.statValue}>{nonRespondersCount.responded}</span>
+              </div>
+              <div style={{ ...styles.statsRow, borderBottom: 'none' }}>
+                <span style={styles.statLabel}>Not responded</span>
+                <span style={styles.statValue}>{nonRespondersCount.non_responders}</span>
+              </div>
+
+              {isActive && hasNonResponders && (
+                <div style={styles.buttonRow}>
+                  <button
+                    style={{
+                      ...styles.buttonPrimary,
+                      ...(sending ? styles.buttonDisabled : {}),
+                    }}
+                    onClick={handleSendNow}
+                    disabled={sending}
+                  >
+                    {sending ? 'Sending...' : 'Send Reminder Now'}
+                  </button>
+                  <button
+                    style={styles.buttonSecondary}
+                    onClick={() => setShowScheduleForm(!showScheduleForm)}
+                  >
+                    {showScheduleForm ? 'Cancel' : 'Schedule Reminder'}
+                  </button>
+                </div>
+              )}
+
+              {isActive && !hasNonResponders && (
+                <div style={styles.noData}>
+                  All invited participants have responded.
+                </div>
+              )}
+            </>
+          )}
+
+          {showScheduleForm && (
+            <div style={styles.scheduleForm}>
+              <label style={styles.scheduleLabel}>Schedule for:</label>
+              <DateTimePicker
+                value={scheduledDate}
+                onChange={setScheduledDate}
+                min={new Date().toISOString().slice(0, 16)}
+              />
+              <div style={{ marginTop: spacing[3] }}>
+                <button
+                  style={{
+                    ...styles.buttonPrimary,
+                    ...(sending ? styles.buttonDisabled : {}),
+                  }}
+                  onClick={handleSchedule}
+                  disabled={sending}
+                >
+                  {sending ? 'Scheduling...' : 'Schedule'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {error && <div style={styles.error}>{error}</div>}
+          {success && (
+            <div style={styles.successToast}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {success}
+            </div>
+          )}
+
+          {hasReminders && (
+            <div style={styles.reminderList}>
+              <div style={styles.historyTitle}>History</div>
+              {reminders.map((reminder) => (
+                <div key={reminder.id} style={styles.reminderItem}>
+                  <div style={styles.reminderInfo}>
+                    <div style={styles.reminderType}>
+                      {reminder.reminder_type === 'scheduled' ? 'Scheduled' : 'Immediate'}
+                    </div>
+                    <div style={styles.reminderDate}>
+                      {reminder.status === 'sent' && reminder.sent_at
+                        ? `Sent ${formatDate(reminder.sent_at)} to ${reminder.recipients_count} participant(s)`
+                        : reminder.scheduled_at
+                        ? `Scheduled for ${formatDate(reminder.scheduled_at)}`
+                        : `Created ${formatDate(reminder.created_at)}`}
+                    </div>
+                  </div>
+                  <span style={getStatusStyle(reminder.status)}>
+                    {reminder.status}
+                  </span>
+                  {reminder.status === 'pending' && reminder.reminder_type === 'scheduled' && (
+                    <button
+                      style={styles.cancelButton}
+                      onClick={() => handleCancel(reminder.id)}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!isActive && (
+            <div style={styles.noData}>
+              Reminders can only be sent for active conversations.
+            </div>
+          )}
         </>
       )}
-
-      {isActive && nonRespondersCount && nonRespondersCount.non_responders > 0 && (
-        <div style={styles.buttonRow}>
-          <button
-            style={{
-              ...styles.buttonPrimary,
-              ...(sending ? styles.buttonDisabled : {}),
-            }}
-            onClick={handleSendNow}
-            disabled={sending}
-          >
-            {sending ? 'Sending...' : 'Send Reminder Now'}
-          </button>
-          <button
-            style={styles.buttonSecondary}
-            onClick={() => setShowScheduleForm(!showScheduleForm)}
-          >
-            {showScheduleForm ? 'Cancel' : 'Schedule Reminder'}
-          </button>
-        </div>
-      )}
-
-      {showScheduleForm && (
-        <div style={styles.scheduleForm}>
-          <label style={styles.scheduleLabel}>Schedule for:</label>
-          <DateTimePicker
-            value={scheduledDate}
-            onChange={setScheduledDate}
-            min={new Date().toISOString().slice(0, 16)}
-          />
-          <div style={{ marginTop: spacing[3] }}>
-            <button
-              style={{
-                ...styles.buttonPrimary,
-                ...(sending ? styles.buttonDisabled : {}),
-              }}
-              onClick={handleSchedule}
-              disabled={sending}
-            >
-              {sending ? 'Scheduling...' : 'Schedule'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {error && <div style={styles.error}>{error}</div>}
-      {success && <div style={styles.success}>{success}</div>}
-
-      {reminders.length > 0 && (
-        <div style={styles.reminderList}>
-          <div style={{ ...styles.title, marginTop: spacing[4] }}>History</div>
-          {reminders.map((reminder) => (
-            <div key={reminder.id} style={styles.reminderItem}>
-              <div style={styles.reminderInfo}>
-                <div style={styles.reminderType}>
-                  {reminder.reminder_type === 'scheduled' ? 'Scheduled' : 'Immediate'}
-                </div>
-                <div style={styles.reminderDate}>
-                  {reminder.status === 'sent' && reminder.sent_at
-                    ? `Sent ${formatDate(reminder.sent_at)} to ${reminder.recipients_count} participant(s)`
-                    : reminder.scheduled_at
-                    ? `Scheduled for ${formatDate(reminder.scheduled_at)}`
-                    : `Created ${formatDate(reminder.created_at)}`}
-                </div>
-              </div>
-              <span style={getStatusStyle(reminder.status)}>
-                {reminder.status}
-              </span>
-              {reminder.status === 'pending' && reminder.reminder_type === 'scheduled' && (
-                <button
-                  style={styles.cancelButton}
-                  onClick={() => handleCancel(reminder.id)}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!isActive && (
-        <div style={styles.noData}>
-          Reminders can only be sent for active conversations.
-        </div>
-      )}
-
-      {isActive && nonRespondersCount && nonRespondersCount.non_responders === 0 && (
-        <div style={styles.noData}>
-          All invited participants have responded.
-        </div>
-      )}
-    </div>
+    </CollapsibleSection>
   );
 }
