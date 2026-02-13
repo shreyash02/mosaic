@@ -1629,6 +1629,12 @@ export default function ConversationDetailPage() {
                 >
                   QR Code
                 </button>
+                <button
+                  onClick={() => navigate(`/preview/${conversation.access_code}`)}
+                  style={s.buttonSecondary}
+                >
+                  Preview
+                </button>
               </div>
             </div>
 

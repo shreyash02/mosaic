@@ -335,6 +335,13 @@ class ApiService {
     return response.data;
   }
 
+  async getConversationPreview(accessCode: string): Promise<Conversation> {
+    const response = await this.client.get<Conversation>(
+      `/conversations/preview/${accessCode}`
+    );
+    return response.data;
+  }
+
   async checkUserResponse(accessCode: string): Promise<ResponseCheck> {
     const response = await this.client.get<ResponseCheck>(
       `/conversations/${accessCode}/responses/check`

@@ -31,6 +31,7 @@ import ReviewStep from './pages/create/ReviewStep';
 import ConversationDetailPage from './pages/ConversationDetailPage';
 import ManageInvitationsPage from './pages/ManageInvitationsPage';
 import JoinPage from './pages/JoinPage';
+import PreviewPage from './pages/PreviewPage';
 import AnalysisPage from './pages/AnalysisPage';
 import PeriodicAnalysisPage from './pages/PeriodicAnalysisPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
@@ -89,6 +90,14 @@ function App() {
             <Route path="/auth/callback" element={<LoginPage />} />
             <Route path="/join/:accessCode" element={<JoinPage />} />
             <Route path="/join" element={<JoinPage />} />
+            <Route
+              path="/preview/:accessCode"
+              element={
+                <ProtectedRoute>
+                  <PreviewPage />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/dashboard"
