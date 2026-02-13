@@ -712,7 +712,26 @@ async def get_conversation_by_code(
     # Check access based on anonymity level
     if conversation.anonymity_level == AnonymityLevel.OPEN.value:
         # OPEN: Anyone with the link can access, no auth required
-        pass
+        # EXCEPTION: invite_only requires login to verify invitation
+        if conversation.invite_only:
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required for invite-only conversations"
+                )
+            # Check if user was invited
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                or_(
+                    ConversationInvitation.invited_user_id == current_user.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                )
+            ).first()
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This conversation is invite-only. You must be invited by the conversation creator to access it."
+                )
 
     elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
         # FULLY_ANONYMOUS: Requires participant session (from validating secret code)

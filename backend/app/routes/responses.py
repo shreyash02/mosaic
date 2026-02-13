@@ -513,6 +513,21 @@ async def load_draft(
                 detail="Authentication required"
             )
 
+        # For invite-only conversations, verify user was invited
+        if conversation.invite_only:
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                or_(
+                    ConversationInvitation.invited_user_id == current_user.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                )
+            ).first()
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You were not invited to this conversation"
+                )
+
         drafts = db.query(Response).filter(
             Response.conversation_id == conversation.id,
             Response.participant_id == current_user.id,
@@ -598,6 +613,21 @@ async def delete_draft(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required"
             )
+
+        # For invite-only conversations, verify user was invited
+        if conversation.invite_only:
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                or_(
+                    ConversationInvitation.invited_user_id == current_user.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                )
+            ).first()
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You were not invited to this conversation"
+                )
 
         deleted = db.query(Response).filter(
             Response.conversation_id == conversation.id,
