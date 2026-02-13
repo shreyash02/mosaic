@@ -9,6 +9,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 import httpx
 
+from datetime import datetime, timedelta
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.config import settings
@@ -18,7 +20,9 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    create_password_reset_token,
 )
+from app.services.email_service import email_service
 from app.models.user import User
 from app.schemas.user import (
     UserCreate,
@@ -30,6 +34,8 @@ from app.schemas.user import (
     ProfileUpdate,
     PasswordChangeRequest,
     PasswordSetRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     EmailPreferences,
     get_email_preferences,
 )
@@ -512,3 +518,78 @@ async def update_email_preferences(
     db.commit()
     db.refresh(current_user)
     return get_email_preferences(current_user.email_preferences)
+
+
+@router.post("/password/forgot", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
+async def forgot_password(
+    request: Request,
+    forgot_data: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Request a password reset link.
+
+    Sends an email with a reset link if the email exists.
+    Always returns success to prevent email enumeration.
+    """
+    user = db.query(User).filter(User.email == forgot_data.email).first()
+
+    if user:
+        # Generate reset token
+        token = create_password_reset_token()
+        user.password_reset_token = token
+        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+
+        # Send email
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        await email_service.send_password_reset_email(
+            to_email=user.email,
+            reset_url=reset_url,
+        )
+
+    # Always return success to prevent email enumeration
+
+
+@router.post("/password/reset", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+async def reset_password(
+    request: Request,
+    reset_data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using a reset token.
+
+    Validates the token and updates the password.
+    """
+    user = db.query(User).filter(
+        User.password_reset_token == reset_data.token
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+
+    if not user.password_reset_expires or user.password_reset_expires < datetime.utcnow():
+        # Clear expired token
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+
+    # Update password and clear reset token
+    user_email = user.email  # Store email before clearing token
+    user.password_hash = get_password_hash(reset_data.new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    db.commit()
+
+    # Send confirmation email
+    await email_service.send_password_reset_confirmation_email(to_email=user_email)

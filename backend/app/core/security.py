@@ -1,5 +1,6 @@
 """Security utilities for authentication and authorization."""
 
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
@@ -114,3 +115,13 @@ def create_participant_session_token(access_code: str, participant_code: str, co
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     return encoded_jwt
+
+
+def create_password_reset_token() -> str:
+    """
+    Create a secure random token for password reset.
+
+    Returns:
+        A URL-safe random token
+    """
+    return secrets.token_urlsafe(32)

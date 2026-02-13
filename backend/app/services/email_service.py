@@ -1001,5 +1001,186 @@ If you did not expect this invitation, you can safely ignore this email.
             return False
 
 
+    async def send_password_reset_email(
+        self,
+        to_email: str,
+        reset_url: str,
+    ) -> bool:
+        """
+        Send password reset email.
+
+        Args:
+            to_email: Recipient email address
+            reset_url: URL to reset password
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping password reset to {to_email}")
+            return False
+
+        try:
+            subject = "Reset your Mosaic password"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">Reset Your Password</h2>
+                        <p style="color: #6b7280; font-size: 16px;">We received a request to reset your password. Click the button below to create a new password:</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{reset_url}"
+                               style="background-color: #1a1a2e; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Reset Password
+                            </a>
+                        </div>
+                        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">
+                                {reset_url}
+                            </p>
+                        </div>
+                        <p style="color: #6b7280; font-size: 14px;">
+                            This link will expire in 1 hour.
+                        </p>
+                        <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">
+                            If you did not request a password reset, you can safely ignore this email. Your password will not be changed.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Password reset email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+
+    async def send_password_reset_confirmation_email(
+        self,
+        to_email: str,
+    ) -> bool:
+        """
+        Send confirmation email after password has been reset.
+
+        Args:
+            to_email: Recipient email address
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping password reset confirmation to {to_email}")
+            return False
+
+        try:
+            subject = "Your Mosaic password has been reset"
+            reset_url = f"{settings.FRONTEND_URL}/forgot-password"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">Password Reset Successful</h2>
+                        <p style="color: #6b7280; font-size: 16px;">Your Mosaic password was successfully reset.</p>
+                        <p style="color: #6b7280; font-size: 16px;">If you made this change, no further action is needed.</p>
+                        <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; border-radius: 0 6px 6px 0; margin: 20px 0;">
+                            <p style="margin: 0; color: #991b1b; font-size: 14px;">
+                                <strong>Didn't make this change?</strong><br>
+                                If you did not reset your password, your account may have been compromised. Please reset your password immediately and contact us if you need assistance.
+                            </p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{reset_url}"
+                               style="background-color: #1a1a2e; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Reset Password Again
+                            </a>
+                        </div>
+                        <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">
+                            If you have any questions or concerns, please reply to this email
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Password reset confirmation email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send password reset confirmation email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+
 # Singleton instance
 email_service = EmailService()

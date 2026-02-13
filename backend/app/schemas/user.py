@@ -97,6 +97,19 @@ class PasswordSetRequest(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=100)
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Schema for requesting password reset."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Schema for resetting password with token."""
+
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
 # Email preferences
 class EmailPreferences(BaseModel):
     """User email notification preferences."""

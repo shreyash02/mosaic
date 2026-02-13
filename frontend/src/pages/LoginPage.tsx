@@ -141,6 +141,15 @@ const styles = {
     fontSize: typography.fontSize.sm,
     marginBottom: spacing[4],
   },
+  forgotPassword: {
+    textAlign: 'right' as const,
+    marginTop: spacing[1],
+  },
+  forgotPasswordLink: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-600)',
+    textDecoration: 'none',
+  },
 };
 
 const hoverStyles = `
@@ -238,6 +247,11 @@ export default function LoginPage() {
                 style={styles.input}
                 className="login-input-new"
               />
+              <div style={styles.forgotPassword}>
+                <Link to="/forgot-password" style={styles.forgotPasswordLink} className="login-link-new">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <button

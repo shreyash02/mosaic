@@ -24,6 +24,10 @@ class User(Base):
     # Default: all enabled (None means use defaults)
     email_preferences = Column(JSON, nullable=True)
 
+    # Password reset fields
+    password_reset_token = Column(String(255), nullable=True, index=True)
+    password_reset_expires = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

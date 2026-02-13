@@ -183,6 +183,14 @@ class ApiService {
     await this.client.post('/auth/password/set', data);
   }
 
+  async forgotPassword(email: string): Promise<void> {
+    await this.client.post('/auth/password/forgot', { email });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await this.client.post('/auth/password/reset', { token, new_password: newPassword });
+  }
+
   // Email preferences endpoints
   async getEmailPreferences(): Promise<EmailPreferences> {
     const response = await this.client.get<EmailPreferences>('/auth/email-preferences');
