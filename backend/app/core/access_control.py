@@ -16,10 +16,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_optional_current_user, get_participant_session
-from app.models.conversation import Conversation, ConversationState
+from app.models.conversation import Conversation
 from app.models.conversation_invitation import ConversationInvitation
 from app.models.user import User
-from app.schemas.conversation import AnonymityLevel
+from app.schemas.conversation import AnonymityLevel, ConversationState
 
 
 @dataclass
