@@ -321,6 +321,149 @@ class NotificationService:
 
         return success
 
+    async def notify_reminder(
+        self,
+        user_id: UUID,
+        conversation: Conversation,
+        db: Session,
+    ) -> bool:
+        """
+        Send Slack reminder notification to a non-responder.
+
+        Args:
+            user_id: The user to notify
+            conversation: The conversation
+            db: Database session
+
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not settings.slack_enabled:
+            return False
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            return False
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            return False
+
+        # Get the user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
+
+        # Find user's Slack ID
+        slack_user_id = await self._get_slack_user_id(
+            user=user,
+            slack_connection=slack_connection,
+            db=db,
+        )
+
+        if not slack_user_id:
+            return False
+
+        # Build the message
+        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+
+        blocks, fallback_text = slack_service.build_reminder_message(
+            conversation_title=conversation.title,
+            respond_url=respond_url,
+            closes_at=conversation.auto_close_at,
+        )
+
+        # Send the DM
+        success = await slack_service.send_dm(
+            encrypted_token=slack_connection.bot_access_token_encrypted,
+            slack_user_id=slack_user_id,
+            blocks=blocks,
+            fallback_text=fallback_text,
+        )
+
+        if success:
+            logger.info(f"Sent Slack reminder to user {user_id} for conversation {conversation.id}")
+
+        return success
+
+    async def notify_announcement(
+        self,
+        user_id: UUID,
+        conversation: Conversation,
+        message: str,
+        db: Session,
+    ) -> bool:
+        """
+        Send Slack announcement notification to a participant.
+
+        Args:
+            user_id: The user to notify
+            conversation: The conversation
+            message: The announcement message
+            db: Database session
+
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not settings.slack_enabled:
+            return False
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            return False
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            return False
+
+        # Get the user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
+
+        # Find user's Slack ID
+        slack_user_id = await self._get_slack_user_id(
+            user=user,
+            slack_connection=slack_connection,
+            db=db,
+        )
+
+        if not slack_user_id:
+            return False
+
+        # Build the message
+        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        from datetime import datetime
+        announcement_date = datetime.utcnow()
+
+        blocks, fallback_text = slack_service.build_announcement_message(
+            conversation_title=conversation.title,
+            announcement_message=message,
+            respond_url=respond_url,
+            announcement_date=announcement_date,
+        )
+
+        # Send the DM
+        success = await slack_service.send_dm(
+            encrypted_token=slack_connection.bot_access_token_encrypted,
+            slack_user_id=slack_user_id,
+            blocks=blocks,
+            fallback_text=fallback_text,
+        )
+
+        if success:
+            logger.info(f"Sent Slack announcement to user {user_id} for conversation {conversation.id}")
+
+        return success
+
     async def _get_slack_user_id(
         self,
         user: User,

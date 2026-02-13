@@ -13,6 +13,8 @@ from app.models.series import Series
 from app.models.collection_analysis import CollectionAnalysis
 from app.models.periodic_analysis import PeriodicAnalysis
 from app.models.continuous_trends import ContinuousTrends
+from app.models.conversation_reminder import ConversationReminder
+from app.models.conversation_announcement import ConversationAnnouncement
 
 __all__ = [
     "User",
@@ -29,4 +31,6 @@ __all__ = [
     "CollectionAnalysis",
     "PeriodicAnalysis",
     "ContinuousTrends",
+    "ConversationReminder",
+    "ConversationAnnouncement",
 ]

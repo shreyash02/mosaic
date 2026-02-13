@@ -11,6 +11,8 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import ContextualHint, { InlineHint } from '../components/ContextualHint';
 import { useOnboarding } from '../hooks/useOnboarding';
+import ReminderManager from '../components/ReminderManager';
+import AnnouncementManager from '../components/AnnouncementManager';
 
 // Design tokens based styles
 const s = {
@@ -1648,6 +1650,20 @@ export default function ConversationDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Reminders Card (invite-only conversations) */}
+          {conversation.invite_only && (
+            <ReminderManager
+              conversationId={conversation.id}
+              isActive={conversation.state === ConversationState.ACTIVE}
+            />
+          )}
+
+          {/* Announcements Card */}
+          <AnnouncementManager
+            conversationId={conversation.id}
+            isActive={conversation.state === ConversationState.ACTIVE}
+          />
 
           {/* Details Card */}
           <div style={s.card}>

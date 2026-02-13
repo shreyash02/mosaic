@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { CodeValidation, Conversation, ResponseItem } from '../types';
+import type { CodeValidation, Conversation, ResponseItem, Announcement } from '../types';
 import { LockIcon } from '../components/icons';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
 import { AnonymityLevel, ResultsAccess } from '../types';
@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles';
+import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const styles = {
   page: {
@@ -610,6 +611,7 @@ export default function JoinPage() {
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const [showDraftRestoredNotice, setShowDraftRestoredNotice] = useState(false);
   const [draftSaveError, setDraftSaveError] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   usePageTitle(conversation?.title || 'Join');
 
@@ -860,6 +862,15 @@ export default function JoinPage() {
     try {
       const convData = await api.getConversationByCode(accessCode!, sessionToken || undefined);
       setConversation(convData);
+
+      // Fetch announcements for this conversation
+      try {
+        const announcementData = await api.getPublicAnnouncements(convData.id, accessCode!);
+        setAnnouncements(announcementData.announcements);
+      } catch (annErr) {
+        // Silently fail - announcements are optional
+        console.error('Failed to load announcements:', annErr);
+      }
 
       // Only check for prior submissions if user is logged in and anonymity level tracks identity
       // Skip for OPEN (no login required) and FULLY_ANONYMOUS (uses participant codes instead)
@@ -1553,6 +1564,11 @@ export default function JoinPage() {
             <h1 style={styles.title}>{conversation.participant_title || conversation.title}</h1>
             {conversation.description && <p style={styles.description}>{conversation.description}</p>}
           </header>
+
+          {/* Announcements from the creator */}
+          {announcements.length > 0 && (
+            <AnnouncementBanner announcements={announcements} />
+          )}
 
           {conversation.anonymity_level !== AnonymityLevel.OPEN && (
             <div style={styles.privacyCard}>

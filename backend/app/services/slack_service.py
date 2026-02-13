@@ -427,6 +427,151 @@ class SlackService:
 
         return blocks, fallback_text
 
+    def build_reminder_message(
+        self,
+        conversation_title: str,
+        respond_url: str,
+        closes_at: Optional[datetime] = None,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for reminder notification.
+
+        Args:
+            conversation_title: Title of the conversation
+            respond_url: URL to respond to the conversation
+            closes_at: Optional closing time
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        fallback_text = f"Reminder: Your response is requested for \"{conversation_title}\""
+
+        deadline_text = ""
+        if closes_at:
+            now = datetime.utcnow()
+            delta = closes_at - now
+            minutes_remaining = int(delta.total_seconds() / 60)
+
+            if minutes_remaining < 60:
+                deadline_text = f"\nDeadline: {minutes_remaining} minutes remaining"
+            elif minutes_remaining < 1440:  # Less than a day
+                hours = minutes_remaining // 60
+                deadline_text = f"\nDeadline: {hours} hour{'s' if hours != 1 else ''} remaining"
+            else:
+                days = minutes_remaining // 1440
+                deadline_text = f"\nDeadline: {days} day{'s' if days != 1 else ''} remaining"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":bell: *Reminder: Your response is requested*",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*{conversation_title}*{deadline_text}",
+                },
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "The creator of this conversation has sent you a reminder to participate.",
+                    }
+                ],
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Respond Now"},
+                        "url": respond_url,
+                        "style": "primary",
+                    }
+                ],
+            },
+        ]
+
+        return blocks, fallback_text
+
+    def build_announcement_message(
+        self,
+        conversation_title: str,
+        announcement_message: str,
+        respond_url: str,
+        announcement_date: datetime,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for announcement.
+
+        Args:
+            conversation_title: Title of the conversation
+            announcement_message: The announcement text
+            respond_url: URL to the conversation
+            announcement_date: When the announcement was created
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        fallback_text = f"Announcement for \"{conversation_title}\": {announcement_message[:100]}..."
+
+        # Format date
+        date_formatted = announcement_date.strftime("%B %d, %Y at %I:%M %p UTC")
+
+        # Truncate message if too long for Slack
+        display_message = announcement_message
+        if len(display_message) > 2000:
+            display_message = display_message[:1997] + "..."
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":mega: *Announcement*",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"From *{conversation_title}*:",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f">{display_message.replace(chr(10), chr(10) + '>')}",
+                },
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Posted on {date_formatted}",
+                    }
+                ],
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Go to Conversation"},
+                        "url": respond_url,
+                    }
+                ],
+            },
+        ]
+
+        return blocks, fallback_text
+
 
 # Singleton instance
 slack_service = SlackService()
