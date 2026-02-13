@@ -26,6 +26,7 @@ from app.schemas.common import SuccessResponse
 from app.services.analysis_service import AnalysisService
 from app.services.notification_service import notification_service
 from app.services.email_service import email_service
+from app.utils.email_preferences import should_send_email
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ async def _send_analysis_ready_emails(
     # Send to creator
     if conversation.creator_id:
         creator = db.query(User).filter(User.id == conversation.creator_id).first()
-        if creator and creator.email:
+        if creator and creator.email and should_send_email(db, creator.email, "analysis_ready"):
             try:
                 await email_service.send_analysis_ready_email(
                     to_email=creator.email,
@@ -172,7 +173,7 @@ async def _send_analysis_ready_emails(
 
         for participant_id in participant_ids:
             user = db.query(User).filter(User.id == participant_id).first()
-            if user and user.email:
+            if user and user.email and should_send_email(db, user.email, "analysis_ready"):
                 try:
                     await email_service.send_analysis_ready_email(
                         to_email=user.email,

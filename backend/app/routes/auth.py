@@ -26,6 +26,12 @@ from app.schemas.user import (
     Token,
     LoginRequest,
     RefreshTokenRequest,
+    UserWithAuthInfo,
+    ProfileUpdate,
+    PasswordChangeRequest,
+    PasswordSetRequest,
+    EmailPreferences,
+    get_email_preferences,
 )
 
 router = APIRouter()
@@ -390,3 +396,119 @@ async def google_callback(
 
     callback_url = f"{frontend_url}/auth/callback?{urlencode(callback_params)}"
     return RedirectResponse(url=callback_url)
+
+
+@router.get("/me/profile", response_model=UserWithAuthInfo)
+async def get_user_profile(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current user profile with auth info.
+
+    Returns user data plus has_password and has_google flags.
+    """
+    return UserWithAuthInfo(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        has_password=current_user.password_hash is not None,
+        has_google=current_user.google_id is not None,
+    )
+
+
+@router.patch("/me/profile", response_model=UserSchema)
+async def update_profile(
+    profile_data: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user profile.
+
+    Currently supports updating full_name only.
+    """
+    if profile_data.full_name is not None:
+        current_user.full_name = profile_data.full_name
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.post("/password/change", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    password_data: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Change password for users who have one.
+
+    Requires current password verification.
+    """
+    if not current_user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change password for OAuth-only account. Use set password instead."
+        )
+
+    if not verify_password(password_data.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect"
+        )
+
+    current_user.password_hash = get_password_hash(password_data.new_password)
+    db.commit()
+
+
+@router.post("/password/set", status_code=status.HTTP_204_NO_CONTENT)
+async def set_password(
+    password_data: PasswordSetRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Set a password for OAuth-only users.
+
+    Allows OAuth users to also log in with email/password.
+    """
+    if current_user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already has a password. Use change password instead."
+        )
+
+    current_user.password_hash = get_password_hash(password_data.new_password)
+    db.commit()
+
+
+@router.get("/email-preferences", response_model=EmailPreferences)
+async def get_user_email_preferences(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current user's email notification preferences.
+
+    Returns preferences with defaults for any unset values.
+    """
+    return get_email_preferences(current_user.email_preferences)
+
+
+@router.put("/email-preferences", response_model=EmailPreferences)
+async def update_email_preferences(
+    preferences: EmailPreferences,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user's email notification preferences.
+
+    All fields are optional; unset fields keep their current values.
+    """
+    current_user.email_preferences = preferences.model_dump()
+    db.commit()
+    db.refresh(current_user)
+    return get_email_preferences(current_user.email_preferences)

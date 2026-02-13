@@ -130,6 +130,27 @@
   border-color: var(--color-primary-500);
 }
 
+/* User Menu Links (Profile, Settings) */
+.user-menu-links {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.user-menu-link {
+  padding: var(--spacing-1) var(--spacing-2);
+  color: var(--color-primary-600);
+  text-decoration: none;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+}
+
+.user-menu-link:hover {
+  color: var(--color-primary-900);
+  background-color: var(--color-primary-100);
+}
+
 /* Header Auth Buttons (for unauthenticated users) */
 .header-auth-buttons {
   display: flex;
@@ -552,6 +573,22 @@
   background-color: var(--color-primary-100);
 }
 
+/* Mobile Profile Links (Profile, Settings) */
+.mobile-profile-link {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  color: var(--color-primary-800);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color var(--transition-normal);
+}
+
+.mobile-profile-link:hover {
+  background-color: var(--color-primary-100);
+}
+
 /* Theme Toggle Button */
 .theme-toggle {
   display: flex;
@@ -751,6 +788,15 @@ html.dark .btn-logout:hover {
   border-color: #6b7280;
 }
 
+html.dark .user-menu-link {
+  color: #9ca3af;
+}
+
+html.dark .user-menu-link:hover {
+  color: #f3f4f6;
+  background-color: #374151;
+}
+
 html.dark .org-switcher-trigger {
   background-color: #374151;
   border-color: #4b5563;
@@ -861,13 +907,15 @@ html.dark .mobile-profile-divider {
 }
 
 html.dark .mobile-profile-logout,
-html.dark .mobile-theme-toggle {
+html.dark .mobile-theme-toggle,
+html.dark .mobile-profile-link {
   background-color: #1f2937;
   color: #e5e7eb;
 }
 
 html.dark .mobile-profile-logout:hover,
-html.dark .mobile-theme-toggle:hover {
+html.dark .mobile-theme-toggle:hover,
+html.dark .mobile-profile-link:hover {
   background-color: #374151;
 }
 

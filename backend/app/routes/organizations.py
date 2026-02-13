@@ -37,6 +37,7 @@ from app.services.organization_service import (
     check_organization_membership,
 )
 from app.services.email_service import email_service
+from app.utils.email_preferences import should_send_email
 
 router = APIRouter()
 
@@ -461,19 +462,22 @@ async def invite_to_organization(
     import logging
     logger = logging.getLogger(__name__)
     for invitation in created_invitations:
-        try:
-            await email_service.send_organization_invitation_email(
-                to_email=invitation.email,
-                organization_name=organization.name,
-                organization_description=organization.description,
-                invitation_token=invitation.invitation_token,
-                inviter_name=current_user.full_name,
-                role=invitation.role
-            )
-        except Exception as e:
-            # Log error but don't fail the request
-            # Email sending failures shouldn't prevent invitation creation
-            logger.error(f"Failed to send organization invitation email to {invitation.email}: {str(e)}", exc_info=True)
+        if should_send_email(db, invitation.email, "organization_invitations"):
+            try:
+                await email_service.send_organization_invitation_email(
+                    to_email=invitation.email,
+                    organization_name=organization.name,
+                    organization_description=organization.description,
+                    invitation_token=invitation.invitation_token,
+                    inviter_name=current_user.full_name,
+                    role=invitation.role
+                )
+            except Exception as e:
+                # Log error but don't fail the request
+                # Email sending failures shouldn't prevent invitation creation
+                logger.error(f"Failed to send organization invitation email to {invitation.email}: {str(e)}", exc_info=True)
+        else:
+            logger.info(f"Skipping organization invitation email to {invitation.email} - user opted out")
 
     return InviteToOrganizationResponse(
         organization_id=organization_id,

@@ -1,6 +1,11 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import type {
   User,
+  UserWithAuthInfo,
+  ProfileUpdateRequest,
+  PasswordChangeRequest,
+  PasswordSetRequest,
+  EmailPreferences,
   LoginRequest,
   RegisterRequest,
   AuthResponse,
@@ -49,6 +54,11 @@ import type {
   UserSlackStatus,
   BulkOperationRequest,
   BulkOperationResponse,
+  Reminder,
+  ReminderListResponse,
+  NonRespondersCount,
+  Announcement,
+  AnnouncementListResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -152,6 +162,36 @@ class ApiService {
       return `${url}?redirect=${encodeURIComponent(redirect)}`;
     }
     return url;
+  }
+
+  // Profile endpoints
+  async getUserProfile(): Promise<UserWithAuthInfo> {
+    const response = await this.client.get<UserWithAuthInfo>('/auth/me/profile');
+    return response.data;
+  }
+
+  async updateProfile(data: ProfileUpdateRequest): Promise<User> {
+    const response = await this.client.patch<User>('/auth/me/profile', data);
+    return response.data;
+  }
+
+  async changePassword(data: PasswordChangeRequest): Promise<void> {
+    await this.client.post('/auth/password/change', data);
+  }
+
+  async setPassword(data: PasswordSetRequest): Promise<void> {
+    await this.client.post('/auth/password/set', data);
+  }
+
+  // Email preferences endpoints
+  async getEmailPreferences(): Promise<EmailPreferences> {
+    const response = await this.client.get<EmailPreferences>('/auth/email-preferences');
+    return response.data;
+  }
+
+  async updateEmailPreferences(data: EmailPreferences): Promise<EmailPreferences> {
+    const response = await this.client.put<EmailPreferences>('/auth/email-preferences', data);
+    return response.data;
   }
 
   // Conversation endpoints
@@ -679,6 +719,57 @@ class ApiService {
 
   async unlinkUserSlack(): Promise<void> {
     await this.client.delete('/user/slack');
+  }
+
+  // Reminder methods
+  async getNonRespondersCount(conversationId: string): Promise<NonRespondersCount> {
+    const response = await this.client.get<NonRespondersCount>(
+      `/conversations/${conversationId}/non-responders`
+    );
+    return response.data;
+  }
+
+  async createReminder(conversationId: string, scheduledAt?: string): Promise<Reminder> {
+    const response = await this.client.post<Reminder>(
+      `/conversations/${conversationId}/reminders`,
+      { scheduled_at: scheduledAt }
+    );
+    return response.data;
+  }
+
+  async listReminders(conversationId: string): Promise<ReminderListResponse> {
+    const response = await this.client.get<ReminderListResponse>(
+      `/conversations/${conversationId}/reminders`
+    );
+    return response.data;
+  }
+
+  async cancelReminder(conversationId: string, reminderId: string): Promise<void> {
+    await this.client.delete(`/conversations/${conversationId}/reminders/${reminderId}`);
+  }
+
+  // Announcement methods
+  async createAnnouncement(conversationId: string, message: string): Promise<Announcement> {
+    const response = await this.client.post<Announcement>(
+      `/conversations/${conversationId}/announcements`,
+      { message }
+    );
+    return response.data;
+  }
+
+  async listAnnouncements(conversationId: string): Promise<AnnouncementListResponse> {
+    const response = await this.client.get<AnnouncementListResponse>(
+      `/conversations/${conversationId}/announcements`
+    );
+    return response.data;
+  }
+
+  async getPublicAnnouncements(conversationId: string, accessCode: string): Promise<AnnouncementListResponse> {
+    const response = await this.client.get<AnnouncementListResponse>(
+      `/conversations/${conversationId}/announcements/public`,
+      { params: { access_code: accessCode } }
+    );
+    return response.data;
   }
 }
 

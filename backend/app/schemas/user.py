@@ -68,3 +68,64 @@ class RefreshTokenRequest(BaseModel):
     """Refresh token request schema."""
 
     refresh_token: str
+
+
+# Profile and settings schemas
+class UserWithAuthInfo(User):
+    """User with auth method indicators for profile pages."""
+
+    has_password: bool
+    has_google: bool
+
+
+class ProfileUpdate(BaseModel):
+    """Schema for updating user profile."""
+
+    full_name: Optional[str] = Field(None, max_length=255)
+
+
+class PasswordChangeRequest(BaseModel):
+    """Schema for changing password (users with existing password)."""
+
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class PasswordSetRequest(BaseModel):
+    """Schema for setting password (OAuth-only users)."""
+
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+# Email preferences
+class EmailPreferences(BaseModel):
+    """User email notification preferences."""
+
+    # Invitation emails
+    conversation_invitations: bool = True
+    organization_invitations: bool = True
+
+    # Reminder emails
+    closing_reminders: bool = True
+
+    # Announcement emails
+    announcements: bool = True
+
+    # Results and analysis emails
+    conversation_closed: bool = True
+    analysis_ready: bool = True
+    periodic_analysis: bool = True
+
+    # Recurring conversation emails
+    recurring_instances: bool = True
+
+
+# Default preferences (all enabled)
+DEFAULT_EMAIL_PREFERENCES = EmailPreferences()
+
+
+def get_email_preferences(prefs_dict: Optional[dict]) -> EmailPreferences:
+    """Get email preferences from dict, using defaults for missing values."""
+    if prefs_dict is None:
+        return DEFAULT_EMAIL_PREFERENCES
+    return EmailPreferences(**{**DEFAULT_EMAIL_PREFERENCES.model_dump(), **prefs_dict})

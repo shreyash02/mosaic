@@ -64,6 +64,7 @@ from app.services.email_service import email_service
 from app.services.organization_service import check_organization_membership
 from app.services.scheduler_service import calculate_next_analysis_time
 from app.services.notification_service import notification_service
+from app.utils.email_preferences import should_send_email
 
 router = APIRouter()
 
@@ -113,20 +114,23 @@ async def send_pending_invitation_emails(
     # Don't block if sending fails
     logger = logging.getLogger(__name__)
     for invitation in pending_invitations:
-        # Send email
-        try:
-            await email_service.send_invitation_email(
-                to_email=invitation.email,
-                conversation_title=conversation.title,
-                conversation_description=conversation.description,
-                access_code=conversation.access_code,
-                invitation_token=invitation.invitation_token,
-                inviter_name=inviter_name,
-            )
-        except Exception as e:
-            # Log error but don't fail the request
-            # Email sending failures shouldn't prevent activation
-            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+        # Send email if user hasn't opted out
+        if should_send_email(db, invitation.email, "conversation_invitations"):
+            try:
+                await email_service.send_invitation_email(
+                    to_email=invitation.email,
+                    conversation_title=conversation.title,
+                    conversation_description=conversation.description,
+                    access_code=conversation.access_code,
+                    invitation_token=invitation.invitation_token,
+                    inviter_name=inviter_name,
+                )
+            except Exception as e:
+                # Log error but don't fail the request
+                # Email sending failures shouldn't prevent activation
+                logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+        else:
+            logger.info(f"Skipping invitation email to {invitation.email} - user opted out")
 
         # Send Slack DM if user is registered
         if invitation.invited_user_id:

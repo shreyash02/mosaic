@@ -239,6 +239,10 @@ export default function Header() {
                 <span className="user-name">{user.full_name}</span>
                 <span className="user-email">{user.email}</span>
               </div>
+              <div className="user-menu-links">
+                <Link to="/profile" className="user-menu-link">Profile</Link>
+                <Link to="/settings" className="user-menu-link">Settings</Link>
+              </div>
               <button onClick={handleLogout} className="btn-logout">
                 Logout
               </button>
@@ -264,6 +268,13 @@ export default function Header() {
                     <span className="mobile-profile-name">{user.full_name}</span>
                     <span className="mobile-profile-email">{user.email}</span>
                   </div>
+                  <div className="mobile-profile-divider" />
+                  <Link to="/profile" className="mobile-profile-link" onClick={() => setMobileProfileOpen(false)}>
+                    Profile
+                  </Link>
+                  <Link to="/settings" className="mobile-profile-link" onClick={() => setMobileProfileOpen(false)}>
+                    Settings
+                  </Link>
                   <div className="mobile-profile-divider" />
                   <button onClick={toggleTheme} className="mobile-theme-toggle">
                     {resolvedTheme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}

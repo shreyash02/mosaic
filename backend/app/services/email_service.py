@@ -1,4 +1,9 @@
-"""Email service for sending invitations and notifications."""
+"""Email service for sending invitations and notifications.
+
+This service is responsible for sending emails only.
+Callers should check user preferences before calling these methods.
+Use app.utils.email_preferences.should_send_email() to check preferences.
+"""
 
 import logging
 from datetime import datetime
@@ -51,7 +56,7 @@ class EmailService:
     ) -> bool:
         """
         Send invitation email to a user.
-        
+
         Args:
             to_email: Recipient email address
             conversation_title: Title of the conversation
@@ -59,7 +64,7 @@ class EmailService:
             access_code: Access code for the conversation
             invitation_token: Optional invitation token for direct access
             inviter_name: Name of the person sending the invitation
-            
+
         Returns:
             True if email was sent successfully, False otherwise
         """
@@ -169,7 +174,7 @@ Join the conversation by clicking this link:
         organization_description: Optional[str],
         invitation_token: str,
         inviter_name: Optional[str] = None,
-        role: str = "member"
+        role: str = "member",
     ) -> bool:
         """
         Send organization invitation email.
@@ -392,6 +397,204 @@ If you did not expect this invitation, you can safely ignore this email.
 
         except Exception as e:
             logger.error(f"Failed to send closing warning email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_reminder_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        respond_url: str,
+        closes_at: Optional[datetime] = None,
+    ) -> bool:
+        """
+        Send reminder email to a non-responder.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the conversation
+            respond_url: URL to respond to the conversation
+            closes_at: Optional closing time (UTC)
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping reminder to {to_email}")
+            return False
+
+        try:
+            subject = f"Reminder: Your response is requested for '{conversation_title}'"
+
+            # Format closing time if provided
+            deadline_text = ""
+            if closes_at:
+                closes_at_formatted = closes_at.strftime("%B %d, %Y at %I:%M %p UTC")
+                deadline_text = f"""
+                            <p style="color: #6b7280; margin-bottom: 0;">
+                                <strong>Deadline:</strong> {closes_at_formatted}
+                            </p>
+                """
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">Reminder: Your Response is Requested</h2>
+                        <p style="color: #6b7280; font-size: 16px;">The creator of the following conversation has sent you a reminder to participate:</p>
+                        <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                            <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{conversation_title}</h3>
+                            {deadline_text}
+                        </div>
+                        <p style="color: #6b7280; font-size: 16px;">Please take a moment to share your thoughts:</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{respond_url}"
+                               style="background-color: #1a1a2e; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Respond Now
+                            </a>
+                        </div>
+                        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">
+                                {respond_url}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Reminder email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send reminder email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+    async def send_announcement_email(
+        self,
+        to_email: str,
+        conversation_title: str,
+        announcement_message: str,
+        respond_url: str,
+        announcement_date: datetime,
+    ) -> bool:
+        """
+        Send announcement email to a participant.
+
+        Args:
+            to_email: Recipient email address
+            conversation_title: Title of the conversation
+            announcement_message: The announcement text
+            respond_url: URL to respond to the conversation
+            announcement_date: When the announcement was created
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping announcement to {to_email}")
+            return False
+
+        try:
+            subject = f"Announcement for '{conversation_title}'"
+
+            # Format announcement date
+            date_formatted = announcement_date.strftime("%B %d, %Y at %I:%M %p UTC")
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">Announcement</h2>
+                        <p style="color: #6b7280; font-size: 16px;">The creator of <strong>{conversation_title}</strong> has shared an announcement:</p>
+                        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 6px 6px 0; margin: 20px 0;">
+                            <p style="margin: 0; color: #1a1a2e; font-size: 16px; white-space: pre-wrap;">{announcement_message}</p>
+                            <p style="margin: 15px 0 0 0; color: #6b7280; font-size: 13px;">
+                                Posted on {date_formatted}
+                            </p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{respond_url}"
+                               style="background-color: #1a1a2e; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Go to Conversation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Announcement email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send announcement email to {to_email}: {str(e)}", exc_info=True)
             return False
 
     async def send_conversation_closed_email(

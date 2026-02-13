@@ -19,6 +19,7 @@ from app.routes.analysis import run_analysis_task
 from app.utils.access_code import generate_access_code
 from app.services.email_service import email_service
 from app.services.notification_service import notification_service
+from app.utils.email_preferences import should_send_email
 from typing import Optional
 import logging
 import asyncio
@@ -67,20 +68,23 @@ async def send_pending_invitation_emails(
     # Send invitation emails and Slack notifications asynchronously
     # Don't block if sending fails
     for invitation in pending_invitations:
-        # Send email
-        try:
-            await email_service.send_invitation_email(
-                to_email=invitation.email,
-                conversation_title=conversation.title,
-                conversation_description=conversation.description,
-                access_code=conversation.access_code,
-                invitation_token=invitation.invitation_token,
-                inviter_name=inviter_name,
-            )
-        except Exception as e:
-            # Log error but don't fail the request
-            # Email sending failures shouldn't prevent activation
-            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+        # Send email if user hasn't opted out
+        if should_send_email(db, invitation.email, "conversation_invitations"):
+            try:
+                await email_service.send_invitation_email(
+                    to_email=invitation.email,
+                    conversation_title=conversation.title,
+                    conversation_description=conversation.description,
+                    access_code=conversation.access_code,
+                    invitation_token=invitation.invitation_token,
+                    inviter_name=inviter_name,
+                )
+            except Exception as e:
+                # Log error but don't fail the request
+                # Email sending failures shouldn't prevent activation
+                logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}", exc_info=True)
+        else:
+            logger.info(f"Skipping invitation email to {invitation.email} - user opted out")
 
         # Send Slack DM if user is registered
         if invitation.invited_user_id:
@@ -311,7 +315,7 @@ async def _send_closing_warnings_for_conversation(
                 )
 
         # Send email to all invited users (as primary for non-Slack users, or as backup)
-        if invitation.email:
+        if invitation.email and should_send_email(db, invitation.email, "closing_reminders"):
             try:
                 email_sent = await email_service.send_closing_warning_email(
                     to_email=invitation.email,
@@ -351,7 +355,7 @@ async def _send_conversation_closed_notifications(
     # Send to creator
     if conversation.creator_id:
         creator = db.query(User).filter(User.id == conversation.creator_id).first()
-        if creator and creator.email:
+        if creator and creator.email and should_send_email(db, creator.email, "conversation_closed"):
             try:
                 await email_service.send_conversation_closed_email(
                     to_email=creator.email,
@@ -376,7 +380,7 @@ async def _send_conversation_closed_notifications(
 
         for participant_id in participant_ids:
             user = db.query(User).filter(User.id == participant_id).first()
-            if user and user.email:
+            if user and user.email and should_send_email(db, user.email, "conversation_closed"):
                 try:
                     await email_service.send_conversation_closed_email(
                         to_email=user.email,
@@ -567,7 +571,7 @@ async def _send_recurring_instance_notifications(
     # Send to creator
     if template.creator_id:
         creator = db.query(User).filter(User.id == template.creator_id).first()
-        if creator and creator.email:
+        if creator and creator.email and should_send_email(db, creator.email, "recurring_instances"):
             # Creator gets link to manage/activate the conversation
             manage_url = f"{settings.FRONTEND_URL}/conversations/{new_instance.id}"
             try:
@@ -902,7 +906,7 @@ def run_periodic_analysis_task(
         # Send email notification to creator
         if conversation.creator_id:
             creator = db.query(User).filter(User.id == conversation.creator_id).first()
-            if creator and creator.email:
+            if creator and creator.email and should_send_email(db, creator.email, "periodic_analysis"):
                 results_url = f"{settings.FRONTEND_URL}/conversations/{conversation_id}/continuous"
                 responses_analyzed = analysis_result.get("total_responses_analyzed", 0)
                 try:
@@ -925,6 +929,70 @@ def run_periodic_analysis_task(
     finally:
         db.close()
         engine.dispose()
+
+
+async def check_scheduled_reminders():
+    """
+    Check for scheduled reminders that should be sent.
+
+    Runs every 5 minutes and sends reminders where:
+    - status = 'pending'
+    - reminder_type = 'scheduled'
+    - scheduled_at <= now
+    """
+    from app.models.conversation_reminder import ConversationReminder
+    from app.services.reminder_service import reminder_service
+
+    db: Session = SessionLocal()
+
+    try:
+        now = datetime.utcnow()
+
+        # Find scheduled reminders that are due
+        reminders = db.query(ConversationReminder).filter(
+            ConversationReminder.status == "pending",
+            ConversationReminder.reminder_type == "scheduled",
+            ConversationReminder.scheduled_at <= now,
+        ).all()
+
+        if not reminders:
+            return
+
+        logger.info(f"Found {len(reminders)} scheduled reminder(s) to send")
+
+        for reminder in reminders:
+            try:
+                # Get the conversation
+                conversation = db.query(Conversation).filter(
+                    Conversation.id == reminder.conversation_id
+                ).first()
+
+                if not conversation:
+                    logger.warning(f"Conversation not found for reminder {reminder.id}")
+                    reminder.status = "cancelled"
+                    db.commit()
+                    continue
+
+                # Skip if conversation is no longer active
+                if conversation.state != "active":
+                    logger.info(f"Skipping reminder {reminder.id} - conversation is not active")
+                    reminder.status = "cancelled"
+                    db.commit()
+                    continue
+
+                # Send the reminders
+                await reminder_service.send_reminders(reminder, conversation, db)
+                logger.info(f"Successfully sent scheduled reminder {reminder.id}")
+
+            except Exception as e:
+                logger.error(f"Error sending scheduled reminder {reminder.id}: {e}", exc_info=True)
+                # Don't mark as failed, let it retry next cycle
+                continue
+
+    except Exception as e:
+        logger.error(f"Error in check_scheduled_reminders: {e}", exc_info=True)
+    finally:
+        db.close()
 
 
 async def check_periodic_analyses():
@@ -1051,8 +1119,17 @@ def start_scheduler():
         max_instances=1
     )
 
+    # Add job to check for scheduled reminders every 5 minutes
+    scheduler.add_job(
+        check_scheduled_reminders,
+        trigger=IntervalTrigger(minutes=5),
+        id='check_scheduled_reminders',
+        replace_existing=True,
+        max_instances=1
+    )
+
     scheduler.start()
-    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, and closing warning jobs")
+    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, closing warning, and scheduled reminder jobs")
 
 
 def shutdown_scheduler():

@@ -24,6 +24,36 @@ export interface AuthResponse {
   token_type: string;
 }
 
+// Profile and settings types
+export interface UserWithAuthInfo extends User {
+  has_password: boolean;
+  has_google: boolean;
+}
+
+export interface ProfileUpdateRequest {
+  full_name?: string;
+}
+
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export interface PasswordSetRequest {
+  new_password: string;
+}
+
+export interface EmailPreferences {
+  conversation_invitations: boolean;
+  organization_invitations: boolean;
+  closing_reminders: boolean;
+  announcements: boolean;
+  conversation_closed: boolean;
+  analysis_ready: boolean;
+  periodic_analysis: boolean;
+  recurring_instances: boolean;
+}
+
 // Conversation types
 export enum AnonymityLevel {
   OPEN = 'open',  // Anyone can respond, identity recorded if logged in
@@ -777,4 +807,44 @@ export interface BulkOperationResponse {
   succeeded: number;
   failed: number;
   results: BulkOperationResultItem[];
+}
+
+// Reminder types
+export type ReminderType = 'manual' | 'scheduled';
+export type ReminderStatus = 'pending' | 'sent' | 'cancelled';
+
+export interface Reminder {
+  id: string;
+  conversation_id: string;
+  reminder_type: ReminderType;
+  scheduled_at?: string;
+  status: ReminderStatus;
+  sent_at?: string;
+  recipients_count: number;
+  created_at: string;
+}
+
+export interface ReminderListResponse {
+  reminders: Reminder[];
+}
+
+export interface NonRespondersCount {
+  conversation_id: string;
+  total_invitations: number;
+  responded: number;
+  non_responders: number;
+}
+
+// Announcement types
+export interface Announcement {
+  id: string;
+  conversation_id: string;
+  message: string;
+  sent_at?: string;
+  recipients_count: number;
+  created_at: string;
+}
+
+export interface AnnouncementListResponse {
+  announcements: Announcement[];
 }

@@ -48,6 +48,10 @@ import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 import CollectionsPage from './pages/CollectionsPage';
 import CollectionDetailPage from './pages/CollectionDetailPage';
 import HelpPage from './pages/HelpPage';
+import ProfilePage from './pages/ProfilePage';
+import SettingsLayout from './pages/settings/SettingsLayout';
+import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage';
+import SettingsSecurityPage from './pages/settings/SettingsSecurityPage';
 import CreatingConversationsHelp from './pages/help/CreatingConversationsHelp';
 import InvitingParticipantsHelp from './pages/help/InvitingParticipantsHelp';
 import RespondingHelp from './pages/help/RespondingHelp';
@@ -89,6 +93,29 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Settings with nested routes */}
+            <Route
+              path="/settings/*"
+              element={
+                <ProtectedRoute>
+                  <SettingsLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="notifications" element={<SettingsNotificationsPage />} />
+              <Route path="security" element={<SettingsSecurityPage />} />
+              <Route index element={<Navigate to="notifications" replace />} />
+            </Route>
 
             <Route
               path="/conversations"
