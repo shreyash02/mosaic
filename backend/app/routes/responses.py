@@ -224,8 +224,11 @@ async def check_user_response(
             detail="Conversation not found"
         )
     
-    # Only check for platform_tracked and revealable conversations
-    if conversation.anonymity_level not in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
+    # Only check for platform_tracked, revealable, or invite-only OPEN conversations
+    is_trackable = conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]
+    is_invite_only_open = conversation.anonymity_level == AnonymityLevel.OPEN.value and conversation.invite_only
+
+    if not is_trackable and not is_invite_only_open:
         return ResponseCheck(
             has_submitted=False,
             message="Response check is only available for authenticated conversations"
@@ -668,7 +671,18 @@ async def submit_response(
     if conversation.anonymity_level == AnonymityLevel.OPEN.value:
         # OPEN: Anyone can respond, no login or codes required
         # If user is logged in, their ID will be recorded (handled in response creation)
-        pass
+        # For invite-only OPEN conversations, check for duplicate submissions if user is logged in
+        if current_user and conversation.invite_only:
+            existing_response = db.query(Response).filter(
+                Response.conversation_id == conversation.id,
+                Response.participant_id == current_user.id,
+                Response.status == "submitted"
+            ).first()
+            if existing_response:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="You have already submitted a response to this conversation"
+                )
 
     elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
         # FULLY_ANONYMOUS: Requires secret codes for duplicate prevention

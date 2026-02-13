@@ -873,10 +873,14 @@ export default function JoinPage() {
       }
 
       // Only check for prior submissions if user is logged in and anonymity level tracks identity
-      // Skip for OPEN (no login required) and FULLY_ANONYMOUS (uses participant codes instead)
+      // Skip for FULLY_ANONYMOUS (uses participant codes instead)
+      // For OPEN, only check if it's invite-only (where we want to track submissions)
       let responsesPopulated = false;
-      if (convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS &&
-          convData.anonymity_level !== AnonymityLevel.OPEN) {
+      const shouldCheckPriorSubmission =
+        convData.anonymity_level !== AnonymityLevel.FULLY_ANONYMOUS &&
+        (convData.anonymity_level !== AnonymityLevel.OPEN || convData.invite_only);
+
+      if (shouldCheckPriorSubmission) {
         try {
           const responseCheck = await api.checkUserResponse(accessCode!);
           if (responseCheck.has_submitted) {
