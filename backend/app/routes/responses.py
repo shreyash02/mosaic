@@ -99,15 +99,17 @@ async def validate_code(
             )
 
     # Conversation exists and is active
-    # Determine requirements based on anonymity level:
-    # - OPEN: No login, no codes required
+    # Determine requirements based on anonymity level and invite_only:
+    # - OPEN (not invite_only): No login, no codes required
+    # - OPEN (invite_only): Requires login to verify invitation
     # - FULLY_ANONYMOUS: Requires secret codes (for duplicate prevention)
     # - PLATFORM_TRACKED/REVEALABLE: Requires login
     is_open = conversation.anonymity_level == AnonymityLevel.OPEN.value
     is_fully_anonymous = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
 
     requires_participant_code = is_fully_anonymous  # Secret codes required for fully anonymous
-    requires_login = not is_open and not is_fully_anonymous  # Login required for tracked modes
+    # Login required for: tracked modes, OR invite-only (except fully_anonymous which uses codes)
+    requires_login = (not is_open and not is_fully_anonymous) or (conversation.invite_only and not is_fully_anonymous)
 
     return CodeValidation(
         valid=True,
@@ -372,12 +374,27 @@ async def save_draft(
         used_participant_code = draft_data.participant_code
 
     else:
-        # Platform tracked or revealable - require authentication
+        # Non-anonymous modes require authentication
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required for this conversation type"
             )
+
+        # For invite-only conversations, verify user was invited
+        if conversation.invite_only:
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                or_(
+                    ConversationInvitation.invited_user_id == current_user.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                )
+            ).first()
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You were not invited to this conversation"
+                )
 
         # Check if already submitted
         existing_submitted = db.query(Response).filter(
@@ -670,9 +687,14 @@ async def submit_response(
     # Validate anonymity level handling
     if conversation.anonymity_level == AnonymityLevel.OPEN.value:
         # OPEN: Anyone can respond, no login or codes required
-        # If user is logged in, their ID will be recorded (handled in response creation)
-        # For invite-only OPEN conversations, check for duplicate submissions if user is logged in
-        if current_user and conversation.invite_only:
+        # EXCEPTION: invite_only requires login to verify the user was invited
+        if conversation.invite_only:
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required for invite-only conversations"
+                )
+            # Check for duplicate submissions
             existing_response = db.query(Response).filter(
                 Response.conversation_id == conversation.id,
                 Response.participant_id == current_user.id,
@@ -682,6 +704,19 @@ async def submit_response(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="You have already submitted a response to this conversation"
+                )
+            # Verify user was invited (by email or user_id)
+            invitation = db.query(ConversationInvitation).filter(
+                ConversationInvitation.conversation_id == conversation.id,
+                or_(
+                    ConversationInvitation.invited_user_id == current_user.id,
+                    ConversationInvitation.email == current_user.email.lower()
+                )
+            ).first()
+            if not invitation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You were not invited to this conversation"
                 )
 
     elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
@@ -930,8 +965,13 @@ async def submit_response(
         used_participant_code.is_used = True
         used_participant_code.used_at = datetime.utcnow()
 
-    # Mark invitation as accepted when response is submitted (for platform_tracked/revealable)
-    if current_user and conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
+    # Mark invitation as accepted when response is submitted
+    # This applies to: platform_tracked, revealable, and invite_only OPEN conversations
+    should_mark_invitation = current_user and (
+        conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]
+        or (conversation.anonymity_level == AnonymityLevel.OPEN.value and conversation.invite_only)
+    )
+    if should_mark_invitation:
         # Find invitation for this user
         invitation = db.query(ConversationInvitation).filter(
             ConversationInvitation.conversation_id == conversation.id,
@@ -940,7 +980,7 @@ async def submit_response(
                 ConversationInvitation.email == current_user.email.lower()
             )
         ).first()
-        
+
         if invitation and not invitation.is_accepted:
             invitation.is_accepted = True
             invitation.accepted_at = datetime.utcnow()
