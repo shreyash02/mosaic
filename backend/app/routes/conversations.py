@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_optional_current_user, get_participant_session
+from app.core.access_control import ConversationAccess, require_conversation_by_code
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.question import Question
@@ -653,130 +654,81 @@ async def get_my_invitations(
     return result
 
 
-@router.get("/by-code/{access_code}", response_model=ConversationWithQuestions)
-async def get_conversation_by_code(
+@router.get("/preview/{access_code}", response_model=ConversationWithQuestions)
+async def preview_conversation(
     access_code: str,
-    participant_session: Optional[dict] = Depends(get_participant_session),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get conversation details by access code (public endpoint).
+    Preview conversation as creator (any state, read-only).
 
-    For fully_anonymous conversations: Requires valid participant session token.
-    For other conversations: Requires authentication.
+    Allows creators and org admins to see exactly what participants will see,
+    regardless of conversation state (draft, active, or closed).
 
     Args:
         access_code: Conversation access code
-        participant_session: Optional participant session (for fully_anonymous)
-        current_user: Optional authenticated user (for platform_tracked/revealable)
+        current_user: Authenticated user (required)
         db: Database session
 
     Returns:
         Conversation with questions
 
     Raises:
-        HTTPException: If conversation not found, not active, or access denied
+        HTTPException: If conversation not found or user is not creator/org admin
     """
-    # Find conversation by access code (check if it exists first, regardless of state)
     conversation = db.query(Conversation).options(
         joinedload(Conversation.questions)
     ).filter(
-        Conversation.access_code == access_code
+        Conversation.access_code == access_code,
+        Conversation.state != ConversationState.DELETED.value
     ).first()
 
     if not conversation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found. Please check the access code and try again."
+            detail="Conversation not found"
         )
 
-    # Check if conversation is active
-    if conversation.state != ConversationState.ACTIVE.value:
-        if conversation.state == ConversationState.CLOSED.value:
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="This conversation has been closed and is no longer accepting responses."
-            )
-        elif conversation.state == ConversationState.DRAFT.value:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="This conversation has not been activated yet."
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="This conversation is not currently available."
-            )
+    # Check if user is creator
+    is_creator = conversation.creator_id == current_user.id
 
-    # Check access based on anonymity level
-    if conversation.anonymity_level == AnonymityLevel.OPEN.value:
-        # OPEN: Anyone with the link can access, no auth required
-        # EXCEPTION: invite_only requires login to verify invitation
-        if conversation.invite_only:
-            if not current_user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required for invite-only conversations"
-                )
-            # Check if user was invited
-            invitation = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id,
-                or_(
-                    ConversationInvitation.invited_user_id == current_user.id,
-                    ConversationInvitation.email == current_user.email.lower()
-                )
-            ).first()
-            if not invitation:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="This conversation is invite-only. You must be invited by the conversation creator to access it."
-                )
+    # Check if user is org admin
+    is_org_admin = False
+    if conversation.organization_id:
+        membership = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == conversation.organization_id,
+            OrganizationMember.user_id == current_user.id,
+            OrganizationMember.role == "admin"
+        ).first()
+        is_org_admin = membership is not None
 
-    elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # FULLY_ANONYMOUS: Requires participant session (from validating secret code)
-        if not participant_session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Valid participant session required for this conversation"
-            )
-
-        # Verify session matches this conversation
-        if participant_session["access_code"] != access_code:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Session token does not match conversation"
-            )
-
-    else:
-        # For platform_tracked/revealable, require authentication
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required for this conversation type"
-            )
-
-        # If invite_only is enabled, check if user was invited
-        if conversation.invite_only:
-            invitation = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id,
-                ConversationInvitation.invited_user_id == current_user.id
-            ).first()
-
-            # Also check by email in case user doesn't have an account yet
-            if not invitation:
-                invitation = db.query(ConversationInvitation).filter(
-                    ConversationInvitation.conversation_id == conversation.id,
-                    ConversationInvitation.email == current_user.email.lower()
-                ).first()
-
-            if not invitation:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="This conversation is invite-only. You must be invited by the conversation creator to access it. Please contact the organizer if you believe you should have access."
-                )
+    if not is_creator and not is_org_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the creator or organization admin can preview this conversation"
+        )
 
     return conversation
+
+
+@router.get("/by-code/{access_code}", response_model=ConversationWithQuestions)
+async def get_conversation_by_code(
+    access: ConversationAccess = Depends(require_conversation_by_code),
+):
+    """
+    Get conversation details by access code (public endpoint).
+
+    Access control is handled by the ConversationAccess dependency:
+    - OPEN: Anyone can access (unless invite_only)
+    - FULLY_ANONYMOUS: Requires valid participant session
+    - PLATFORM_TRACKED/REVEALABLE: Requires authentication
+    - invite_only: Requires authentication + invitation verification
+
+    Returns:
+        Conversation with questions
+    """
+    return access.conversation
 
 
 @router.get("/{conversation_id}", response_model=ConversationWithQuestions)

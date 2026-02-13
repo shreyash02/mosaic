@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_optional_current_user
+from app.core.access_control import ConversationAccess, require_draft_access
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.question import Question
@@ -291,55 +292,29 @@ async def check_user_response(
 @limiter.limit("60/minute")
 async def save_draft(
     request: Request,
-    access_code: str,
     draft_data: DraftSaveRequest,
+    access: ConversationAccess = Depends(require_draft_access),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Save draft responses for a conversation.
 
-    - For fully_anonymous: requires participant_code in request
-    - For platform_tracked/revealable: requires authentication
-
-    Creates new draft responses or updates existing ones.
-    Validation is relaxed (partial responses allowed).
-
-    Args:
-        access_code: Conversation access code
-        draft_data: Draft response data
-        db: Database session
-        current_user: Optional authenticated user
+    Access control handled by ConversationAccess dependency.
+    - For fully_anonymous: requires participant_code in request body
+    - For other modes: requires authentication + invitation (if invite_only)
 
     Returns:
         DraftSaveResponse with save timestamp
     """
-    # Find conversation by access code
-    conversation = db.query(Conversation).options(
-        joinedload(Conversation.questions)
-    ).filter(
-        Conversation.access_code == access_code
-    ).first()
-
-    if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found"
-        )
-
-    # Check if conversation is active
-    if conversation.state != ConversationState.ACTIVE.value:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Conversation is not active"
-        )
+    conversation = access.conversation
+    current_user = access.user
 
     # Determine participant identifier based on anonymity level
     used_participant_code = None
     participant_id = None
 
     if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # Require participant code
+        # Require participant code from request body
         if not draft_data.participant_code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -358,7 +333,7 @@ async def save_draft(
                 detail="Invalid participant code"
             )
 
-        # Check if already submitted (not just used - check for submitted responses)
+        # Check if already submitted
         existing_submitted = db.query(Response).filter(
             Response.conversation_id == conversation.id,
             Response.participant_code_used == draft_data.participant_code,
@@ -374,28 +349,7 @@ async def save_draft(
         used_participant_code = draft_data.participant_code
 
     else:
-        # Non-anonymous modes require authentication
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required for this conversation type"
-            )
-
-        # For invite-only conversations, verify user was invited
-        if conversation.invite_only:
-            invitation = db.query(ConversationInvitation).filter(
-                ConversationInvitation.conversation_id == conversation.id,
-                or_(
-                    ConversationInvitation.invited_user_id == current_user.id,
-                    ConversationInvitation.email == current_user.email.lower()
-                )
-            ).first()
-            if not invitation:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You were not invited to this conversation"
-                )
-
+        # Non-anonymous: auth and invite-only already checked by dependency
         # Check if already submitted
         existing_submitted = db.query(Response).filter(
             Response.conversation_id == conversation.id,
