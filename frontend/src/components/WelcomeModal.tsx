@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles/tokens';
+import FocusTrap from './FocusTrap';
 
 const WELCOME_SEEN_KEY = 'mosaic_welcome_seen';
 
@@ -290,15 +291,16 @@ export default function WelcomeModal({ userName }: WelcomeModalProps) {
           }
         }
       `}</style>
-      <div style={styles.overlay} onClick={handleClose}>
-        <div
-          style={styles.modal}
-          className="welcome-modal"
-          onClick={(e) => e.stopPropagation()}
-        >
+      <FocusTrap isActive={isOpen} onEscape={handleClose}>
+        <div style={styles.overlay} onClick={handleClose} role="dialog" aria-modal="true" aria-labelledby="welcome-modal-title">
+          <div
+            style={styles.modal}
+            className="welcome-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
           {/* Header */}
           <div style={styles.header}>
-            <h2 style={styles.title}>
+            <h2 id="welcome-modal-title" style={styles.title}>
               {isFirstStep && userName ? `Welcome, ${userName}!` : step.title}
             </h2>
             <p style={styles.subtitle}>{step.subtitle}</p>
@@ -427,6 +429,7 @@ export default function WelcomeModal({ userName }: WelcomeModalProps) {
           </div>
         </div>
       </div>
+    </FocusTrap>
     </>
   );
 }

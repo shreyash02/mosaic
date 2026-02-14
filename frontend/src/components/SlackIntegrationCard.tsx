@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import type { SlackWorkspaceStatus } from '../types';
 import { colors, spacing, typography, borders } from '../styles/tokens';
 import { SkeletonText } from './Skeleton';
+import FocusTrap from './FocusTrap';
 
 interface SlackIntegrationCardProps {
   organizationId: string;
@@ -282,36 +283,38 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
 
       {/* Disconnect Confirmation Modal */}
       {showDisconnectModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowDisconnectModal(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Disconnect Slack</h3>
-            <p style={styles.modalText}>
-              Are you sure you want to disconnect Slack? Users will no longer receive Slack notifications.
-            </p>
-            <div style={styles.modalActions}>
-              <button
-                onClick={() => setShowDisconnectModal(false)}
-                style={{
-                  ...styles.button,
-                  ...styles.cancelButton,
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDisconnect}
-                disabled={disconnecting}
-                style={{
-                  ...styles.button,
-                  ...styles.disconnectButton,
-                  ...(disconnecting ? styles.disabledButton : {}),
-                }}
-              >
-                {disconnecting ? 'Disconnecting...' : 'Disconnect'}
-              </button>
+        <FocusTrap isActive={showDisconnectModal} onEscape={() => setShowDisconnectModal(false)}>
+          <div style={styles.modalOverlay} onClick={() => setShowDisconnectModal(false)} role="dialog" aria-modal="true" aria-labelledby="disconnect-slack-title">
+            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 style={styles.modalTitle} id="disconnect-slack-title">Disconnect Slack</h3>
+              <p style={styles.modalText}>
+                Are you sure you want to disconnect Slack? Users will no longer receive Slack notifications.
+              </p>
+              <div style={styles.modalActions}>
+                <button
+                  onClick={() => setShowDisconnectModal(false)}
+                  style={{
+                    ...styles.button,
+                    ...styles.cancelButton,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  style={{
+                    ...styles.button,
+                    ...styles.disconnectButton,
+                    ...(disconnecting ? styles.disabledButton : {}),
+                  }}
+                >
+                  {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
     </div>
   );

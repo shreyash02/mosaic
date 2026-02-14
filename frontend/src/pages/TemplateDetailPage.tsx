@@ -7,6 +7,7 @@ import { formatDate, formatDuration } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
+import FocusTrap from '../components/FocusTrap';
 
 const styles = {
   page: {
@@ -927,30 +928,32 @@ export default function TemplateDetailPage() {
 
         {/* Delete Modal */}
         {showDeleteModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <h2 style={styles.modalTitle}>Delete Template?</h2>
-              <p style={styles.modalText}>
-                Are you sure you want to delete this template? Conversations created from this template will be preserved but will no longer be linked to it. This action cannot be undone.
-              </p>
-              <div style={styles.modalActions}>
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  style={styles.buttonSecondary}
-                  className="template-btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  style={styles.buttonPrimary}
-                  className="template-btn-primary"
-                >
-                  Delete Template
-                </button>
+          <FocusTrap isActive={showDeleteModal} onEscape={() => setShowDeleteModal(false)}>
+            <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)} role="dialog" aria-modal="true" aria-labelledby="delete-template-modal-title">
+              <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <h2 id="delete-template-modal-title" style={styles.modalTitle}>Delete Template?</h2>
+                <p style={styles.modalText}>
+                  Are you sure you want to delete this template? Conversations created from this template will be preserved but will no longer be linked to it. This action cannot be undone.
+                </p>
+                <div style={styles.modalActions}>
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    style={styles.buttonSecondary}
+                    className="template-btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    style={styles.buttonPrimary}
+                    className="template-btn-primary"
+                  >
+                    Delete Template
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </FocusTrap>
         )}
       </div>
     </>

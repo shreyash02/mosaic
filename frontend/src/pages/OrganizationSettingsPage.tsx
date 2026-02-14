@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { OrganizationWithMembers } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import { SlackIntegrationCard } from '../components/SlackIntegrationCard';
+import FocusTrap from '../components/FocusTrap';
 
 const styles = {
   page: {
@@ -681,58 +682,60 @@ export default function OrganizationSettingsPage() {
 
         {/* Delete Modal */}
         {showDeleteModal && (
-          <div style={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <h2 style={styles.modalTitle}>Delete Organization</h2>
-              <p style={styles.modalText}>
-                This action cannot be undone. This will permanently delete the <strong>{organization.name}</strong> organization
-                and remove all member associations.
-              </p>
-              <p style={styles.modalText}>
-                Conversations in this organization will become personal conversations for their creators.
-              </p>
-              <p style={styles.modalConfirmText}>
-                Please type <strong>{organization.name}</strong> to confirm:
-              </p>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="Organization name"
-                style={styles.modalInput}
-                className="org-settings-input"
-                disabled={deleting}
-              />
-              <div style={styles.modalActions}>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeleteConfirmText('');
-                    setError('');
-                  }}
-                  style={{
-                    ...styles.buttonSecondary,
-                    ...(deleting ? styles.buttonDisabled : {}),
-                  }}
-                  className="org-settings-btn-secondary"
+          <FocusTrap isActive={showDeleteModal} onEscape={() => !deleting && setShowDeleteModal(false)}>
+            <div style={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)} role="dialog" aria-modal="true" aria-labelledby="delete-org-modal-title">
+              <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <h2 id="delete-org-modal-title" style={styles.modalTitle}>Delete Organization</h2>
+                <p style={styles.modalText}>
+                  This action cannot be undone. This will permanently delete the <strong>{organization.name}</strong> organization
+                  and remove all member associations.
+                </p>
+                <p style={styles.modalText}>
+                  Conversations in this organization will become personal conversations for their creators.
+                </p>
+                <p style={styles.modalConfirmText}>
+                  Please type <strong>{organization.name}</strong> to confirm:
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Organization name"
+                  style={styles.modalInput}
+                  className="org-settings-input"
                   disabled={deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  style={{
-                    ...styles.buttonPrimary,
-                    ...(deleting || deleteConfirmText !== organization.name ? styles.buttonDisabled : {}),
-                  }}
-                  className="org-settings-btn-primary"
-                  disabled={deleting || deleteConfirmText !== organization.name}
-                >
-                  {deleting ? 'Deleting...' : 'Delete Organization'}
-                </button>
+                />
+                <div style={styles.modalActions}>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setDeleteConfirmText('');
+                      setError('');
+                    }}
+                    style={{
+                      ...styles.buttonSecondary,
+                      ...(deleting ? styles.buttonDisabled : {}),
+                    }}
+                    className="org-settings-btn-secondary"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    style={{
+                      ...styles.buttonPrimary,
+                      ...(deleting || deleteConfirmText !== organization.name ? styles.buttonDisabled : {}),
+                    }}
+                    className="org-settings-btn-primary"
+                    disabled={deleting || deleteConfirmText !== organization.name}
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Organization'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </FocusTrap>
         )}
       </div>
     </>

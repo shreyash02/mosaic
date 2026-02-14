@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { SeriesWithConversations, CollectionAnalysis } from '../types';
 import TrendChart from '../components/TrendChart';
 import ConversationsList from '../components/ConversationsList';
+import FocusTrap from '../components/FocusTrap';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
@@ -503,45 +504,47 @@ export default function CollectionDetailPage() {
 
         {/* Delete Modal */}
         {showDeleteModal && (
-          <div style={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <h2 style={styles.modalTitle}>Delete Collection</h2>
-              <p style={styles.modalText}>
-                Are you sure you want to delete <strong>{collection.name}</strong>?
-              </p>
-              <p style={styles.modalText}>
-                This action cannot be undone. The collection will be deleted, but all conversations
-                in it will remain and will no longer be part of any collection.
-              </p>
-              <div style={styles.modalActions}>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setError('');
-                  }}
-                  style={{
-                    ...styles.buttonSecondary,
-                    ...(deleting ? styles.buttonDisabled : {}),
-                  }}
-                  className="collection-btn-secondary"
-                  disabled={deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  style={{
-                    ...styles.buttonPrimary,
-                    ...(deleting ? styles.buttonDisabled : {}),
-                  }}
-                  className="collection-btn-primary"
-                  disabled={deleting}
-                >
-                  {deleting ? 'Deleting...' : 'Delete Collection'}
-                </button>
+          <FocusTrap isActive={showDeleteModal} onEscape={() => !deleting && setShowDeleteModal(false)}>
+            <div style={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)} role="dialog" aria-modal="true" aria-labelledby="delete-collection-modal-title">
+              <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <h2 id="delete-collection-modal-title" style={styles.modalTitle}>Delete Collection</h2>
+                <p style={styles.modalText}>
+                  Are you sure you want to delete <strong>{collection.name}</strong>?
+                </p>
+                <p style={styles.modalText}>
+                  This action cannot be undone. The collection will be deleted, but all conversations
+                  in it will remain and will no longer be part of any collection.
+                </p>
+                <div style={styles.modalActions}>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setError('');
+                    }}
+                    style={{
+                      ...styles.buttonSecondary,
+                      ...(deleting ? styles.buttonDisabled : {}),
+                    }}
+                    className="collection-btn-secondary"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    style={{
+                      ...styles.buttonPrimary,
+                      ...(deleting ? styles.buttonDisabled : {}),
+                    }}
+                    className="collection-btn-primary"
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Collection'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </FocusTrap>
         )}
       </div>
     </>
