@@ -533,8 +533,10 @@ const styles = {
     background: 'rgba(255, 255, 255, 0.9)',
     border: 'none',
     borderRadius: '50%',
-    width: '40px',
-    height: '40px',
+    width: '44px',
+    height: '44px',
+    minWidth: '44px',
+    minHeight: '44px',
     fontSize: typography.fontSize.xl,
     cursor: 'pointer',
     display: 'flex',
@@ -1708,7 +1710,8 @@ export default function JoinPage() {
                   onClick={() => setIsEditMode(false)}
                   style={{
                     marginLeft: 'auto',
-                    padding: `${spacing[1]} ${spacing[3]}`,
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    minHeight: '44px',
                     backgroundColor: 'transparent',
                     border: '1px solid var(--color-primary-400)',
                     borderRadius: borders.radius.md,
@@ -1728,7 +1731,22 @@ export default function JoinPage() {
                 <button
                   type="button"
                   onClick={() => setShowDraftRestoredNotice(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary-600)', fontSize: typography.fontSize.lg, padding: 0, lineHeight: 1 }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-primary-600)',
+                    fontSize: typography.fontSize.xl,
+                    width: '44px',
+                    height: '44px',
+                    minWidth: '44px',
+                    minHeight: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: `-${spacing[2]}`,
+                  }}
+                  aria-label="Dismiss"
                 >
                   ×
                 </button>
