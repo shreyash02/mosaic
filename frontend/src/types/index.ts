@@ -109,6 +109,8 @@ export interface QuestionOptions {
   min?: number;
   max?: number;
   step?: number;
+  min_label?: string;
+  max_label?: string;
   // For poll
   mode?: 'single' | 'multiple';
   max_selections?: number;
