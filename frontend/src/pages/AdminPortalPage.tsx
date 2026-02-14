@@ -29,8 +29,9 @@ export default function AdminPortalPage() {
     ? tab as TabType
     : 'users';
 
-  // Test Tools dropdown state
+  // Dropdown states
   const [showTestToolsDropdown, setShowTestToolsDropdown] = useState(false);
+  const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
   
   // Users state
   const [users, setUsers] = useState<AdminUserInfo[]>([]);
@@ -287,6 +288,22 @@ export default function AdminPortalPage() {
               </Link>
               <Link to="/adminportal/email-preview" className="tab-dropdown-item" onClick={() => setShowTestToolsDropdown(false)}>
                 Email Template Preview
+              </Link>
+            </div>
+          )}
+        </div>
+        <div className="tab-dropdown-container">
+          <button
+            className="tab"
+            onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
+          >
+            Platform
+            <span style={{ marginLeft: '4px', fontSize: '10px' }}>{showPlatformDropdown ? '▲' : '▼'}</span>
+          </button>
+          {showPlatformDropdown && (
+            <div className="tab-dropdown-menu">
+              <Link to="/adminportal/features" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
+                Features
               </Link>
             </div>
           )}

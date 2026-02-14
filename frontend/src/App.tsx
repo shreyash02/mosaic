@@ -45,6 +45,7 @@ import AdminConversationDetailPage from './pages/AdminConversationDetailPage';
 import AdminEmailPreviewPage from './pages/AdminEmailPreviewPage';
 import AdminTestGenerationPage from './pages/AdminTestGenerationPage';
 import AdminSchedulerPage from './pages/AdminSchedulerPage';
+import AdminFeaturesPage from './pages/AdminFeaturesPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -386,6 +387,7 @@ function App() {
             <Route path="/adminportal/conversation/:id" element={<AdminConversationDetailPage />} />
             <Route path="/adminportal/email-preview" element={<AdminEmailPreviewPage />} />
             <Route path="/adminportal/test-generation" element={<AdminTestGenerationPage />} />
+            <Route path="/adminportal/features" element={<AdminFeaturesPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />

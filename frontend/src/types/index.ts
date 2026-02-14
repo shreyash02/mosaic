@@ -1018,3 +1018,52 @@ export interface QuestionSuggestionResponse {
   needs_more_context: boolean;
   context_hint?: string;
 }
+
+// Feature Flag types
+export interface FeatureFlag {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeatureFlagCreate {
+  name: string;
+  description?: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+export interface FeatureFlagUpdate {
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+  config?: Record<string, unknown>;
+}
+
+export interface FeatureFlagOverride {
+  id: string;
+  flag_id: string;
+  organization_id?: string;
+  user_id?: string;
+  enabled?: boolean;
+  config_override?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EffectiveFeatureFlag {
+  name: string;
+  slug: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  resolution_chain?: string[];
+}
+
+export interface FeatureFlagList {
+  flags: FeatureFlag[];
+}
