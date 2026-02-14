@@ -6,7 +6,7 @@ import ConversationPreview from '../../components/ConversationPreview';
 import { INTENT_PRESETS } from '../../types/intentPresets';
 import { api } from '../../services/api';
 import type { Series } from '../../types';
-import { typography, spacing, borders, shadows, transitions } from '../../styles';
+import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../../styles';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern } from '../../types';
 
 // Card component for consistent styling
@@ -501,13 +501,13 @@ export default function ReviewStep() {
 
   // New design render
   const renderNewDesign = () => (
-    <div style={{
+    <div className="review-layout" style={{
       display: 'flex',
       gap: spacing[5],
       alignItems: 'flex-start',
     }}>
       {/* Main content column */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="review-main" style={{ flex: 1, minWidth: 0 }}>
         {/* Summary Card */}
         <Card style={{ marginBottom: spacing[4] }}>
           <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>
@@ -579,7 +579,7 @@ export default function ReviewStep() {
                   </svg>
                   Recurring Schedule
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
+                <div className="review-settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
                   <div>
                     <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Frequency</div>
                     <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
@@ -626,7 +626,7 @@ export default function ReviewStep() {
                   </svg>
                   Slack Notifications
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
+                <div className="review-settings-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
                   <div>
                     <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Channel</div>
                     <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
@@ -699,7 +699,7 @@ export default function ReviewStep() {
           )}
 
           {/* 2x2 Grid of settings */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: spacing[4] }}>
+          <div className="review-privacy-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: spacing[4] }}>
             {/* Anonymity */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
@@ -994,7 +994,7 @@ export default function ReviewStep() {
       </div>
 
       {/* Sidebar - Respondent Preview */}
-      <div style={{ width: '260px', flexShrink: 0 }}>
+      <div className="review-sidebar" style={{ width: '260px', flexShrink: 0 }}>
         <Card>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[4] }}>
             Respondent Preview
@@ -1043,6 +1043,43 @@ export default function ReviewStep() {
 
   return (
     <div className="conversation-form">
+      {/* Mobile responsive styles */}
+      <style>{`
+        @media ${mediaQueries.mobile} {
+          .review-layout {
+            flex-direction: column !important;
+          }
+          .review-sidebar {
+            width: 100% !important;
+            order: -1;
+            margin-bottom: ${spacing[4]};
+          }
+          .review-main {
+            width: 100% !important;
+          }
+          .review-privacy-grid {
+            grid-template-columns: 1fr !important;
+            gap: ${spacing[3]} !important;
+          }
+          .review-settings-grid {
+            grid-template-columns: 1fr !important;
+            gap: ${spacing[3]} !important;
+          }
+        }
+        @media ${mediaQueries.tabletDown} {
+          .review-layout {
+            flex-direction: column !important;
+          }
+          .review-sidebar {
+            width: 100% !important;
+            order: -1;
+            margin-bottom: ${spacing[4]};
+          }
+          .review-main {
+            width: 100% !important;
+          }
+        }
+      `}</style>
       {error && <div className="error-message">{error}</div>}
 
       <div className="section-header">

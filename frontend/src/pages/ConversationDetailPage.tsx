@@ -2248,6 +2248,10 @@ export default function ConversationDetailPage() {
           }
           .convo-detail-actions > * {
             width: 100% !important;
+          }
+          .convo-detail-actions button,
+          .convo-detail-actions a {
+            width: 100% !important;
             justify-content: center !important;
             text-align: center !important;
           }
