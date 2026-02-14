@@ -14,6 +14,7 @@ import {
   ChartIcon,
 } from '../components/icons';
 import EmptyState from '../components/EmptyState';
+import EmptyDashboard from '../components/EmptyDashboard';
 import { SkeletonDashboard } from '../components/Skeleton';
 import WelcomeModal, { resetWelcomeState } from '../components/WelcomeModal';
 import GettingStartedChecklist from '../components/GettingStartedChecklist';
@@ -309,6 +310,64 @@ export default function DashboardPage() {
           <h1 style={s.pageTitle}>{currentWorkspaceName}</h1>
         </div>
         <SkeletonDashboard />
+      </div>
+    );
+  }
+
+  // Show enhanced empty dashboard for new users with no conversations
+  if (conversations.length === 0) {
+    return (
+      <div style={s.page} className="dashboard-page">
+        <EmptyDashboard userName={user?.full_name?.split(' ')[0]} />
+
+        {/* Welcome Modal for first-time users */}
+        <WelcomeModal key={welcomeKey} userName={user?.full_name?.split(' ')[0]} />
+
+        {/* Debug buttons for local development only */}
+        {import.meta.env.DEV && (
+          <div style={{
+            position: 'fixed',
+            bottom: spacing[4],
+            right: spacing[4],
+            display: 'flex',
+            gap: spacing[2],
+            zIndex: 50,
+          }}>
+            <button
+              onClick={() => {
+                resetOnboardingState();
+                window.location.reload();
+              }}
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                backgroundColor: 'var(--color-primary-700)',
+                color: 'var(--color-primary-50)',
+                border: 'none',
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.xs,
+                cursor: 'pointer',
+                opacity: 0.7,
+              }}
+            >
+              Reset Onboarding
+            </button>
+            <button
+              onClick={handleShowWelcome}
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                backgroundColor: 'var(--color-primary-700)',
+                color: 'var(--color-primary-50)',
+                border: 'none',
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.xs,
+                cursor: 'pointer',
+                opacity: 0.7,
+              }}
+            >
+              Show Welcome
+            </button>
+          </div>
+        )}
       </div>
     );
   }
