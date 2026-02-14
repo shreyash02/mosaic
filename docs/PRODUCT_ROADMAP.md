@@ -33,135 +33,183 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
 - [x] QR code/poster generation
 - [x] Help documentation (10 topics + contextual hints)
 - [x] Scheduled activation ("Launch Monday at 9am")
+- [x] Full-text search across conversations, collections, and analyses
+- [x] Skeleton loaders for consistent loading states
+- [x] Forgot password flow with email reset
+- [x] Email verification for sensitive actions
+- [x] Profile page and settings (notifications, security)
+- [x] Reminders for non-respondents
+- [x] Announcements to participants
+- [x] Preview/dry-run page for creators to test participant experience
+- [x] Centralized access control for conversations
 
 ---
 
 ## Remaining Gaps
 
+### Essential (Critical for trust/core UX)
+
+1. **Response Threshold Setting**
+   - Protect anonymity when response count is low (<N responses)
+   - Spec exists at `SPEC_response_threshold.md` - needs implementation
+   - Critical for trust positioning ("We protect anonymity")
+   - Competitors have this as standard
+
+2. **Copy Link Buttons Throughout UI**
+   - Currently buried in Share section
+   - Need one-click copy on dashboard conversation cards
+   - Add to detail page header area
+   - Quick win, high friction reduction
+
 ### P1 - High Priority
 
-1. **Response Rate Tools**
-   - Reminder email scheduling for non-respondents
-   - Optimal send time suggestions
-   - Response rate benchmarks/insights
+3. **Mobile JoinPage Optimization**
+   - QR code use case is mobile-first
+   - Touch targets too small (especially radio/checkbox options)
+   - Rating slider needs larger touch area
+   - Simplified question navigation for mobile
+   - Minimum 48px touch targets
 
-2. **Enhanced Search**
-   - Server-side search across conversations
-   - Search within analysis results
-   - Filter by date range, status, collection
+4. **CSV Export**
+   - PDF export exists, raw data export missing
+   - Power users need data for external analysis
+   - Add to AnalysisPage alongside PDF
+
+5. **Conversation Duplication**
+   - "Run this again" is a common workflow
+   - Templates require upfront setup
+   - Add "Duplicate" button on conversation cards/detail page
 
 ### P2 - Medium Priority
 
-3. **Help System Depth**
-   - More detailed help page content
-   - Video walkthroughs for key flows
-   - Interactive tutorials
-
-4. **Analysis Comparison View**
+6. **Analysis Comparison View**
    - Side-by-side comparison of 2-3 analyses
    - Delta highlighting (what changed)
-   - Useful for tracking improvement over time
+   - Collections exist but no comparison UI
+   - Key for longitudinal tracking value prop
 
-5. **Mobile Response Optimization**
-   - Optimize JoinPage for mobile (QR code flow)
-   - Larger touch targets
-   - Simplified question navigation
-   - Better progress indicator
+7. **Slack Integration Phase 2**
+   - Phase 1 done (DMs to participants)
+   - Channel post when conversation activates
+   - Channel post when analysis ready
+   - Response count updates to channel
 
-### P3 - Lower Priority
+8. **Response Analytics**
+   - Response rate prominently displayed
+   - Engagement benchmarks
+   - Reminder effectiveness tracking
+   - Optimal send time suggestions
 
-6. **Custom Branding on Participant Pages**
-   - Apply org logo/colors to JoinPage
-   - Branded email templates
-   - Custom QR code styling
+9. **Help System Depth**
+   - Video walkthroughs for key flows
+   - Interactive tutorials
+   - Expanded FAQ sections
 
-7. **Export Improvements**
-   - CSV export of raw responses
-   - Scheduled report emails
-   - PowerPoint-ready format
+### P3 - Lower Priority (Polish)
 
-8. **External API** (see `EXTERNAL_API_DESIGN.md`)
-   - API key management in settings
-   - Public API for campaigns, responses, analysis
-   - Webhook support for events
-   - Enables third-party integrations (HRIS, product feedback widgets, etc.)
+10. **Keyboard Shortcuts**
+    - j/k navigation on lists
+    - Quick actions (a for activate, c for close)
+    - Help modal on ? key
+
+11. **Enhanced Visualizations**
+    - Pie charts for poll distributions
+    - Word clouds for themes
+    - Better rating distribution charts
+
+12. **Smart Defaults**
+    - Remember last-used settings per user
+    - Suggest duration based on question count
+
+13. **Question Library**
+    - Pre-written questions by category
+    - Community-contributed templates
+
+14. **Real-time Response Count**
+    - WebSocket for live updates during active conversations
+    - Creator engagement feature
+
+15. **Custom Branding on Participant Pages**
+    - Apply org logo/colors to JoinPage
+    - Branded email templates
+    - Custom QR code styling
+
+16. **External API** (see `EXTERNAL_API_DESIGN.md`)
+    - API key management in settings
+    - Public API for campaigns, responses, analysis
+    - Webhook support for events
 
 ---
 
-## Additional Value-Add Ideas
+## UX Inconsistencies to Address
 
-### Quick Wins (Low effort, good impact)
+- Back navigation patterns (buttons vs breadcrumbs) - standardize
+- Date formatting (relative vs absolute) - establish clear rules
+- Action confirmation patterns - consistent modal usage
+- Form validation timing (inline vs submit) - prefer inline
 
-1. **Response Preview for Creators**
-   - Let creators preview what participants see before activating
-   - Catches mistakes, builds confidence
+---
 
-2. **Keyboard Shortcuts**
-   - Power user shortcuts for common actions
-   - j/k navigation, quick actions
-
-3. **Conversation Duplication**
-   - One-click duplicate any conversation as draft
-   - "Run this again" button
-
-4. **Smart Defaults**
-   - Remember last-used settings per user
-   - Suggest duration based on question count
-
-5. **Response Sentiment Indicator**
-   - Quick visual indicator on dashboard (positive/neutral/negative)
-   - Before viewing full analysis
+## Future Value-Add Ideas
 
 ### Medium Effort, High Impact
 
-6. **Suggested Questions Library**
-   - Pre-written questions by category (retros, engagement, exit interviews)
-   - Community-contributed templates
-
-7. **Anonymous Follow-up Questions**
+1. **Anonymous Follow-up Questions**
    - Creator can ask clarifying questions to anonymous respondents
    - Respondent can reply while staying anonymous
 
-8. **Participant Segments**
+2. **Participant Segments**
    - Tag participants (team, department, location)
    - Filter analysis by segment
    - Compare segments
 
-9. **Goal Tracking**
-    - Set improvement goals ("increase engagement score by 10%")
-    - Track progress across conversations
+3. **Goal Tracking** (see `SPEC_goals_and_actions.md`)
+   - Set improvement goals for recurring conversations
+   - Track progress across conversation instances
+   - Only for recurring/collection conversations
+
+4. **AI-Suggested Actions** (see `SPEC_goals_and_actions.md`)
+   - Move from insights to recommendations
+   - Human-in-the-loop approval before tracking
+   - Context-aware suggestions
 
 ### Longer Term / Strategic
 
-10. **AI-Suggested Actions**
-    - Move from insights to recommendations
-    - "Based on this feedback, consider..."
+5. **Benchmarking**
+   - Compare results to industry/company-size benchmarks
+   - "Your response rate is above average"
 
-11. **Benchmarking**
-    - Compare results to industry/company-size benchmarks
-    - "Your response rate is above average"
+6. **Integration Ecosystem** (builds on External API)
+   - Jira (create tickets from feedback)
+   - Notion (sync insights)
+   - Calendar (schedule recurring)
+   - HRIS (auto-invite new hires, pulse surveys)
 
-12. **Manager Coaching**
-    - Tips based on feedback patterns
-    - Resources for addressing common themes
+7. **Multi-language Support**
+   - Translate questions and UI
+   - Analyze responses in multiple languages
 
-13. **Integration Ecosystem** (builds on External API)
-    - Jira (create tickets from feedback)
-    - Notion (sync insights)
-    - Calendar (schedule recurring)
-    - HRIS (auto-invite new hires, pulse surveys)
+---
 
-14. **Multi-language Support**
-    - Translate questions and UI
-    - Analyze responses in multiple languages
+## Priority Summary
+
+| Priority | Items | Effort |
+|----------|-------|--------|
+| **Essential** | Response Threshold, Copy Link buttons | Small-Medium |
+| **Quick Wins** | CSV Export, Conversation Duplication | Small |
+| **High Impact** | Mobile JoinPage, Analysis Comparison | Medium-Large |
+| **Medium** | Slack Phase 2, Response Analytics | Medium |
 
 ---
 
 ## Notes
 
-- Last updated: Feb 12, 2026
+- Last updated: Feb 14, 2026
 - Priorities may shift based on user feedback and business needs
 
 ## Related Documents
 
 - `EXTERNAL_API_DESIGN.md` - Detailed external API design for third-party integrations
+- `SPEC_goals_and_actions.md` - AI-suggested actions and goal tracking spec
+- `SPEC_response_threshold.md` - Response threshold for anonymity protection
+- `PRODUCT_STRATEGY.md` - Comprehensive product strategy and technical notes
