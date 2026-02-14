@@ -27,8 +27,9 @@ interface ConversationsListProps {
   showCollectionColumn?: boolean;
   showMenu?: boolean;
   onDuplicate?: (conversationId: string) => Promise<void>;
+  onArchive?: (conversationId: string) => void;
   onDelete?: (conversationId: string) => void;
-  deleteLabel?: string; // Custom label for delete button (e.g., "Archive")
+  deleteLabel?: string; // Custom label for delete button (e.g., "Archive") - deprecated, use onArchive instead
   // Bulk operations
   enableBulkSelect?: boolean;
   onBulkClose?: (ids: string[]) => Promise<BulkOperationResponse>;
@@ -510,6 +511,7 @@ export default function ConversationsList({
   showCollectionColumn = false,
   showMenu = true,
   onDuplicate,
+  onArchive,
   onDelete,
   deleteLabel = 'Delete',
   enableBulkSelect = false,
@@ -918,6 +920,15 @@ export default function ConversationsList({
     }
   };
 
+  const handleArchiveClick = (e: React.MouseEvent, conversationId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenMenuId(null);
+    if (onArchive) {
+      onArchive(conversationId);
+    }
+  };
+
   // Render tile card
   const renderTileCard = (conversation: ConversationListItem, isNested = false) => {
     const isMenuOpen = openMenuId === conversation.id;
@@ -982,7 +993,14 @@ export default function ConversationsList({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setOpenMenuId(isMenuOpen ? null : conversation.id);
+                  if (isMenuOpen) {
+                    setOpenMenuId(null);
+                    setMenuPosition(null);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setMenuPosition({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                    setOpenMenuId(conversation.id);
+                  }
                 }}
                 aria-label="More options"
               >
@@ -992,22 +1010,31 @@ export default function ConversationsList({
                   <circle cx="8" cy="13" r="1.5"/>
                 </svg>
               </button>
-              {isMenuOpen && (
-                <div style={s.menuDropdown}>
+              {isMenuOpen && menuPosition && createPortal(
+                <div
+                  style={{ ...s.menuDropdown, position: 'fixed', top: menuPosition.top, right: menuPosition.right }}
+                  data-menu
+                >
                   {onDuplicate && (
                     <button style={s.menuItem} onClick={(e) => handleDuplicate(e, conversation.id)}>
                       Duplicate
                     </button>
                   )}
+                  {onArchive && (
+                    <button style={s.menuItem} onClick={(e) => handleArchiveClick(e, conversation.id)}>
+                      Archive
+                    </button>
+                  )}
                   {onDelete && (
                     <button
-                      style={merge(s.menuItem, deleteLabel === 'Delete' ? s.menuItemDanger : {})}
+                      style={merge(s.menuItem, s.menuItemDanger)}
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
                     >
                       {deleteLabel}
                     </button>
                   )}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}
@@ -1123,9 +1150,14 @@ export default function ConversationsList({
                       Duplicate
                     </button>
                   )}
+                  {onArchive && (
+                    <button style={s.menuItem} onClick={(e) => handleArchiveClick(e, conversation.id)}>
+                      Archive
+                    </button>
+                  )}
                   {onDelete && (
                     <button
-                      style={merge(s.menuItem, deleteLabel === 'Delete' ? s.menuItemDanger : {})}
+                      style={merge(s.menuItem, s.menuItemDanger)}
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
                     >
                       {deleteLabel}

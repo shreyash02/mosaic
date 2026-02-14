@@ -1109,12 +1109,14 @@ export default function ConversationsPage() {
               await api.duplicateConversation(id);
               await loadConversations();
             }}
-            onDelete={(id) => {
-              // Use archive instead of delete for active conversations
+            onArchive={(id) => {
               setArchiveConversationId(id);
               setShowArchiveModal(true);
             }}
-            deleteLabel="Archive"
+            onDelete={(id) => {
+              setDeleteConversationId(id);
+              setShowDeleteModal(true);
+            }}
             enableBulkSelect={true}
             onBulkClose={handleBulkClose}
             onBulkDelete={handleBulkDelete}
