@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { ConversationListItem } from '../types';
@@ -12,6 +12,7 @@ import {
   UsersIcon,
   TrendingIcon,
   ChartIcon,
+  CopyIcon,
 } from '../components/icons';
 import EmptyState from '../components/EmptyState';
 import { SkeletonDashboard } from '../components/Skeleton';
@@ -131,6 +132,28 @@ const s = {
     fontSize: typography.fontSize.xs,
     color: 'var(--color-primary-500)',
   },
+  cardFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing[3],
+  },
+  copyLinkButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[2]}`,
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-600)',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: 'all 150ms',
+  },
+  copyLinkButtonSuccess: {
+    color: '#059669',
+  },
   statusDot: {
     display: 'inline-block',
     width: '8px',
@@ -207,14 +230,45 @@ const getStatusColor = (state: ConversationState): string => {
 };
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [welcomeKey, setWelcomeKey] = useState(0);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
   const { completeStep, isComplete, isDismissed, reset: resetOnboarding } = useOnboarding();
 
   usePageTitle('Dashboard');
+
+  const copyLink = async (e: React.MouseEvent, conv: ConversationListItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const link = `${window.location.origin}/join/${conv.access_code}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLinkId(conv.id);
+      completeStep('share-link');
+      setTimeout(() => setCopiedLinkId(null), 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopiedLinkId(conv.id);
+        completeStep('share-link');
+        setTimeout(() => setCopiedLinkId(null), 2000);
+      } catch (fallbackErr) {
+        console.error('Failed to copy link', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
 
   // Auto-complete onboarding steps based on user activity
   useEffect(() => {
@@ -319,6 +373,10 @@ export default function DashboardPage() {
         .dashboard-card:hover {
           border-color: ${'var(--color-primary-500)'} !important;
           box-shadow: ${shadows.sm} !important;
+        }
+        .copy-link-btn:hover {
+          background-color: var(--color-primary-100) !important;
+          border-color: var(--color-primary-500) !important;
         }
         .view-all-link:hover {
           text-decoration: underline;
@@ -540,20 +598,41 @@ export default function DashboardPage() {
         ) : (
           <div style={s.recentGrid}>
             {recentConversations.map((conv) => (
-              <Link
+              <div
                 key={conv.id}
-                to={`/conversations/${conv.id}`}
                 className="dashboard-card"
-                style={s.conversationCard}
+                style={{ ...s.conversationCard, cursor: 'pointer' }}
+                onClick={() => navigate(`/conversations/${conv.id}`)}
               >
                 <div style={s.cardTitle}>
                   <span style={{ ...s.statusDot, backgroundColor: getStatusColor(conv.state) }} />
                   {conv.title}
                 </div>
-                <div style={s.cardMeta}>
-                  {conv.unique_participants || 0} responses
+                <div style={s.cardFooter}>
+                  <span style={s.cardMeta}>
+                    {conv.unique_participants || 0} responses
+                  </span>
+                  {conv.state !== ConversationState.DRAFT && (
+                    <button
+                      onClick={(e) => copyLink(e, conv)}
+                      style={{
+                        ...s.copyLinkButton,
+                        ...(copiedLinkId === conv.id ? s.copyLinkButtonSuccess : {}),
+                      }}
+                      className="copy-link-btn"
+                    >
+                      {copiedLinkId === conv.id ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <CopyIcon size={12} />
+                      )}
+                      {copiedLinkId === conv.id ? 'Copied!' : 'Copy Link'}
+                    </button>
+                  )}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

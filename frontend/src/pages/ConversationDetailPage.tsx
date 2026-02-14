@@ -128,6 +128,24 @@ const s = {
     backgroundColor: 'var(--color-primary-200)',
     color: 'var(--color-primary-700)',
   },
+  headerCopyButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-600)',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: 'all 150ms',
+    marginLeft: 'auto',
+  },
+  headerCopyButtonSuccess: {
+    color: '#059669',
+  },
   // Actions bar
   actionsBar: {
     display: 'flex',
@@ -173,9 +191,9 @@ const s = {
     border: `1px solid ${'var(--color-error)'}`,
   },
   buttonSuccess: {
-    backgroundColor: 'var(--color-success)',
-    color: 'var(--color-primary-50)',
-    border: 'none',
+    backgroundColor: '#f0fdf4',
+    color: '#059669',
+    border: '1px solid #a7f3d0',
   },
   buttonWarning: {
     backgroundColor: 'var(--color-warning)',
@@ -526,6 +544,7 @@ export default function ConversationDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [headerLinkCopied, setHeaderLinkCopied] = useState(false);
   const [newlyGeneratedCodes, setNewlyGeneratedCodes] = useState<string[]>([]);
   const [allCodes, setAllCodes] = useState<Array<{ participant_code: string; is_used: boolean; used_at?: string; created_at: string }>>([]);
   const [codeCount, setCodeCount] = useState(10);
@@ -922,6 +941,32 @@ export default function ConversationDetailPage() {
     }
   };
 
+  const copyHeaderLink = async () => {
+    const link = `${window.location.origin}/join/${conversation?.access_code}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setHeaderLinkCopied(true);
+      completeStep('share-link');
+      setTimeout(() => setHeaderLinkCopied(false), 2000);
+    } catch (err) {
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setHeaderLinkCopied(true);
+        completeStep('share-link');
+        setTimeout(() => setHeaderLinkCopied(false), 2000);
+      } catch (fallbackErr) {
+        console.error('Failed to copy link', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   const getInviteLink = () => `${window.location.origin}/join/${conversation?.access_code}`;
 
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -1117,6 +1162,25 @@ export default function ConversationDetailPage() {
             <span style={merge(s.statusBadge, s.continuousBadge)}>
               Long-running
             </span>
+          )}
+          {conversation.state !== ConversationState.DRAFT && (
+            <button
+              onClick={copyHeaderLink}
+              style={merge(s.headerCopyButton, headerLinkCopied && s.headerCopyButtonSuccess)}
+              className="header-copy-btn"
+            >
+              {headerLinkCopied ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              )}
+              {headerLinkCopied ? 'Copied!' : 'Copy Link'}
+            </button>
           )}
           {organizationName && (
             <Link to={`/organizations/${conversation.organization_id}`} style={s.orgBadge}>
@@ -2147,6 +2211,10 @@ export default function ConversationDetailPage() {
         }
         .analysis-dropdown-item:hover {
           background-color: var(--color-primary-100) !important;
+        }
+        .header-copy-btn:hover {
+          background-color: var(--color-primary-100) !important;
+          border-color: var(--color-primary-500) !important;
         }
         @media ${mediaQueries.tabletDown} {
           .convo-detail-page {

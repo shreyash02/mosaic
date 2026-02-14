@@ -1,3 +1,4 @@
+export { default as CopyIcon } from './CopyIcon';
 export { default as LockIcon } from './LockIcon';
 export { default as RobotIcon } from './RobotIcon';
 export { default as LightningIcon } from './LightningIcon';
