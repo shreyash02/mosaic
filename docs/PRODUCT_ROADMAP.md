@@ -17,127 +17,196 @@
 
 When designing features or writing copy, avoid assuming "team", "manager", "employee", "workplace". Use neutral terms like "creator", "participants", "group" where possible, or make the UI adapt to context.
 
+**2. Privacy-first architecture**: Multiple anonymity levels, trust screen with countdown, anonymous conflict handling for logged-in users accessing anonymous conversations.
+
 ---
 
-## Completed (as of Feb 2026)
+## Completed Features (as of Feb 2026)
 
-- [x] Onboarding (Getting Started checklist + contextual hints)
-- [x] Email notifications (closing warning, closed, analysis ready, periodic analysis, recurring instance)
-- [x] Slack notifications (participant DMs + conversation events)
-- [x] Conversation archiving
-- [x] Bulk operations (select, close, archive, delete)
-- [x] Recurring template pause/resume + inline pattern editing
-- [x] Timezone display + human-friendly dates
-- [x] Response editing for participants
-- [x] Batch invitation uploads via CSV
-- [x] QR code/poster generation
-- [x] Help documentation (10 topics + contextual hints)
+### Core Conversation Management
+- [x] Multi-step conversation creation wizard (7 steps: Intent, Details, Privacy, Questions, Timing, Notifications, Review)
+- [x] Question types: text, rating (1-5/1-10), single choice, multiple choice
+- [x] Drag-and-drop question reordering with image attachments
+- [x] Conversation states (Draft, Active, Closed, Analyzing, Analyzed)
 - [x] Scheduled activation ("Launch Monday at 9am")
-- [x] Full-text search across conversations, collections, and analyses
-- [x] Skeleton loaders for consistent loading states
-- [x] Forgot password flow with email reset
-- [x] Email verification for sensitive actions
-- [x] Profile page and settings (notifications, security)
-- [x] Reminders for non-respondents
-- [x] Announcements to participants
-- [x] Preview/dry-run page for creators to test participant experience
-- [x] Centralized access control for conversations
+- [x] Auto-close with time extension capability
 - [x] Conversation duplication ("Duplicate as draft")
-- [x] Slack channel posts (activation, analysis complete)
+- [x] Conversation archiving/unarchiving
+- [x] Bulk operations (select, close, archive, delete)
+- [x] Centralized access control
+
+### Participant Experience
+- [x] Trust screen with 10-second read timer and privacy disclosure
+- [x] Anonymous conflict handling for logged-in users
+- [x] Response editing (when enabled by creator)
+- [x] Server-side draft auto-save with status indicator
+- [x] Question image lightbox (click-to-enlarge)
+- [x] Announcements banner from creator
+- [x] Preview/dry-run page for creators to test participant experience
+
+### Analysis & Insights
+- [x] AI-powered analysis (themes, perspectives, insights, "What Surprised Us")
+- [x] Question-by-question breakdown
+- [x] Rating statistics with distribution charts
+- [x] Poll statistics with choice counts and percentages
+- [x] Verbatim responses (grouped by question or responder)
+- [x] PDF export with cover page
+- [x] Periodic analysis for continuous conversations
+- [x] Analysis history with manual/scheduled triggers
+
+### Collections & Recurring
+- [x] Create/manage collections
+- [x] Collection-level analysis with aggregated insights
+- [x] Trend charts for theme evolution
+- [x] Templates with recurring patterns (weekly, biweekly, monthly, quarterly)
+- [x] Recurring template pause/resume + inline pattern editing
+
+### Notifications
+- [x] Email notifications (7 types with granular control)
+- [x] Slack participant DMs
+- [x] Slack channel notifications (activation, close, analysis events)
+- [x] Reminders for non-respondents (manual and scheduled)
+- [x] Announcements to participants
+
+### User & Organization Management
+- [x] Profile page (name editing, avatar)
+- [x] Password management (change/set)
+- [x] Email preferences with granular control
+- [x] Email verification for sensitive actions
+- [x] Forgot password flow with email reset
+- [x] Organization creation and management
+- [x] Organization branding (logo, name)
+- [x] Member management with admin/member roles
+- [x] Workspace switching (personal + org)
+- [x] Slack integration per organization
+
+### Onboarding & Help
+- [x] Getting Started checklist with progressive completion
+- [x] Welcome modal for first-time users
+- [x] Contextual hints throughout UI
+- [x] Help documentation (10 topics: creating, inviting, responding, analysis, etc.)
+
+### Other
+- [x] Full-text search across conversations, collections, and analyses
+- [x] QR code/poster generation (downloadable)
+- [x] Copy link buttons on cards and detail page header
+- [x] Invitation management with CSV batch upload
+- [x] Skeleton loaders for loading states
+- [x] Timezone display + human-friendly dates
+- [x] Admin portal (user/conversation management, test data generation)
 
 ---
 
 ## Remaining Gaps
 
-### Essential (Critical for trust/core UX)
+### Essential (Critical for Trust)
 
 1. **Response Threshold Setting**
    - Protect anonymity when response count is low (<N responses)
    - Spec exists at `SPEC_response_threshold.md` - needs implementation
    - Critical for trust positioning ("We protect anonymity")
    - Competitors have this as standard
-
-2. **Copy Link Buttons Throughout UI**
-   - Currently buried in Share section
-   - Need one-click copy on dashboard conversation cards
-   - Add to detail page header area
-   - Quick win, high friction reduction
+   - **Effort:** Medium
 
 ### P1 - High Priority
 
-3. **Mobile JoinPage Optimization**
-   - QR code use case is mobile-first
-   - Touch targets too small (especially radio/checkbox options)
-   - Rating slider needs larger touch area
-   - Simplified question navigation for mobile
-   - Minimum 48px touch targets
+2. **Mobile JoinPage Optimization**
+   - QR code use case is mobile-first entry point
+   - Touch targets below 48px minimum (radio/checkbox options)
+   - Rating slider difficult on mobile
+   - Need swipe navigation between questions
+   - Sticky submit button at bottom
+   - **Effort:** Medium-Large
 
-4. **CSV Export**
+3. **CSV/Data Export**
    - PDF export exists, raw data export missing
-   - Power users need data for external analysis
-   - Add to AnalysisPage alongside PDF
+   - Power users need data for external analysis, Excel, compliance
+   - Add "Export CSV" alongside "Export PDF" in AnalysisPage
+   - **Effort:** Small
+
+4. **Analysis Comparison View**
+   - Side-by-side comparison of 2-3 analyses
+   - Delta highlighting (what changed between periods)
+   - Collections exist but no comparison UI
+   - Key differentiator for longitudinal tracking value prop
+   - **Effort:** Medium-Large
 
 ### P2 - Medium Priority
 
-5. **Analysis Comparison View**
-   - Side-by-side comparison of 2-3 analyses
-   - Delta highlighting (what changed)
-   - Collections exist but no comparison UI
-   - Key for longitudinal tracking value prop
+5. **Accessibility Improvements**
+   - Add ARIA labels to all interactive elements
+   - Implement focus trapping in modals
+   - Screen reader testing and fixes
+   - Color contrast verification for WCAG compliance
+   - **Effort:** Medium
 
-6. **Response Analytics**
-   - Response rate prominently displayed
-   - Engagement benchmarks
-   - Reminder effectiveness tracking
+6. **Response Analytics Dashboard**
+   - Response rate trends over time
    - Optimal send time suggestions
+   - Reminder effectiveness tracking
+   - Engagement benchmarks
+   - **Effort:** Medium
 
-7. **Help System Depth**
-   - Video walkthroughs for key flows
-   - Interactive tutorials
-   - Expanded FAQ sections
+7. **Real-time Response Count**
+   - WebSocket for live updates during active conversations
+   - Creator engagement feature - seeing responses come in
+   - **Effort:** Medium
 
 ### P3 - Lower Priority (Polish)
 
 8. **Keyboard Shortcuts**
-    - j/k navigation on lists
-    - Quick actions (a for activate, c for close)
-    - Help modal on ? key
+   - j/k navigation on lists
+   - Quick actions (a for activate, c for close)
+   - Help modal on ? key
+   - Esc for modal close (partially done)
+   - **Effort:** Small
 
 9. **Enhanced Visualizations**
-    - Pie charts for poll distributions
-    - Word clouds for themes
-    - Better rating distribution charts
+   - Pie charts for poll distributions
+   - Word clouds for themes
+   - Sentiment visualization
+   - **Effort:** Small-Medium
 
 10. **Smart Defaults**
     - Remember last-used settings per user
     - Suggest duration based on question count
+    - **Effort:** Small
 
 11. **Question Library**
     - Pre-written questions by category
     - Community-contributed templates
+    - **Effort:** Medium
 
-12. **Real-time Response Count**
-    - WebSocket for live updates during active conversations
-    - Creator engagement feature
-
-13. **Custom Branding on Participant Pages**
-    - Apply org logo/colors to JoinPage
+12. **Custom Branding on Participant Pages**
+    - Apply org logo/colors to JoinPage header
     - Branded email templates
     - Custom QR code styling
+    - **Effort:** Medium
+
+13. **Help System Depth**
+    - Video walkthroughs for key flows
+    - Interactive tutorials
+    - Expanded FAQ sections
+    - **Effort:** Medium
 
 14. **External API** (see `EXTERNAL_API_DESIGN.md`)
     - API key management in settings
     - Public API for campaigns, responses, analysis
     - Webhook support for events
+    - **Effort:** Large
 
 ---
 
 ## UX Inconsistencies to Address
 
-- Back navigation patterns (buttons vs breadcrumbs) - standardize
-- Date formatting (relative vs absolute) - establish clear rules
-- Action confirmation patterns - consistent modal usage
-- Form validation timing (inline vs submit) - prefer inline
+| Issue | Current State | Recommendation |
+|-------|---------------|----------------|
+| Back navigation | Mix of buttons and breadcrumbs | Breadcrumbs for >2 levels, back button for single-level |
+| Date formatting | Mix of relative and absolute | <24h: relative, <7d: day+time, >7d: absolute |
+| Form validation | Mix of inline and submit-time | Prefer inline validation with debouncing |
+| Action confirmation | Inconsistent modal usage | Standardize confirmation patterns |
+| Loading states | Skeleton loaders exist but inconsistent | Audit all pages for consistent usage |
+| Error messages | Generic messages in many places | Expand error library with actionable guidance |
 
 ---
 
@@ -184,12 +253,28 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
 
 ## Priority Summary
 
-| Priority | Items | Effort |
-|----------|-------|--------|
-| **Essential** | Response Threshold, Copy Link buttons | Small-Medium |
-| **Quick Wins** | CSV Export | Small |
-| **High Impact** | Mobile JoinPage, Analysis Comparison | Medium-Large |
-| **Medium** | Response Analytics, Help System Depth | Medium |
+| Priority | Items | Effort | Impact |
+|----------|-------|--------|--------|
+| **Essential** | Response Threshold | Medium | Critical for trust |
+| **Quick Wins** | CSV Export, Keyboard Shortcuts | Small | High user value |
+| **High Impact** | Mobile JoinPage, Analysis Comparison | Medium-Large | Unlock new use cases |
+| **Foundation** | Accessibility | Medium | Required for enterprise |
+| **Engagement** | Response Analytics, Real-time Updates | Medium | Creator retention |
+
+---
+
+## Technical Notes
+
+### Code Quality Strengths
+- Consistent design tokens (`src/styles/tokens.ts`)
+- Well-defined TypeScript types (`src/types/index.ts`)
+- React context for state management (Auth, Organization, Theme, ConversationForm)
+- Custom hooks for reusable logic (useOnboarding, usePageTitle, useDraftResponses)
+
+### Areas for Improvement
+- Some components very long (JoinPage: 1860 lines, ConversationDetailPage: 2277 lines) - consider extraction
+- Inline styles prevalent - could migrate to CSS modules
+- Limited test coverage
 
 ---
 
