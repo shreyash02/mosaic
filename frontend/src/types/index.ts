@@ -3,6 +3,7 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
+  email_verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +29,7 @@ export interface AuthResponse {
 export interface UserWithAuthInfo extends User {
   has_password: boolean;
   has_google: boolean;
+  email_verified: boolean;
 }
 
 export interface ProfileUpdateRequest {
@@ -52,6 +54,13 @@ export interface EmailPreferences {
   analysis_ready: boolean;
   periodic_analysis: boolean;
   recurring_instances: boolean;
+}
+
+export interface OnboardingProgress {
+  steps: Record<string, boolean>;
+  completed_at: Record<string, string>;
+  dismissed: boolean;
+  started_at?: string;
 }
 
 // Conversation types

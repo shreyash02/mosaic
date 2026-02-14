@@ -81,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    // Clear legacy onboarding data (now stored server-side)
+    localStorage.removeItem('mosaic_onboarding');
     setUser(null);
   };
 

@@ -36,8 +36,12 @@ from app.schemas.user import (
     PasswordSetRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
     EmailPreferences,
     get_email_preferences,
+    OnboardingProgress,
+    get_onboarding_progress,
 )
 
 router = APIRouter()
@@ -79,15 +83,34 @@ async def register(
             detail="Password is required for registration"
         )
 
+    # Generate email verification token
+    import secrets
+    verification_token = secrets.token_urlsafe(32)
+
     user = User(
         email=user_data.email,
         password_hash=get_password_hash(user_data.password),
         full_name=user_data.full_name,
+        email_verified=False,
+        email_verification_token=verification_token,
+        email_verification_expires=datetime.utcnow() + timedelta(hours=24),
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Send verification email (don't block registration if email fails)
+    try:
+        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+        await email_service.send_email_verification_email(
+            to_email=user.email,
+            verification_url=verification_url,
+        )
+    except Exception as e:
+        # Log error but don't fail registration
+        import logging
+        logging.error(f"Failed to send verification email: {e}")
 
     return user
 
@@ -417,6 +440,7 @@ async def get_user_profile(
         id=current_user.id,
         email=current_user.email,
         full_name=current_user.full_name,
+        email_verified=current_user.email_verified,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         has_password=current_user.password_hash is not None,
@@ -520,6 +544,35 @@ async def update_email_preferences(
     return get_email_preferences(current_user.email_preferences)
 
 
+@router.get("/onboarding", response_model=OnboardingProgress)
+async def get_user_onboarding_progress(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current user's onboarding progress.
+
+    Returns progress with defaults for any unset values.
+    """
+    return get_onboarding_progress(current_user.onboarding_progress)
+
+
+@router.put("/onboarding", response_model=OnboardingProgress)
+async def update_onboarding_progress(
+    progress: OnboardingProgress,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user's onboarding progress.
+
+    Replaces the entire progress object.
+    """
+    current_user.onboarding_progress = progress.model_dump()
+    db.commit()
+    db.refresh(current_user)
+    return get_onboarding_progress(current_user.onboarding_progress)
+
+
 @router.post("/password/forgot", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("5/minute")
 async def forgot_password(
@@ -593,3 +646,76 @@ async def reset_password(
 
     # Send confirmation email
     await email_service.send_password_reset_confirmation_email(to_email=user_email)
+
+
+@router.post("/verify-email")
+async def verify_email(
+    verify_data: VerifyEmailRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify email using a verification token.
+
+    Validates the token and marks the user's email as verified.
+    """
+    user = db.query(User).filter(
+        User.email_verification_token == verify_data.token
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification link"
+        )
+
+    if not user.email_verification_expires or user.email_verification_expires < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification link has expired. Please request a new one."
+        )
+
+    # Mark email as verified and clear token
+    user.email_verified = True
+    user.email_verification_token = None
+    user.email_verification_expires = None
+    db.commit()
+
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("3/minute")
+async def resend_verification(
+    request: Request,
+    resend_data: ResendVerificationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Resend email verification link.
+
+    Generates a new verification token and sends a new email.
+    Rate limited to prevent abuse.
+    """
+    user = db.query(User).filter(User.email == resend_data.email).first()
+
+    if not user:
+        # Don't reveal whether email exists
+        return
+
+    if user.email_verified:
+        # Already verified, nothing to do
+        return
+
+    # Generate new verification token
+    import secrets
+    verification_token = secrets.token_urlsafe(32)
+    user.email_verification_token = verification_token
+    user.email_verification_expires = datetime.utcnow() + timedelta(hours=24)
+    db.commit()
+
+    # Send verification email
+    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    await email_service.send_email_verification_email(
+        to_email=user.email,
+        verification_url=verification_url,
+    )

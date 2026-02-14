@@ -71,7 +71,7 @@ export default function GettingStartedChecklist({
   showDismiss = true,
   onStepClick,
 }: GettingStartedChecklistProps) {
-  const { getSteps, getProgress, isComplete, dismiss, isDismissed } = useOnboarding();
+  const { getSteps, getProgress, isComplete, dismiss, isDismissed, isLoading } = useOnboarding();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [celebrateComplete, setCelebrateComplete] = useState(false);
 
@@ -89,7 +89,8 @@ export default function GettingStartedChecklist({
     }
   }, [complete, celebrateComplete]);
 
-  if (isDismissed()) {
+  // Don't render while loading to avoid showing stale/default data
+  if (isLoading || isDismissed()) {
     return null;
   }
 
@@ -378,9 +379,9 @@ export default function GettingStartedChecklist({
  * Minimal inline version for header/nav
  */
 export function OnboardingProgress() {
-  const { getProgress, isComplete, isDismissed } = useOnboarding();
+  const { getProgress, isComplete, isDismissed, isLoading } = useOnboarding();
 
-  if (isDismissed() || isComplete()) {
+  if (isLoading || isDismissed() || isComplete()) {
     return null;
   }
 

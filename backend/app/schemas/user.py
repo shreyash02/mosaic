@@ -35,6 +35,7 @@ class User(UserBase):
     """User schema returned in responses."""
 
     id: UUID
+    email_verified: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -76,6 +77,7 @@ class UserWithAuthInfo(User):
 
     has_password: bool
     has_google: bool
+    email_verified: bool
 
 
 class ProfileUpdate(BaseModel):
@@ -110,6 +112,18 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=100)
 
 
+class VerifyEmailRequest(BaseModel):
+    """Schema for verifying email with token."""
+
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    """Schema for requesting a new verification email."""
+
+    email: EmailStr
+
+
 # Email preferences
 class EmailPreferences(BaseModel):
     """User email notification preferences."""
@@ -142,3 +156,31 @@ def get_email_preferences(prefs_dict: Optional[dict]) -> EmailPreferences:
     if prefs_dict is None:
         return DEFAULT_EMAIL_PREFERENCES
     return EmailPreferences(**{**DEFAULT_EMAIL_PREFERENCES.model_dump(), **prefs_dict})
+
+
+# Onboarding progress
+class OnboardingProgress(BaseModel):
+    """User onboarding progress for the getting started checklist."""
+
+    # Step completion status: step_id -> completed
+    steps: dict[str, bool] = {}
+
+    # Step completion timestamps: step_id -> ISO timestamp
+    completed_at: dict[str, str] = {}
+
+    # Whether the checklist has been dismissed
+    dismissed: bool = False
+
+    # When the user started onboarding
+    started_at: Optional[str] = None
+
+
+# Default onboarding progress (all steps incomplete)
+DEFAULT_ONBOARDING_PROGRESS = OnboardingProgress()
+
+
+def get_onboarding_progress(progress_dict: Optional[dict]) -> OnboardingProgress:
+    """Get onboarding progress from dict, using defaults for missing values."""
+    if progress_dict is None:
+        return DEFAULT_ONBOARDING_PROGRESS
+    return OnboardingProgress(**{**DEFAULT_ONBOARDING_PROGRESS.model_dump(), **progress_dict})

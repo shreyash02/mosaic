@@ -1,7 +1,7 @@
 """User model."""
 
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, JSON
+from sqlalchemy import Column, String, DateTime, JSON, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -24,9 +24,17 @@ class User(Base):
     # Default: all enabled (None means use defaults)
     email_preferences = Column(JSON, nullable=True)
 
+    # Onboarding progress - tracks completion of getting started steps
+    onboarding_progress = Column(JSON, nullable=True)
+
     # Password reset fields
     password_reset_token = Column(String(255), nullable=True, index=True)
     password_reset_expires = Column(DateTime, nullable=True)
+
+    # Email verification fields
+    email_verified = Column(Boolean, default=False, nullable=False)
+    email_verification_token = Column(String(64), nullable=True, index=True)
+    email_verification_expires = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

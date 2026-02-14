@@ -17,7 +17,7 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonDashboard } from '../components/Skeleton';
 import WelcomeModal, { resetWelcomeState } from '../components/WelcomeModal';
 import GettingStartedChecklist from '../components/GettingStartedChecklist';
-import { useOnboarding, resetOnboardingState } from '../hooks/useOnboarding';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 // Use CSS custom properties for dark mode support
 const s = {
@@ -212,7 +212,7 @@ export default function DashboardPage() {
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [welcomeKey, setWelcomeKey] = useState(0);
-  const { completeStep, isComplete, isDismissed } = useOnboarding();
+  const { completeStep, isComplete, isDismissed, reset: resetOnboarding } = useOnboarding();
 
   usePageTitle('Dashboard');
 
@@ -610,8 +610,7 @@ export default function DashboardPage() {
         }}>
           <button
             onClick={() => {
-              resetOnboardingState();
-              window.location.reload();
+              resetOnboarding();
             }}
             style={{
               padding: `${spacing[2]} ${spacing[4]}`,

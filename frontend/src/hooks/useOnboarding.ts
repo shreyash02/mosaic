@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-
-const ONBOARDING_STORAGE_KEY = 'mosaic_onboarding';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
+import type { OnboardingProgress } from '../types';
 
 export interface OnboardingStep {
   id: string;
@@ -32,30 +33,12 @@ const defaultSteps: Record<OnboardingStepId, boolean> = {
   'view-insights': false,
 };
 
-function loadOnboardingState(): OnboardingState {
-  try {
-    const stored = localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('Failed to load onboarding state:', e);
-  }
-  return {
-    steps: { ...defaultSteps },
-    completedAt: {},
-    dismissed: false,
-    startedAt: new Date().toISOString(),
-  };
-}
-
-function saveOnboardingState(state: OnboardingState): void {
-  try {
-    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error('Failed to save onboarding state:', e);
-  }
-}
+const defaultState: OnboardingState = {
+  steps: { ...defaultSteps },
+  completedAt: {},
+  dismissed: false,
+  startedAt: undefined,
+};
 
 const stepDefinitions: Record<OnboardingStepId, { title: string; description: string }> = {
   'create-conversation': {
@@ -81,15 +64,82 @@ const stepDefinitions: Record<OnboardingStepId, { title: string; description: st
 };
 
 /**
+ * Convert API response to internal state format
+ */
+function apiToState(apiData: OnboardingProgress): OnboardingState {
+  return {
+    steps: {
+      'create-conversation': apiData.steps['create-conversation'] || false,
+      'share-link': apiData.steps['share-link'] || false,
+      'receive-response': apiData.steps['receive-response'] || false,
+      'run-analysis': apiData.steps['run-analysis'] || false,
+      'view-insights': apiData.steps['view-insights'] || false,
+    },
+    completedAt: apiData.completed_at as Partial<Record<OnboardingStepId, string>>,
+    dismissed: apiData.dismissed,
+    startedAt: apiData.started_at,
+  };
+}
+
+/**
+ * Convert internal state to API format
+ */
+function stateToApi(state: OnboardingState): OnboardingProgress {
+  return {
+    steps: state.steps,
+    completed_at: state.completedAt,
+    dismissed: state.dismissed,
+    started_at: state.startedAt,
+  };
+}
+
+/**
  * Hook to manage onboarding checklist state
+ * Syncs with server for authenticated users
  */
 export function useOnboarding() {
-  const [state, setState] = useState<OnboardingState>(loadOnboardingState);
+  const { user } = useAuth();
+  const [state, setState] = useState<OnboardingState>(defaultState);
+  const [isLoading, setIsLoading] = useState(true);
+  const isSyncing = useRef(false);
 
-  // Persist state changes
+  // Load onboarding state from server on mount (when user is authenticated)
   useEffect(() => {
-    saveOnboardingState(state);
-  }, [state]);
+    if (!user) {
+      setState(defaultState);
+      setIsLoading(false);
+      return;
+    }
+
+    const loadFromServer = async () => {
+      try {
+        const data = await api.getOnboardingProgress();
+        setState(apiToState(data));
+      } catch (error) {
+        console.error('Failed to load onboarding progress:', error);
+        // Use defaults on error
+        setState(defaultState);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFromServer();
+  }, [user]);
+
+  // Sync state to server (debounced)
+  const syncToServer = useCallback(async (newState: OnboardingState) => {
+    if (!user || isSyncing.current) return;
+
+    isSyncing.current = true;
+    try {
+      await api.updateOnboardingProgress(stateToApi(newState));
+    } catch (error) {
+      console.error('Failed to sync onboarding progress:', error);
+    } finally {
+      isSyncing.current = false;
+    }
+  }, [user]);
 
   /**
    * Get all steps with their completion status
@@ -119,7 +169,7 @@ export function useOnboarding() {
       if (prev.steps[stepId]) {
         return prev; // Already completed
       }
-      return {
+      const newState = {
         ...prev,
         steps: {
           ...prev.steps,
@@ -129,9 +179,13 @@ export function useOnboarding() {
           ...prev.completedAt,
           [stepId]: new Date().toISOString(),
         },
+        startedAt: prev.startedAt || new Date().toISOString(),
       };
+      // Sync to server after state update
+      syncToServer(newState);
+      return newState;
     });
-  }, []);
+  }, [syncToServer]);
 
   /**
    * Check if a step is completed
@@ -163,11 +217,15 @@ export function useOnboarding() {
    * Dismiss the onboarding checklist
    */
   const dismiss = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      dismissed: true,
-    }));
-  }, []);
+    setState((prev) => {
+      const newState = {
+        ...prev,
+        dismissed: true,
+      };
+      syncToServer(newState);
+      return newState;
+    });
+  }, [syncToServer]);
 
   /**
    * Check if onboarding is dismissed
@@ -180,13 +238,15 @@ export function useOnboarding() {
    * Reset onboarding (useful for testing)
    */
   const reset = useCallback(() => {
-    setState({
+    const newState = {
       steps: { ...defaultSteps },
       completedAt: {},
       dismissed: false,
       startedAt: new Date().toISOString(),
-    });
-  }, []);
+    };
+    setState(newState);
+    syncToServer(newState);
+  }, [syncToServer]);
 
   return {
     getSteps,
@@ -197,12 +257,6 @@ export function useOnboarding() {
     dismiss,
     isDismissed,
     reset,
+    isLoading,
   };
-}
-
-/**
- * Reset onboarding state - exported for use outside of hook
- */
-export function resetOnboardingState(): void {
-  localStorage.removeItem(ONBOARDING_STORAGE_KEY);
 }
