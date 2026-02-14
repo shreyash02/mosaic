@@ -16,7 +16,7 @@ from datetime import datetime
 import os
 
 from app.core.config import settings
-from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack, reminders, announcements, search
+from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack, reminders, announcements, search, feature_flags
 from app.services.scheduler_service import start_scheduler, shutdown_scheduler
 
 # Rate limiter setup (in-memory, use Redis for multi-instance deployments)
@@ -67,6 +67,7 @@ app.include_router(slack.router, prefix="/api", tags=["slack"])
 app.include_router(reminders.router, prefix="/api", tags=["reminders"])
 app.include_router(announcements.router, prefix="/api", tags=["announcements"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
+app.include_router(feature_flags.router, prefix="/api/admin/feature-flags", tags=["admin-feature-flags"])
 
 
 @app.get("/health")
