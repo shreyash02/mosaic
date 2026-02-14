@@ -367,19 +367,54 @@ const styles = {
     marginBottom: spacing[3],
   },
   radioOption: {
-    marginBottom: spacing[2],
+    marginBottom: spacing[3],
   },
   radioLabel: {
     display: 'flex',
     alignItems: 'center',
     gap: spacing[3],
-    padding: spacing[3],
+    padding: spacing[4],
     backgroundColor: 'var(--color-primary-50)',
     border: `1px solid ${'var(--color-primary-200)'}`,
     borderRadius: borders.radius.md,
     cursor: 'pointer',
     transition: transitions.duration.normal,
-    minHeight: '48px',
+    minHeight: '56px',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  radioInput: {
+    appearance: 'none' as const,
+    WebkitAppearance: 'none' as const,
+    width: '24px',
+    height: '24px',
+    border: '2px solid var(--color-primary-400)',
+    borderRadius: '50%',
+    position: 'relative' as const,
+    flexShrink: 0,
+    cursor: 'pointer',
+    backgroundColor: 'var(--color-primary-50)',
+    transition: transitions.duration.normal,
+  },
+  radioInputChecked: {
+    borderColor: 'var(--color-primary-900)',
+    backgroundColor: 'var(--color-primary-900)',
+  },
+  checkboxInput: {
+    appearance: 'none' as const,
+    WebkitAppearance: 'none' as const,
+    width: '24px',
+    height: '24px',
+    border: '2px solid var(--color-primary-400)',
+    borderRadius: borders.radius.sm,
+    position: 'relative' as const,
+    flexShrink: 0,
+    cursor: 'pointer',
+    backgroundColor: 'var(--color-primary-50)',
+    transition: transitions.duration.normal,
+  },
+  checkboxInputChecked: {
+    borderColor: 'var(--color-primary-900)',
+    backgroundColor: 'var(--color-primary-900)',
   },
   checkboxGroup: {
     display: 'flex',
@@ -389,12 +424,17 @@ const styles = {
     padding: spacing[4],
     backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    minHeight: '56px',
+    WebkitTapHighlightColor: 'transparent',
   },
   checkbox: {
     marginTop: '2px',
-    width: '18px',
-    height: '18px',
+    width: '24px',
+    height: '24px',
     accentColor: 'var(--color-primary-900)',
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   draftStatus: {
     display: 'flex',
@@ -418,6 +458,7 @@ const styles = {
     display: 'flex',
     gap: spacing[3],
     justifyContent: 'flex-end',
+    marginTop: spacing[4],
   },
   closeNotice: {
     backgroundColor: 'var(--color-primary-100)',
@@ -537,13 +578,17 @@ const hoverStyles = `
   }
   .join-radio-label:hover {
     border-color: ${'var(--color-primary-400)'};
-    background-color: ${'var(--color-primary-50)'};
+    background-color: ${'var(--color-primary-100)'};
+  }
+  .join-radio-label:active {
+    background-color: ${'var(--color-primary-200)'};
   }
 
   /* Mobile responsiveness */
   @media ${mediaQueries.mobile} {
     .join-page {
       padding: ${spacing[4]} !important;
+      padding-bottom: 100px !important; /* Space for sticky footer */
     }
     .join-card {
       padding: ${spacing[4]} !important;
@@ -552,11 +597,23 @@ const hoverStyles = `
       padding: ${spacing[5]} !important;
     }
     .join-form-actions {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
       flex-direction: column !important;
+      padding: ${spacing[4]} !important;
+      background: var(--color-primary-50) !important;
+      border-top: 1px solid var(--color-primary-200) !important;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1) !important;
+      z-index: 100 !important;
+      margin: 0 !important;
     }
     .join-form-actions button {
       width: 100% !important;
       min-width: unset !important;
+      padding: ${spacing[4]} ${spacing[6]} !important;
+      font-size: ${typography.fontSize.base} !important;
     }
     .join-modal-content {
       padding: ${spacing[4]} !important;
@@ -566,11 +623,19 @@ const hoverStyles = `
     }
     .join-modal-actions button {
       width: 100% !important;
+      padding: ${spacing[4]} ${spacing[6]} !important;
     }
     .join-draft-status {
       flex-direction: column !important;
       align-items: flex-start !important;
       gap: ${spacing[2]} !important;
+    }
+    .join-radio-label {
+      padding: ${spacing[4]} !important;
+      min-height: 56px !important;
+    }
+    .join-btn-primary, .join-btn-secondary {
+      min-height: 48px !important;
     }
   }
 `;
@@ -1720,21 +1785,43 @@ export default function JoinPage() {
 
                   {question.question_type === 'single_choice' && (
                     <div style={styles.pollInput}>
-                      {question.options?.choices?.map((choice) => (
-                        <div key={choice.id} style={styles.radioOption}>
-                          <label style={styles.radioLabel} className="join-radio-label">
-                            <input
-                              type="radio"
-                              name={`question-${question.id}`}
-                              value={choice.id}
-                              checked={response?.response_data?.selected === choice.id}
-                              onChange={(e) => updatePollResponse(question.id, e.target.value)}
-                              style={{ accentColor: 'var(--color-primary-900)' }}
-                            />
-                            <span>{choice.label}</span>
-                          </label>
-                        </div>
-                      ))}
+                      {question.options?.choices?.map((choice) => {
+                        const isSelected = response?.response_data?.selected === choice.id;
+                        return (
+                          <div key={choice.id} style={styles.radioOption}>
+                            <label style={styles.radioLabel} className="join-radio-label">
+                              <span
+                                style={{
+                                  ...styles.radioInput,
+                                  ...(isSelected ? styles.radioInputChecked : {}),
+                                }}
+                              >
+                                {isSelected && (
+                                  <span style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'var(--color-primary-50)',
+                                  }} />
+                                )}
+                              </span>
+                              <input
+                                type="radio"
+                                name={`question-${question.id}`}
+                                value={choice.id}
+                                checked={isSelected}
+                                onChange={(e) => updatePollResponse(question.id, e.target.value)}
+                                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                              />
+                              <span>{choice.label}</span>
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -1743,29 +1830,59 @@ export default function JoinPage() {
                       <p style={styles.pollInstruction}>
                         Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
                       </p>
-                      {question.options?.choices?.map((choice) => (
-                        <div key={choice.id} style={styles.radioOption}>
-                          <label style={styles.radioLabel} className="join-radio-label">
-                            <input
-                              type="checkbox"
-                              value={choice.id}
-                              checked={(response?.response_data?.selected as string[] || []).includes(choice.id)}
-                              onChange={(e) => {
-                                const currentSelected = (response?.response_data?.selected as string[]) || [];
-                                const newSelected = e.target.checked
-                                  ? [...currentSelected, choice.id]
-                                  : currentSelected.filter(id => id !== choice.id);
-                                const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
-                                if (newSelected.length <= maxSelections) {
-                                  updatePollResponse(question.id, newSelected);
-                                }
-                              }}
-                              style={{ accentColor: 'var(--color-primary-900)' }}
-                            />
-                            <span>{choice.label}</span>
-                          </label>
-                        </div>
-                      ))}
+                      {question.options?.choices?.map((choice) => {
+                        const isSelected = (response?.response_data?.selected as string[] || []).includes(choice.id);
+                        return (
+                          <div key={choice.id} style={styles.radioOption}>
+                            <label style={styles.radioLabel} className="join-radio-label">
+                              <span
+                                style={{
+                                  ...styles.checkboxInput,
+                                  ...(isSelected ? styles.checkboxInputChecked : {}),
+                                }}
+                              >
+                                {isSelected && (
+                                  <svg
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '50%',
+                                      transform: 'translate(-50%, -50%)',
+                                      width: '14px',
+                                      height: '14px',
+                                    }}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="var(--color-primary-50)"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </span>
+                              <input
+                                type="checkbox"
+                                value={choice.id}
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const currentSelected = (response?.response_data?.selected as string[]) || [];
+                                  const newSelected = e.target.checked
+                                    ? [...currentSelected, choice.id]
+                                    : currentSelected.filter(id => id !== choice.id);
+                                  const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
+                                  if (newSelected.length <= maxSelections) {
+                                    updatePollResponse(question.id, newSelected);
+                                  }
+                                }}
+                                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                              />
+                              <span>{choice.label}</span>
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
