@@ -2302,10 +2302,11 @@ async def suggest_questions(
 
     Takes a title, description, and optionally existing questions,
     returns 3-5 suggested questions with rationale.
+    Also indicates if more context would improve suggestions.
     """
     from app.services.question_suggestion_service import question_suggestion_service
 
-    suggestions = question_suggestion_service.suggest_questions(
+    result = question_suggestion_service.suggest_questions(
         title=request.title,
         description=request.description,
         existing_questions=request.existing_questions,
@@ -2320,6 +2321,8 @@ async def suggest_questions(
                 rationale=s.rationale,
                 options=s.options,
             )
-            for s in suggestions
-        ]
+            for s in result.suggestions
+        ],
+        needs_more_context=result.needs_more_context,
+        context_hint=result.context_hint,
     )

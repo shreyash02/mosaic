@@ -178,6 +178,22 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.primary[500],
     marginLeft: spacing[2],
   },
+  contextHint: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+    padding: spacing[3],
+    backgroundColor: colors.semantic.info.light,
+    borderRadius: borders.radius.md,
+    marginBottom: spacing[3],
+    fontSize: typography.fontSize.sm,
+    color: colors.semantic.info.text,
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  hintIcon: {
+    flexShrink: 0,
+    marginTop: '2px',
+  },
 };
 
 export default function QuestionSuggestions({
@@ -193,6 +209,7 @@ export default function QuestionSuggestions({
   const [error, setError] = useState<string | null>(null);
   const [expandedRationale, setExpandedRationale] = useState<Set<number>>(new Set());
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
+  const [contextHint, setContextHint] = useState<string | null>(null);
 
   const canFetch = title.trim().length > 0;
 
@@ -202,6 +219,7 @@ export default function QuestionSuggestions({
     setLoading(true);
     setError(null);
     setAddedIndices(new Set());
+    setContextHint(null);
 
     try {
       const response = await api.suggestQuestions(
@@ -211,6 +229,9 @@ export default function QuestionSuggestions({
         5
       );
       setSuggestions(response.suggestions);
+      if (response.needs_more_context && response.context_hint) {
+        setContextHint(response.context_hint);
+      }
     } catch (err) {
       console.error('Failed to fetch suggestions:', err);
       setError('Failed to load suggestions. Please try again.');
@@ -328,6 +349,12 @@ export default function QuestionSuggestions({
 
       {!loading && !error && suggestions.length > 0 && (
         <>
+          {contextHint && (
+            <div style={styles.contextHint}>
+              <LightbulbIcon />
+              <span>{contextHint}</span>
+            </div>
+          )}
           <div style={styles.suggestionsList}>
             {suggestions.map((suggestion, index) => {
               const isAdded = addedIndices.has(index);
@@ -445,6 +472,16 @@ function CheckIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="13 4 6 11 3 8" />
+    </svg>
+  );
+}
+
+function LightbulbIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.hintIcon}>
+      <path d="M9 18h6" />
+      <path d="M10 22h4" />
+      <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
     </svg>
   );
 }

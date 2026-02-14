@@ -427,3 +427,5 @@ class QuestionSuggestionResponse(BaseModel):
     """Response schema for AI question suggestions."""
 
     suggestions: List[QuestionSuggestionItem]
+    needs_more_context: bool = False
+    context_hint: Optional[str] = None

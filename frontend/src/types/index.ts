@@ -1015,4 +1015,6 @@ export interface QuestionSuggestionItem {
 
 export interface QuestionSuggestionResponse {
   suggestions: QuestionSuggestionItem[];
+  needs_more_context: boolean;
+  context_hint?: string;
 }
