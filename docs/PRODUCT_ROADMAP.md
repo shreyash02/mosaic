@@ -118,11 +118,9 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
    - Sticky submit button at bottom
    - **Effort:** Medium-Large
 
-3. **CSV/Data Export**
-   - PDF export exists, raw data export missing
-   - Power users need data for external analysis, Excel, compliance
-   - Add "Export CSV" alongside "Export PDF" in AnalysisPage
-   - **Effort:** Small
+3. ~~**CSV/Data Export**~~ - **DEFERRED**
+   - Philosophy: Build the tooling users need, don't export raw data for other tools
+   - Only revisit if many users explicitly request it
 
 4. **Analysis Comparison View**
    - Side-by-side comparison of 2-3 analyses
@@ -256,7 +254,7 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
 | Priority | Items | Effort | Impact |
 |----------|-------|--------|--------|
 | **Essential** | Response Threshold | Medium | Critical for trust |
-| **Quick Wins** | CSV Export, Keyboard Shortcuts | Small | High user value |
+| **Quick Wins** | Keyboard Shortcuts | Small | Power user value |
 | **High Impact** | Mobile JoinPage, Analysis Comparison | Medium-Large | Unlock new use cases |
 | **Foundation** | Accessibility | Medium | Required for enterprise |
 | **Engagement** | Response Analytics, Real-time Updates | Medium | Creator retention |
