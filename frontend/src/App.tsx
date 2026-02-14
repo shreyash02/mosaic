@@ -6,6 +6,7 @@ import { ConversationFormProvider } from './contexts/ConversationFormContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import ErrorBoundary from './components/ErrorBoundary';
+import EmailVerificationBanner from './components/EmailVerificationBanner';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -13,6 +14,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
 import ConversationsPage from './pages/ConversationsPage';
 import TemplatesPage from './pages/TemplatesPage';
@@ -81,6 +83,7 @@ function App() {
             <OrganizationProvider>
             <div className="App">
               <Header />
+              <EmailVerificationBanner />
               <main className="main-content">
               <Routes>
             <Route path="/" element={<HomePage />} />
@@ -88,6 +91,7 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/callback" element={<LoginPage />} />
             <Route path="/join/:accessCode" element={<JoinPage />} />
             <Route path="/join" element={<JoinPage />} />

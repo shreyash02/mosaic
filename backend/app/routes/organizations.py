@@ -406,6 +406,13 @@ async def invite_to_organization(
     require_organization_admin(db, organization_id, current_user)
     organization = get_organization_or_404(db, organization_id)
 
+    # Check if user has verified their email
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before sending invitations"
+        )
+
     created_invitations = []
 
     for email in invite_request.emails:

@@ -184,6 +184,13 @@ async def create_conversation(
     Returns:
         Created conversation with questions
     """
+    # Check if user has verified their email when creating templates
+    if conversation_data.is_template and not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before publishing templates"
+        )
+
     # Generate unique access code
     access_code = generate_access_code()
     while db.query(Conversation).filter(Conversation.access_code == access_code).first():
@@ -1267,6 +1274,13 @@ async def activate_conversation(
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
 
+    # Check if user has verified their email
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before activating conversations"
+        )
+
     if conversation.state != ConversationState.DRAFT.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1656,6 +1670,13 @@ async def invite_users(
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
 
+    # Check if user has verified their email
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before sending invitations"
+        )
+
     # Check if conversation is active (can invite to active conversations)
     if conversation.state not in [ConversationState.DRAFT.value, ConversationState.ACTIVE.value]:
         raise HTTPException(
@@ -1745,6 +1766,13 @@ async def upload_invitations_csv(
         HTTPException: If conversation not found, not invite-only, or file invalid
     """
     conversation = get_conversation_or_404(conversation_id, db, current_user)
+
+    # Check if user has verified their email
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before sending invitations"
+        )
 
     # Check conversation state
     if conversation.state not in [ConversationState.DRAFT.value, ConversationState.ACTIVE.value]:
