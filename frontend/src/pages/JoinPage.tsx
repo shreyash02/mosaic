@@ -13,6 +13,7 @@ import { typography, spacing, borders, shadows, transitions, mediaQueries } from
 import AnnouncementBanner from '../components/AnnouncementBanner';
 import RatingButtons from '../components/RatingButtons';
 import MobileQuestionCarousel from '../components/MobileQuestionCarousel';
+import FocusTrap from '../components/FocusTrap';
 
 const styles = {
   page: {
@@ -1293,52 +1294,54 @@ export default function JoinPage() {
             </div>
 
             {showIncognitoModal && (
-              <div style={styles.modalOverlay} onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }}>
-                <div style={styles.modalContent} className="join-modal-content" onClick={(e) => e.stopPropagation()}>
-                  <h2 style={styles.modalTitle}>Open in Incognito/Private Window</h2>
+              <FocusTrap isActive={showIncognitoModal} onEscape={() => { setShowIncognitoModal(false); setLinkCopied(false); }}>
+                <div style={styles.modalOverlay} onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }} role="dialog" aria-modal="true" aria-labelledby="incognito-modal-title">
+                  <div style={styles.modalContent} className="join-modal-content" onClick={(e) => e.stopPropagation()}>
+                    <h2 id="incognito-modal-title" style={styles.modalTitle}>Open in Incognito/Private Window</h2>
 
-                  {linkCopied && (
-                    <div style={{ ...styles.success, marginBottom: spacing[4] }}>
-                      Link copied to clipboard!
-                    </div>
-                  )}
-
-                  <div style={styles.modalInstructions}>
-                    <p style={{ margin: `0 0 ${spacing[3]} 0`, color: 'var(--color-primary-700)', fontWeight: typography.fontWeight.semibold }}>
-                      Follow these steps:
-                    </p>
-                    <ol style={{ margin: 0, paddingLeft: spacing[5], color: 'var(--color-primary-600)', lineHeight: 1.8 }}>
-                      <li>Open an incognito/private browser window</li>
-                      <li>{linkCopied ? 'Paste the link (Ctrl+V or Cmd+V)' : 'Copy and paste the URL'}</li>
-                      <li>Respond to the conversation anonymously</li>
-                    </ol>
-                  </div>
-
-                  <div style={styles.modalActions} className="join-modal-actions">
-                    {!linkCopied && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(window.location.href);
-                            setLinkCopied(true);
-                          } catch (err) {}
-                        }}
-                        style={styles.buttonSecondary}
-                        className="join-btn-secondary"
-                      >
-                        Copy Link
-                      </button>
+                    {linkCopied && (
+                      <div style={{ ...styles.success, marginBottom: spacing[4] }}>
+                        Link copied to clipboard!
+                      </div>
                     )}
-                    <button
-                      onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }}
-                      style={styles.buttonPrimary}
-                      className="join-btn-primary"
-                    >
-                      Got It
-                    </button>
+
+                    <div style={styles.modalInstructions}>
+                      <p style={{ margin: `0 0 ${spacing[3]} 0`, color: 'var(--color-primary-700)', fontWeight: typography.fontWeight.semibold }}>
+                        Follow these steps:
+                      </p>
+                      <ol style={{ margin: 0, paddingLeft: spacing[5], color: 'var(--color-primary-600)', lineHeight: 1.8 }}>
+                        <li>Open an incognito/private browser window</li>
+                        <li>{linkCopied ? 'Paste the link (Ctrl+V or Cmd+V)' : 'Copy and paste the URL'}</li>
+                        <li>Respond to the conversation anonymously</li>
+                      </ol>
+                    </div>
+
+                    <div style={styles.modalActions} className="join-modal-actions">
+                      {!linkCopied && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(window.location.href);
+                              setLinkCopied(true);
+                            } catch (err) {}
+                          }}
+                          style={styles.buttonSecondary}
+                          className="join-btn-secondary"
+                        >
+                          Copy Link
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setShowIncognitoModal(false); setLinkCopied(false); }}
+                        style={styles.buttonPrimary}
+                        className="join-btn-primary"
+                      >
+                        Got It
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </FocusTrap>
             )}
           </div>
         </div>
@@ -1973,15 +1976,17 @@ export default function JoinPage() {
       </div>
 
       {lightboxImageUrl && (
-        <div onClick={() => setLightboxImageUrl(null)} style={styles.lightbox}>
-          <img
-            src={lightboxImageUrl}
-            alt="Enlarged view"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: borders.radius.md, cursor: 'default' }}
-          />
-          <button onClick={() => setLightboxImageUrl(null)} style={styles.lightboxClose} aria-label="Close lightbox">×</button>
-        </div>
+        <FocusTrap isActive={!!lightboxImageUrl} onEscape={() => setLightboxImageUrl(null)}>
+          <div onClick={() => setLightboxImageUrl(null)} style={styles.lightbox} role="dialog" aria-modal="true" aria-label="Image lightbox">
+            <img
+              src={lightboxImageUrl}
+              alt="Enlarged view"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: borders.radius.md, cursor: 'default' }}
+            />
+            <button onClick={() => setLightboxImageUrl(null)} style={styles.lightboxClose} aria-label="Close lightbox">×</button>
+          </div>
+        </FocusTrap>
       )}
     </>
   );

@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { typography, spacing, borders, shadows } from '../styles';
 import CustomFileInput, { CustomFileInputRef } from './CustomFileInput';
 import CustomSelect from './CustomSelect';
+import FocusTrap from './FocusTrap';
 
 interface BrandingInfo {
   logoUrl?: string;
@@ -218,11 +219,12 @@ export default function QRCodePoster({
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>QR Code Poster</h2>
-          <button onClick={onClose} style={styles.closeButton} aria-label="Close QR code poster">
+    <FocusTrap isActive={true} onEscape={onClose}>
+      <div style={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="qr-poster-title">
+        <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div style={styles.header}>
+            <h2 id="qr-poster-title" style={styles.title}>QR Code Poster</h2>
+            <button onClick={onClose} style={styles.closeButton} aria-label="Close QR code poster">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -420,6 +422,7 @@ export default function QRCodePoster({
         </div>
       </div>
     </div>
+  </FocusTrap>
   );
 }
 

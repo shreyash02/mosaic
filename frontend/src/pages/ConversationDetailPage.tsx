@@ -2006,139 +2006,143 @@ export default function ConversationDetailPage() {
                 {extending ? 'Extending...' : `Add ${extendHours} hour${extendHours !== 1 ? 's' : ''}`}
               </button>
             </div>
+          </div>
+        </div>
+      </FocusTrap>
+      )}
+
+      {/* Activate Modal */}
+      {showActivateModal && (
+        <FocusTrap isActive={showActivateModal} onEscape={() => { setShowActivateModal(false); setScheduledActivateAt(''); }}>
+          <div style={s.modalOverlay} onClick={() => setShowActivateModal(false)} role="dialog" aria-modal="true" aria-labelledby="activate-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="activate-modal-title">Activate Conversation</h2>
+              <p style={s.modalText}>Choose when to activate this conversation:</p>
+
+              <div style={s.radioGroup}>
+                <label style={s.checkbox}>
+                  <input
+                    type="radio"
+                    name="activate-time"
+                    checked={!scheduledActivateAt}
+                    onChange={() => setScheduledActivateAt('')}
+                  />
+                  <span>Activate immediately</span>
+                </label>
+                <label style={s.checkbox}>
+                  <input
+                    type="radio"
+                    name="activate-time"
+                    checked={!!scheduledActivateAt}
+                    onChange={() => {
+                      const defaultTime = new Date();
+                      setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
+                    }}
+                  />
+                  <span>Schedule activation</span>
+                </label>
+                {scheduledActivateAt && (
+                  <input
+                    type="datetime-local"
+                    value={scheduledActivateAt}
+                    onChange={(e) => setScheduledActivateAt(e.target.value)}
+                    min={formatDateForDateTimeLocal(new Date())}
+                    style={{ ...s.input, marginLeft: spacing[6] }}
+                  />
+                )}
+              </div>
+
+              <div style={{ ...s.modalActions, marginTop: spacing[6] }}>
+                <button
+                  onClick={() => {
+                    setShowActivateModal(false);
+                    setScheduledActivateAt('');
+                  }}
+                  style={s.buttonSecondary}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (scheduledActivateAt) {
+                      handleActivate(scheduledActivateAt + ':00');
+                    } else {
+                      handleActivate();
+                    }
+                  }}
+                  style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Activating...' : scheduledActivateAt ? 'Schedule' : 'Activate Now'}
+                </button>
+              </div>
             </div>
           </div>
         </FocusTrap>
       )}
 
-      {/* Activate Modal */}
-      {showActivateModal && (
-        <div style={s.modalOverlay} onClick={() => setShowActivateModal(false)} role="dialog" aria-modal="true" aria-labelledby="activate-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle} id="activate-modal-title">Activate Conversation</h2>
-            <p style={s.modalText}>Choose when to activate this conversation:</p>
-
-            <div style={s.radioGroup}>
-              <label style={s.checkbox}>
-                <input
-                  type="radio"
-                  name="activate-time"
-                  checked={!scheduledActivateAt}
-                  onChange={() => setScheduledActivateAt('')}
-                />
-                <span>Activate immediately</span>
-              </label>
-              <label style={s.checkbox}>
-                <input
-                  type="radio"
-                  name="activate-time"
-                  checked={!!scheduledActivateAt}
-                  onChange={() => {
-                    const defaultTime = new Date();
-                    setScheduledActivateAt(formatDateForDateTimeLocal(defaultTime));
-                  }}
-                />
-                <span>Schedule activation</span>
-              </label>
-              {scheduledActivateAt && (
-                <input
-                  type="datetime-local"
-                  value={scheduledActivateAt}
-                  onChange={(e) => setScheduledActivateAt(e.target.value)}
-                  min={formatDateForDateTimeLocal(new Date())}
-                  style={{ ...s.input, marginLeft: spacing[6] }}
-                />
-              )}
-            </div>
-
-            <div style={{ ...s.modalActions, marginTop: spacing[6] }}>
-              <button
-                onClick={() => {
-                  setShowActivateModal(false);
-                  setScheduledActivateAt('');
-                }}
-                style={s.buttonSecondary}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (scheduledActivateAt) {
-                    handleActivate(scheduledActivateAt + ':00');
-                  } else {
-                    handleActivate();
-                  }
-                }}
-                style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Activating...' : scheduledActivateAt ? 'Schedule' : 'Activate Now'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Follow-up Modal */}
       {showFollowUpModal && (
-        <div style={s.modalOverlay} onClick={() => setShowFollowUpModal(false)} role="dialog" aria-modal="true" aria-labelledby="followup-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle} id="followup-modal-title">Create Follow-up</h2>
-            <p style={s.modalText}>Create a new conversation that follows up on this one.</p>
+        <FocusTrap isActive={showFollowUpModal} onEscape={() => setShowFollowUpModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowFollowUpModal(false)} role="dialog" aria-modal="true" aria-labelledby="followup-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="followup-modal-title">Create Follow-up</h2>
+              <p style={s.modalText}>Create a new conversation that follows up on this one.</p>
 
-            <div style={{ marginBottom: spacing[4] }}>
-              <label style={s.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={copySettings}
-                  onChange={(e) => setCopySettings(e.target.checked)}
-                />
-                <span>Keep the same settings</span>
-              </label>
-              <label style={s.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={copyQuestions}
-                  onChange={(e) => setCopyQuestions(e.target.checked)}
-                />
-                <span>Copy questions</span>
-              </label>
-              {conversation.invite_only && (
+              <div style={{ marginBottom: spacing[4] }}>
                 <label style={s.checkbox}>
                   <input
                     type="checkbox"
-                    checked={copyInvitations}
-                    onChange={(e) => setCopyInvitations(e.target.checked)}
+                    checked={copySettings}
+                    onChange={(e) => setCopySettings(e.target.checked)}
                   />
-                  <span>Send invitations to the same users</span>
+                  <span>Keep the same settings</span>
                 </label>
+                <label style={s.checkbox}>
+                  <input
+                    type="checkbox"
+                    checked={copyQuestions}
+                    onChange={(e) => setCopyQuestions(e.target.checked)}
+                  />
+                  <span>Copy questions</span>
+                </label>
+                {conversation.invite_only && (
+                  <label style={s.checkbox}>
+                    <input
+                      type="checkbox"
+                      checked={copyInvitations}
+                      onChange={(e) => setCopyInvitations(e.target.checked)}
+                    />
+                    <span>Send invitations to the same users</span>
+                  </label>
+                )}
+                <label style={s.checkbox}>
+                  <input
+                    type="checkbox"
+                    checked={addToSeries}
+                    onChange={(e) => setAddToSeries(e.target.checked)}
+                  />
+                  <span>Add to collection</span>
+                </label>
+              </div>
+
+              {!copyQuestions && (
+                <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
+                  The follow-up will start with empty questions. You can add new questions after creation.
+                </p>
               )}
-              <label style={s.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={addToSeries}
-                  onChange={(e) => setAddToSeries(e.target.checked)}
-                />
-                <span>Add to collection</span>
-              </label>
-            </div>
 
-            {!copyQuestions && (
-              <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
-                The follow-up will start with empty questions. You can add new questions after creation.
-              </p>
-            )}
-
-            <div style={s.modalActions}>
-              <button onClick={() => setShowFollowUpModal(false)} style={s.buttonSecondary}>
-                Cancel
-              </button>
-              <button onClick={handleCreateFollowUp} style={s.buttonPrimary}>
-                Create Follow-up
-              </button>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowFollowUpModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button onClick={handleCreateFollowUp} style={s.buttonPrimary}>
+                  Create Follow-up
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
 
       {/* QR Code Poster Modal */}
@@ -2161,78 +2165,82 @@ export default function ConversationDetailPage() {
 
       {/* Series Modal */}
       {showSeriesModal && (
-        <div style={s.modalOverlay} onClick={() => setShowSeriesModal(false)} role="dialog" aria-modal="true" aria-labelledby="series-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle} id="series-modal-title">Manage Collection</h2>
-            <p style={s.modalText}>
-              Add this conversation to a collection or remove it from its current collection.
-            </p>
-            <div style={s.formGroup}>
-              <label style={s.formLabel}>Select Collection</label>
-              <select
-                value={selectedSeriesId}
-                onChange={(e) => setSelectedSeriesId(e.target.value)}
-                style={s.select}
-              >
-                <option value="">No collection</option>
-                {seriesList.map((series) => (
-                  <option key={series.id} value={series.id}>
-                    {series.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div style={s.modalActions}>
-              <button onClick={() => setShowSeriesModal(false)} style={s.buttonSecondary}>
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateSeries}
-                style={merge(s.buttonPrimary, updatingSeries && s.buttonDisabled)}
-                disabled={updatingSeries}
-              >
-                {updatingSeries ? 'Saving...' : 'Save'}
-              </button>
+        <FocusTrap isActive={showSeriesModal} onEscape={() => setShowSeriesModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowSeriesModal(false)} role="dialog" aria-modal="true" aria-labelledby="series-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="series-modal-title">Manage Collection</h2>
+              <p style={s.modalText}>
+                Add this conversation to a collection or remove it from its current collection.
+              </p>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>Select Collection</label>
+                <select
+                  value={selectedSeriesId}
+                  onChange={(e) => setSelectedSeriesId(e.target.value)}
+                  style={s.select}
+                >
+                  <option value="">No collection</option>
+                  {seriesList.map((series) => (
+                    <option key={series.id} value={series.id}>
+                      {series.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowSeriesModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateSeries}
+                  style={merge(s.buttonPrimary, updatingSeries && s.buttonDisabled)}
+                  disabled={updatingSeries}
+                >
+                  {updatingSeries ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
 
       {/* Analysis Schedule Modal */}
       {showAnalysisScheduleModal && (
-        <div style={s.modalOverlay} onClick={() => setShowAnalysisScheduleModal(false)} role="dialog" aria-modal="true" aria-labelledby="analysis-schedule-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle} id="analysis-schedule-modal-title">Edit Analysis Schedule</h2>
-            <p style={s.modalText}>
-              Choose how often to run analysis on this continuous conversation.
-            </p>
-            <div style={s.formGroup}>
-              <label style={s.formLabel}>Analysis Frequency</label>
-              <select
-                value={selectedAnalysisInterval}
-                onChange={(e) => setSelectedAnalysisInterval(e.target.value)}
-                style={s.select}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Biweekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            <div style={s.modalActions}>
-              <button onClick={() => setShowAnalysisScheduleModal(false)} style={s.buttonSecondary}>
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateAnalysisSchedule}
-                style={merge(s.buttonPrimary, updatingAnalysisSchedule && s.buttonDisabled)}
-                disabled={updatingAnalysisSchedule}
-              >
-                {updatingAnalysisSchedule ? 'Saving...' : 'Save'}
-              </button>
+        <FocusTrap isActive={showAnalysisScheduleModal} onEscape={() => setShowAnalysisScheduleModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowAnalysisScheduleModal(false)} role="dialog" aria-modal="true" aria-labelledby="analysis-schedule-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="analysis-schedule-modal-title">Edit Analysis Schedule</h2>
+              <p style={s.modalText}>
+                Choose how often to run analysis on this continuous conversation.
+              </p>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>Analysis Frequency</label>
+                <select
+                  value={selectedAnalysisInterval}
+                  onChange={(e) => setSelectedAnalysisInterval(e.target.value)}
+                  style={s.select}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowAnalysisScheduleModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateAnalysisSchedule}
+                  style={merge(s.buttonPrimary, updatingAnalysisSchedule && s.buttonDisabled)}
+                  disabled={updatingAnalysisSchedule}
+                >
+                  {updatingAnalysisSchedule ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
 
       {/* CSS for spinner animation and responsive styles */}
