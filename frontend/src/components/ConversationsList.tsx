@@ -1308,9 +1308,12 @@ export default function ConversationsList({
             <button
               style={s.toolbarDropdownButton}
               onClick={() => setShowGroupByDropdown(!showGroupByDropdown)}
+              aria-expanded={showGroupByDropdown}
+              aria-haspopup="listbox"
+              aria-label="Group by"
             >
               <span>{{ none: 'None', collection: 'Collection', status: 'Status' }[groupBy]}</span>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
                 <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
@@ -1357,8 +1360,11 @@ export default function ConversationsList({
           <button
             style={merge(s.filterButton, hasActiveFilters && s.filterButtonActive)}
             onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            aria-expanded={showFilterDropdown}
+            aria-haspopup="menu"
+            aria-label={hasActiveFilters ? `Filter (${selectedStates.length + (dateRange !== 'all' ? 1 : 0)} active)` : 'Filter'}
           >
-            <FilterIcon size={16} />
+            <FilterIcon size={16} aria-hidden="true" />
             Filter
             {hasActiveFilters && (
               <span style={{

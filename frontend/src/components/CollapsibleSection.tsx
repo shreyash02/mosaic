@@ -67,7 +67,17 @@ export default function CollapsibleSection({
       <div
         style={styles.header}
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
         className="collapsible-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-label={`${title} section, ${isExpanded ? 'expanded' : 'collapsed'}`}
       >
         <div style={styles.headerLeft}>
           <h2 style={styles.title}>{title}</h2>

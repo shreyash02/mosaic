@@ -1270,6 +1270,9 @@ export default function ConversationDetailPage() {
                         ...(triggeringAnalysis ? s.buttonDisabled : {}),
                       }}
                       disabled={triggeringAnalysis}
+                      aria-expanded={showAnalysisDropdown}
+                      aria-haspopup="menu"
+                      aria-label="Analysis options"
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                         <path d="M3 4.5L6 7.5L9 4.5H3Z" />
@@ -1853,9 +1856,9 @@ export default function ConversationDetailPage() {
 
       {/* Archive Modal */}
       {showArchiveModal && (
-        <div style={s.modalOverlay} onClick={() => setShowArchiveModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowArchiveModal(false)} role="dialog" aria-modal="true" aria-labelledby="archive-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Archive Conversation</h2>
+            <h2 style={s.modalTitle} id="archive-modal-title">Archive Conversation</h2>
             <p style={s.modalText}>
               Archive this conversation? It will be hidden from your main list but can be restored later from the Archived tab.
             </p>
@@ -1877,9 +1880,9 @@ export default function ConversationDetailPage() {
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <div style={s.modalOverlay} onClick={() => setShowDeleteModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowDeleteModal(false)} role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Delete Conversation</h2>
+            <h2 style={s.modalTitle} id="delete-modal-title">Delete Conversation</h2>
             <p style={s.modalText}>
               Are you sure you want to delete this conversation? This action cannot be undone.
             </p>
@@ -1901,9 +1904,9 @@ export default function ConversationDetailPage() {
 
       {/* Extend Time Modal */}
       {showExtendModal && (
-        <div style={s.modalOverlay} onClick={() => setShowExtendModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowExtendModal(false)} role="dialog" aria-modal="true" aria-labelledby="extend-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Add More Time</h2>
+            <h2 style={s.modalTitle} id="extend-modal-title">Add More Time</h2>
             <p style={s.modalText}>
               Extend the conversation by adding more hours. Current end time:{' '}
               {conversation.auto_close_at ? new Date(conversation.auto_close_at).toLocaleString() : 'Not set'}
@@ -1920,6 +1923,7 @@ export default function ConversationDetailPage() {
                     padding: `${spacing[2]} ${spacing[3]}`,
                     minWidth: '40px',
                   }}
+                  aria-label="Decrease hours"
                 >
                   -
                 </button>
@@ -1947,6 +1951,7 @@ export default function ConversationDetailPage() {
                     padding: `${spacing[2]} ${spacing[3]}`,
                     minWidth: '40px',
                   }}
+                  aria-label="Increase hours"
                 >
                   +
                 </button>
@@ -2001,9 +2006,9 @@ export default function ConversationDetailPage() {
 
       {/* Activate Modal */}
       {showActivateModal && (
-        <div style={s.modalOverlay} onClick={() => setShowActivateModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowActivateModal(false)} role="dialog" aria-modal="true" aria-labelledby="activate-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Activate Conversation</h2>
+            <h2 style={s.modalTitle} id="activate-modal-title">Activate Conversation</h2>
             <p style={s.modalText}>Choose when to activate this conversation:</p>
 
             <div style={s.radioGroup}>
@@ -2069,9 +2074,9 @@ export default function ConversationDetailPage() {
 
       {/* Follow-up Modal */}
       {showFollowUpModal && (
-        <div style={s.modalOverlay} onClick={() => setShowFollowUpModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowFollowUpModal(false)} role="dialog" aria-modal="true" aria-labelledby="followup-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Create Follow-up</h2>
+            <h2 style={s.modalTitle} id="followup-modal-title">Create Follow-up</h2>
             <p style={s.modalText}>Create a new conversation that follows up on this one.</p>
 
             <div style={{ marginBottom: spacing[4] }}>
@@ -2149,9 +2154,9 @@ export default function ConversationDetailPage() {
 
       {/* Series Modal */}
       {showSeriesModal && (
-        <div style={s.modalOverlay} onClick={() => setShowSeriesModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowSeriesModal(false)} role="dialog" aria-modal="true" aria-labelledby="series-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Manage Collection</h2>
+            <h2 style={s.modalTitle} id="series-modal-title">Manage Collection</h2>
             <p style={s.modalText}>
               Add this conversation to a collection or remove it from its current collection.
             </p>
@@ -2188,9 +2193,9 @@ export default function ConversationDetailPage() {
 
       {/* Analysis Schedule Modal */}
       {showAnalysisScheduleModal && (
-        <div style={s.modalOverlay} onClick={() => setShowAnalysisScheduleModal(false)}>
+        <div style={s.modalOverlay} onClick={() => setShowAnalysisScheduleModal(false)} role="dialog" aria-modal="true" aria-labelledby="analysis-schedule-modal-title">
           <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Edit Analysis Schedule</h2>
+            <h2 style={s.modalTitle} id="analysis-schedule-modal-title">Edit Analysis Schedule</h2>
             <p style={s.modalText}>
               Choose how often to run analysis on this continuous conversation.
             </p>

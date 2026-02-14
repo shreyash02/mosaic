@@ -138,6 +138,7 @@ function SortablePollOption({
             fontSize: '1.25rem',
             lineHeight: 1,
           }}
+          aria-label={`Remove option ${choiceIndex + 1}`}
         >
           &times;
         </button>
