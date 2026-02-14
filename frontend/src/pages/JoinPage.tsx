@@ -8,8 +8,11 @@ import { AnonymityLevel, ResultsAccess } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useDraftResponses } from '../hooks/useDraftResponses';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles';
 import AnnouncementBanner from '../components/AnnouncementBanner';
+import RatingButtons from '../components/RatingButtons';
+import MobileQuestionCarousel from '../components/MobileQuestionCarousel';
 
 const styles = {
   page: {
@@ -646,6 +649,7 @@ export default function JoinPage() {
   const accessCodeFromQuery = searchParams.get('code');
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
 
   const [accessCode, setAccessCode] = useState<string | null>(accessCodeFromPath || accessCodeFromQuery || null);
   const participantCodeFromQuery = searchParams.get('participant_code');
@@ -1728,166 +1732,174 @@ export default function JoinPage() {
               </div>
             )}
 
-            {conversation.questions?.map((question, index) => {
-              const response = responses.find((r) => r.question_id === question.id);
+            {/* Mobile: Swipe carousel with tappable rating buttons */}
+            {isMobile && conversation.questions && conversation.questions.length > 1 ? (
+              <MobileQuestionCarousel
+                questions={conversation.questions}
+                responses={responses}
+                maxResponseLength={conversation.max_response_length}
+                onUpdateResponse={updateResponse}
+                onUpdateRatingResponse={updateRatingResponse}
+                onUpdatePollResponse={updatePollResponse}
+                onImageClick={setLightboxImageUrl}
+              />
+            ) : (
+              /* Desktop: All questions visible at once */
+              conversation.questions?.map((question, index) => {
+                const response = responses.find((r) => r.question_id === question.id);
 
-              return (
-                <div key={question.id} style={styles.card} className="join-card">
-                  <label style={{ ...styles.label, fontSize: typography.fontSize.base }}>
-                    {index + 1}. {question.question_text}
-                    {question.is_required && <span style={{ color: 'var(--color-primary-600)', marginLeft: '4px' }}>*</span>}
-                  </label>
+                return (
+                  <div key={question.id} style={styles.card} className="join-card">
+                    <label style={{ ...styles.label, fontSize: typography.fontSize.base }}>
+                      {index + 1}. {question.question_text}
+                      {question.is_required && <span style={{ color: 'var(--color-primary-600)', marginLeft: '4px' }}>*</span>}
+                    </label>
 
-                  {question.question_image_url && (
-                    <div
-                      onClick={() => setLightboxImageUrl(question.question_image_url!)}
-                      style={styles.questionImage}
-                      title="Click to enlarge"
-                    >
-                      <img src={question.question_image_url} alt={`Image for question ${index + 1}`} style={{ maxWidth: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} />
-                    </div>
-                  )}
-
-                  {(!question.question_type || question.question_type === 'text') && (
-                    <>
-                      <textarea
-                        value={response?.response_text || ''}
-                        onChange={(e) => updateResponse(question.id, e.target.value)}
-                        placeholder="Type your response here..."
-                        rows={4}
-                        maxLength={conversation.max_response_length}
-                        style={styles.textarea}
-                        className="join-input"
-                      />
-                      <div style={styles.charCount}>
-                        {response?.response_text?.length || 0} / {conversation.max_response_length} characters
+                    {question.question_image_url && (
+                      <div
+                        onClick={() => setLightboxImageUrl(question.question_image_url!)}
+                        style={styles.questionImage}
+                        title="Click to enlarge"
+                      >
+                        <img src={question.question_image_url} alt={`Image for question ${index + 1}`} style={{ maxWidth: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} />
                       </div>
-                    </>
-                  )}
+                    )}
 
-                  {question.question_type === 'rating' && (
-                    <div style={styles.ratingInput}>
-                      <input
-                        type="range"
+                    {(!question.question_type || question.question_type === 'text') && (
+                      <>
+                        <textarea
+                          value={response?.response_text || ''}
+                          onChange={(e) => updateResponse(question.id, e.target.value)}
+                          placeholder="Type your response here..."
+                          rows={4}
+                          maxLength={conversation.max_response_length}
+                          style={styles.textarea}
+                          className="join-input"
+                        />
+                        <div style={styles.charCount}>
+                          {response?.response_text?.length || 0} / {conversation.max_response_length} characters
+                        </div>
+                      </>
+                    )}
+
+                    {question.question_type === 'rating' && (
+                      <RatingButtons
                         min={question.options?.min || 0}
                         max={question.options?.max || 10}
                         step={question.options?.step || 1}
                         value={response?.response_data?.rating ?? 5}
-                        onChange={(e) => updateRatingResponse(question.id, parseInt(e.target.value))}
-                        style={styles.ratingSlider}
+                        onChange={(rating) => updateRatingResponse(question.id, rating)}
+                        minLabel={question.options?.min_label}
+                        maxLabel={question.options?.max_label}
                       />
-                      <div style={styles.ratingValue}>
-                        <span style={styles.ratingNumber}>{response?.response_data?.rating ?? 5}</span>
-                        <span style={styles.ratingRange}>({question.options?.min || 0} - {question.options?.max || 10})</span>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {question.question_type === 'single_choice' && (
-                    <div style={styles.pollInput}>
-                      {question.options?.choices?.map((choice) => {
-                        const isSelected = response?.response_data?.selected === choice.id;
-                        return (
-                          <div key={choice.id} style={styles.radioOption}>
-                            <label style={styles.radioLabel} className="join-radio-label">
-                              <span
-                                style={{
-                                  ...styles.radioInput,
-                                  ...(isSelected ? styles.radioInputChecked : {}),
-                                }}
-                              >
-                                {isSelected && (
-                                  <span style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    width: '10px',
-                                    height: '10px',
-                                    borderRadius: '50%',
-                                    backgroundColor: 'var(--color-primary-50)',
-                                  }} />
-                                )}
-                              </span>
-                              <input
-                                type="radio"
-                                name={`question-${question.id}`}
-                                value={choice.id}
-                                checked={isSelected}
-                                onChange={(e) => updatePollResponse(question.id, e.target.value)}
-                                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
-                              />
-                              <span>{choice.label}</span>
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {question.question_type === 'multiple_choice' && (
-                    <div style={styles.pollInput}>
-                      <p style={styles.pollInstruction}>
-                        Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
-                      </p>
-                      {question.options?.choices?.map((choice) => {
-                        const isSelected = (response?.response_data?.selected as string[] || []).includes(choice.id);
-                        return (
-                          <div key={choice.id} style={styles.radioOption}>
-                            <label style={styles.radioLabel} className="join-radio-label">
-                              <span
-                                style={{
-                                  ...styles.checkboxInput,
-                                  ...(isSelected ? styles.checkboxInputChecked : {}),
-                                }}
-                              >
-                                {isSelected && (
-                                  <svg
-                                    style={{
+                    {question.question_type === 'single_choice' && (
+                      <div style={styles.pollInput}>
+                        {question.options?.choices?.map((choice) => {
+                          const isSelected = response?.response_data?.selected === choice.id;
+                          return (
+                            <div key={choice.id} style={styles.radioOption}>
+                              <label style={styles.radioLabel} className="join-radio-label">
+                                <span
+                                  style={{
+                                    ...styles.radioInput,
+                                    ...(isSelected ? styles.radioInputChecked : {}),
+                                  }}
+                                >
+                                  {isSelected && (
+                                    <span style={{
                                       position: 'absolute',
                                       top: '50%',
                                       left: '50%',
                                       transform: 'translate(-50%, -50%)',
-                                      width: '14px',
-                                      height: '14px',
-                                    }}
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--color-primary-50)"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  >
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                )}
-                              </span>
-                              <input
-                                type="checkbox"
-                                value={choice.id}
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  const currentSelected = (response?.response_data?.selected as string[]) || [];
-                                  const newSelected = e.target.checked
-                                    ? [...currentSelected, choice.id]
-                                    : currentSelected.filter(id => id !== choice.id);
-                                  const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
-                                  if (newSelected.length <= maxSelections) {
-                                    updatePollResponse(question.id, newSelected);
-                                  }
-                                }}
-                                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
-                              />
-                              <span>{choice.label}</span>
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                                      width: '10px',
+                                      height: '10px',
+                                      borderRadius: '50%',
+                                      backgroundColor: 'var(--color-primary-50)',
+                                    }} />
+                                  )}
+                                </span>
+                                <input
+                                  type="radio"
+                                  name={`question-${question.id}`}
+                                  value={choice.id}
+                                  checked={isSelected}
+                                  onChange={(e) => updatePollResponse(question.id, e.target.value)}
+                                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                                />
+                                <span>{choice.label}</span>
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {question.question_type === 'multiple_choice' && (
+                      <div style={styles.pollInput}>
+                        <p style={styles.pollInstruction}>
+                          Select up to {question.options?.max_selections || question.options?.choices?.length} option(s)
+                        </p>
+                        {question.options?.choices?.map((choice) => {
+                          const isSelected = (response?.response_data?.selected as string[] || []).includes(choice.id);
+                          return (
+                            <div key={choice.id} style={styles.radioOption}>
+                              <label style={styles.radioLabel} className="join-radio-label">
+                                <span
+                                  style={{
+                                    ...styles.checkboxInput,
+                                    ...(isSelected ? styles.checkboxInputChecked : {}),
+                                  }}
+                                >
+                                  {isSelected && (
+                                    <svg
+                                      style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        width: '14px',
+                                        height: '14px',
+                                      }}
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="var(--color-primary-50)"
+                                      strokeWidth="3"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  )}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  value={choice.id}
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    const currentSelected = (response?.response_data?.selected as string[]) || [];
+                                    const newSelected = e.target.checked
+                                      ? [...currentSelected, choice.id]
+                                      : currentSelected.filter(id => id !== choice.id);
+                                    const maxSelections = question.options?.max_selections || question.options?.choices?.length || 999;
+                                    if (newSelected.length <= maxSelections) {
+                                      updatePollResponse(question.id, newSelected);
+                                    }
+                                  }}
+                                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                                />
+                                <span>{choice.label}</span>
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
 
             {conversation.anonymity_level === 'revealable' && (
               <div style={styles.checkboxGroup}>
