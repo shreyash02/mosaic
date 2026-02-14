@@ -382,12 +382,13 @@ export default function QuestionsStep() {
     };
 
     // Add options for rating questions
+    // Map scale_min/scale_max to min/max for consistency with the rest of the app
     if (suggestion.type === 'rating' && suggestion.options) {
       newQuestion.options = {
-        scale_min: suggestion.options.scale_min || 1,
-        scale_max: suggestion.options.scale_max || 5,
-        scale_min_label: suggestion.options.scale_min_label || '',
-        scale_max_label: suggestion.options.scale_max_label || '',
+        min: suggestion.options.scale_min || 1,
+        max: suggestion.options.scale_max || 5,
+        min_label: suggestion.options.scale_min_label || '',
+        max_label: suggestion.options.scale_max_label || '',
       };
     }
 
@@ -626,7 +627,7 @@ export default function QuestionsStep() {
                         {/* Rating info */}
                         {question.question_type === 'rating' && (
                           <div style={{ padding: spacing[3], backgroundColor: 'var(--color-primary-100)', borderRadius: borders.radius.md, marginBottom: spacing[4], fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
-                            Participants will rate on a scale from 0 to 10 using a slider.
+                            Participants will rate on a scale from {question.options?.min ?? 0} to {question.options?.max ?? 10}.
                           </div>
                         )}
 
