@@ -389,7 +389,7 @@ export default function DashboardPage() {
           }}>
             <button
               onClick={() => {
-                resetOnboardingState();
+                resetOnboarding();
                 window.location.reload();
               }}
               style={{
