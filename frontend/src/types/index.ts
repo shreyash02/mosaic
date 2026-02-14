@@ -991,3 +991,28 @@ export interface SearchResponse {
 export interface SearchSuggestionsResponse {
   suggestions: string[];
 }
+
+// Question Suggestions (AI-powered)
+export interface QuestionSuggestionRequest {
+  title: string;
+  description: string;
+  existing_questions: string[];
+  count?: number;
+}
+
+export interface QuestionSuggestionItem {
+  text: string;
+  question_type: 'text' | 'rating' | 'single_choice' | 'multiple_choice';
+  rationale: string;
+  options?: {
+    scale_min?: number;
+    scale_max?: number;
+    scale_min_label?: string;
+    scale_max_label?: string;
+    choices?: string[];
+  };
+}
+
+export interface QuestionSuggestionResponse {
+  suggestions: QuestionSuggestionItem[];
+}

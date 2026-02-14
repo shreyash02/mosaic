@@ -402,3 +402,28 @@ class BulkOperationResponse(BaseModel):
     succeeded: int
     failed: int
     results: List[BulkOperationResultItem]
+
+
+# Question Suggestion schemas
+class QuestionSuggestionRequest(BaseModel):
+    """Request schema for AI question suggestions."""
+
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str = Field(default="", max_length=5000)
+    existing_questions: List[str] = Field(default_factory=list)
+    count: int = Field(default=5, ge=3, le=5)
+
+
+class QuestionSuggestionItem(BaseModel):
+    """A single question suggestion."""
+
+    text: str
+    question_type: str  # text, rating, single_choice, multiple_choice
+    rationale: str
+    options: Optional[dict] = None
+
+
+class QuestionSuggestionResponse(BaseModel):
+    """Response schema for AI question suggestions."""
+
+    suggestions: List[QuestionSuggestionItem]

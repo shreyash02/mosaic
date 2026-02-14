@@ -43,6 +43,9 @@ from app.schemas.conversation import (
     BulkOperationRequest,
     BulkOperationResultItem,
     BulkOperationResponse,
+    QuestionSuggestionRequest,
+    QuestionSuggestionResponse,
+    QuestionSuggestionItem,
 )
 from app.schemas.participant_code import (
     ParticipantCodeList,
@@ -2286,4 +2289,37 @@ async def get_conversation_lineage(
         current=current_conversation,
         ancestors=ancestors,
         descendants=descendants
+    )
+
+
+@router.post("/suggest-questions", response_model=QuestionSuggestionResponse)
+async def suggest_questions(
+    request: QuestionSuggestionRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate AI-powered question suggestions based on conversation context.
+
+    Takes a title, description, and optionally existing questions,
+    returns 3-5 suggested questions with rationale.
+    """
+    from app.services.question_suggestion_service import question_suggestion_service
+
+    suggestions = question_suggestion_service.suggest_questions(
+        title=request.title,
+        description=request.description,
+        existing_questions=request.existing_questions,
+        count=request.count,
+    )
+
+    return QuestionSuggestionResponse(
+        suggestions=[
+            QuestionSuggestionItem(
+                text=s.text,
+                question_type=s.question_type,
+                rationale=s.rationale,
+                options=s.options,
+            )
+            for s in suggestions
+        ]
     )

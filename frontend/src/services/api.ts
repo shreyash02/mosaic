@@ -64,6 +64,7 @@ import type {
   SearchRequest,
   SearchResponse,
   SearchSuggestionsResponse,
+  QuestionSuggestionResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -455,6 +456,25 @@ class ApiService {
 
   async getAnalysis(conversationId: string): Promise<Analysis> {
     const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analysis`);
+    return response.data;
+  }
+
+  // AI-powered question suggestions
+  async suggestQuestions(
+    title: string,
+    description: string,
+    existingQuestions: string[] = [],
+    count: number = 5
+  ): Promise<QuestionSuggestionResponse> {
+    const response = await this.client.post<QuestionSuggestionResponse>(
+      '/conversations/suggest-questions',
+      {
+        title,
+        description,
+        existing_questions: existingQuestions,
+        count,
+      }
+    );
     return response.data;
   }
 

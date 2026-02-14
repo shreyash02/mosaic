@@ -14,6 +14,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import ReminderManager from '../components/ReminderManager';
 import AnnouncementManager from '../components/AnnouncementManager';
 import CollapsibleSection from '../components/CollapsibleSection';
+import FocusTrap from '../components/FocusTrap';
 
 // Design tokens based styles
 const s = {
@@ -1856,56 +1857,61 @@ export default function ConversationDetailPage() {
 
       {/* Archive Modal */}
       {showArchiveModal && (
-        <div style={s.modalOverlay} onClick={() => setShowArchiveModal(false)} role="dialog" aria-modal="true" aria-labelledby="archive-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle} id="archive-modal-title">Archive Conversation</h2>
-            <p style={s.modalText}>
-              Archive this conversation? It will be hidden from your main list but can be restored later from the Archived tab.
-            </p>
-            <div style={s.modalActions}>
-              <button onClick={() => setShowArchiveModal(false)} style={s.buttonSecondary}>
-                Cancel
-              </button>
-              <button
-                onClick={handleArchive}
-                style={s.buttonPrimary}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Archiving...' : 'Archive'}
-              </button>
+        <FocusTrap isActive={showArchiveModal} onEscape={() => setShowArchiveModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowArchiveModal(false)} role="dialog" aria-modal="true" aria-labelledby="archive-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="archive-modal-title">Archive Conversation</h2>
+              <p style={s.modalText}>
+                Archive this conversation? It will be hidden from your main list but can be restored later from the Archived tab.
+              </p>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowArchiveModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleArchive}
+                  style={s.buttonPrimary}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Archiving...' : 'Archive'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <div style={s.modalOverlay} onClick={() => setShowDeleteModal(false)} role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle} id="delete-modal-title">Delete Conversation</h2>
-            <p style={s.modalText}>
-              Are you sure you want to delete this conversation? This action cannot be undone.
-            </p>
-            <div style={s.modalActions}>
-              <button onClick={() => setShowDeleteModal(false)} style={s.buttonSecondary}>
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                style={s.buttonPrimary}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Deleting...' : 'Delete'}
-              </button>
+        <FocusTrap isActive={showDeleteModal} onEscape={() => setShowDeleteModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowDeleteModal(false)} role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="delete-modal-title">Delete Conversation</h2>
+              <p style={s.modalText}>
+                Are you sure you want to delete this conversation? This action cannot be undone.
+              </p>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowDeleteModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  style={s.buttonPrimary}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
 
       {/* Extend Time Modal */}
       {showExtendModal && (
-        <div style={s.modalOverlay} onClick={() => setShowExtendModal(false)} role="dialog" aria-modal="true" aria-labelledby="extend-modal-title">
-          <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+        <FocusTrap isActive={showExtendModal} onEscape={() => setShowExtendModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowExtendModal(false)} role="dialog" aria-modal="true" aria-labelledby="extend-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
             <h2 style={s.modalTitle} id="extend-modal-title">Add More Time</h2>
             <p style={s.modalText}>
               Extend the conversation by adding more hours. Current end time:{' '}
@@ -2000,8 +2006,9 @@ export default function ConversationDetailPage() {
                 {extending ? 'Extending...' : `Add ${extendHours} hour${extendHours !== 1 ? 's' : ''}`}
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </FocusTrap>
       )}
 
       {/* Activate Modal */}

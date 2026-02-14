@@ -4,6 +4,7 @@ import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { api } from '../../services/api';
 import CustomFileInput from '../../components/CustomFileInput';
 import QuestionTypeSelector from '../../components/QuestionTypeSelector';
+import QuestionSuggestions from '../../components/QuestionSuggestions';
 import { ChatBubbleIcon, StarRatingIcon, CheckCircleIcon, CheckListIcon } from '../../components/icons';
 import { typography, spacing, borders } from '../../styles/tokens';
 
@@ -360,6 +361,45 @@ export default function QuestionsStep() {
     updateFormState({ questions: newQuestions });
   };
 
+  const handleAddSuggestedQuestion = (suggestion: {
+    text: string;
+    type: string;
+    options?: {
+      scale_min?: number;
+      scale_max?: number;
+      scale_min_label?: string;
+      scale_max_label?: string;
+      choices?: { id: string; label: string; order: number }[];
+    };
+  }) => {
+    const newIndex = formState.questions.length;
+    const newQuestion: any = {
+      id: crypto.randomUUID(),
+      question_text: suggestion.text,
+      question_type: suggestion.type,
+      question_order: newIndex,
+      is_required: false,
+    };
+
+    // Add options for rating questions
+    if (suggestion.type === 'rating' && suggestion.options) {
+      newQuestion.options = {
+        scale_min: suggestion.options.scale_min || 1,
+        scale_max: suggestion.options.scale_max || 5,
+        scale_min_label: suggestion.options.scale_min_label || '',
+        scale_max_label: suggestion.options.scale_max_label || '',
+      };
+    }
+
+    const newQuestions = [...formState.questions, newQuestion];
+    const newExpanded = new Set([...formState.expandedQuestions, newIndex]);
+    updateFormState({ questions: newQuestions, expandedQuestions: newExpanded });
+  };
+
+  const toggleSuggestionsDismissed = () => {
+    updateFormState({ suggestionsDismissed: !formState.suggestionsDismissed });
+  };
+
   const handleNext = () => {
     // Validate questions
     if (formState.questions.some((q) => !q.question_text.trim())) {
@@ -386,6 +426,16 @@ export default function QuestionsStep() {
       <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
         Add the questions you want to ask respondents
       </p>
+
+      {/* AI Question Suggestions */}
+      <QuestionSuggestions
+        title={formState.title}
+        description={formState.description}
+        existingQuestions={formState.questions.map(q => q.question_text).filter(Boolean)}
+        onAddQuestion={handleAddSuggestedQuestion}
+        dismissed={formState.suggestionsDismissed}
+        onDismiss={toggleSuggestionsDismissed}
+      />
 
       {/* Warning banner when no questions are required */}
       {formState.questions.length > 0 && !formState.questions.some(q => q.is_required) && (

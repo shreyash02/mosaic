@@ -46,6 +46,7 @@ export interface ConversationFormState {
   // Step 3: Questions
   questions: (QuestionCreate & { id: string })[];
   expandedQuestions: Set<number>;
+  suggestionsDismissed: boolean;
 
   // Step 4: Timing
   activationMode: 'immediate' | 'scheduled' | 'manual';
@@ -124,6 +125,7 @@ const getDefaultFormState = (): ConversationFormState => ({
     { id: crypto.randomUUID(), question_text: '', question_type: 'text', question_order: 0, is_required: false }
   ],
   expandedQuestions: new Set([0]),
+  suggestionsDismissed: false,
 
   // Timing
   activationMode: 'immediate',
@@ -261,6 +263,7 @@ export function ConversationFormProvider({
       allowResponseEditing: conversation.allow_response_editing,
       questions,
       expandedQuestions: new Set([0]), // Expand first question by default
+      suggestionsDismissed: false,
       durationHours,
       durationMinutes,
       scheduleActivation: !!conversation.scheduled_activate_at,
