@@ -42,6 +42,8 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
 - [x] Announcements to participants
 - [x] Preview/dry-run page for creators to test participant experience
 - [x] Centralized access control for conversations
+- [x] Conversation duplication ("Duplicate as draft")
+- [x] Slack channel posts (activation, analysis complete)
 
 ---
 
@@ -75,66 +77,55 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
    - Power users need data for external analysis
    - Add to AnalysisPage alongside PDF
 
-5. **Conversation Duplication**
-   - "Run this again" is a common workflow
-   - Templates require upfront setup
-   - Add "Duplicate" button on conversation cards/detail page
-
 ### P2 - Medium Priority
 
-6. **Analysis Comparison View**
+5. **Analysis Comparison View**
    - Side-by-side comparison of 2-3 analyses
    - Delta highlighting (what changed)
    - Collections exist but no comparison UI
    - Key for longitudinal tracking value prop
 
-7. **Slack Integration Phase 2**
-   - Phase 1 done (DMs to participants)
-   - Channel post when conversation activates
-   - Channel post when analysis ready
-   - Response count updates to channel
-
-8. **Response Analytics**
+6. **Response Analytics**
    - Response rate prominently displayed
    - Engagement benchmarks
    - Reminder effectiveness tracking
    - Optimal send time suggestions
 
-9. **Help System Depth**
+7. **Help System Depth**
    - Video walkthroughs for key flows
    - Interactive tutorials
    - Expanded FAQ sections
 
 ### P3 - Lower Priority (Polish)
 
-10. **Keyboard Shortcuts**
+8. **Keyboard Shortcuts**
     - j/k navigation on lists
     - Quick actions (a for activate, c for close)
     - Help modal on ? key
 
-11. **Enhanced Visualizations**
+9. **Enhanced Visualizations**
     - Pie charts for poll distributions
     - Word clouds for themes
     - Better rating distribution charts
 
-12. **Smart Defaults**
+10. **Smart Defaults**
     - Remember last-used settings per user
     - Suggest duration based on question count
 
-13. **Question Library**
+11. **Question Library**
     - Pre-written questions by category
     - Community-contributed templates
 
-14. **Real-time Response Count**
+12. **Real-time Response Count**
     - WebSocket for live updates during active conversations
     - Creator engagement feature
 
-15. **Custom Branding on Participant Pages**
+13. **Custom Branding on Participant Pages**
     - Apply org logo/colors to JoinPage
     - Branded email templates
     - Custom QR code styling
 
-16. **External API** (see `EXTERNAL_API_DESIGN.md`)
+14. **External API** (see `EXTERNAL_API_DESIGN.md`)
     - API key management in settings
     - Public API for campaigns, responses, analysis
     - Webhook support for events
@@ -196,9 +187,9 @@ When designing features or writing copy, avoid assuming "team", "manager", "empl
 | Priority | Items | Effort |
 |----------|-------|--------|
 | **Essential** | Response Threshold, Copy Link buttons | Small-Medium |
-| **Quick Wins** | CSV Export, Conversation Duplication | Small |
+| **Quick Wins** | CSV Export | Small |
 | **High Impact** | Mobile JoinPage, Analysis Comparison | Medium-Large |
-| **Medium** | Slack Phase 2, Response Analytics | Medium |
+| **Medium** | Response Analytics, Help System Depth | Medium |
 
 ---
 
