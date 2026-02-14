@@ -3,8 +3,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { colors, typography, spacing } from '../styles/tokens';
 
+// Banner height for spacer - matches padding calculation
+const BANNER_HEIGHT = '44px';
+
 const s = {
   banner: {
+    position: 'fixed' as const,
+    top: 'var(--header-height)',
+    left: 0,
+    right: 0,
+    zIndex: 199,
     backgroundColor: colors.semantic.warning.light,
     borderBottom: `1px solid ${colors.semantic.warning.main}`,
     padding: `${spacing[3]} ${spacing[6]}`,
@@ -13,6 +21,9 @@ const s = {
     justifyContent: 'center',
     gap: spacing[4],
     flexWrap: 'wrap' as const,
+  },
+  spacer: {
+    height: BANNER_HEIGHT,
   },
   message: {
     fontSize: typography.fontSize.sm,
@@ -78,10 +89,43 @@ export default function EmailVerificationBanner() {
 
   if (sent) {
     return (
+      <>
+        <div style={s.banner}>
+          <p style={s.successMessage}>
+            Verification email sent! Check your inbox.
+          </p>
+          <button
+            onClick={() => setDismissed(true)}
+            style={s.dismissButton}
+            title="Dismiss"
+          >
+            &times;
+          </button>
+        </div>
+        <div style={s.spacer} />
+      </>
+    );
+  }
+
+  return (
+    <>
       <div style={s.banner}>
-        <p style={s.successMessage}>
-          Verification email sent! Check your inbox.
+        <p style={s.message}>
+          Please verify your email to send invitations.
         </p>
+        <button
+          onClick={handleResend}
+          style={{
+            ...s.button,
+            ...(sending ? s.buttonDisabled : {}),
+          }}
+          disabled={sending}
+        >
+          {sending ? 'Sending...' : 'Resend Verification Email'}
+        </button>
+        {error && (
+          <p style={{ ...s.message, color: colors.semantic.error.text }}>{error}</p>
+        )}
         <button
           onClick={() => setDismissed(true)}
           style={s.dismissButton}
@@ -90,34 +134,7 @@ export default function EmailVerificationBanner() {
           &times;
         </button>
       </div>
-    );
-  }
-
-  return (
-    <div style={s.banner}>
-      <p style={s.message}>
-        Please verify your email to send invitations.
-      </p>
-      <button
-        onClick={handleResend}
-        style={{
-          ...s.button,
-          ...(sending ? s.buttonDisabled : {}),
-        }}
-        disabled={sending}
-      >
-        {sending ? 'Sending...' : 'Resend Verification Email'}
-      </button>
-      {error && (
-        <p style={{ ...s.message, color: colors.semantic.error.text }}>{error}</p>
-      )}
-      <button
-        onClick={() => setDismissed(true)}
-        style={s.dismissButton}
-        title="Dismiss"
-      >
-        &times;
-      </button>
-    </div>
+      <div style={s.spacer} />
+    </>
   );
 }
