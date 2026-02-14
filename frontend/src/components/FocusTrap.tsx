@@ -144,13 +144,31 @@ export default function FocusTrap({
     }
   }, [isActive, handleKeyDown]);
 
-  // Prevent body scroll when active
+  // Prevent body scroll when active (preserving scroll position)
   useEffect(() => {
     if (isActive) {
-      const originalOverflow = document.body.style.overflow;
+      const scrollY = window.scrollY;
+      const originalStyles = {
+        position: document.body.style.position,
+        top: document.body.style.top,
+        width: document.body.style.width,
+        overflow: document.body.style.overflow,
+      };
+
+      // Lock the body in place at current scroll position
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
+
       return () => {
-        document.body.style.overflow = originalOverflow;
+        // Restore original styles
+        document.body.style.position = originalStyles.position;
+        document.body.style.top = originalStyles.top;
+        document.body.style.width = originalStyles.width;
+        document.body.style.overflow = originalStyles.overflow;
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
       };
     }
   }, [isActive]);
