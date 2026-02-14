@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Conversation, InvitationListResponse, CSVUploadResult } from '../types';
+import { ConversationState } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, transitions } from '../styles';
@@ -478,6 +479,12 @@ export default function ManageInvitationsPage() {
   const conversationOrgId = conversation?.organization_id || null;
   const wrongWorkspace = conversation && conversationOrgId !== currentOrgId;
 
+  // Disable invitations for closed/analyzing/analyzed conversations
+  const canInvite = conversation && (
+    conversation.state === ConversationState.DRAFT ||
+    conversation.state === ConversationState.ACTIVE
+  );
+
   if (!conversation || wrongWorkspace) {
     return (
       <>
@@ -520,7 +527,7 @@ export default function ManageInvitationsPage() {
               <h1 style={styles.title}>Manage Invitations</h1>
               <p style={styles.subtitle}>{conversation.title}</p>
             </div>
-            {!showInviteForm && (
+            {!showInviteForm && canInvite && (
               <button
                 onClick={() => setShowInviteForm(true)}
                 style={styles.buttonPrimary}
@@ -534,16 +541,29 @@ export default function ManageInvitationsPage() {
           {error && <div style={styles.error}>{error}</div>}
 
           {/* Contextual hint for invitations */}
-          <InlineHint
-            hintId="invite-participants"
-            title="Invite via email"
-            message="Send personalized invitations to specific participants. They'll receive an email with a direct link to respond."
-            icon="info"
-            variant="info"
-          />
+          {canInvite ? (
+            <InlineHint
+              hintId="invite-participants"
+              title="Invite via email"
+              message="Send personalized invitations to specific participants. They'll receive an email with a direct link to respond."
+              icon="info"
+              variant="info"
+            />
+          ) : (
+            <div style={{
+              ...styles.card,
+              backgroundColor: 'var(--color-primary-100)',
+              border: '1px solid var(--color-primary-300)',
+              marginBottom: spacing[6],
+            }}>
+              <p style={{ margin: 0, fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+                This conversation is closed. New invitations cannot be sent.
+              </p>
+            </div>
+          )}
 
           {/* Invite Form */}
-          {showInviteForm && (
+          {showInviteForm && canInvite && (
             <div style={styles.card}>
               <div style={styles.cardHeader}>
                 <h2 style={styles.cardTitle}>Send New Invitations</h2>
