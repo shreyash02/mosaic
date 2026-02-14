@@ -5,7 +5,10 @@ import type { Conversation, ResponseItem } from '../types';
 import { LockIcon, EyeIcon } from '../components/icons';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
+import RatingButtons from '../components/RatingButtons';
+import MobileQuestionCarousel from '../components/MobileQuestionCarousel';
 
 const styles = {
   page: {
@@ -156,6 +159,17 @@ const styles = {
   questionRequired: {
     color: 'var(--color-error)',
     marginLeft: spacing[1],
+  },
+  questionImage: {
+    marginTop: spacing[2],
+    marginBottom: spacing[3],
+    borderRadius: borders.radius.md,
+    overflow: 'hidden',
+    maxHeight: '300px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'var(--color-primary-50)',
   },
   textarea: {
     width: '100%',
@@ -340,6 +354,38 @@ const styles = {
     gap: spacing[3],
     justifyContent: 'center',
   },
+  lightbox: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    cursor: 'pointer',
+    padding: spacing[6],
+  },
+  lightboxClose: {
+    position: 'absolute' as const,
+    top: spacing[4],
+    right: spacing[4],
+    background: 'rgba(255, 255, 255, 0.9)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '44px',
+    height: '44px',
+    minWidth: '44px',
+    minHeight: '44px',
+    fontSize: typography.fontSize.xl,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'var(--color-primary-900)',
+  },
 };
 
 const getAnonymityDescription = (level: string): string => {
@@ -364,6 +410,7 @@ const getResultsAccessDescription = (access: string): string => {
 export default function PreviewPage() {
   const { accessCode } = useParams<{ accessCode: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -373,6 +420,7 @@ export default function PreviewPage() {
   const [trustScreenCountdown, setTrustScreenCountdown] = useState(5);
   const [responses, setResponses] = useState<ResponseItem[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
 
   usePageTitle(conversation ? `Preview: ${conversation.title}` : 'Preview');
 
@@ -707,115 +755,133 @@ export default function PreviewPage() {
 
         {/* Questions Form */}
         <form onSubmit={handlePreviewSubmit}>
-          {questions.map((question, index) => {
-            const response = responses.find((r) => r.question_id === question.id);
+          {/* Mobile: Swipe carousel */}
+          {isMobile && conversation.questions && conversation.questions.length > 1 ? (
+            <MobileQuestionCarousel
+              questions={questions}
+              responses={responses}
+              maxResponseLength={conversation.max_response_length}
+              onUpdateResponse={updateResponse}
+              onUpdateRatingResponse={updateRatingResponse}
+              onUpdatePollResponse={updatePollResponse}
+              onImageClick={setLightboxImageUrl}
+            />
+          ) : (
+            /* Desktop: All questions visible */
+            questions.map((question, index) => {
+              const response = responses.find((r) => r.question_id === question.id);
 
-            return (
-              <div key={question.id} style={styles.questionCard}>
-                <div style={styles.questionNumber}>Question {index + 1} of {questions.length}</div>
-                <h3 style={styles.questionText}>
-                  {question.question_text}
-                  {question.is_required && <span style={styles.questionRequired}>*</span>}
-                </h3>
+              return (
+                <div key={question.id} style={styles.questionCard}>
+                  <div style={styles.questionNumber}>Question {index + 1} of {questions.length}</div>
+                  <h3 style={styles.questionText}>
+                    {question.question_text}
+                    {question.is_required && <span style={styles.questionRequired}>*</span>}
+                  </h3>
 
-                {question.question_type === 'text' && (
-                  <textarea
-                    style={styles.textarea}
-                    placeholder="Type your response here..."
-                    value={response?.response_text || ''}
-                    onChange={(e) => updateResponse(question.id, e.target.value)}
-                  />
-                )}
+                  {question.question_image_url && (
+                    <div
+                      onClick={() => setLightboxImageUrl(question.question_image_url!)}
+                      style={styles.questionImage}
+                      title="Click to enlarge"
+                    >
+                      <img
+                        src={question.question_image_url}
+                        alt={`Image for question ${index + 1}`}
+                        style={{ maxWidth: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', cursor: 'pointer' }}
+                      />
+                    </div>
+                  )}
 
-                {question.question_type === 'rating' && (
-                  <div style={styles.ratingContainer}>
-                    {Array.from({ length: (question.options?.max || 5) - (question.options?.min || 1) + 1 }, (_, i) => {
-                      const value = (question.options?.min || 1) + i;
-                      const isSelected = response?.response_data?.rating === value;
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          style={{
-                            ...styles.ratingButton,
-                            ...(isSelected ? styles.ratingButtonSelected : {}),
-                          }}
-                          onClick={() => updateRatingResponse(question.id, value)}
-                        >
-                          {value}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                  {question.question_type === 'text' && (
+                    <textarea
+                      style={styles.textarea}
+                      placeholder="Type your response here..."
+                      value={response?.response_text || ''}
+                      onChange={(e) => updateResponse(question.id, e.target.value)}
+                    />
+                  )}
 
-                {question.question_type === 'single_choice' && (
-                  <div>
-                    {question.options?.choices?.map((choice, choiceIndex: number) => {
-                      const isSelected = response?.response_data?.selected === choice.id;
-                      return (
-                        <div
-                          key={choice.id || choiceIndex}
-                          style={{
-                            ...styles.choiceOption,
-                            backgroundColor: isSelected ? 'var(--color-primary-100)' : 'var(--color-primary-50)',
-                            borderColor: isSelected ? 'var(--color-primary-400)' : 'var(--color-primary-200)',
-                          }}
-                          onClick={() => updatePollResponse(question.id, choice.id)}
-                        >
-                          <input
-                            type="radio"
-                            checked={isSelected}
-                            onChange={() => updatePollResponse(question.id, choice.id)}
-                            style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
-                          />
-                          <span>{choice.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  {question.question_type === 'rating' && (
+                    <RatingButtons
+                      min={question.options?.min || 0}
+                      max={question.options?.max || 10}
+                      step={question.options?.step || 1}
+                      value={response?.response_data?.rating ?? 5}
+                      onChange={(rating) => updateRatingResponse(question.id, rating)}
+                      minLabel={question.options?.min_label}
+                      maxLabel={question.options?.max_label}
+                    />
+                  )}
 
-                {question.question_type === 'multiple_choice' && (
-                  <div>
-                    {question.options?.choices?.map((choice, choiceIndex: number) => {
-                      const selectedArray = (response?.response_data?.selected as string[]) || [];
-                      const isSelected = selectedArray.includes(choice.id);
-                      return (
-                        <div
-                          key={choice.id || choiceIndex}
-                          style={{
-                            ...styles.choiceOption,
-                            backgroundColor: isSelected ? 'var(--color-primary-100)' : 'var(--color-primary-50)',
-                            borderColor: isSelected ? 'var(--color-primary-400)' : 'var(--color-primary-200)',
-                          }}
-                          onClick={() => {
-                            const newSelected = isSelected
-                              ? selectedArray.filter(id => id !== choice.id)
-                              : [...selectedArray, choice.id];
-                            updatePollResponse(question.id, newSelected);
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {
+                  {question.question_type === 'single_choice' && (
+                    <div>
+                      {question.options?.choices?.map((choice, choiceIndex: number) => {
+                        const isSelected = response?.response_data?.selected === choice.id;
+                        return (
+                          <div
+                            key={choice.id || choiceIndex}
+                            style={{
+                              ...styles.choiceOption,
+                              backgroundColor: isSelected ? 'var(--color-primary-100)' : 'var(--color-primary-50)',
+                              borderColor: isSelected ? 'var(--color-primary-400)' : 'var(--color-primary-200)',
+                            }}
+                            onClick={() => updatePollResponse(question.id, choice.id)}
+                          >
+                            <input
+                              type="radio"
+                              checked={isSelected}
+                              onChange={() => updatePollResponse(question.id, choice.id)}
+                              style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
+                            />
+                            <span>{choice.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {question.question_type === 'multiple_choice' && (
+                    <div>
+                      {question.options?.choices?.map((choice, choiceIndex: number) => {
+                        const selectedArray = (response?.response_data?.selected as string[]) || [];
+                        const isSelected = selectedArray.includes(choice.id);
+                        return (
+                          <div
+                            key={choice.id || choiceIndex}
+                            style={{
+                              ...styles.choiceOption,
+                              backgroundColor: isSelected ? 'var(--color-primary-100)' : 'var(--color-primary-50)',
+                              borderColor: isSelected ? 'var(--color-primary-400)' : 'var(--color-primary-200)',
+                            }}
+                            onClick={() => {
                               const newSelected = isSelected
                                 ? selectedArray.filter(id => id !== choice.id)
                                 : [...selectedArray, choice.id];
                               updatePollResponse(question.id, newSelected);
                             }}
-                            style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
-                          />
-                          <span>{choice.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                const newSelected = isSelected
+                                  ? selectedArray.filter(id => id !== choice.id)
+                                  : [...selectedArray, choice.id];
+                                updatePollResponse(question.id, newSelected);
+                              }}
+                              style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
+                            />
+                            <span>{choice.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
 
           {/* Submit Button */}
           <button type="submit" style={styles.submitButton}>
@@ -823,6 +889,19 @@ export default function PreviewPage() {
           </button>
         </form>
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxImageUrl && (
+        <div onClick={() => setLightboxImageUrl(null)} style={styles.lightbox} role="dialog" aria-modal="true" aria-label="Image lightbox">
+          <img
+            src={lightboxImageUrl}
+            alt="Enlarged view"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: borders.radius.md, cursor: 'default' }}
+          />
+          <button onClick={() => setLightboxImageUrl(null)} style={styles.lightboxClose} aria-label="Close lightbox">×</button>
+        </div>
+      )}
     </div>
   );
 }
