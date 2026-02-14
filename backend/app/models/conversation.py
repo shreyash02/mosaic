@@ -122,6 +122,18 @@ class Conversation(Base):
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
 
+    # Slack channel notifications
+    slack_channel_id = Column(String(50), nullable=True)
+    # Slack channel ID to post notifications to (e.g., "C01234567")
+    slack_channel_name = Column(String(255), nullable=True)
+    # Display name of the channel (e.g., "#general")
+    slack_notify_on_activate = Column(Boolean, default=False, nullable=False)
+    # If True, post to channel when conversation is activated
+    slack_notify_on_close = Column(Boolean, default=False, nullable=False)
+    # If True, post to channel when conversation is closed
+    slack_notify_on_analysis = Column(Boolean, default=False, nullable=False)
+    # If True, post to channel when analysis is complete
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

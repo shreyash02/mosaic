@@ -1,7 +1,7 @@
 """Slack integration schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel
 
@@ -65,3 +65,17 @@ class SlackCallbackResponse(BaseModel):
     success: bool
     message: str
     workspace_name: Optional[str] = None
+
+
+class SlackChannel(BaseModel):
+    """Slack channel information."""
+
+    id: str
+    name: str
+    is_private: bool = False
+
+
+class SlackChannelListResponse(BaseModel):
+    """Response for listing Slack channels."""
+
+    channels: List[SlackChannel]

@@ -23,6 +23,8 @@ from app.schemas.slack import (
     SlackWorkspaceStatus,
     UserSlackStatus,
     SlackCallbackResponse,
+    SlackChannel,
+    SlackChannelListResponse,
 )
 
 router = APIRouter()
@@ -364,6 +366,75 @@ async def get_slack_status(
         installed_at=connection.installed_at,
         installed_by_name=installer_name,
     )
+
+
+@router.get("/organizations/{organization_id}/slack/channels", response_model=SlackChannelListResponse)
+async def list_slack_channels(
+    organization_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    List Slack channels available for the organization's workspace.
+
+    Returns channels the bot can post to for notifications.
+    """
+    if not settings.slack_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Slack integration is not configured"
+        )
+
+    # Verify user has access to org (any member can list channels)
+    org = db.query(Organization).filter(Organization.id == organization_id).first()
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.organization_id == organization_id,
+        OrganizationMember.user_id == current_user.id,
+    ).first()
+
+    is_member = member is not None
+    is_creator = org.created_by == current_user.id
+
+    if not is_member and not is_creator:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this organization"
+        )
+
+    # Get the Slack connection
+    connection = db.query(SlackWorkspaceConnection).filter(
+        SlackWorkspaceConnection.organization_id == organization_id,
+        SlackWorkspaceConnection.is_active == True,
+    ).first()
+
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No Slack workspace connected for this organization"
+        )
+
+    # Fetch channels from Slack
+    channels_data = await slack_service.list_channels(
+        encrypted_token=connection.bot_access_token_encrypted,
+        include_private=True,
+    )
+
+    channels = [
+        SlackChannel(
+            id=ch["id"],
+            name=ch["name"],
+            is_private=ch.get("is_private", False),
+        )
+        for ch in channels_data
+    ]
+
+    return SlackChannelListResponse(channels=channels)
 
 
 @router.delete("/organizations/{organization_id}/slack")

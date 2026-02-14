@@ -53,6 +53,7 @@ import type {
   SlackWorkspaceStatus,
   SlackInstallInitiate,
   UserSlackStatus,
+  SlackChannelListResponse,
   BulkOperationRequest,
   BulkOperationResponse,
   Reminder,
@@ -745,6 +746,13 @@ class ApiService {
 
   async disconnectSlack(orgId: string): Promise<void> {
     await this.client.delete(`/organizations/${orgId}/slack`);
+  }
+
+  async listSlackChannels(orgId: string): Promise<SlackChannelListResponse> {
+    const response = await this.client.get<SlackChannelListResponse>(
+      `/organizations/${orgId}/slack/channels`
+    );
+    return response.data;
   }
 
   async getUserSlackStatus(): Promise<UserSlackStatus> {

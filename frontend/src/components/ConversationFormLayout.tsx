@@ -20,6 +20,7 @@ const STEPS: Step[] = [
   { id: 'privacy', label: 'Privacy', path: 'privacy', manualOnly: true },
   { id: 'questions', label: 'Questions', path: 'questions' },
   { id: 'timing', label: 'Timing', path: 'timing' },
+  { id: 'notifications', label: 'Notifications', path: 'notifications' },
   { id: 'review', label: 'Review', path: 'review' },
 ];
 
@@ -29,6 +30,7 @@ const EDIT_STEPS: Step[] = [
   { id: 'privacy', label: 'Privacy', path: 'privacy' },
   { id: 'questions', label: 'Questions', path: 'questions' },
   { id: 'timing', label: 'Timing', path: 'timing' },
+  { id: 'notifications', label: 'Notifications', path: 'notifications' },
   { id: 'review', label: 'Review', path: 'review' },
 ];
 

@@ -138,6 +138,13 @@ class ConversationBase(BaseModel):
     brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL (overrides organization branding)")
     brand_name: Optional[str] = Field(None, max_length=255, description="Brand name (overrides organization branding)")
 
+    # Slack channel notifications
+    slack_channel_id: Optional[str] = Field(None, max_length=50, description="Slack channel ID to post notifications to")
+    slack_channel_name: Optional[str] = Field(None, max_length=255, description="Display name of the Slack channel")
+    slack_notify_on_activate: bool = Field(False, description="Post to channel when conversation is activated")
+    slack_notify_on_close: bool = Field(False, description="Post to channel when conversation is closed")
+    slack_notify_on_analysis: bool = Field(False, description="Post to channel when analysis is complete")
+
     @field_validator('timezone')
     @classmethod
     def normalize_timezone(cls, v: Optional[str]) -> Optional[str]:
@@ -196,6 +203,13 @@ class ConversationUpdate(BaseModel):
     # Branding (overrides organization branding if set)
     brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL (overrides organization branding)")
     brand_name: Optional[str] = Field(None, max_length=255, description="Brand name (overrides organization branding)")
+
+    # Slack channel notifications
+    slack_channel_id: Optional[str] = Field(None, max_length=50, description="Slack channel ID to post notifications to")
+    slack_channel_name: Optional[str] = Field(None, max_length=255, description="Display name of the Slack channel")
+    slack_notify_on_activate: Optional[bool] = Field(None, description="Post to channel when conversation is activated")
+    slack_notify_on_close: Optional[bool] = Field(None, description="Post to channel when conversation is closed")
+    slack_notify_on_analysis: Optional[bool] = Field(None, description="Post to channel when analysis is complete")
 
     @field_validator('timezone')
     @classmethod
@@ -259,6 +273,13 @@ class Conversation(ConversationBase):
     # Archiving
     is_archived: bool = False
     archived_at: Optional[datetime] = None
+
+    # Slack channel notifications
+    slack_channel_id: Optional[str] = None
+    slack_channel_name: Optional[str] = None
+    slack_notify_on_activate: bool = False
+    slack_notify_on_close: bool = False
+    slack_notify_on_analysis: bool = False
 
     model_config = {"from_attributes": True}
 

@@ -200,6 +200,12 @@ export interface Conversation {
   // Archiving
   is_archived?: boolean;
   archived_at?: string;
+  // Slack channel notifications
+  slack_channel_id?: string;
+  slack_channel_name?: string;
+  slack_notify_on_activate?: boolean;
+  slack_notify_on_close?: boolean;
+  slack_notify_on_analysis?: boolean;
 }
 
 export interface ConversationCreate {
@@ -239,6 +245,12 @@ export interface ConversationCreate {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
+  // Slack channel notifications
+  slack_channel_id?: string;
+  slack_channel_name?: string;
+  slack_notify_on_activate?: boolean;
+  slack_notify_on_close?: boolean;
+  slack_notify_on_analysis?: boolean;
 }
 
 export interface ConversationListItem {
@@ -794,6 +806,16 @@ export interface UserSlackStatus {
 
 export interface SlackInstallInitiate {
   redirect_url: string;
+}
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+  is_private: boolean;
+}
+
+export interface SlackChannelListResponse {
+  channels: SlackChannel[];
 }
 
 // Bulk operation types

@@ -265,6 +265,14 @@ export default function ReviewStep() {
           analysis_interval: formState.analysisInterval,
           analysis_timezone: userTimezone,
         }),
+        // Slack channel notifications
+        ...(formState.slackChannelId && {
+          slack_channel_id: formState.slackChannelId,
+          slack_channel_name: formState.slackChannelName,
+          slack_notify_on_activate: formState.slackNotifyOnActivate,
+          slack_notify_on_close: formState.slackNotifyOnClose,
+          slack_notify_on_analysis: formState.slackNotifyOnAnalysis,
+        }),
       };
 
       // Create or update conversation
@@ -598,6 +606,43 @@ export default function ReviewStep() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Slack Notifications */}
+            {formState.slackChannelId && (
+              <div style={{
+                marginTop: spacing[3],
+                paddingTop: spacing[3],
+                borderTop: '1px solid var(--color-primary-200)',
+              }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[2], display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <svg width="16" height="16" viewBox="0 0 127 127" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2S.8 87.3.8 80s5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2s13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2s-13.2-5.9-13.2-13.2V80z" fill="#E01E5A"/>
+                    <path d="M47 27c-7.3 0-13.2-5.9-13.2-13.2S39.7.6 47 .6s13.2 5.9 13.2 13.2V27H47zm0 6.7c7.3 0 13.2 5.9 13.2 13.2s-5.9 13.2-13.2 13.2H14c-7.3 0-13.2-5.9-13.2-13.2S6.7 33.7 14 33.7h33z" fill="#36C5F0"/>
+                    <path d="M99.9 46.9c0-7.3 5.9-13.2 13.2-13.2s13.2 5.9 13.2 13.2-5.9 13.2-13.2 13.2H99.9V46.9zm-6.6 0c0 7.3-5.9 13.2-13.2 13.2s-13.2-5.9-13.2-13.2V14c0-7.3 5.9-13.2 13.2-13.2s13.2 5.9 13.2 13.2v32.9z" fill="#2EB67D"/>
+                    <path d="M80.1 99.8c7.3 0 13.2 5.9 13.2 13.2s-5.9 13.2-13.2 13.2-13.2-5.9-13.2-13.2V99.8h13.2zm0-6.6c-7.3 0-13.2-5.9-13.2-13.2s5.9-13.2 13.2-13.2h33c7.3 0 13.2 5.9 13.2 13.2s-5.9 13.2-13.2 13.2h-33z" fill="#ECB22E"/>
+                  </svg>
+                  Slack Notifications
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[3] }}>
+                  <div>
+                    <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Channel</div>
+                    <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                      {formState.slackChannelName || formState.slackChannelId}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginBottom: spacing[1] }}>Notify on</div>
+                    <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                      {[
+                        formState.slackNotifyOnActivate && 'Activate',
+                        formState.slackNotifyOnClose && 'Close',
+                        formState.slackNotifyOnAnalysis && 'Analysis',
+                      ].filter(Boolean).join(', ') || 'None'}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1023,7 +1068,7 @@ export default function ReviewStep() {
             if (formState.parentConversation?.is_template && formState.parentConversationId) {
               navigate(`/templates/${formState.parentConversationId}`);
             } else {
-              navigate(getStepPath('timing'));
+              navigate(getStepPath('notifications'));
             }
           }}
           className="btn btn-secondary"

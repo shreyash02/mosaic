@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 SLACK_OAUTH_URL = "https://slack.com/api/oauth.v2.access"
 SLACK_USERS_LOOKUP_URL = "https://slack.com/api/users.lookupByEmail"
 SLACK_CONVERSATIONS_OPEN_URL = "https://slack.com/api/conversations.open"
+SLACK_CONVERSATIONS_LIST_URL = "https://slack.com/api/conversations.list"
 SLACK_CHAT_POST_URL = "https://slack.com/api/chat.postMessage"
 SLACK_AUTH_TEST_URL = "https://slack.com/api/auth.test"
 
@@ -208,6 +209,114 @@ class SlackService:
 
         except Exception as e:
             logger.error(f"Error sending Slack DM: {e}", exc_info=True)
+            return False
+
+    async def list_channels(
+        self,
+        encrypted_token: str,
+        include_private: bool = True,
+    ) -> List[dict]:
+        """List channels the bot has access to.
+
+        Args:
+            encrypted_token: The encrypted bot access token
+            include_private: Whether to include private channels
+
+        Returns:
+            List of channel dicts with id, name, is_private
+        """
+        channels = []
+        try:
+            token = decrypt_token(encrypted_token)
+
+            # Build channel types param
+            types = "public_channel"
+            if include_private:
+                types += ",private_channel"
+
+            cursor = None
+            async with httpx.AsyncClient() as client:
+                while True:
+                    params = {
+                        "types": types,
+                        "exclude_archived": "true",
+                        "limit": 200,
+                    }
+                    if cursor:
+                        params["cursor"] = cursor
+
+                    response = await client.get(
+                        SLACK_CONVERSATIONS_LIST_URL,
+                        headers={"Authorization": f"Bearer {token}"},
+                        params=params,
+                    )
+                    data = response.json()
+
+                    if not data.get("ok"):
+                        logger.error(f"Failed to list Slack channels: {data.get('error')}")
+                        break
+
+                    for channel in data.get("channels", []):
+                        channels.append({
+                            "id": channel.get("id"),
+                            "name": channel.get("name"),
+                            "is_private": channel.get("is_private", False),
+                        })
+
+                    # Handle pagination
+                    cursor = data.get("response_metadata", {}).get("next_cursor")
+                    if not cursor:
+                        break
+
+            # Sort channels alphabetically by name
+            channels.sort(key=lambda c: c["name"].lower())
+            return channels
+
+        except Exception as e:
+            logger.error(f"Error listing Slack channels: {e}", exc_info=True)
+            return []
+
+    async def send_channel_message(
+        self,
+        encrypted_token: str,
+        channel_id: str,
+        blocks: List[dict],
+        fallback_text: str,
+    ) -> bool:
+        """Send a message to a Slack channel.
+
+        Args:
+            encrypted_token: The encrypted bot access token
+            channel_id: The Slack channel ID to post to
+            blocks: Slack Block Kit message blocks
+            fallback_text: Plain text fallback for notifications
+
+        Returns:
+            True if message was sent successfully, False otherwise
+        """
+        try:
+            token = decrypt_token(encrypted_token)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    SLACK_CHAT_POST_URL,
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={
+                        "channel": channel_id,
+                        "blocks": blocks,
+                        "text": fallback_text,
+                    },
+                )
+                data = response.json()
+
+                if data.get("ok"):
+                    logger.info(f"Slack message sent to channel {channel_id}")
+                    return True
+                else:
+                    logger.error(f"Failed to send Slack channel message: {data.get('error')}")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Error sending Slack channel message: {e}", exc_info=True)
             return False
 
     def build_invitation_message(
@@ -567,6 +676,104 @@ class SlackService:
                         "url": respond_url,
                     }
                 ],
+            },
+        ]
+
+        return blocks, fallback_text
+
+    def build_conversation_activated_message(
+        self,
+        conversation_title: str,
+        respond_url: str,
+        closes_at: Optional[datetime] = None,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for conversation activation announcement.
+
+        Args:
+            conversation_title: Title of the conversation
+            respond_url: URL to respond to the conversation
+            closes_at: Optional closing time
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        deadline_text = ""
+        if closes_at:
+            # Format as Slack timestamp for auto-localization
+            unix_ts = int(closes_at.timestamp())
+            deadline_text = f"\nCloses <!date^{unix_ts}^{{date_short_pretty}} at {{time}}|{closes_at.strftime('%B %d at %I:%M %p UTC')}>"
+
+        fallback_text = f"New conversation open: {conversation_title}"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":speech_balloon: *New Conversation Open*\n\n*{conversation_title}*{deadline_text}\n\n<{respond_url}|Respond Now>",
+                },
+            },
+        ]
+
+        return blocks, fallback_text
+
+    def build_conversation_closed_message(
+        self,
+        conversation_title: str,
+        response_count: int,
+        results_url: str,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for conversation closed announcement.
+
+        Args:
+            conversation_title: Title of the conversation
+            response_count: Number of responses collected
+            results_url: URL to view results
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        response_text = f"{response_count} response{'s' if response_count != 1 else ''}"
+        fallback_text = f"Conversation closed: {conversation_title} ({response_text} collected)"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":checkered_flag: *Conversation Closed*\n\n*{conversation_title}*\n{response_text} collected\n\n<{results_url}|View Results>",
+                },
+            },
+        ]
+
+        return blocks, fallback_text
+
+    def build_channel_analysis_complete_message(
+        self,
+        conversation_title: str,
+        results_url: str,
+        response_count: int,
+    ) -> Tuple[List[dict], str]:
+        """Build Slack Block Kit message for analysis complete announcement.
+
+        Args:
+            conversation_title: Title of the conversation
+            results_url: URL to view analysis results
+            response_count: Number of responses analyzed
+
+        Returns:
+            Tuple of (blocks, fallback_text)
+        """
+        response_text = f"{response_count} response{'s' if response_count != 1 else ''}"
+        fallback_text = f"Analysis complete: {conversation_title}"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":bar_chart: *Analysis Complete*\n\nThe analysis for *{conversation_title}* is ready.\n{response_text} analyzed.\n\n<{results_url}|View Analysis>",
+                },
             },
         ]
 

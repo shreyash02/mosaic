@@ -1664,6 +1664,26 @@ export default function ConversationDetailPage() {
             </div>
           </CollapsibleSection>
 
+          {/* Notifications Card */}
+          {conversation.slack_channel_id && (
+            <CollapsibleSection title="Notifications" defaultExpanded={true}>
+              <div style={s.infoItem}>
+                <span style={s.infoLabel}>Slack Channel</span>
+                <span style={s.infoValue}>{conversation.slack_channel_name || conversation.slack_channel_id}</span>
+              </div>
+              <div style={s.infoItem}>
+                <span style={s.infoLabel}>Notify on</span>
+                <span style={s.infoValue}>
+                  {[
+                    conversation.slack_notify_on_activate && 'Activate',
+                    conversation.slack_notify_on_close && 'Close',
+                    conversation.slack_notify_on_analysis && 'Analysis',
+                  ].filter(Boolean).join(', ') || 'None'}
+                </span>
+              </div>
+            </CollapsibleSection>
+          )}
+
           {/* Share Card */}
           <CollapsibleSection title="Share" defaultExpanded={true}>
             {/* Contextual hint for sharing */}

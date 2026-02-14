@@ -497,6 +497,189 @@ class NotificationService:
             email=user.email,
         )
 
+    # Channel notification methods (post to Slack channels instead of DMs)
+
+    async def notify_channel_conversation_activated(
+        self,
+        conversation: Conversation,
+        db: Session,
+    ) -> bool:
+        """
+        Send Slack channel notification when conversation is activated.
+
+        Args:
+            conversation: The conversation that was activated
+            db: Database session
+
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not settings.slack_enabled:
+            return False
+
+        # Check if channel notifications are enabled
+        if not conversation.slack_channel_id or not conversation.slack_notify_on_activate:
+            return False
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            logger.debug("Conversation has no organization, skipping channel notification")
+            return False
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            logger.debug("Organization has no Slack connection")
+            return False
+
+        # Build the message
+        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+
+        blocks, fallback_text = slack_service.build_conversation_activated_message(
+            conversation_title=conversation.title,
+            respond_url=respond_url,
+            closes_at=conversation.auto_close_at,
+        )
+
+        # Send to channel
+        success = await slack_service.send_channel_message(
+            encrypted_token=slack_connection.bot_access_token_encrypted,
+            channel_id=conversation.slack_channel_id,
+            blocks=blocks,
+            fallback_text=fallback_text,
+        )
+
+        if success:
+            logger.info(f"Sent Slack channel activation notification for conversation {conversation.id}")
+        else:
+            logger.warning(f"Failed to send Slack channel notification for conversation {conversation.id}")
+
+        return success
+
+    async def notify_channel_conversation_closed(
+        self,
+        conversation: Conversation,
+        response_count: int,
+        db: Session,
+    ) -> bool:
+        """
+        Send Slack channel notification when conversation is closed.
+
+        Args:
+            conversation: The conversation that was closed
+            response_count: Number of responses collected
+            db: Database session
+
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not settings.slack_enabled:
+            return False
+
+        # Check if channel notifications are enabled
+        if not conversation.slack_channel_id or not conversation.slack_notify_on_close:
+            return False
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            return False
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            return False
+
+        # Build the message
+        results_url = f"{settings.FRONTEND_URL}/conversations/{conversation.id}"
+
+        blocks, fallback_text = slack_service.build_conversation_closed_message(
+            conversation_title=conversation.title,
+            response_count=response_count,
+            results_url=results_url,
+        )
+
+        # Send to channel
+        success = await slack_service.send_channel_message(
+            encrypted_token=slack_connection.bot_access_token_encrypted,
+            channel_id=conversation.slack_channel_id,
+            blocks=blocks,
+            fallback_text=fallback_text,
+        )
+
+        if success:
+            logger.info(f"Sent Slack channel closed notification for conversation {conversation.id}")
+
+        return success
+
+    async def notify_channel_analysis_ready(
+        self,
+        conversation: Conversation,
+        db: Session,
+    ) -> bool:
+        """
+        Send Slack channel notification when analysis is complete.
+
+        Args:
+            conversation: The conversation that was analyzed
+            db: Database session
+
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not settings.slack_enabled:
+            return False
+
+        # Check if channel notifications are enabled
+        if not conversation.slack_channel_id or not conversation.slack_notify_on_analysis:
+            return False
+
+        # Get the organization's Slack connection
+        if not conversation.organization_id:
+            return False
+
+        slack_connection = db.query(SlackWorkspaceConnection).filter(
+            SlackWorkspaceConnection.organization_id == conversation.organization_id,
+            SlackWorkspaceConnection.is_active == True,
+        ).first()
+
+        if not slack_connection:
+            return False
+
+        # Get response count
+        from app.models.response import Response
+        response_count = db.query(Response).filter(
+            Response.conversation_id == conversation.id,
+            Response.status == "submitted",
+        ).count()
+
+        # Build the message
+        results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
+
+        blocks, fallback_text = slack_service.build_channel_analysis_complete_message(
+            conversation_title=conversation.title,
+            results_url=results_url,
+            response_count=response_count,
+        )
+
+        # Send to channel
+        success = await slack_service.send_channel_message(
+            encrypted_token=slack_connection.bot_access_token_encrypted,
+            channel_id=conversation.slack_channel_id,
+            blocks=blocks,
+            fallback_text=fallback_text,
+        )
+
+        if success:
+            logger.info(f"Sent Slack channel analysis notification for conversation {conversation.id}")
+
+        return success
+
 
 # Singleton instance
 notification_service = NotificationService()

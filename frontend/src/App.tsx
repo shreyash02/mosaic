@@ -29,6 +29,7 @@ import DetailsStep from './pages/create/DetailsStep';
 import PrivacyStep from './pages/create/PrivacyStep';
 import QuestionsStep from './pages/create/QuestionsStep';
 import TimingStep from './pages/create/TimingStep';
+import NotificationsStep from './pages/create/NotificationsStep';
 import ReviewStep from './pages/create/ReviewStep';
 import ConversationDetailPage from './pages/ConversationDetailPage';
 import ManageInvitationsPage from './pages/ManageInvitationsPage';
@@ -170,6 +171,7 @@ function App() {
               <Route path="privacy" element={<PrivacyStep />} />
               <Route path="questions" element={<QuestionsStep />} />
               <Route path="timing" element={<TimingStep />} />
+              <Route path="notifications" element={<NotificationsStep />} />
               <Route path="review" element={<ReviewStep />} />
               <Route index element={<Navigate to="intent" replace />} />
             </Route>
@@ -197,6 +199,7 @@ function App() {
               <Route path="privacy" element={<PrivacyStep />} />
               <Route path="questions" element={<QuestionsStep />} />
               <Route path="timing" element={<TimingStep />} />
+              <Route path="notifications" element={<NotificationsStep />} />
               <Route path="review" element={<ReviewStep />} />
               <Route index element={<Navigate to="details" replace />} />
             </Route>
@@ -224,6 +227,7 @@ function App() {
               <Route path="privacy" element={<PrivacyStep />} />
               <Route path="questions" element={<QuestionsStep />} />
               <Route path="timing" element={<TimingStep />} />
+              <Route path="notifications" element={<NotificationsStep />} />
               <Route path="review" element={<ReviewStep />} />
               <Route index element={<Navigate to="review" replace />} />
             </Route>

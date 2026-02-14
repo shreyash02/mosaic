@@ -110,7 +110,7 @@ def run_analysis_task(
         if conversation:
             results_url = f"https://mosaic.app/analysis/{conversation.id}"  # Will be replaced by settings
 
-            # Send Slack notifications
+            # Send Slack DM notifications to participants
             try:
                 asyncio.run(
                     notification_service.notify_analysis_ready(
@@ -120,6 +120,17 @@ def run_analysis_task(
                 )
             except Exception as e:
                 logger.error(f"Failed to send Slack analysis ready notifications: {e}", exc_info=True)
+
+            # Send Slack channel notification if configured
+            try:
+                asyncio.run(
+                    notification_service.notify_channel_analysis_ready(
+                        conversation=conversation,
+                        db=db,
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Failed to send Slack channel analysis notification: {e}", exc_info=True)
 
             # Send email notifications
             try:

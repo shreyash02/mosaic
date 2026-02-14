@@ -80,6 +80,13 @@ export interface ConversationFormState {
   parentConversation?: Conversation;
   createTemplate?: boolean;
   organizationId?: string;
+
+  // Slack channel notifications
+  slackChannelId?: string;
+  slackChannelName?: string;
+  slackNotifyOnActivate: boolean;
+  slackNotifyOnClose: boolean;
+  slackNotifyOnAnalysis: boolean;
 }
 
 interface ConversationFormContextType {
@@ -139,6 +146,13 @@ const getDefaultFormState = (): ConversationFormState => ({
   addToSeries: false,
   selectedSeriesId: '',
   inviteEmails: '',
+
+  // Slack channel notifications
+  slackChannelId: undefined,
+  slackChannelName: undefined,
+  slackNotifyOnActivate: false,
+  slackNotifyOnClose: false,
+  slackNotifyOnAnalysis: false,
 });
 
 export function ConversationFormProvider({
@@ -267,6 +281,12 @@ export function ConversationFormProvider({
       addToSeries: !!conversation.series_id || !!conversation.template_series_id,
       selectedSeriesId: conversation.series_id || conversation.template_series_id || '',
       createTemplate: conversation.is_template,
+      // Slack channel notifications
+      slackChannelId: conversation.slack_channel_id,
+      slackChannelName: conversation.slack_channel_name,
+      slackNotifyOnActivate: conversation.slack_notify_on_activate || false,
+      slackNotifyOnClose: conversation.slack_notify_on_close || false,
+      slackNotifyOnAnalysis: conversation.slack_notify_on_analysis || false,
     });
   }, []);
 

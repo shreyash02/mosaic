@@ -164,7 +164,7 @@ export default function TimingStep() {
       alert('Please select when to create the first instance');
       return;
     }
-    navigate(getStepPath('review'));
+    navigate(getStepPath('notifications'));
   };
 
   // When switching to long-running, disable recurring (mutually exclusive for templates)
@@ -562,6 +562,7 @@ export default function TimingStep() {
             )}
           </div>
         )}
+
       </div>
 
       {/* Navigation */}
@@ -584,7 +585,7 @@ export default function TimingStep() {
           onClick={handleNext}
           className="btn btn-primary btn-large"
         >
-          Next: Review →
+          Next: Notifications →
         </button>
       </div>
     </div>

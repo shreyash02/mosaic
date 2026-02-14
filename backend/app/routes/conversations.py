@@ -1361,6 +1361,15 @@ async def activate_conversation(
     if conversation.state == ConversationState.ACTIVE.value and not activate_data.scheduled_activate_at:
         await send_pending_invitation_emails(conversation, db, current_user)
 
+        # Send Slack channel notification if configured
+        try:
+            await notification_service.notify_channel_conversation_activated(
+                conversation=conversation,
+                db=db,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send Slack channel activation notification: {e}")
+
     return conversation
 
 
@@ -1403,6 +1412,15 @@ async def close_conversation(
 
     db.commit()
     db.refresh(conversation)
+
+    # Send Slack channel notification if configured
+    if conversation.slack_channel_id and conversation.slack_notify_on_close:
+        response_count = db.query(Response).filter(
+            Response.conversation_id == conversation_id
+        ).count()
+        await notification_service.notify_channel_conversation_closed(
+            conversation, response_count, db
+        )
 
     return conversation
 

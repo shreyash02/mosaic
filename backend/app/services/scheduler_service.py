@@ -251,6 +251,15 @@ async def check_scheduled_activations():
                     except Exception as e:
                         # Log error but don't fail - emails are sent asynchronously
                         logger.error(f"Failed to send invitation emails for conversation {conv.id}: {str(e)}", exc_info=True)
+
+                    # Send Slack channel notification if configured
+                    try:
+                        await notification_service.notify_channel_conversation_activated(
+                            conversation=conv,
+                            db=db,
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to send Slack channel notification for conversation {conv.id}: {e}")
         except Exception as e:
             logger.error(f"Error checking scheduled activations: {e}", exc_info=True)
             db.rollback()
@@ -520,6 +529,16 @@ async def _send_conversation_closed_notifications(
                     )
                 except Exception as e:
                     logger.error(f"Failed to send closed email to participant {user.email}: {e}", exc_info=True)
+
+    # Send Slack channel notification if configured
+    try:
+        await notification_service.notify_channel_conversation_closed(
+            conversation=conversation,
+            response_count=response_count,
+            db=db,
+        )
+    except Exception as e:
+        logger.error(f"Failed to send Slack channel closed notification: {e}")
 
 
 async def create_recurring_instances():
@@ -1057,6 +1076,18 @@ def run_periodic_analysis_task(
                     )
                 except Exception as e:
                     logger.error(f"Failed to send periodic analysis email to {creator.email}: {e}", exc_info=True)
+
+        # Send Slack channel notification if configured
+        try:
+            import asyncio
+            asyncio.run(
+                notification_service.notify_channel_analysis_ready(
+                    conversation=conversation,
+                    db=db,
+                )
+            )
+        except Exception as e:
+            logger.error(f"Failed to send Slack channel periodic analysis notification: {e}")
 
     except Exception as e:
         logger.error(f"Error running periodic analysis for conversation {conversation_id}: {e}", exc_info=True)
