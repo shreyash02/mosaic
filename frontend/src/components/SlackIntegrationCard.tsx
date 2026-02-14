@@ -15,6 +15,7 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -48,15 +49,12 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Slack? Users will no longer receive Slack notifications.')) {
-      return;
-    }
-
     try {
       setDisconnecting(true);
       setError(null);
       await api.disconnectSlack(organizationId);
       setStatus({ connected: false });
+      setShowDisconnectModal(false);
     } catch (err: any) {
       console.error('Failed to disconnect Slack:', err);
       setError(err.response?.data?.detail || 'Failed to disconnect Slack');
@@ -166,6 +164,48 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
       display: 'flex',
       gap: spacing[3],
     },
+    modalOverlay: {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    },
+    modal: {
+      backgroundColor: colors.primary[50],
+      borderRadius: borders.radius.lg,
+      padding: spacing[6],
+      maxWidth: '400px',
+      width: '90%',
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    },
+    modalTitle: {
+      fontSize: typography.fontSize.lg,
+      fontWeight: typography.fontWeight.semibold,
+      color: colors.primary[900],
+      marginBottom: spacing[3],
+    },
+    modalText: {
+      fontSize: typography.fontSize.sm,
+      color: colors.primary[600],
+      marginBottom: spacing[5],
+      lineHeight: typography.lineHeight.relaxed,
+    },
+    modalActions: {
+      display: 'flex',
+      gap: spacing[3],
+      justifyContent: 'flex-end',
+    },
+    cancelButton: {
+      backgroundColor: colors.primary[50],
+      color: colors.primary[700],
+      border: `1px solid ${colors.primary[300]}`,
+    },
   };
 
   if (loading) {
@@ -228,17 +268,49 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
             </button>
           ) : (
             <button
-              onClick={handleDisconnect}
-              disabled={disconnecting}
+              onClick={() => setShowDisconnectModal(true)}
               style={{
                 ...styles.button,
                 ...styles.disconnectButton,
-                ...(disconnecting ? styles.disabledButton : {}),
               }}
             >
-              {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+              Disconnect
             </button>
           )}
+        </div>
+      )}
+
+      {/* Disconnect Confirmation Modal */}
+      {showDisconnectModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowDisconnectModal(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Disconnect Slack</h3>
+            <p style={styles.modalText}>
+              Are you sure you want to disconnect Slack? Users will no longer receive Slack notifications.
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                onClick={() => setShowDisconnectModal(false)}
+                style={{
+                  ...styles.button,
+                  ...styles.cancelButton,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                style={{
+                  ...styles.button,
+                  ...styles.disconnectButton,
+                  ...(disconnecting ? styles.disabledButton : {}),
+                }}
+              >
+                {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
