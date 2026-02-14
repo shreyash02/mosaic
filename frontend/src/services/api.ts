@@ -59,6 +59,9 @@ import type {
   NonRespondersCount,
   Announcement,
   AnnouncementListResponse,
+  SearchRequest,
+  SearchResponse,
+  SearchSuggestionsResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -784,6 +787,19 @@ class ApiService {
       `/conversations/${conversationId}/announcements/public`,
       { params: { access_code: accessCode } }
     );
+    return response.data;
+  }
+
+  // Search methods
+  async search(request: SearchRequest): Promise<SearchResponse> {
+    const response = await this.client.post<SearchResponse>('/search', request);
+    return response.data;
+  }
+
+  async getSearchSuggestions(query: string, limit: number = 5): Promise<SearchSuggestionsResponse> {
+    const response = await this.client.get<SearchSuggestionsResponse>('/search/suggestions', {
+      params: { q: query, limit }
+    });
     return response.data;
   }
 }

@@ -51,6 +51,7 @@ import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 import CollectionsPage from './pages/CollectionsPage';
 import CollectionDetailPage from './pages/CollectionDetailPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsLayout from './pages/settings/SettingsLayout';
@@ -342,6 +343,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CollectionDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <SearchResultsPage />
                 </ProtectedRoute>
               }
             />

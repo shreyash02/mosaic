@@ -893,3 +893,68 @@ export interface SchedulerLogsResponse {
   page_size: number;
   total_pages: number;
 }
+
+// Search types
+export type SearchEntityType = 'conversation' | 'series' | 'analysis';
+
+export interface SearchRequest {
+  query: string;
+  entity_types?: SearchEntityType[];
+  page?: number;
+  page_size?: number;
+  organization_id?: string;
+  include_archived?: boolean;
+}
+
+export interface SearchResultBase {
+  id: string;
+  entity_type: SearchEntityType;
+  rank: number;
+  headline?: string;
+}
+
+export interface ConversationSearchResult extends SearchResultBase {
+  entity_type: 'conversation';
+  title: string;
+  description?: string;
+  state: string;
+  access_code: string;
+  created_at: string;
+  is_archived: boolean;
+  organization_id?: string;
+}
+
+export interface SeriesSearchResult extends SearchResultBase {
+  entity_type: 'series';
+  name: string;
+  description?: string;
+  created_at: string;
+  conversation_count: number;
+  organization_id?: string;
+}
+
+export interface AnalysisSearchResult extends SearchResultBase {
+  entity_type: 'analysis';
+  conversation_id: string;
+  conversation_title: string;
+  overall_summary?: string;
+  created_at: string;
+  total_responses_analyzed?: number;
+  organization_id?: string;
+}
+
+export type SearchResult = ConversationSearchResult | SeriesSearchResult | AnalysisSearchResult;
+
+export interface SearchResponse {
+  query: string;
+  results: SearchResult[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  entity_counts: Record<string, number>;
+}
+
+export interface SearchSuggestionsResponse {
+  suggestions: string[];
+}

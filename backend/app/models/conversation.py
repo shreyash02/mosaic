@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
 from sqlalchemy.orm import relationship
 import uuid
 
@@ -125,6 +125,9 @@ class Conversation(Base):
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Full-text search vector (auto-populated by database trigger)
+    search_vector = Column(TSVECTOR, nullable=True)
 
     # Relationships
     creator = relationship("User", back_populates="conversations")

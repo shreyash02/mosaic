@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.orm import relationship
 import uuid
 
@@ -71,6 +71,9 @@ class Analysis(Base):
     analysis_duration_ms = Column(Integer, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Full-text search vector (auto-populated by database trigger)
+    search_vector = Column(TSVECTOR, nullable=True)
 
     # Relationships
     conversation = relationship("Conversation", back_populates="analyses")

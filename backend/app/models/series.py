@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
 from sqlalchemy.orm import relationship
 import uuid
 
@@ -25,6 +25,9 @@ class Series(Base):
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Full-text search vector (auto-populated by database trigger)
+    search_vector = Column(TSVECTOR, nullable=True)
 
     # Relationships
     creator = relationship("User", back_populates="series")
