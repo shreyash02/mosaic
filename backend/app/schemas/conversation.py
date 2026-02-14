@@ -411,6 +411,7 @@ class QuestionSuggestionRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     description: str = Field(default="", max_length=5000)
     existing_questions: List[str] = Field(default_factory=list)
+    rejected_questions: List[str] = Field(default_factory=list)
     count: int = Field(default=5, ge=3, le=5)
 
 

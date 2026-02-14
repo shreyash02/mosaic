@@ -194,6 +194,18 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     marginTop: '2px',
   },
+  dismissSuggestionButton: {
+    background: 'none',
+    border: 'none',
+    padding: spacing[1],
+    color: colors.primary[400],
+    cursor: 'pointer',
+    borderRadius: borders.radius.sm,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'color 0.15s, background-color 0.15s',
+  },
 };
 
 export default function QuestionSuggestions({
@@ -209,11 +221,12 @@ export default function QuestionSuggestions({
   const [error, setError] = useState<string | null>(null);
   const [expandedRationale, setExpandedRationale] = useState<Set<number>>(new Set());
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
+  const [dismissedQuestions, setDismissedQuestions] = useState<string[]>([]);
   const [contextHint, setContextHint] = useState<string | null>(null);
 
   const canFetch = title.trim().length > 0;
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = async (rejected: string[] = []) => {
     if (!canFetch) return;
 
     setLoading(true);
@@ -221,11 +234,15 @@ export default function QuestionSuggestions({
     setAddedIndices(new Set());
     setContextHint(null);
 
+    // Combine previously dismissed with newly dismissed
+    const allRejected = [...dismissedQuestions, ...rejected];
+
     try {
       const response = await api.suggestQuestions(
         title,
         description,
         existingQuestions,
+        allRejected,
         5
       );
       setSuggestions(response.suggestions);
@@ -238,6 +255,14 @@ export default function QuestionSuggestions({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDismissSuggestion = (index: number) => {
+    const dismissed = suggestions[index];
+    // Add to rejected list for future refreshes
+    setDismissedQuestions(prev => [...prev, dismissed.text]);
+    // Remove from current suggestions
+    setSuggestions(prev => prev.filter((_, i) => i !== index));
   };
 
   // Fetch on mount if we have a title and not dismissed
@@ -339,7 +364,7 @@ export default function QuestionSuggestions({
           <button
             type="button"
             style={styles.refreshButton}
-            onClick={fetchSuggestions}
+            onClick={() => fetchSuggestions()}
           >
             <RefreshIcon />
             Generate suggestions
@@ -404,6 +429,16 @@ export default function QuestionSuggestions({
                         </>
                       )}
                     </button>
+                    {!isAdded && (
+                      <button
+                        type="button"
+                        style={styles.dismissSuggestionButton}
+                        onClick={() => handleDismissSuggestion(index)}
+                        title="Not relevant"
+                      >
+                        <CloseIcon />
+                      </button>
+                    )}
                   </div>
 
                   {isExpanded && (
@@ -420,7 +455,7 @@ export default function QuestionSuggestions({
             <button
               type="button"
               style={styles.refreshButton}
-              onClick={fetchSuggestions}
+              onClick={() => fetchSuggestions()}
             >
               <RefreshIcon />
               Refresh
@@ -430,7 +465,7 @@ export default function QuestionSuggestions({
               style={styles.dismissButton}
               onClick={onDismiss}
             >
-              Dismiss
+              Hide suggestions
             </button>
           </div>
         </>
@@ -482,6 +517,15 @@ function LightbulbIcon() {
       <path d="M9 18h6" />
       <path d="M10 22h4" />
       <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="4" y1="4" x2="12" y2="12" />
+      <line x1="12" y1="4" x2="4" y2="12" />
     </svg>
   );
 }

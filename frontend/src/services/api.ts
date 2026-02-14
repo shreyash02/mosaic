@@ -464,6 +464,7 @@ class ApiService {
     title: string,
     description: string,
     existingQuestions: string[] = [],
+    rejectedQuestions: string[] = [],
     count: number = 5
   ): Promise<QuestionSuggestionResponse> {
     const response = await this.client.post<QuestionSuggestionResponse>(
@@ -472,6 +473,7 @@ class ApiService {
         title,
         description,
         existing_questions: existingQuestions,
+        rejected_questions: rejectedQuestions,
         count,
       }
     );

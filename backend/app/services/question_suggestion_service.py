@@ -35,6 +35,7 @@ class QuestionSuggestionService:
         title: str,
         description: str,
         existing_questions: List[str],
+        rejected_questions: List[str] = None,
         count: int = 5
     ) -> QuestionSuggestionResult:
         """
@@ -44,12 +45,14 @@ class QuestionSuggestionService:
             title: Conversation title
             description: Conversation description
             existing_questions: List of already-added question texts
+            rejected_questions: List of questions the user dismissed (avoid similar)
             count: Number of suggestions to generate (3-5)
 
         Returns:
             QuestionSuggestionResult with suggestions and context quality info
         """
         count = max(3, min(5, count))  # Clamp between 3-5
+        rejected_questions = rejected_questions or []
 
         # Build the prompt
         existing_qs_text = ""
@@ -59,11 +62,18 @@ The creator has already added these questions (do not suggest duplicates or very
 {chr(10).join(f'- {q}' for q in existing_questions)}
 """
 
+        rejected_qs_text = ""
+        if rejected_questions:
+            rejected_qs_text = f"""
+The creator dismissed these suggestions as not relevant (avoid similar questions or topics):
+{chr(10).join(f'- {q}' for q in rejected_questions)}
+"""
+
         prompt = f"""You are helping someone create a feedback conversation. Based on the title and description, suggest {count} thoughtful questions they could ask.
 
 Title: {title}
 Description: {description}
-{existing_qs_text}
+{existing_qs_text}{rejected_qs_text}
 
 First, assess if you have enough context to suggest specific, tailored questions. If the title/description is too vague or generic (e.g., just "Feedback" or "Survey"), you should indicate this.
 

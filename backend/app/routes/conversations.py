@@ -2310,6 +2310,7 @@ async def suggest_questions(
         title=request.title,
         description=request.description,
         existing_questions=request.existing_questions,
+        rejected_questions=request.rejected_questions,
         count=request.count,
     )
 
