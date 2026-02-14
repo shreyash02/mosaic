@@ -9,7 +9,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 import httpx
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -93,7 +93,7 @@ async def register(
         full_name=user_data.full_name,
         email_verified=False,
         email_verification_token=verification_token,
-        email_verification_expires=datetime.utcnow() + timedelta(hours=24),
+        email_verification_expires=datetime.now(timezone.utc) + timedelta(hours=24),
     )
 
     db.add(user)
@@ -592,7 +592,7 @@ async def forgot_password(
         # Generate reset token
         token = create_password_reset_token()
         user.password_reset_token = token
-        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
 
         # Send email
@@ -627,7 +627,7 @@ async def reset_password(
             detail="Invalid or expired reset token"
         )
 
-    if not user.password_reset_expires or user.password_reset_expires < datetime.utcnow():
+    if not user.password_reset_expires or user.password_reset_expires < datetime.now(timezone.utc):
         # Clear expired token
         user.password_reset_token = None
         user.password_reset_expires = None
@@ -668,7 +668,7 @@ async def verify_email(
             detail="Invalid or expired verification link"
         )
 
-    if not user.email_verification_expires or user.email_verification_expires < datetime.utcnow():
+    if not user.email_verification_expires or user.email_verification_expires < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification link has expired. Please request a new one."
@@ -710,7 +710,7 @@ async def resend_verification(
     import secrets
     verification_token = secrets.token_urlsafe(32)
     user.email_verification_token = verification_token
-    user.email_verification_expires = datetime.utcnow() + timedelta(hours=24)
+    user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
     db.commit()
 
     # Send verification email
