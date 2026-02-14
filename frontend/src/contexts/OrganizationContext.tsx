@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Organization } from '../types';
+import { useAuth } from './AuthContext';
 
 interface OrganizationContextType {
   // Current workspace state
@@ -28,11 +29,19 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Load organizations on mount
+  // Load organizations when user changes (login/logout)
   useEffect(() => {
-    loadOrganizations();
-  }, []);
+    if (user) {
+      loadOrganizations();
+    } else {
+      // User logged out - reset state
+      setOrganizations([]);
+      setCurrentOrganizationState(null);
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   const loadOrganizations = async () => {
     try {

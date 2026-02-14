@@ -83,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('refresh_token');
     // Clear legacy onboarding data (now stored server-side)
     localStorage.removeItem('mosaic_onboarding');
+    // Clear organization selection (user-specific)
+    localStorage.removeItem('current_organization_id');
     setUser(null);
   };
 
