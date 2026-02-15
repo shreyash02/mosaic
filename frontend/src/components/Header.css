@@ -323,31 +323,10 @@
   display: block;
 }
 
-.org-switcher-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-1);
-}
-
-.org-switcher-row .org-switcher-item {
-  flex: 1;
-}
-
-.org-settings-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  color: var(--color-primary-500);
-  transition: all var(--transition-normal);
-  flex-shrink: 0;
-}
-
-.org-settings-btn:hover {
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-700);
+.org-check {
+  margin-left: auto;
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
 }
 
 .org-switcher-divider {

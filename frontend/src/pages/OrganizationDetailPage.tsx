@@ -1,24 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, Navigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { OrganizationWithMembers, ConversationListItem, Series } from '../types';
-import { ConversationState } from '../types';
+import type { OrganizationWithMembers } from '../types';
 import { formatDateShort } from '../utils/formatting';
-import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
-
-type TabType = 'conversations' | 'members';
+import { typography, spacing, borders, transitions } from '../styles/tokens';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 export default function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { currentOrgId, loading: orgContextLoading } = useOrganization();
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
-  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
-  const [seriesList, setSeriesList] = useState<Series[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>('conversations');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [userRole, setUserRole] = useState<'admin' | 'member' | null>(null);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+
+  // Redirect if user hasn't switched to this organization
+  if (!orgContextLoading && currentOrgId !== id) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const styles = {
     page: {
@@ -71,19 +72,6 @@ export default function OrganizationDetailPage() {
       display: 'flex',
       gap: spacing[3],
     },
-    primaryButton: {
-      display: 'inline-block',
-      padding: `${spacing[3]} ${spacing[6]}`,
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium,
-      color: 'var(--color-primary-50)',
-      backgroundColor: 'var(--color-primary-900)',
-      border: 'none',
-      borderRadius: borders.radius.md,
-      cursor: 'pointer',
-      textDecoration: 'none',
-      transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
-    },
     secondaryButton: {
       display: 'inline-block',
       padding: `${spacing[3]} ${spacing[6]}`,
@@ -110,89 +98,72 @@ export default function OrganizationDetailPage() {
       textDecoration: 'none',
       transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
     },
-    tabs: {
-      display: 'flex',
-      gap: spacing[1],
-      marginBottom: spacing[6],
-      backgroundColor: 'var(--color-primary-200)',
-      padding: spacing[1],
-      borderRadius: borders.radius.md,
-      width: 'fit-content',
-    },
-    tab: {
-      padding: `${spacing[2]} ${spacing[6]}`,
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium,
-      color: 'var(--color-primary-600)',
-      backgroundColor: 'transparent',
-      border: 'none',
-      borderRadius: borders.radius.sm,
-      cursor: 'pointer',
-      transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
-    },
-    tabActive: {
-      backgroundColor: 'var(--color-primary-50)',
-      color: 'var(--color-primary-900)',
-      boxShadow: shadows.sm,
-    },
     content: {
       backgroundColor: 'var(--color-primary-50)',
       borderRadius: borders.radius.lg,
       border: `${borders.width.thin} solid ${'var(--color-primary-300)'}`,
       padding: spacing[6],
     },
-    sectionHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: spacing[6],
-    },
     sectionTitle: {
       fontSize: typography.fontSize.xl,
       fontWeight: typography.fontWeight.semibold,
       color: 'var(--color-primary-900)',
       margin: 0,
+      marginBottom: spacing[4],
     },
-    grid: {
+    statsGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
       gap: spacing[4],
+      marginBottom: spacing[6],
     },
-    card: {
-      display: 'block',
+    statCard: {
       backgroundColor: 'var(--color-primary-100)',
       borderRadius: borders.radius.md,
-      border: `${borders.width.thin} solid ${'var(--color-primary-300)'}`,
       padding: spacing[4],
-      textDecoration: 'none',
-      transition: `all ${transitions.duration.normal} ${transitions.timing.ease}`,
+      textAlign: 'center' as const,
     },
-    cardTitle: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.semibold,
+    statValue: {
+      fontSize: typography.fontSize['2xl'],
+      fontWeight: typography.fontWeight.bold,
       color: 'var(--color-primary-900)',
-      margin: 0,
-      marginBottom: spacing[2],
+      marginBottom: spacing[1],
     },
-    statusBadge: {
-      display: 'inline-block',
-      padding: `${spacing[0.5]} ${spacing[2]}`,
+    statLabel: {
+      fontSize: typography.fontSize.sm,
+      color: 'var(--color-primary-600)',
+    },
+    infoGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gap: spacing[6],
+    },
+    infoItem: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: spacing[1],
+    },
+    infoLabel: {
       fontSize: typography.fontSize.xs,
       fontWeight: typography.fontWeight.medium,
-      borderRadius: borders.radius.sm,
-    },
-    collectionTag: {
-      display: 'inline-block',
-      padding: `${spacing[1]} ${spacing[2]}`,
-      fontSize: typography.fontSize.xs,
-      color: 'var(--color-primary-600)',
-      backgroundColor: 'var(--color-primary-200)',
-      borderRadius: borders.radius.sm,
-      marginBottom: spacing[2],
-    },
-    cardMeta: {
-      fontSize: typography.fontSize.sm,
       color: 'var(--color-primary-500)',
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.05em',
+    },
+    infoValue: {
+      fontSize: typography.fontSize.base,
+      color: 'var(--color-primary-900)',
+    },
+    logoPreview: {
+      width: '64px',
+      height: '64px',
+      objectFit: 'contain' as const,
+      borderRadius: borders.radius.md,
+      border: `1px solid var(--color-primary-200)`,
+      backgroundColor: 'var(--color-primary-50)',
+    },
+    section: {
+      marginBottom: spacing[6],
     },
     table: {
       width: '100%',
@@ -212,11 +183,6 @@ export default function OrganizationDetailPage() {
       color: 'var(--color-primary-700)',
       borderBottom: `${borders.width.thin} solid ${'var(--color-primary-200)'}`,
     },
-    emptyState: {
-      textAlign: 'center' as const,
-      padding: spacing[8],
-      color: 'var(--color-primary-600)',
-    },
     errorMessage: {
       backgroundColor: 'var(--color-error-light)',
       border: `${borders.width.thin} solid ${'var(--color-error)'}`,
@@ -235,35 +201,9 @@ export default function OrganizationDetailPage() {
     },
   };
 
-  const getStatusStyles = (state: ConversationState) => {
-    const statusColors: Record<ConversationState, { bg: string; text: string }> = {
-      [ConversationState.DRAFT]: { bg: 'var(--color-primary-200)', text: 'var(--color-primary-700)' },
-      [ConversationState.ACTIVE]: { bg: 'var(--color-primary-900)', text: 'var(--color-primary-50)' },
-      [ConversationState.CLOSED]: { bg: 'var(--color-primary-300)', text: 'var(--color-primary-700)' },
-      [ConversationState.ANALYZING]: { bg: 'var(--color-primary-300)', text: 'var(--color-primary-700)' },
-      [ConversationState.ANALYZED]: { bg: 'var(--color-primary-900)', text: 'var(--color-primary-50)' },
-      [ConversationState.DELETED]: { bg: 'var(--color-primary-200)', text: 'var(--color-primary-600)' },
-    };
-    return statusColors[state] || statusColors[ConversationState.DRAFT];
-  };
-
-  const getStateLabel = (state: ConversationState) => {
-    const labels: Record<ConversationState, string> = {
-      [ConversationState.DRAFT]: 'Draft',
-      [ConversationState.ACTIVE]: 'Active',
-      [ConversationState.CLOSED]: 'Closed',
-      [ConversationState.ANALYZING]: 'Analyzing',
-      [ConversationState.ANALYZED]: 'Analyzed',
-      [ConversationState.DELETED]: 'Deleted',
-    };
-    return labels[state];
-  };
-
   useEffect(() => {
     if (id) {
       loadOrganization();
-      loadConversations();
-      loadSeries();
     }
   }, [id]);
 
@@ -281,24 +221,6 @@ export default function OrganizationDetailPage() {
       setError('Failed to load organization');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadConversations = async () => {
-    try {
-      const data = await api.listOrganizationConversations(id!);
-      setConversations(data);
-    } catch {
-      console.error('Failed to load conversations');
-    }
-  };
-
-  const loadSeries = async () => {
-    try {
-      const series = await api.listSeries(id);
-      setSeriesList(series);
-    } catch {
-      setSeriesList([]);
     }
   };
 
@@ -409,96 +331,50 @@ export default function OrganizationDetailPage() {
         {error && <div style={styles.errorMessage}>{error}</div>}
         {success && <div style={styles.successMessage}>{success}</div>}
 
-        {/* Tabs */}
-        <div style={styles.tabs}>
-          <button
-            style={{ ...styles.tab, ...(activeTab === 'conversations' ? styles.tabActive : {}) }}
-            onClick={() => setActiveTab('conversations')}
-          >
-            Conversations ({conversations.length})
-          </button>
-          <button
-            style={{ ...styles.tab, ...(activeTab === 'members' ? styles.tabActive : {}) }}
-            onClick={() => setActiveTab('members')}
-          >
-            Members ({organization.members.length})
-          </button>
+        {/* Overview */}
+        <div style={{ ...styles.content, ...styles.section }}>
+          <h2 style={styles.sectionTitle}>Overview</h2>
+
+          <div style={styles.statsGrid}>
+            <div style={styles.statCard}>
+              <div style={styles.statValue}>{organization.members.length}</div>
+              <div style={styles.statLabel}>Members</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={styles.statValue}>
+                {organization.members.filter(m => m.role === 'admin').length}
+              </div>
+              <div style={styles.statLabel}>Admins</div>
+            </div>
+          </div>
+
+          <div style={styles.infoGrid}>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Created</span>
+              <span style={styles.infoValue}>{formatDateShort(organization.created_at)}</span>
+            </div>
+            {organization.brand_name && (
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>Brand Name</span>
+                <span style={styles.infoValue}>{organization.brand_name}</span>
+              </div>
+            )}
+            {organization.brand_logo_url && (
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>Logo</span>
+                <img
+                  src={organization.brand_logo_url}
+                  alt={`${organization.name} logo`}
+                  style={styles.logoPreview}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Content */}
+        {/* Members */}
         <div style={styles.content}>
-          {activeTab === 'conversations' && (
-            <>
-              <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>Organization Conversations</h2>
-                <Link
-                  to="/conversations/new"
-                  state={{ organizationId: organization.id }}
-                  style={styles.primaryButton}
-                  className="org-detail-primary-btn"
-                >
-                  Create Conversation
-                </Link>
-              </div>
-
-              {conversations.length === 0 ? (
-                <div style={styles.emptyState}>
-                  <h3 style={{ color: 'var(--color-primary-900)', marginBottom: spacing[2] }}>No conversations yet</h3>
-                  <p style={{ marginBottom: spacing[4] }}>Create your first conversation for this organization</p>
-                  <Link
-                    to="/conversations/new"
-                    state={{ organizationId: organization.id }}
-                    style={styles.primaryButton}
-                    className="org-detail-primary-btn"
-                  >
-                    Create Conversation
-                  </Link>
-                </div>
-              ) : (
-                <div style={styles.grid}>
-                  {conversations.map((conversation) => {
-                    const collection = conversation.series_id ? seriesList.find(s => s.id === conversation.series_id) : null;
-                    const statusStyles = getStatusStyles(conversation.state);
-
-                    return (
-                      <Link
-                        key={conversation.id}
-                        to={`/conversations/${conversation.id}`}
-                        style={styles.card}
-                        className="org-detail-card"
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing[2] }}>
-                          <h3 style={styles.cardTitle}>{conversation.title}</h3>
-                          <span style={{
-                            ...styles.statusBadge,
-                            backgroundColor: statusStyles.bg,
-                            color: statusStyles.text,
-                          }}>
-                            {getStateLabel(conversation.state)}
-                          </span>
-                        </div>
-                        {collection && (
-                          <span style={styles.collectionTag}>{collection.name}</span>
-                        )}
-                        <div style={styles.cardMeta}>
-                          {conversation.unique_participants !== undefined && conversation.unique_participants > 0 ? (
-                            <span><strong>{conversation.unique_participants}</strong> {conversation.unique_participants === 1 ? 'response' : 'responses'}</span>
-                          ) : (
-                            <span>No responses yet</span>
-                          )}
-                          <span style={{ marginLeft: spacing[4] }}>Created: {formatDateShort(conversation.created_at)}</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === 'members' && (
-            <>
-              <h2 style={styles.sectionTitle}>Organization Members</h2>
+          <h2 style={styles.sectionTitle}>Members ({organization.members.length})</h2>
               <table style={styles.table}>
                 <thead>
                   <tr>
@@ -586,26 +462,16 @@ export default function OrganizationDetailPage() {
                   })}
                 </tbody>
               </table>
-            </>
-          )}
         </div>
       </div>
 
       <style>{`
-        .org-detail-primary-btn:hover {
-          background-color: ${'var(--color-primary-800)'} !important;
-          box-shadow: ${shadows.sm} !important;
-        }
         .org-detail-secondary-btn:hover {
           background-color: ${'var(--color-primary-100)'} !important;
           border-color: ${'var(--color-primary-500)'} !important;
         }
         .org-detail-outline-btn:hover {
           background-color: ${'var(--color-primary-100)'} !important;
-        }
-        .org-detail-card:hover {
-          border-color: ${'var(--color-primary-500)'} !important;
-          box-shadow: ${shadows.sm} !important;
         }
       `}</style>
     </div>
