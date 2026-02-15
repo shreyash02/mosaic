@@ -856,8 +856,15 @@ class ApiService {
   }
 
   // Feature flags
-  async getUserFeatures(): Promise<{ features: Record<string, { enabled: boolean; config: Record<string, unknown> }> }> {
-    const response = await this.client.get<{ features: Record<string, { enabled: boolean; config: Record<string, unknown> }> }>('/auth/me/features');
+  async getUserFeatures(orgId?: string): Promise<{
+    features: Record<string, { enabled: boolean; config: Record<string, unknown>; usage: Record<string, number> }>;
+    tier: string;
+  }> {
+    const params = orgId ? `?org_id=${orgId}` : '';
+    const response = await this.client.get<{
+      features: Record<string, { enabled: boolean; config: Record<string, unknown>; usage: Record<string, number> }>;
+      tier: string;
+    }>(`/auth/me/features${params}`);
     return response.data;
   }
 }

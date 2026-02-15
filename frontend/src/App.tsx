@@ -82,9 +82,9 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <FeaturesProvider>
           <Router>
             <OrganizationProvider>
+            <FeaturesProvider>
             <div className="App">
               <Header />
               <EmailVerificationBanner />
@@ -406,9 +406,9 @@ function App() {
               </Routes>
               </main>
             </div>
+            </FeaturesProvider>
             </OrganizationProvider>
           </Router>
-          </FeaturesProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
