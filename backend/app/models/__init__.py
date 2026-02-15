@@ -26,6 +26,7 @@ from app.models.journal_analysis import JournalAnalysis
 from app.models.journal_entry_analysis import JournalEntryAnalysis
 from app.models.journal_template import JournalTemplate
 from app.models.journal_share import JournalShare
+from app.models.conversation_preset import ConversationPreset
 
 __all__ = [
     "User",
@@ -57,4 +58,5 @@ __all__ = [
     "JournalEntryAnalysis",
     "JournalTemplate",
     "JournalShare",
+    "ConversationPreset",
 ]
