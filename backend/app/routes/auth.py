@@ -235,6 +235,34 @@ async def get_current_user_info(
     return current_user
 
 
+@router.get("/me/features")
+async def get_user_features(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get feature flags for the current user.
+
+    Returns all feature flags with their effective enabled state and config
+    for the current user's context (personal, not org-specific).
+    """
+    from app.services.feature_flag_service import feature_flag_service
+
+    all_flags = feature_flag_service.list_all_flags(db)
+    features = {}
+
+    for flag in all_flags:
+        effective = feature_flag_service.get_flag(
+            db, flag.slug, user_id=current_user.id
+        )
+        features[flag.slug] = {
+            "enabled": effective.enabled,
+            "config": effective.config,
+        }
+
+    return {"features": features}
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout():
     """
