@@ -3,6 +3,7 @@ import IntentSelectionCard from './IntentSelectionCard';
 import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
 import { GearIcon } from './icons';
 import { typography, spacing, transitions } from '../styles/tokens';
+import { useFeature } from '../contexts/FeaturesContext';
 
 interface IntentSelectionProps {
   selectedIntent: IntentType | null;
@@ -17,13 +18,16 @@ export default function IntentSelection({
   onContinue,
   onSwitchToManual,
 }: IntentSelectionProps) {
-  // Only show the 4 main intents (not custom)
-  const intents: IntentType[] = [
-    'personal_feedback',
-    'team_collaboration',
-    'anonymous_survey',
-    'public_poll',
-  ];
+  const presetsEnabled = useFeature('conversation_presets');
+
+  // Filter presets: exclude 'custom' and check feature flags
+  const intents = (Object.keys(INTENT_PRESETS) as IntentType[]).filter(id => {
+    if (id === 'custom') return false;
+    const preset = INTENT_PRESETS[id];
+    // If preset requires a feature flag and it's not enabled, hide it
+    if (preset.featureFlag && !presetsEnabled) return false;
+    return true;
+  });
 
   const handleCardSelect = (intentId: IntentType) => {
     onSelectIntent(intentId);

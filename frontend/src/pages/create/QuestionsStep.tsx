@@ -8,6 +8,7 @@ import QuestionTypeSelector from '../../components/QuestionTypeSelector';
 import QuestionSuggestions from '../../components/QuestionSuggestions';
 import { ChatBubbleIcon, StarRatingIcon, CheckCircleIcon, CheckListIcon } from '../../components/icons';
 import { typography, spacing, borders } from '../../styles/tokens';
+import { INTENT_PRESETS } from '../../types/intentPresets';
 
 // Map question types to icons
 const QUESTION_TYPE_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -411,7 +412,18 @@ export default function QuestionsStep() {
     }
 
     setError('');
-    navigate(getStepPath('timing'));
+
+    // Check if preset skips timing/notifications steps
+    const preset = formState.selectedIntent ? INTENT_PRESETS[formState.selectedIntent] : null;
+    if (preset?.skipSteps?.includes('timing')) {
+      if (preset.skipSteps.includes('notifications')) {
+        navigate(getStepPath('review'));
+      } else {
+        navigate(getStepPath('notifications'));
+      }
+    } else {
+      navigate(getStepPath('timing'));
+    }
   };
 
   const canContinue = formState.questions.length > 0 && formState.questions.every(q => q.question_text.trim());

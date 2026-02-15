@@ -5,6 +5,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import SetupModeToggle from './SetupModeToggle';
 import { api } from '../services/api';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
+import { INTENT_PRESETS } from '../types/intentPresets';
 
 interface Step {
   id: string;
@@ -153,6 +154,15 @@ export default function ConversationFormLayout() {
   const visibleSteps = allSteps.filter(step => {
     if (step.guidedOnly && !formState.isGuidedMode) return false;
     if (step.manualOnly && formState.isGuidedMode) return false;
+
+    // Preset-specific step skipping (only in guided mode, not edit mode)
+    if (formState.selectedIntent && formState.isGuidedMode && !formState.isEditMode) {
+      const preset = INTENT_PRESETS[formState.selectedIntent];
+      if (preset?.skipSteps?.includes(step.id as 'timing' | 'notifications')) {
+        return false;
+      }
+    }
+
     return true;
   });
 

@@ -1105,7 +1105,17 @@ export default function ReviewStep() {
             if (formState.parentConversation?.is_template && formState.parentConversationId) {
               navigate(`/templates/${formState.parentConversationId}`);
             } else {
-              navigate(getStepPath('notifications'));
+              // Check if preset skips steps - navigate to the last visible step
+              const preset = formState.selectedIntent ? INTENT_PRESETS[formState.selectedIntent] : null;
+              if (preset?.skipSteps?.includes('notifications')) {
+                if (preset.skipSteps.includes('timing')) {
+                  navigate(getStepPath('questions'));
+                } else {
+                  navigate(getStepPath('timing'));
+                }
+              } else {
+                navigate(getStepPath('notifications'));
+              }
             }
           }}
           className="btn btn-secondary"

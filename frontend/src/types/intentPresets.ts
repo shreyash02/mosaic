@@ -1,6 +1,6 @@
 import { AnonymityLevel, ResultsAccess } from './index';
 
-export type IntentType = 'personal_feedback' | 'team_collaboration' | 'anonymous_survey' | 'public_poll' | 'custom';
+export type IntentType = 'personal_feedback' | 'team_collaboration' | 'anonymous_survey' | 'public_poll' | 'quick_poll' | 'custom';
 
 export interface IntentPreset {
   id: IntentType;
@@ -15,6 +15,10 @@ export interface IntentPreset {
     invite_only: boolean;
   };
   explanation: string[];
+  // Optional: steps to skip in the creation flow
+  skipSteps?: ('timing' | 'notifications')[];
+  // Optional: feature flag that gates this preset's visibility
+  featureFlag?: string;
 }
 
 export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
@@ -89,6 +93,26 @@ export const INTENT_PRESETS: Record<IntentType, IntentPreset> = {
       'Results visible to: anyone with link',
       'Open to anyone',
     ],
+  },
+  quick_poll: {
+    id: 'quick_poll',
+    label: 'Quick poll',
+    description: 'Fast, simple poll for quick decisions',
+    icon: '⚡',
+    emoji: '⚡',
+    settings: {
+      anonymity_level: AnonymityLevel.PLATFORM_TRACKED,
+      results_access: ResultsAccess.PUBLIC_LINK,
+      show_verbatim_responses: true,
+      invite_only: false,
+    },
+    explanation: [
+      'Platform-tracked',
+      'Results visible to: anyone with link',
+      'Open to anyone',
+    ],
+    skipSteps: ['timing', 'notifications'],
+    featureFlag: 'conversation_presets',
   },
   custom: {
     id: 'custom',

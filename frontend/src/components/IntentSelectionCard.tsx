@@ -1,6 +1,6 @@
 import { IntentPreset, IntentType } from '../types/intentPresets';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
-import { InboxIcon, UsersIcon, LockIcon, GlobeIcon } from './icons';
+import { InboxIcon, UsersIcon, LockIcon, GlobeIcon, LightningIcon } from './icons';
 
 interface IntentSelectionCardProps {
   intent: IntentPreset;
@@ -14,6 +14,7 @@ const intentIcons: Record<IntentType, React.ComponentType<{ size?: number; class
   team_collaboration: UsersIcon,
   anonymous_survey: LockIcon,
   public_poll: GlobeIcon,
+  quick_poll: LightningIcon,
   custom: InboxIcon, // Not used in this component
 };
 
