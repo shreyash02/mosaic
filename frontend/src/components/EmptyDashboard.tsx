@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { typography, spacing, borders, shadows } from '../styles/tokens';
+import { useFeature } from '../contexts/FeaturesContext';
 import GettingStartedChecklist from './GettingStartedChecklist';
 
 interface EmptyDashboardProps {
@@ -201,6 +202,7 @@ const styles = {
 };
 
 export default function EmptyDashboard({ userName }: EmptyDashboardProps) {
+  const templatesEnabled = useFeature('templates');
   const greeting = userName ? `Welcome, ${userName}!` : 'Welcome to Mosaic!';
 
   return (
@@ -301,13 +303,15 @@ export default function EmptyDashboard({ userName }: EmptyDashboardProps) {
             <div style={styles.quickStartHint}>Start from scratch</div>
           </Link>
 
-          <Link to="/templates" style={styles.quickStartCard} className="quick-start-card">
-            <div style={styles.quickStartIcon}>
-              <TemplatesIcon />
-            </div>
-            <div style={styles.quickStartLabel}>Browse Templates</div>
-            <div style={styles.quickStartHint}>Use a pre-built template</div>
-          </Link>
+          {templatesEnabled && (
+            <Link to="/templates" style={styles.quickStartCard} className="quick-start-card">
+              <div style={styles.quickStartIcon}>
+                <TemplatesIcon />
+              </div>
+              <div style={styles.quickStartLabel}>Browse Templates</div>
+              <div style={styles.quickStartHint}>Use a pre-built template</div>
+            </Link>
+          )}
 
           <Link to="/help" style={styles.quickStartCard} className="quick-start-card">
             <div style={styles.quickStartIcon}>

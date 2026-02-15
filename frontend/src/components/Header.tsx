@@ -2,17 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { useTheme, SunIcon, MoonIcon } from '../contexts/ThemeContext';
 import './Header.css';
 
 export default function Header() {
   const location = useLocation();
+  const { user, logout, isAuthenticated } = useAuth();
+  const organizationsEnabled = useFeature('organizations');
+  const templatesEnabled = useFeature('templates');
+  const collectionsEnabled = useFeature('collections');
 
   // Hide header on admin portal routes
   if (location.pathname.startsWith('/adminportal')) {
     return null;
   }
-  const { user, logout, isAuthenticated } = useAuth();
   const {
     currentWorkspaceName,
     isPersonalWorkspace,
@@ -118,6 +122,7 @@ export default function Header() {
             </button>
 
             {/* Organization Switcher */}
+            {organizationsEnabled && (
             <div className="org-switcher" ref={dropdownRef}>
               <button
                 className="org-switcher-trigger"
@@ -206,6 +211,7 @@ export default function Header() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Desktop Navigation */}
             <nav className="header-nav desktop-nav">
@@ -215,12 +221,16 @@ export default function Header() {
               <Link to="/conversations" className="nav-link">
                 Conversations
               </Link>
-              <Link to="/templates" className="nav-link">
-                Templates
-              </Link>
-              <Link to="/collections" className="nav-link">
-                Collections
-              </Link>
+              {templatesEnabled && (
+                <Link to="/templates" className="nav-link">
+                  Templates
+                </Link>
+              )}
+              {collectionsEnabled && (
+                <Link to="/collections" className="nav-link">
+                  Collections
+                </Link>
+              )}
               <Link to="/help" className="nav-link">
                 Help
               </Link>
@@ -339,30 +349,34 @@ export default function Header() {
                   </svg>
                   Conversations
                 </Link>
-                <Link
-                  to="/templates"
-                  className={`mobile-nav-link ${location.pathname.startsWith('/templates') ? 'active' : ''}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                  Templates
-                </Link>
-                <Link
-                  to="/collections"
-                  className={`mobile-nav-link ${location.pathname.startsWith('/collections') ? 'active' : ''}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                  </svg>
-                  Collections
-                </Link>
+                {templatesEnabled && (
+                  <Link
+                    to="/templates"
+                    className={`mobile-nav-link ${location.pathname.startsWith('/templates') ? 'active' : ''}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    Templates
+                  </Link>
+                )}
+                {collectionsEnabled && (
+                  <Link
+                    to="/collections"
+                    className={`mobile-nav-link ${location.pathname.startsWith('/collections') ? 'active' : ''}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Collections
+                  </Link>
+                )}
                 <Link
                   to="/help"
                   className={`mobile-nav-link ${location.pathname === '/help' ? 'active' : ''}`}
