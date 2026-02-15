@@ -152,6 +152,7 @@ export default function TimingStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
   const recurringEnabled = useFeature('recurring_conversations');
+  const continuousEnabled = useFeature('continuous_conversations');
 
   const isTemplate = formState.createTemplate;
 
@@ -222,18 +223,20 @@ export default function TimingStep() {
                 Limited time
               </span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="durationMode"
-                checked={formState.isLongRunning}
-                onChange={() => handleDurationModeChange(true)}
-                style={{ width: '18px', height: '18px' }}
-              />
-              <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
-                Indefinitely
-              </span>
-            </label>
+            {continuousEnabled && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="durationMode"
+                  checked={formState.isLongRunning}
+                  onChange={() => handleDurationModeChange(true)}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  Indefinitely
+                </span>
+              </label>
+            )}
           </div>
 
           {/* Limited time options */}

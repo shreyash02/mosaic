@@ -5,6 +5,7 @@ import type { SeriesWithConversations, CollectionAnalysis } from '../types';
 import TrendChart from '../components/TrendChart';
 import ConversationsList from '../components/ConversationsList';
 import FocusTrap from '../components/FocusTrap';
+import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
 const styles = {
@@ -264,6 +265,7 @@ const hoverStyles = `
 export default function CollectionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const seriesAnalysisEnabled = useFeature('series_analysis');
   const [collection, setCollection] = useState<SeriesWithConversations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -392,19 +394,21 @@ export default function CollectionDetailPage() {
               )}
             </div>
             <div style={styles.headerActions}>
-              <button
-                onClick={() => handleComputeAnalysis(true)}
-                disabled={computing}
-                style={{
-                  ...(analysis ? styles.buttonSecondary : styles.buttonPrimary),
-                  ...(computing ? styles.buttonDisabled : {}),
-                }}
-                className={analysis ? 'collection-btn-secondary' : 'collection-btn-primary'}
-              >
-                {computing
-                  ? (analysis ? 'Re-running...' : 'Running...')
-                  : (analysis ? 'Re-run Analysis' : 'Run Analysis')}
-              </button>
+              {seriesAnalysisEnabled && (
+                <button
+                  onClick={() => handleComputeAnalysis(true)}
+                  disabled={computing}
+                  style={{
+                    ...(analysis ? styles.buttonSecondary : styles.buttonPrimary),
+                    ...(computing ? styles.buttonDisabled : {}),
+                  }}
+                  className={analysis ? 'collection-btn-secondary' : 'collection-btn-primary'}
+                >
+                  {computing
+                    ? (analysis ? 'Re-running...' : 'Running...')
+                    : (analysis ? 'Re-run Analysis' : 'Run Analysis')}
+                </button>
+              )}
               <button
                 style={styles.buttonSecondary}
                 className="collection-btn-secondary"
@@ -416,81 +420,83 @@ export default function CollectionDetailPage() {
           </header>
 
           {/* Analysis Section */}
-          <section style={styles.section}>
-            <h2 style={styles.sectionTitle}>Collection Insights</h2>
+          {seriesAnalysisEnabled && (
+            <section style={styles.section}>
+              <h2 style={styles.sectionTitle}>Collection Insights</h2>
 
-            {loadingAnalysis || computing ? (
-              <div style={styles.loading}>Loading analysis...</div>
-            ) : analysis ? (
-              <>
-                {/* Stats */}
-                <div style={styles.statsGrid}>
-                  <div style={styles.statCard}>
-                    <div style={styles.statLabel}>Conversations</div>
-                    <div style={styles.statValue}>{analysis.total_conversations}</div>
+              {loadingAnalysis || computing ? (
+                <div style={styles.loading}>Loading analysis...</div>
+              ) : analysis ? (
+                <>
+                  {/* Stats */}
+                  <div style={styles.statsGrid}>
+                    <div style={styles.statCard}>
+                      <div style={styles.statLabel}>Conversations</div>
+                      <div style={styles.statValue}>{analysis.total_conversations}</div>
+                    </div>
+                    <div style={styles.statCard}>
+                      <div style={styles.statLabel}>Total Responses</div>
+                      <div style={styles.statValue}>{analysis.total_responses}</div>
+                    </div>
+                    <div style={styles.statCard}>
+                      <div style={styles.statLabel}>Analyzed</div>
+                      <div style={styles.statValue}>{analysis.conversations_analyzed}</div>
+                    </div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statLabel}>Total Responses</div>
-                    <div style={styles.statValue}>{analysis.total_responses}</div>
-                  </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statLabel}>Analyzed</div>
-                    <div style={styles.statValue}>{analysis.conversations_analyzed}</div>
-                  </div>
+
+                  {/* Summary */}
+                  {analysis.overall_summary && (
+                    <div style={styles.card}>
+                      <h3 style={styles.cardTitle}>Summary</h3>
+                      <p style={styles.cardText}>{analysis.overall_summary}</p>
+                    </div>
+                  )}
+
+                  {/* Key Insights */}
+                  {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
+                    <div style={styles.card}>
+                      <h3 style={styles.cardTitle}>Key Insights</h3>
+                      {analysis.surprising_insights.map((insight, idx) => (
+                        <div
+                          key={idx}
+                          style={idx === analysis.surprising_insights!.length - 1
+                            ? { ...styles.insightItem, ...styles.insightItemLast }
+                            : styles.insightItem
+                          }
+                        >
+                          <h4 style={styles.insightTitle}>{insight.title}</h4>
+                          <p style={styles.insightDescription}>{insight.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Trends */}
+                  {analysis.trends && analysis.trends.themes && analysis.trends.themes.length > 0 && (
+                    <div style={styles.card}>
+                      <h3 style={styles.cardTitle}>Trends Over Time</h3>
+                      <TrendChart trends={analysis.trends} />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={styles.emptyState}>
+                  <p style={styles.emptyStateText}>No analysis computed yet.</p>
+                  <button
+                    onClick={() => handleComputeAnalysis(true)}
+                    disabled={computing}
+                    style={{
+                      ...styles.buttonPrimary,
+                      ...(computing ? styles.buttonDisabled : {}),
+                    }}
+                    className="collection-btn-primary"
+                  >
+                    {computing ? 'Running analysis...' : 'Run Analysis'}
+                  </button>
                 </div>
-
-                {/* Summary */}
-                {analysis.overall_summary && (
-                  <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Summary</h3>
-                    <p style={styles.cardText}>{analysis.overall_summary}</p>
-                  </div>
-                )}
-
-                {/* Key Insights */}
-                {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
-                  <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Key Insights</h3>
-                    {analysis.surprising_insights.map((insight, idx) => (
-                      <div
-                        key={idx}
-                        style={idx === analysis.surprising_insights!.length - 1
-                          ? { ...styles.insightItem, ...styles.insightItemLast }
-                          : styles.insightItem
-                        }
-                      >
-                        <h4 style={styles.insightTitle}>{insight.title}</h4>
-                        <p style={styles.insightDescription}>{insight.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Trends */}
-                {analysis.trends && analysis.trends.themes && analysis.trends.themes.length > 0 && (
-                  <div style={styles.card}>
-                    <h3 style={styles.cardTitle}>Trends Over Time</h3>
-                    <TrendChart trends={analysis.trends} />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={styles.emptyState}>
-                <p style={styles.emptyStateText}>No analysis computed yet.</p>
-                <button
-                  onClick={() => handleComputeAnalysis(true)}
-                  disabled={computing}
-                  style={{
-                    ...styles.buttonPrimary,
-                    ...(computing ? styles.buttonDisabled : {}),
-                  }}
-                  className="collection-btn-primary"
-                >
-                  {computing ? 'Running analysis...' : 'Run Analysis'}
-                </button>
-              </div>
-            )}
-          </section>
+              )}
+            </section>
+          )}
 
           {/* Conversations Section */}
           <section style={styles.section}>

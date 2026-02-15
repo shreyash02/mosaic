@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { PeriodicAnalysis, Conversation, ResponseWithQuestion, Analysis } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
@@ -352,6 +353,7 @@ export default function PeriodicAnalysisPage() {
   const { id, periodLabel } = useParams<{ id: string; periodLabel: string }>();
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
+  const pdfExportEnabled = useFeature('pdf_export');
   const [analysis, setAnalysis] = useState<PeriodicAnalysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [responses, setResponses] = useState<ResponseWithQuestion[]>([]);
@@ -600,17 +602,19 @@ export default function PeriodicAnalysisPage() {
                 {formatPeriodDate(analysis.period_start)} — {formatPeriodDate(analysis.period_end)}
               </span>
             </div>
-            <button
-              onClick={handleExportPDF}
-              style={{
-                ...styles.buttonSecondary,
-                ...(isExporting ? styles.buttonDisabled : {}),
-              }}
-              className="periodic-btn-secondary"
-              disabled={isExporting}
-            >
-              {isExporting ? 'Exporting...' : 'Export PDF'}
-            </button>
+            {pdfExportEnabled && (
+              <button
+                onClick={handleExportPDF}
+                style={{
+                  ...styles.buttonSecondary,
+                  ...(isExporting ? styles.buttonDisabled : {}),
+                }}
+                className="periodic-btn-secondary"
+                disabled={isExporting}
+              >
+                {isExporting ? 'Exporting...' : 'Export PDF'}
+              </button>
+            )}
           </header>
 
           {/* Overall Summary */}

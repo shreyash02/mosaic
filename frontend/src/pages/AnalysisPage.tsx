@@ -5,6 +5,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import type { Analysis, Conversation, ResponseWithQuestion, PeriodicAnalysis } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
@@ -592,6 +593,7 @@ export default function AnalysisPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentOrgId } = useOrganization();
+  const pdfExportEnabled = useFeature('pdf_export');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [responses, setResponses] = useState<ResponseWithQuestion[]>([]);
@@ -1197,17 +1199,19 @@ export default function AnalysisPage() {
               <h1 style={styles.title}>Analysis Results</h1>
               <p style={styles.subtitle}>{conversation?.title || fullConversation?.title || 'Untitled'}</p>
             </div>
-            <button
-              onClick={handleExportPDF}
-              style={{
-                ...styles.buttonSecondary,
-                ...(isExporting ? styles.buttonDisabled : {}),
-              }}
-              className="analysis-btn-secondary"
-              disabled={isExporting}
-            >
-              {isExporting ? 'Exporting...' : 'Export PDF'}
-            </button>
+            {pdfExportEnabled && (
+              <button
+                onClick={handleExportPDF}
+                style={{
+                  ...styles.buttonSecondary,
+                  ...(isExporting ? styles.buttonDisabled : {}),
+                }}
+                className="analysis-btn-secondary"
+                disabled={isExporting}
+              >
+                {isExporting ? 'Exporting...' : 'Export PDF'}
+              </button>
+            )}
           </header>
 
           {/* Overall Summary */}

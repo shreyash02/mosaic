@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { OrganizationWithMembers } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import { SlackIntegrationCard } from '../components/SlackIntegrationCard';
+import { useFeature } from '../contexts/FeaturesContext';
 import FocusTrap from '../components/FocusTrap';
 
 const styles = {
@@ -332,6 +333,8 @@ const hoverStyles = `
 export default function OrganizationSettingsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const brandingEnabled = useFeature('custom_branding');
+  const slackEnabled = useFeature('slack_integration');
   const [organization, setOrganization] = useState<OrganizationWithMembers | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -567,67 +570,69 @@ export default function OrganizationSettingsPage() {
           </div>
 
           {/* Branding Settings */}
-          <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Branding</h2>
-            <p style={{ ...styles.hint, marginBottom: spacing[6] }}>
-              Customize how your organization appears on QR code posters and other materials.
-            </p>
-            <div style={styles.form}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Organization Logo</label>
-                <div style={styles.logoUploadRow}>
-                  {brandLogoUrl ? (
-                    <img
-                      src={brandLogoUrl}
-                      alt="Brand logo"
-                      style={styles.logoPreview}
-                    />
-                  ) : (
-                    <div style={styles.logoPlaceholder}>No logo</div>
-                  )}
-                  <div style={styles.logoActions}>
-                    <label style={styles.uploadButton}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        style={{ display: 'none' }}
-                        disabled={uploadingLogo}
+          {brandingEnabled && (
+            <div style={styles.card}>
+              <h2 style={styles.sectionTitle}>Branding</h2>
+              <p style={{ ...styles.hint, marginBottom: spacing[6] }}>
+                Customize how your organization appears on QR code posters and other materials.
+              </p>
+              <div style={styles.form}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Organization Logo</label>
+                  <div style={styles.logoUploadRow}>
+                    {brandLogoUrl ? (
+                      <img
+                        src={brandLogoUrl}
+                        alt="Brand logo"
+                        style={styles.logoPreview}
                       />
-                      {uploadingLogo ? 'Uploading...' : (brandLogoUrl ? 'Change Logo' : 'Upload Logo')}
-                    </label>
-                    {brandLogoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setBrandLogoUrl('')}
-                        style={styles.removeButton}
-                      >
-                        Remove logo
-                      </button>
+                    ) : (
+                      <div style={styles.logoPlaceholder}>No logo</div>
                     )}
+                    <div style={styles.logoActions}>
+                      <label style={styles.uploadButton}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          style={{ display: 'none' }}
+                          disabled={uploadingLogo}
+                        />
+                        {uploadingLogo ? 'Uploading...' : (brandLogoUrl ? 'Change Logo' : 'Upload Logo')}
+                      </label>
+                      {brandLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setBrandLogoUrl('')}
+                          style={styles.removeButton}
+                        >
+                          Remove logo
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <span style={styles.hint}>Recommended: Square image, at least 200x200px</span>
                 </div>
-                <span style={styles.hint}>Recommended: Square image, at least 200x200px</span>
-              </div>
 
-              <div style={styles.formGroup}>
-                <label htmlFor="brandName" style={styles.label}>
-                  Brand Name (Optional)
-                </label>
-                <input
-                  id="brandName"
-                  type="text"
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  placeholder="e.g., Company Name, Team Name"
-                  maxLength={255}
-                  style={styles.input}
-                  className="org-settings-input"
-                />
-                <span style={styles.hint}>Displayed on QR code posters. If not set, organization name will be used.</span>
+                <div style={styles.formGroup}>
+                  <label htmlFor="brandName" style={styles.label}>
+                    Brand Name (Optional)
+                  </label>
+                  <input
+                    id="brandName"
+                    type="text"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="e.g., Company Name, Team Name"
+                    maxLength={255}
+                    style={styles.input}
+                    className="org-settings-input"
+                  />
+                  <span style={styles.hint}>Displayed on QR code posters. If not set, organization name will be used.</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Save Actions */}
           <div style={{ ...styles.actions, marginBottom: spacing[6] }}>
@@ -653,10 +658,12 @@ export default function OrganizationSettingsPage() {
           </form>
 
           {/* Integrations */}
-          <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Integrations</h2>
-            <SlackIntegrationCard organizationId={id!} isAdmin={true} />
-          </div>
+          {slackEnabled && (
+            <div style={styles.card}>
+              <h2 style={styles.sectionTitle}>Integrations</h2>
+              <SlackIntegrationCard organizationId={id!} isAdmin={true} />
+            </div>
+          )}
 
           {/* Danger Zone */}
           {isCreator && (
