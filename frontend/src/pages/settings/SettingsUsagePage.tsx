@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useFeatures, useFeatureUsage, useCurrentTier } from '../../contexts/FeaturesContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows } from '../../styles';
@@ -233,7 +234,7 @@ function FeatureUsageItem({ featureSlug, isLast }: { featureSlug: string; isLast
 export default function SettingsUsagePage() {
   const { features, loading } = useFeatures();
   const tier = useCurrentTier();
-  const { currentWorkspaceName, isPersonalWorkspace } = useOrganization();
+  const { currentOrgId, currentWorkspaceName, isPersonalWorkspace } = useOrganization();
 
   const currentMonth = new Date().toLocaleDateString('en-US', {
     month: 'long',
@@ -255,6 +256,39 @@ export default function SettingsUsagePage() {
     );
   }
 
+  // If in organization context, redirect to org settings
+  if (!isPersonalWorkspace && currentOrgId) {
+    return (
+      <div style={s.section}>
+        <h2 style={s.sectionTitle}>Organization Usage</h2>
+        <p style={{ color: 'var(--color-primary-600)', marginBottom: spacing[4] }}>
+          You're currently in the <strong>{currentWorkspaceName}</strong> workspace.
+          Usage and plan information for organizations is managed in organization settings.
+        </p>
+        <Link
+          to={`/organizations/${currentOrgId}/settings/usage`}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            padding: `${spacing[2]} ${spacing[4]}`,
+            backgroundColor: 'var(--color-primary-900)',
+            color: 'var(--color-primary-50)',
+            borderRadius: borders.radius.md,
+            textDecoration: 'none',
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+          }}
+        >
+          Go to Organization Settings
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <>
       <div style={s.section}>
@@ -271,13 +305,9 @@ export default function SettingsUsagePage() {
           </div>
           <div style={s.workspaceBadge}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {isPersonalWorkspace ? (
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-              ) : (
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-              )}
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
             </svg>
-            {isPersonalWorkspace ? 'Personal' : currentWorkspaceName}
+            Personal
           </div>
         </div>
       </div>
@@ -308,9 +338,7 @@ export default function SettingsUsagePage() {
             Usage limits reset on the 1st of each month (UTC)
           </li>
           <li style={s.infoItem}>
-            {isPersonalWorkspace
-              ? 'Personal workspace usage is tracked individually'
-              : 'Organization usage is shared across all members'}
+            Personal workspace usage is tracked individually
           </li>
           <li style={s.infoItem}>
             Upgrade your plan for higher limits

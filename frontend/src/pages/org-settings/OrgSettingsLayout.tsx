@@ -246,6 +246,18 @@ export default function OrgSettingsLayout() {
       ),
     },
     {
+      path: `/organizations/${id}/settings/usage`,
+      label: 'Usage',
+      show: true,
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 20V10" />
+          <path d="M18 20V4" />
+          <path d="M6 20v-4" />
+        </svg>
+      ),
+    },
+    {
       path: `/organizations/${id}/settings/branding`,
       label: 'Branding',
       show: brandingEnabled,

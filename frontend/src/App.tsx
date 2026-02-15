@@ -54,6 +54,7 @@ import OrganizationDetailPage from './pages/OrganizationDetailPage';
 import OrgSettingsLayout from './pages/org-settings/OrgSettingsLayout';
 import OrgSettingsGeneralPage from './pages/org-settings/OrgSettingsGeneralPage';
 import OrgSettingsMembersPage from './pages/org-settings/OrgSettingsMembersPage';
+import OrgSettingsUsagePage from './pages/org-settings/OrgSettingsUsagePage';
 import OrgSettingsBrandingPage from './pages/org-settings/OrgSettingsBrandingPage';
 import OrgSettingsIntegrationsPage from './pages/org-settings/OrgSettingsIntegrationsPage';
 import OrgSettingsDangerPage from './pages/org-settings/OrgSettingsDangerPage';
@@ -331,6 +332,7 @@ function App() {
             >
               <Route index element={<OrgSettingsGeneralPage />} />
               <Route path="members" element={<OrgSettingsMembersPage />} />
+              <Route path="usage" element={<OrgSettingsUsagePage />} />
               <Route path="branding" element={<OrgSettingsBrandingPage />} />
               <Route path="integrations" element={<OrgSettingsIntegrationsPage />} />
               <Route path="danger" element={<OrgSettingsDangerPage />} />
