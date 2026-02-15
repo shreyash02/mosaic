@@ -62,6 +62,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage';
 import SettingsSecurityPage from './pages/settings/SettingsSecurityPage';
+import SettingsUsagePage from './pages/settings/SettingsUsagePage';
 import CreatingConversationsHelp from './pages/help/CreatingConversationsHelp';
 import InvitingParticipantsHelp from './pages/help/InvitingParticipantsHelp';
 import RespondingHelp from './pages/help/RespondingHelp';
@@ -137,6 +138,7 @@ function App() {
             >
               <Route path="notifications" element={<SettingsNotificationsPage />} />
               <Route path="security" element={<SettingsSecurityPage />} />
+              <Route path="usage" element={<SettingsUsagePage />} />
               <Route index element={<Navigate to="notifications" replace />} />
             </Route>
 
