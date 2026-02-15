@@ -7,6 +7,7 @@ import { typography, spacing, borders, shadows, transitions, mediaQueries } from
 import { usePageTitle } from '../hooks/usePageTitle';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
+import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 
 interface CollectionWithCount extends Series {
   conversationCount: number;
@@ -31,6 +32,12 @@ export default function CollectionsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [analyzingCollectionId, setAnalyzingCollectionId] = useState<string | null>(null);
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
+  const [limitReached, setLimitReached] = useState<{
+    show: boolean;
+    feature: string;
+    limit: number;
+    usage: number;
+  }>({ show: false, feature: '', limit: 0, usage: 0 });
 
   // Use CSS custom properties for dark mode support
   const styles = {
@@ -280,7 +287,17 @@ export default function CollectionsPage() {
       setAnalysisSuccess(true);
       setTimeout(() => setAnalysisSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to run analysis');
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
+      } else {
+        setError(err.response?.data?.detail || 'Failed to run analysis');
+      }
     } finally {
       setAnalyzingCollectionId(null);
     }
@@ -570,6 +587,14 @@ export default function CollectionsPage() {
         </div>
       )}
 
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitReached.show}
+        onClose={() => setLimitReached({ ...limitReached, show: false })}
+        feature={limitReached.feature}
+        limit={limitReached.limit}
+        usage={limitReached.usage}
+      />
     </div>
   );
 }

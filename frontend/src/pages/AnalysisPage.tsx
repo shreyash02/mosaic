@@ -10,6 +10,7 @@ import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
 import { SkeletonAnalysis } from '../components/Skeleton';
+import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 
 const styles = {
   page: {
@@ -608,6 +609,12 @@ export default function AnalysisPage() {
   const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
   const [pendingAnalysis, setPendingAnalysis] = useState<{ mode: 'update' | 'incremental'; startedAt: Date } | null>(null);
   const analysisDropdownRef = useRef<HTMLDivElement>(null);
+  const [limitReached, setLimitReached] = useState<{
+    show: boolean;
+    feature: string;
+    limit: number;
+    usage: number;
+  }>({ show: false, feature: '', limit: 0, usage: 0 });
 
   usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
 
@@ -798,8 +805,18 @@ export default function AnalysisPage() {
       }
       // Set pending state to show in the list while polling
       setPendingAnalysis({ mode, startedAt: new Date() });
-    } catch (err) {
-      console.error('Failed to trigger analysis:', err);
+    } catch (err: any) {
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
+      } else {
+        console.error('Failed to trigger analysis:', err);
+      }
     } finally {
       setTriggeringAnalysis(false);
     }
@@ -1495,6 +1512,15 @@ export default function AnalysisPage() {
           </div>
         </div>
       </div>
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitReached.show}
+        onClose={() => setLimitReached({ ...limitReached, show: false })}
+        feature={limitReached.feature}
+        limit={limitReached.limit}
+        usage={limitReached.usage}
+      />
     </>
   );
 }

@@ -16,6 +16,7 @@ import ReminderManager from '../components/ReminderManager';
 import AnnouncementManager from '../components/AnnouncementManager';
 import CollapsibleSection from '../components/CollapsibleSection';
 import FocusTrap from '../components/FocusTrap';
+import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 
 // Design tokens based styles
 const s = {
@@ -583,6 +584,12 @@ export default function ConversationDetailPage() {
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendHours, setExtendHours] = useState(1);
   const [extending, setExtending] = useState(false);
+  const [limitReached, setLimitReached] = useState<{
+    show: boolean;
+    feature: string;
+    limit: number;
+    usage: number;
+  }>({ show: false, feature: '', limit: 0, usage: 0 });
 
   usePageTitle(conversation?.title);
 
@@ -810,7 +817,17 @@ export default function ConversationDetailPage() {
       setShowAnalysisSuccess(true);
       setTimeout(() => setShowAnalysisSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to start analysis');
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
+      } else {
+        setError(err.response?.data?.detail || 'Failed to start analysis');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -879,12 +896,22 @@ export default function ConversationDetailPage() {
       // Navigate to analysis page with state indicating analysis is running
       navigate(`/conversations/${id}/analysis`, { state: { analysisTriggered: mode } });
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || 'Failed to trigger analysis';
-      // If analysis already exists for this period (shouldn't happen with force_replace), just navigate
-      if (errorMessage.includes('already exists')) {
-        navigate(`/conversations/${id}/analysis`);
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
       } else {
-        setError(errorMessage);
+        const errorMessage = err.response?.data?.detail || 'Failed to trigger analysis';
+        // If analysis already exists for this period (shouldn't happen with force_replace), just navigate
+        if (errorMessage.includes('already exists')) {
+          navigate(`/conversations/${id}/analysis`);
+        } else {
+          setError(errorMessage);
+        }
       }
     } finally {
       setTriggeringAnalysis(false);
@@ -2248,6 +2275,15 @@ export default function ConversationDetailPage() {
           </div>
         </FocusTrap>
       )}
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal
+        isOpen={limitReached.show}
+        onClose={() => setLimitReached({ ...limitReached, show: false })}
+        feature={limitReached.feature}
+        limit={limitReached.limit}
+        usage={limitReached.usage}
+      />
 
       {/* CSS for spinner animation and responsive styles */}
       <style>{`

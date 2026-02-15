@@ -5,6 +5,7 @@ import type { SeriesWithConversations, CollectionAnalysis } from '../types';
 import TrendChart from '../components/TrendChart';
 import ConversationsList from '../components/ConversationsList';
 import FocusTrap from '../components/FocusTrap';
+import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
@@ -274,6 +275,12 @@ export default function CollectionDetailPage() {
   const [computing, setComputing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [limitReached, setLimitReached] = useState<{
+    show: boolean;
+    feature: string;
+    limit: number;
+    usage: number;
+  }>({ show: false, feature: '', limit: 0, usage: 0 });
 
   useEffect(() => {
     if (id) {
@@ -322,8 +329,18 @@ export default function CollectionDetailPage() {
       const data = await api.computeCollectionAnalysis(id, force);
       setAnalysis(data);
     } catch (err: any) {
-      console.error('Failed to compute analysis:', err);
-      setError('Failed to compute analysis');
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
+      } else {
+        console.error('Failed to compute analysis:', err);
+        setError('Failed to compute analysis');
+      }
     } finally {
       setComputing(false);
     }
@@ -552,6 +569,15 @@ export default function CollectionDetailPage() {
             </div>
           </FocusTrap>
         )}
+
+        {/* Limit Reached Modal */}
+        <LimitReachedModal
+          isOpen={limitReached.show}
+          onClose={() => setLimitReached({ ...limitReached, show: false })}
+          feature={limitReached.feature}
+          limit={limitReached.limit}
+          usage={limitReached.usage}
+        />
       </div>
     </>
   );
