@@ -240,14 +240,55 @@ async def trigger_analysis(
 
     # Check if AI analysis is enabled for this user
     from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+    from app.services.usage_service import usage_service
+
+    # Get tier based on context (org tier if org conversation, else user's personal tier)
+    tier = subscription_service.get_tier(
+        db,
+        user_id=current_user.id,
+        org_id=conversation.organization_id
+    )
+
     if not feature_flag_service.is_enabled(
         db, "ai_analysis",
+        tier=tier,
         org_id=conversation.organization_id,
         user_id=current_user.id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="AI analysis is not available for your account"
+        )
+
+    # Check usage limit
+    limit = feature_flag_service.get_config_value(
+        db, "ai_analysis", "analyses_per_month",
+        tier=tier,
+        org_id=conversation.organization_id,
+        user_id=current_user.id
+    )
+
+    # Track usage at org level if org conversation, else personal
+    usage_user_id = None if conversation.organization_id else current_user.id
+    usage_org_id = conversation.organization_id
+
+    is_allowed, current_usage = usage_service.check_limit(
+        db, "ai_analysis", limit,
+        user_id=usage_user_id,
+        org_id=usage_org_id
+    )
+
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "LIMIT_REACHED",
+                "feature": "ai_analysis",
+                "limit": limit,
+                "usage": current_usage,
+                "message": f"Monthly analysis limit reached ({current_usage}/{limit})"
+            }
         )
 
     # Check if analysis is already in progress
@@ -291,6 +332,13 @@ async def trigger_analysis(
 
     # Trigger background analysis
     from app.core.config import settings
+
+    # Increment usage count before starting analysis
+    usage_service.increment_usage(
+        db, "ai_analysis",
+        user_id=usage_user_id,
+        org_id=usage_org_id
+    )
 
     if background_tasks:
         background_tasks.add_task(

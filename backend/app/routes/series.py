@@ -357,45 +357,105 @@ async def compute_collection_analysis(
 ):
     """
     Compute collection analysis (summary, insights, trends).
-    
+
     If analysis already exists and force=False, returns existing.
     Otherwise computes new analysis and persists to DB.
-    
+
     Args:
         series_id: Series ID
         force: Force recomputation even if analysis exists
         current_user: Current authenticated user
         db: Database session
-    
+
     Returns:
         Collection analysis
-    
+
     Raises:
         HTTPException: If series not found or user doesn't have access
     """
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+    from app.services.usage_service import usage_service
+
     # Check access
     series = require_series_access(db, series_id, current_user)
-    
+
     # Check if analysis exists
     existing = db.query(CollectionAnalysis).filter(
         CollectionAnalysis.series_id == series_id
     ).first()
-    
+
     if existing and not force:
         return existing
+
+    # Get tier based on context
+    tier = subscription_service.get_tier(
+        db,
+        user_id=current_user.id,
+        org_id=series.organization_id
+    )
+
+    # Check if series analysis is enabled
+    if not feature_flag_service.is_enabled(
+        db, "series_analysis",
+        tier=tier,
+        org_id=series.organization_id,
+        user_id=current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Collection analysis is not available for your account"
+        )
+
+    # Check usage limit (uses ai_analysis limits)
+    limit = feature_flag_service.get_config_value(
+        db, "ai_analysis", "analyses_per_month",
+        tier=tier,
+        org_id=series.organization_id,
+        user_id=current_user.id
+    )
+
+    # Track usage at org level if org series, else personal
+    usage_user_id = None if series.organization_id else current_user.id
+    usage_org_id = series.organization_id
+
+    is_allowed, current_usage = usage_service.check_limit(
+        db, "ai_analysis", limit,
+        user_id=usage_user_id,
+        org_id=usage_org_id
+    )
+
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "LIMIT_REACHED",
+                "feature": "ai_analysis",
+                "limit": limit,
+                "usage": current_usage,
+                "message": f"Monthly analysis limit reached ({current_usage}/{limit})"
+            }
+        )
     
+    # Increment usage count before starting analysis
+    usage_service.increment_usage(
+        db, "ai_analysis",
+        user_id=usage_user_id,
+        org_id=usage_org_id
+    )
+
     # Get all conversations in collection
     conversations = db.query(Conversation).filter(
         Conversation.series_id == series_id,
         Conversation.state != ConversationState.DELETED.value
     ).all()
-    
+
     # Get all analyses for these conversations
     conversation_ids = [c.id for c in conversations]
     analyses = db.query(Analysis).filter(
         Analysis.conversation_id.in_(conversation_ids)
     ).all()
-    
+
     # Generate analysis
     service = CollectionAnalysisService()
     analysis_data = service.generate_collection_analysis(conversations, analyses)
