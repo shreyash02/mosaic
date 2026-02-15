@@ -51,7 +51,11 @@ import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import OrganizationDetailPage from './pages/OrganizationDetailPage';
-import OrganizationSettingsPage from './pages/OrganizationSettingsPage';
+import OrgSettingsLayout from './pages/org-settings/OrgSettingsLayout';
+import OrgSettingsGeneralPage from './pages/org-settings/OrgSettingsGeneralPage';
+import OrgSettingsBrandingPage from './pages/org-settings/OrgSettingsBrandingPage';
+import OrgSettingsIntegrationsPage from './pages/org-settings/OrgSettingsIntegrationsPage';
+import OrgSettingsDangerPage from './pages/org-settings/OrgSettingsDangerPage';
 import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 import CollectionsPage from './pages/CollectionsPage';
@@ -315,14 +319,20 @@ function App() {
               }
             />
 
+            {/* Organization Settings with nested routes */}
             <Route
-              path="/organizations/:id/settings"
+              path="/organizations/:id/settings/*"
               element={
                 <ProtectedRoute>
-                  <OrganizationSettingsPage />
+                  <OrgSettingsLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<OrgSettingsGeneralPage />} />
+              <Route path="branding" element={<OrgSettingsBrandingPage />} />
+              <Route path="integrations" element={<OrgSettingsIntegrationsPage />} />
+              <Route path="danger" element={<OrgSettingsDangerPage />} />
+            </Route>
 
             <Route
               path="/organizations/:id/invite"
