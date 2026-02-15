@@ -10,7 +10,7 @@ interface LocationState {
 export default function IntentStep() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { formState, applyIntentPreset, updateFormState } = useConversationForm();
+  const { formState, applyIntentPreset, applyUserPreset, updateFormState } = useConversationForm();
 
   // Read location state on mount and update form state
   useEffect(() => {
@@ -24,11 +24,9 @@ export default function IntentStep() {
     if (formState.selectedIntent === 'custom') {
       // Custom setup switches to manual mode and skips to details
       updateFormState({ isGuidedMode: false });
-      navigate('/create/conversation/details');
-    } else {
-      // Guided mode continues to details
-      navigate('/create/conversation/details');
     }
+    // Both system presets and user presets continue to details
+    navigate('/create/conversation/details');
   };
 
   const handleSwitchToManual = () => {
@@ -39,7 +37,9 @@ export default function IntentStep() {
   return (
     <IntentSelection
       selectedIntent={formState.selectedIntent}
+      selectedUserPresetId={formState.selectedUserPresetId}
       onSelectIntent={applyIntentPreset}
+      onSelectUserPreset={applyUserPreset}
       onContinue={handleContinue}
       onSwitchToManual={handleSwitchToManual}
     />

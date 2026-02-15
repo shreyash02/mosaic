@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 import uuid
 
@@ -10,7 +10,7 @@ from app.core.database import Base
 
 
 class ConversationPreset(Base):
-    """Conversation preset model for saving reusable conversation configurations."""
+    """Conversation preset model for saving reusable privacy/access settings."""
 
     __tablename__ = "conversation_presets"
 
@@ -23,7 +23,8 @@ class ConversationPreset(Base):
     # Preset info
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    emoji = Column(String(10), default='📋', nullable=False)
+    icon = Column(String(50), default='clipboard', nullable=False)
+    # Valid icons: clipboard, lightning, chart, chat, target, users, lock, globe, inbox, sparkles
 
     # Privacy/access configuration
     anonymity_level = Column(String(50), nullable=False)
@@ -32,10 +33,6 @@ class ConversationPreset(Base):
     # 'creator_only', 'participants', 'public_link'
     show_verbatim_responses = Column(Boolean, default=False, nullable=False)
     invite_only = Column(Boolean, default=True, nullable=False)
-
-    # Optional: default questions (JSONB array)
-    default_questions = Column(JSONB, nullable=True)
-    # Schema: [{ question_text, question_type, options, is_required, question_order }, ...]
 
     # Step behavior
     skip_steps = Column(ARRAY(String), nullable=True)

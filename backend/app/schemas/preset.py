@@ -1,21 +1,18 @@
 """Conversation preset schemas."""
 
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, List, Literal
 from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.schemas.conversation import AnonymityLevel, ResultsAccess
 
 
-class QuestionConfig(BaseModel):
-    """Schema for question configuration in presets."""
-
-    question_text: str = ""
-    question_type: str = "text"  # text, rating, single_choice, multiple_choice
-    options: Optional[Any] = None  # For choice types: { mode, max_selections, choices }
-    is_required: bool = False
-    question_order: int = 0
+# Valid icon choices
+PresetIconType = Literal[
+    'clipboard', 'lightning', 'chart', 'chat', 'target',
+    'users', 'lock', 'globe', 'inbox'
+]
 
 
 class PresetBase(BaseModel):
@@ -23,16 +20,13 @@ class PresetBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    emoji: str = Field(default='📋', max_length=10)
+    icon: PresetIconType = Field(default='clipboard')
 
     # Privacy/access settings
     anonymity_level: AnonymityLevel
     results_access: ResultsAccess
     show_verbatim_responses: bool = False
     invite_only: bool = True
-
-    # Optional default questions
-    default_questions: Optional[List[QuestionConfig]] = None
 
     # Steps to skip
     skip_steps: Optional[List[str]] = None
@@ -49,14 +43,13 @@ class PresetUpdate(BaseModel):
 
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    emoji: Optional[str] = Field(None, max_length=10)
+    icon: Optional[PresetIconType] = None
 
     anonymity_level: Optional[AnonymityLevel] = None
     results_access: Optional[ResultsAccess] = None
     show_verbatim_responses: Optional[bool] = None
     invite_only: Optional[bool] = None
 
-    default_questions: Optional[List[QuestionConfig]] = None
     skip_steps: Optional[List[str]] = None
 
 

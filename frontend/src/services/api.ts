@@ -96,6 +96,9 @@ import type {
   JournalShareListResponse,
   SharedJournalListItem,
   SharedJournalDetail,
+  ConversationPreset,
+  PresetCreate,
+  PresetUpdate,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1216,6 +1219,36 @@ class ApiService {
   async getSharedJournalAnalysis(journalId: string): Promise<JournalAnalysisStatus> {
     const response = await this.client.get<JournalAnalysisStatus>(`/journals/shared/${journalId}/analysis`);
     return response.data;
+  }
+
+  // Conversation preset endpoints
+  async listPresets(options?: { organizationId?: string; includePersonal?: boolean }): Promise<ConversationPreset[]> {
+    const params = new URLSearchParams();
+    if (options?.organizationId) params.append('organization_id', options.organizationId);
+    if (options?.includePersonal !== undefined) params.append('include_personal', String(options.includePersonal));
+    const queryString = params.toString();
+    const url = queryString ? `/presets?${queryString}` : '/presets';
+    const response = await this.client.get<ConversationPreset[]>(url);
+    return response.data;
+  }
+
+  async getPreset(id: string): Promise<ConversationPreset> {
+    const response = await this.client.get<ConversationPreset>(`/presets/${id}`);
+    return response.data;
+  }
+
+  async createPreset(data: PresetCreate): Promise<ConversationPreset> {
+    const response = await this.client.post<ConversationPreset>('/presets', data);
+    return response.data;
+  }
+
+  async updatePreset(id: string, data: PresetUpdate): Promise<ConversationPreset> {
+    const response = await this.client.put<ConversationPreset>(`/presets/${id}`, data);
+    return response.data;
+  }
+
+  async deletePreset(id: string): Promise<void> {
+    await this.client.delete(`/presets/${id}`);
   }
 }
 

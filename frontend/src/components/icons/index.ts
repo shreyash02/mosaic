@@ -24,3 +24,4 @@ export { default as CheckCircleIcon } from './CheckCircleIcon';
 export { default as CheckListIcon } from './CheckListIcon';
 export { default as MegaphoneIcon } from './MegaphoneIcon';
 export { default as EyeIcon } from './EyeIcon';
+export { default as PlusIcon } from './PlusIcon';

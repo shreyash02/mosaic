@@ -1124,9 +1124,8 @@ export default function ReviewStep() {
               navigate(`/templates/${formState.parentConversationId}`);
             } else {
               // Check if preset skips steps - navigate to the last visible step
-              const preset = formState.selectedIntent ? INTENT_PRESETS[formState.selectedIntent] : null;
-              if (preset?.skipSteps?.includes('notifications')) {
-                if (preset.skipSteps.includes('timing')) {
+              if (formState.presetSkipSteps?.includes('notifications')) {
+                if (formState.presetSkipSteps.includes('timing')) {
                   navigate(getStepPath('questions'));
                 } else {
                   navigate(getStepPath('timing'));

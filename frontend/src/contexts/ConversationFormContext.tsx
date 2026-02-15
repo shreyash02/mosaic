@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation, type AnalysisInterval } from '../types';
+import { AnonymityLevel, ResultsAccess, RecurrencePattern, type QuestionCreate, type Conversation, type AnalysisInterval, type ConversationPreset } from '../types';
 import { IntentType, INTENT_PRESETS } from '../types/intentPresets';
 
 // Convert UTC ISO string to local datetime-local format (YYYY-MM-DDTHH:mm)
@@ -25,6 +25,8 @@ export interface ConversationFormState {
   // Mode and intent
   isGuidedMode: boolean;
   selectedIntent: IntentType | null;
+  selectedUserPresetId: string | null;  // For user-created presets
+  presetSkipSteps: ('timing' | 'notifications')[];  // Steps to skip based on selected preset
 
   // Edit mode
   isEditMode?: boolean;
@@ -96,6 +98,7 @@ interface ConversationFormContextType {
   updateFormState: (updates: Partial<ConversationFormState>) => void;
   resetForm: () => void;
   applyIntentPreset: (intent: IntentType) => void;
+  applyUserPreset: (preset: ConversationPreset) => void;
   toggleMode: () => void;
   loadConversation: (conversation: Conversation) => void;
   getStepPath: (step: string) => string;
@@ -107,6 +110,8 @@ const getDefaultFormState = (): ConversationFormState => ({
   // Mode
   isGuidedMode: true,
   selectedIntent: null,
+  selectedUserPresetId: null,
+  presetSkipSteps: [],
 
   // Details
   title: '',
@@ -203,6 +208,8 @@ export function ConversationFormProvider({
       // Switch to manual mode
       updateFormState({
         selectedIntent: intent,
+        selectedUserPresetId: null,
+        presetSkipSteps: [],
         isGuidedMode: false,
       });
       return;
@@ -211,10 +218,24 @@ export function ConversationFormProvider({
     const preset = INTENT_PRESETS[intent];
     updateFormState({
       selectedIntent: intent,
+      selectedUserPresetId: null,
+      presetSkipSteps: preset.skipSteps || [],
       anonymityLevel: preset.settings.anonymity_level,
       resultsAccess: preset.settings.results_access,
       showVerbatimResponses: preset.settings.show_verbatim_responses,
       inviteOnly: preset.settings.invite_only,
+    });
+  };
+
+  const applyUserPreset = (preset: ConversationPreset) => {
+    updateFormState({
+      selectedIntent: null,
+      selectedUserPresetId: preset.id,
+      presetSkipSteps: preset.skip_steps || [],
+      anonymityLevel: preset.anonymity_level,
+      resultsAccess: preset.results_access,
+      showVerbatimResponses: preset.show_verbatim_responses,
+      inviteOnly: preset.invite_only,
     });
   };
 
@@ -303,6 +324,7 @@ export function ConversationFormProvider({
         updateFormState,
         resetForm,
         applyIntentPreset,
+        applyUserPreset,
         toggleMode,
         loadConversation,
         getStepPath,

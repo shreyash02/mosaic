@@ -106,14 +106,13 @@ async def create_preset(
     preset = ConversationPreset(
         name=preset_data.name,
         description=preset_data.description,
-        emoji=preset_data.emoji,
+        icon=preset_data.icon,
         creator_id=current_user.id,
         organization_id=preset_data.organization_id,
         anonymity_level=preset_data.anonymity_level.value,
         results_access=preset_data.results_access.value,
         show_verbatim_responses=preset_data.show_verbatim_responses,
         invite_only=preset_data.invite_only,
-        default_questions=[q.model_dump() for q in preset_data.default_questions] if preset_data.default_questions else None,
         skip_steps=preset_data.skip_steps,
     )
     db.add(preset)
@@ -198,8 +197,8 @@ async def update_preset(
         preset.name = preset_data.name
     if preset_data.description is not None:
         preset.description = preset_data.description
-    if preset_data.emoji is not None:
-        preset.emoji = preset_data.emoji
+    if preset_data.icon is not None:
+        preset.icon = preset_data.icon
     if preset_data.anonymity_level is not None:
         preset.anonymity_level = preset_data.anonymity_level.value
     if preset_data.results_access is not None:
@@ -208,8 +207,6 @@ async def update_preset(
         preset.show_verbatim_responses = preset_data.show_verbatim_responses
     if preset_data.invite_only is not None:
         preset.invite_only = preset_data.invite_only
-    if preset_data.default_questions is not None:
-        preset.default_questions = [q.model_dump() for q in preset_data.default_questions]
     if preset_data.skip_steps is not None:
         preset.skip_steps = preset_data.skip_steps
 

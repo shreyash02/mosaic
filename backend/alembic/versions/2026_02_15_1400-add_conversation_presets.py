@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 
 # revision identifiers, used by Alembic.
@@ -29,12 +29,11 @@ def upgrade() -> None:
                   sa.ForeignKey('organizations.id', ondelete='SET NULL'), nullable=True),
         sa.Column('name', sa.String(255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('emoji', sa.String(10), nullable=False, server_default='📋'),
+        sa.Column('icon', sa.String(50), nullable=False, server_default='clipboard'),
         sa.Column('anonymity_level', sa.String(50), nullable=False),
         sa.Column('results_access', sa.String(50), nullable=False),
         sa.Column('show_verbatim_responses', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('invite_only', sa.Boolean(), nullable=False, server_default='true'),
-        sa.Column('default_questions', JSONB, nullable=True),
         sa.Column('skip_steps', ARRAY(sa.String), nullable=True),
         sa.Column('is_archived', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('archived_at', sa.DateTime(), nullable=True),

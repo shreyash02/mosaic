@@ -1264,6 +1264,26 @@ export interface Journal {
   updated_at: string;
 }
 
+// Conversation Preset types
+export type PresetIcon = 'clipboard' | 'lightning' | 'chart' | 'chat' | 'target' | 'users' | 'lock' | 'globe' | 'inbox';
+
+export interface ConversationPreset {
+  id: string;
+  creator_id: string;
+  organization_id?: string;
+  name: string;
+  description?: string;
+  icon: PresetIcon;
+  anonymity_level: AnonymityLevel;
+  results_access: ResultsAccess;
+  show_verbatim_responses: boolean;
+  invite_only: boolean;
+  skip_steps?: ('timing' | 'notifications')[];
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SharedJournalDetail extends Journal {
   share_type: JournalShareType;
   owner_name: string;
@@ -1534,4 +1554,27 @@ export interface SharedJournalListItem {
   has_analysis: boolean;
   shared_at: string;
   expires_at?: string;
+}
+
+export interface PresetCreate {
+  name: string;
+  description?: string;
+  icon?: PresetIcon;
+  organization_id?: string;
+  anonymity_level: AnonymityLevel;
+  results_access: ResultsAccess;
+  show_verbatim_responses?: boolean;
+  invite_only?: boolean;
+  skip_steps?: ('timing' | 'notifications')[];
+}
+
+export interface PresetUpdate {
+  name?: string;
+  description?: string;
+  icon?: PresetIcon;
+  anonymity_level?: AnonymityLevel;
+  results_access?: ResultsAccess;
+  show_verbatim_responses?: boolean;
+  invite_only?: boolean;
+  skip_steps?: ('timing' | 'notifications')[];
 }
