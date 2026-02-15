@@ -11,6 +11,8 @@ interface MobileQuestionCarouselProps {
   onUpdateRatingResponse: (questionId: string, rating: number) => void;
   onUpdatePollResponse: (questionId: string, selected: string | string[]) => void;
   onImageClick?: (imageUrl: string) => void;
+  onSubmit?: () => void;
+  submitting?: boolean;
 }
 
 const styles = {
@@ -204,6 +206,34 @@ const styles = {
     color: 'var(--color-primary-400)',
     marginTop: spacing[2],
   },
+  stickyFooter: {
+    position: 'fixed' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing[4],
+    backgroundColor: 'var(--color-primary-50)',
+    borderTop: '1px solid var(--color-primary-200)',
+    boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+    zIndex: 100,
+  },
+  submitButton: {
+    width: '100%',
+    padding: spacing[4],
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    border: 'none',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    minHeight: '48px',
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+  },
 };
 
 // Minimum swipe distance to trigger navigation
@@ -217,6 +247,8 @@ export default function MobileQuestionCarousel({
   onUpdateRatingResponse,
   onUpdatePollResponse,
   onImageClick,
+  onSubmit,
+  submitting = false,
 }: MobileQuestionCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -546,13 +578,30 @@ export default function MobileQuestionCarousel({
             Next →
           </button>
         ) : (
-          <div style={{ minWidth: '100px' }} /> // Placeholder to maintain layout
+          <div style={{ minWidth: '100px' }} /> // Placeholder to maintain layout on last question
         )}
       </div>
 
       <div style={styles.swipeHint}>
         Swipe left or right to navigate
       </div>
+
+      {/* Sticky submit button on last question */}
+      {currentIndex === questions.length - 1 && (
+        <div style={styles.stickyFooter}>
+          <button
+            type={onSubmit ? 'button' : 'submit'}
+            onClick={onSubmit}
+            disabled={submitting}
+            style={{
+              ...styles.submitButton,
+              ...(submitting ? styles.submitButtonDisabled : {}),
+            }}
+          >
+            {submitting ? 'Submitting...' : 'Submit Response'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -764,6 +764,7 @@ export default function PreviewPage() {
               onUpdateRatingResponse={updateRatingResponse}
               onUpdatePollResponse={updatePollResponse}
               onImageClick={setLightboxImageUrl}
+              onSubmit={() => setSubmitted(true)}
             />
           ) : (
             /* Desktop: All questions visible */

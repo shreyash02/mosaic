@@ -1761,6 +1761,7 @@ export default function JoinPage() {
                 onUpdateRatingResponse={updateRatingResponse}
                 onUpdatePollResponse={updatePollResponse}
                 onImageClick={setLightboxImageUrl}
+                submitting={submitting}
               />
             ) : (
               /* Desktop: All questions visible at once */
