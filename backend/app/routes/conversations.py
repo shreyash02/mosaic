@@ -2296,6 +2296,7 @@ async def get_conversation_lineage(
 async def suggest_questions(
     request: QuestionSuggestionRequest,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Generate AI-powered question suggestions based on conversation context.
@@ -2305,6 +2306,14 @@ async def suggest_questions(
     Also indicates if more context would improve suggestions.
     """
     from app.services.question_suggestion_service import question_suggestion_service
+    from app.services.feature_flag_service import feature_flag_service
+
+    # Check if AI question suggestions are enabled for this user
+    if not feature_flag_service.is_enabled(db, "ai_question_suggestions", user_id=current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI question suggestions are not available for your account"
+        )
 
     result = question_suggestion_service.suggest_questions(
         title=request.title,

@@ -238,6 +238,18 @@ async def trigger_analysis(
             detail="Conversation not found"
         )
 
+    # Check if AI analysis is enabled for this user
+    from app.services.feature_flag_service import feature_flag_service
+    if not feature_flag_service.is_enabled(
+        db, "ai_analysis",
+        org_id=conversation.organization_id,
+        user_id=current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI analysis is not available for your account"
+        )
+
     # Check if analysis is already in progress
     if conversation.state == ConversationState.ANALYZING.value:
         raise HTTPException(
