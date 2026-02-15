@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
+import { useFeature } from '../../contexts/FeaturesContext';
 import { RecurrencePattern, type AnalysisInterval } from '../../types';
 import { formatDateForDateTimeLocal } from '../../utils/formatting';
 import { typography, spacing, borders } from '../../styles';
@@ -150,6 +151,7 @@ const s = {
 export default function TimingStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
+  const recurringEnabled = useFeature('recurring_conversations');
 
   const isTemplate = formState.createTemplate;
 
@@ -471,7 +473,7 @@ export default function TimingStep() {
         )}
 
         {/* Recurring Schedule - Only for templates and when NOT long-running */}
-        {isTemplate && !formState.isLongRunning && (
+        {recurringEnabled && isTemplate && !formState.isLongRunning && (
           <div className="form-group" style={s.sectionDivider}>
             <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
               <input

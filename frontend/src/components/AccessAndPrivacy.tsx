@@ -1,4 +1,5 @@
 import { AnonymityLevel, ResultsAccess } from '../types';
+import { useFeature } from '../contexts/FeaturesContext';
 
 interface AccessAndPrivacyProps {
   anonymityLevel: AnonymityLevel;
@@ -25,6 +26,7 @@ export default function AccessAndPrivacy({
   onResultsAccessChange,
   onShowVerbatimChange,
 }: AccessAndPrivacyProps) {
+  const anonymousEnabled = useFeature('anonymous_responses');
   const isOpen = anonymityLevel === AnonymityLevel.OPEN;
   const isFullyAnonymous = anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS;
 
@@ -86,50 +88,54 @@ export default function AccessAndPrivacy({
           </div>
         </label>
 
-        <label style={optionStyle}>
-          <input
-            type="radio"
-            name="anonymityLevel"
-            value={AnonymityLevel.FULLY_ANONYMOUS}
-            checked={anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS}
-            onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
-            style={radioStyle}
-          />
-          <div>
-            <div style={labelStyle}>Fully anonymous</div>
-            <div style={descStyle}>No identity tracking. Requires secret codes.</div>
-          </div>
-        </label>
+        {anonymousEnabled && (
+          <>
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="anonymityLevel"
+                value={AnonymityLevel.FULLY_ANONYMOUS}
+                checked={anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS}
+                onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Fully anonymous</div>
+                <div style={descStyle}>No identity tracking. Requires secret codes.</div>
+              </div>
+            </label>
 
-        <label style={optionStyle}>
-          <input
-            type="radio"
-            name="anonymityLevel"
-            value={AnonymityLevel.PLATFORM_TRACKED}
-            checked={anonymityLevel === AnonymityLevel.PLATFORM_TRACKED}
-            onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
-            style={radioStyle}
-          />
-          <div>
-            <div style={labelStyle}>Anonymous to you</div>
-            <div style={descStyle}>Login required. Platform tracks, hidden from you.</div>
-          </div>
-        </label>
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="anonymityLevel"
+                value={AnonymityLevel.PLATFORM_TRACKED}
+                checked={anonymityLevel === AnonymityLevel.PLATFORM_TRACKED}
+                onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Anonymous to you</div>
+                <div style={descStyle}>Login required. Platform tracks, hidden from you.</div>
+              </div>
+            </label>
 
-        <label style={optionStyle}>
-          <input
-            type="radio"
-            name="anonymityLevel"
-            value={AnonymityLevel.REVEALABLE}
-            checked={anonymityLevel === AnonymityLevel.REVEALABLE}
-            onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
-            style={radioStyle}
-          />
-          <div>
-            <div style={labelStyle}>Revealable</div>
-            <div style={descStyle}>Login required. You can reveal identities later.</div>
-          </div>
-        </label>
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="anonymityLevel"
+                value={AnonymityLevel.REVEALABLE}
+                checked={anonymityLevel === AnonymityLevel.REVEALABLE}
+                onChange={(e) => onAnonymityChange(e.target.value as AnonymityLevel)}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Revealable</div>
+                <div style={descStyle}>Login required. You can reveal identities later.</div>
+              </div>
+            </label>
+          </>
+        )}
       </div>
 
       {/* Section 2: Who can respond? */}

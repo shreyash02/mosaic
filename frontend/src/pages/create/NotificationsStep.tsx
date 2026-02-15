@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useFeature } from '../../contexts/FeaturesContext';
 import { SlackChannelNotificationsCard } from '../../components/SlackChannelNotificationsCard';
 import { spacing, borders, typography } from '../../styles';
 
@@ -8,6 +9,7 @@ export default function NotificationsStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
   const { currentOrgId } = useOrganization();
+  const slackEnabled = useFeature('slack_integration');
 
   const handleSlackChange = (settings: {
     slack_channel_id?: string;
@@ -32,7 +34,7 @@ export default function NotificationsStep() {
         Configure how updates about this conversation are shared
       </p>
 
-      {currentOrgId ? (
+      {slackEnabled && currentOrgId ? (
         <SlackChannelNotificationsCard
           organizationId={currentOrgId}
           channelId={formState.slackChannelId}
@@ -42,7 +44,7 @@ export default function NotificationsStep() {
           notifyOnAnalysis={formState.slackNotifyOnAnalysis}
           onChange={handleSlackChange}
         />
-      ) : (
+      ) : slackEnabled ? (
         <div style={{
           backgroundColor: 'var(--color-primary-50)',
           border: `1px solid var(--color-primary-200)`,
@@ -56,6 +58,22 @@ export default function NotificationsStep() {
             fontStyle: 'italic',
           }}>
             Select an organization to configure Slack notifications.
+          </p>
+        </div>
+      ) : (
+        <div style={{
+          backgroundColor: 'var(--color-primary-50)',
+          border: `1px solid var(--color-primary-200)`,
+          borderRadius: borders.radius.lg,
+          padding: spacing[5],
+        }}>
+          <p style={{
+            margin: 0,
+            fontSize: typography.fontSize.sm,
+            color: 'var(--color-primary-500)',
+            fontStyle: 'italic',
+          }}>
+            No additional notification options available. Participants will be notified via email.
           </p>
         </div>
       )}
