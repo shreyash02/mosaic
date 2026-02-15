@@ -12,6 +12,8 @@ interface OrgSettingsContextType {
   organization: OrganizationWithMembers;
   isCreator: boolean;
   refreshOrganization: () => Promise<void>;
+  updateMemberRole: (userId: string, newRole: 'admin' | 'member') => void;
+  removeMember: (userId: string) => void;
 }
 
 const OrgSettingsContext = createContext<OrgSettingsContextType | null>(null);
@@ -162,9 +164,12 @@ export default function OrgSettingsLayout() {
 
   usePageTitle(organization ? `${organization.name} Settings` : 'Organization Settings');
 
-  const loadOrganization = async () => {
+  const loadOrganization = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      // Only show loading state on initial load, not refreshes
+      if (!isRefresh) {
+        setLoading(true);
+      }
       setError('');
 
       const orgData = await api.getOrganization(id!);
@@ -182,7 +187,9 @@ export default function OrgSettingsLayout() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load organization');
     } finally {
-      setLoading(false);
+      if (!isRefresh) {
+        setLoading(false);
+      }
     }
   };
 
@@ -191,6 +198,26 @@ export default function OrgSettingsLayout() {
       loadOrganization();
     }
   }, [id]);
+
+  // Optimistic update for member role change
+  const updateMemberRole = (userId: string, newRole: 'admin' | 'member') => {
+    if (!organization) return;
+    setOrganization({
+      ...organization,
+      members: organization.members.map(m =>
+        m.user_id === userId ? { ...m, role: newRole } : m
+      ),
+    });
+  };
+
+  // Optimistic update for member removal
+  const removeMember = (userId: string) => {
+    if (!organization) return;
+    setOrganization({
+      ...organization,
+      members: organization.members.filter(m => m.user_id !== userId),
+    });
+  };
 
   // Build navigation items based on features and permissions
   const navItems = [
@@ -313,7 +340,7 @@ export default function OrgSettingsLayout() {
   };
 
   return (
-    <OrgSettingsContext.Provider value={{ organization, isCreator, refreshOrganization: loadOrganization }}>
+    <OrgSettingsContext.Provider value={{ organization, isCreator, refreshOrganization: () => loadOrganization(true), updateMemberRole, removeMember }}>
       <style>{hoverStyles}</style>
       <div style={styles.page}>
         <div style={styles.container}>
