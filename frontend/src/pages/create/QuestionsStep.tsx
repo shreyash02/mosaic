@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
+import { useFeature } from '../../contexts/FeaturesContext';
 import { api } from '../../services/api';
 import CustomFileInput from '../../components/CustomFileInput';
 import QuestionTypeSelector from '../../components/QuestionTypeSelector';
@@ -142,6 +143,7 @@ function SortableQuestion({ id, questionsCount, children }: SortableQuestionProp
 export default function QuestionsStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
+  const aiSuggestionsEnabled = useFeature('ai_question_suggestions');
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState<Record<number, boolean>>({});
   const [uploadResetKey, setUploadResetKey] = useState<Record<number, number>>({});
   const [showFileInput, setShowFileInput] = useState<Record<number, boolean>>({});
@@ -428,15 +430,17 @@ export default function QuestionsStep() {
         Add the questions you want to ask respondents
       </p>
 
-      {/* AI Question Suggestions */}
-      <QuestionSuggestions
-        title={formState.title}
-        description={formState.description}
-        existingQuestions={formState.questions.map(q => q.question_text).filter(Boolean)}
-        onAddQuestion={handleAddSuggestedQuestion}
-        dismissed={formState.suggestionsDismissed}
-        onDismiss={toggleSuggestionsDismissed}
-      />
+      {/* AI Question Suggestions - only shown when feature is enabled */}
+      {aiSuggestionsEnabled && (
+        <QuestionSuggestions
+          title={formState.title}
+          description={formState.description}
+          existingQuestions={formState.questions.map(q => q.question_text).filter(Boolean)}
+          onAddQuestion={handleAddSuggestedQuestion}
+          dismissed={formState.suggestionsDismissed}
+          onDismiss={toggleSuggestionsDismissed}
+        />
+      )}
 
       {/* Warning banner when no questions are required */}
       {formState.questions.length > 0 && !formState.questions.some(q => q.is_required) && (

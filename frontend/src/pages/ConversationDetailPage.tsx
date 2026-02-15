@@ -8,6 +8,7 @@ import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDat
 import ConversationPreview from '../components/ConversationPreview';
 import QRCodePoster from '../components/QRCodePoster';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import ContextualHint, { InlineHint } from '../components/ContextualHint';
 import { useOnboarding } from '../hooks/useOnboarding';
@@ -535,6 +536,7 @@ export default function ConversationDetailPage() {
   const navigate = useNavigate();
   const { currentOrgId } = useOrganization();
   const { completeStep } = useOnboarding();
+  const aiAnalysisEnabled = useFeature('ai_analysis');
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [stats, setStats] = useState<ResponseStats | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -1340,22 +1342,24 @@ export default function ConversationDetailPage() {
 
         {conversation.state === ConversationState.CLOSED && (
           <>
-            <ContextualHint
-              hintId="run-analysis"
-              message="Your responses are in! Run AI analysis to discover themes and insights."
-              position="bottom"
-              condition={(stats?.unique_participants || 0) > 0}
-              icon="lightbulb"
-              delay={800}
-            >
-              <button
-                onClick={handleAnalyze}
-                style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
-                disabled={actionLoading}
+            {aiAnalysisEnabled && (
+              <ContextualHint
+                hintId="run-analysis"
+                message="Your responses are in! Run AI analysis to discover themes and insights."
+                position="bottom"
+                condition={(stats?.unique_participants || 0) > 0}
+                icon="lightbulb"
+                delay={800}
               >
-                Run Analysis
-              </button>
-            </ContextualHint>
+                <button
+                  onClick={handleAnalyze}
+                  style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
+                  disabled={actionLoading}
+                >
+                  Run Analysis
+                </button>
+              </ContextualHint>
+            )}
             <button
               onClick={() => setShowFollowUpModal(true)}
               style={s.buttonSecondary}
@@ -1366,7 +1370,7 @@ export default function ConversationDetailPage() {
           </>
         )}
 
-        {conversation.state === ConversationState.ANALYZING && (
+        {conversation.state === ConversationState.ANALYZING && aiAnalysisEnabled && (
           <button style={merge(s.buttonPrimary, s.buttonDisabled)} disabled>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
               <path d="M21 12a9 9 0 11-6.219-8.56" />
@@ -1377,17 +1381,19 @@ export default function ConversationDetailPage() {
 
         {conversation.state === ConversationState.ANALYZED && (
           <>
-            <ContextualHint
-              hintId="analysis-complete"
-              message="AI analysis is ready! View insights, themes, and summaries from your responses."
-              position="bottom"
-              icon="lightbulb"
-              delay={500}
-            >
-              <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
-                View Analysis
-              </Link>
-            </ContextualHint>
+            {aiAnalysisEnabled && (
+              <ContextualHint
+                hintId="analysis-complete"
+                message="AI analysis is ready! View insights, themes, and summaries from your responses."
+                position="bottom"
+                icon="lightbulb"
+                delay={500}
+              >
+                <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
+                  View Analysis
+                </Link>
+              </ContextualHint>
+            )}
             <button
               onClick={() => setShowFollowUpModal(true)}
               style={s.buttonSecondary}

@@ -854,6 +854,12 @@ class ApiService {
     });
     return response.data;
   }
+
+  // Feature flags
+  async getUserFeatures(): Promise<{ features: Record<string, { enabled: boolean; config: Record<string, unknown> }> }> {
+    const response = await this.client.get<{ features: Record<string, { enabled: boolean; config: Record<string, unknown> }> }>('/auth/me/features');
+    return response.data;
+  }
 }
 
 export const api = new ApiService();

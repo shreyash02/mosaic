@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { FeaturesProvider } from './contexts/FeaturesContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConversationFormProvider } from './contexts/ConversationFormContext';
@@ -81,6 +82,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
+          <FeaturesProvider>
           <Router>
             <OrganizationProvider>
             <div className="App">
@@ -406,6 +408,7 @@ function App() {
             </div>
             </OrganizationProvider>
           </Router>
+          </FeaturesProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
