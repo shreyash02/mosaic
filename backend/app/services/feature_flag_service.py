@@ -53,9 +53,15 @@ class FeatureFlagService:
 
         return result
 
-    def _get_cache_key(self, flag_slug: str, org_id: Optional[UUID], user_id: Optional[UUID]) -> str:
+    def _get_cache_key(
+        self,
+        flag_slug: str,
+        tier: Optional[str],
+        org_id: Optional[UUID],
+        user_id: Optional[UUID]
+    ) -> str:
         """Generate cache key for a flag resolution context."""
-        return f"{flag_slug}:{org_id or 'none'}:{user_id or 'none'}"
+        return f"{flag_slug}:{tier or 'none'}:{org_id or 'none'}:{user_id or 'none'}"
 
     def _is_cache_valid(self, cache_key: str) -> bool:
         """Check if cached value is still valid."""
@@ -85,6 +91,7 @@ class FeatureFlagService:
         self,
         db: Session,
         flag_slug: str,
+        tier: Optional[str] = None,
         org_id: Optional[UUID] = None,
         user_id: Optional[UUID] = None
     ) -> EffectiveFeatureFlag:
@@ -92,12 +99,13 @@ class FeatureFlagService:
         Get the effective value of a feature flag with hierarchical override resolution.
 
         Resolution order:
-        - Personal context (no org): global -> user_override
-        - Organization context: global -> org_override -> user_within_org_override
+        - Personal context (no org): global -> tier -> user_override
+        - Organization context: global -> tier -> org_override -> user_within_org_override
 
         Args:
             db: Database session
             flag_slug: Slug of the feature flag
+            tier: Optional tier for tier-level override ('free', 'basic', 'pro', 'enterprise')
             org_id: Optional organization ID for org-level override
             user_id: Optional user ID for user-level override
 
@@ -108,7 +116,7 @@ class FeatureFlagService:
             HTTPException: If flag not found
         """
         # Check cache
-        cache_key = self._get_cache_key(flag_slug, org_id, user_id)
+        cache_key = self._get_cache_key(flag_slug, tier, org_id, user_id)
         if self._is_cache_valid(cache_key):
             return self._cache[cache_key]
 
@@ -125,14 +133,31 @@ class FeatureFlagService:
         effective_config = copy.deepcopy(flag.config or {})
         resolution_chain = ["global"]
 
+        # Apply tier override (if tier provided)
+        if tier:
+            tier_override = db.query(FeatureFlagOverride).filter(
+                FeatureFlagOverride.flag_id == flag.id,
+                FeatureFlagOverride.tier == tier,
+                FeatureFlagOverride.organization_id.is_(None),
+                FeatureFlagOverride.user_id.is_(None)
+            ).first()
+
+            if tier_override:
+                if tier_override.enabled is not None:
+                    effective_enabled = tier_override.enabled
+                if tier_override.config_override:
+                    effective_config = self._deep_merge(effective_config, tier_override.config_override)
+                resolution_chain.append(f"tier:{tier}")
+
         if org_id:
-            # Organization context: global -> org -> user_in_org
+            # Organization context: global -> tier -> org -> user_in_org
 
             # Apply organization override
             org_override = db.query(FeatureFlagOverride).filter(
                 FeatureFlagOverride.flag_id == flag.id,
                 FeatureFlagOverride.organization_id == org_id,
-                FeatureFlagOverride.user_id.is_(None)  # Org-only override
+                FeatureFlagOverride.user_id.is_(None),
+                FeatureFlagOverride.tier.is_(None)  # Org-only override (not tier-level)
             ).first()
 
             if org_override:
@@ -147,7 +172,8 @@ class FeatureFlagService:
                 user_org_override = db.query(FeatureFlagOverride).filter(
                     FeatureFlagOverride.flag_id == flag.id,
                     FeatureFlagOverride.organization_id == org_id,
-                    FeatureFlagOverride.user_id == user_id
+                    FeatureFlagOverride.user_id == user_id,
+                    FeatureFlagOverride.tier.is_(None)
                 ).first()
 
                 if user_org_override:
@@ -158,11 +184,12 @@ class FeatureFlagService:
                     resolution_chain.append(f"user:{user_id}@org:{org_id}")
 
         elif user_id:
-            # Personal context (no org): global -> user
+            # Personal context (no org): global -> tier -> user
             user_override = db.query(FeatureFlagOverride).filter(
                 FeatureFlagOverride.flag_id == flag.id,
                 FeatureFlagOverride.user_id == user_id,
-                FeatureFlagOverride.organization_id.is_(None)  # User-only override
+                FeatureFlagOverride.organization_id.is_(None),
+                FeatureFlagOverride.tier.is_(None)  # User-only override (not tier-level)
             ).first()
 
             if user_override:
@@ -190,6 +217,7 @@ class FeatureFlagService:
         self,
         db: Session,
         flag_slug: str,
+        tier: Optional[str] = None,
         org_id: Optional[UUID] = None,
         user_id: Optional[UUID] = None
     ) -> bool:
@@ -199,6 +227,7 @@ class FeatureFlagService:
         Args:
             db: Database session
             flag_slug: Slug of the feature flag
+            tier: Optional tier for tier-level override
             org_id: Optional organization ID
             user_id: Optional user ID
 
@@ -206,7 +235,7 @@ class FeatureFlagService:
             True if flag is enabled, False otherwise (including if flag doesn't exist)
         """
         try:
-            flag = self.get_flag(db, flag_slug, org_id, user_id)
+            flag = self.get_flag(db, flag_slug, tier=tier, org_id=org_id, user_id=user_id)
             return flag.enabled
         except HTTPException:
             return False
@@ -216,6 +245,7 @@ class FeatureFlagService:
         db: Session,
         flag_slug: str,
         config_key: str,
+        tier: Optional[str] = None,
         org_id: Optional[UUID] = None,
         user_id: Optional[UUID] = None,
         default: Any = None
@@ -227,6 +257,7 @@ class FeatureFlagService:
             db: Database session
             flag_slug: Slug of the feature flag
             config_key: Key within the config dict (supports dot notation for nested)
+            tier: Optional tier for tier-level override
             org_id: Optional organization ID
             user_id: Optional user ID
             default: Default value if key not found
@@ -235,7 +266,7 @@ class FeatureFlagService:
             Config value or default
         """
         try:
-            flag = self.get_flag(db, flag_slug, org_id, user_id)
+            flag = self.get_flag(db, flag_slug, tier=tier, org_id=org_id, user_id=user_id)
 
             # Support dot notation for nested keys
             keys = config_key.split('.')
@@ -423,6 +454,7 @@ class FeatureFlagService:
         self,
         db: Session,
         flag_slug: str,
+        tier: Optional[str] = None,
         org_id: Optional[UUID] = None,
         user_id: Optional[UUID] = None,
         enabled: Optional[bool] = None,
@@ -434,6 +466,7 @@ class FeatureFlagService:
         Args:
             db: Database session
             flag_slug: Slug of the feature flag
+            tier: Tier for tier-level override ('free', 'basic', 'pro', 'enterprise')
             org_id: Organization ID (for org-level or user-in-org override)
             user_id: User ID (for user-level or user-in-org override)
             enabled: Override enabled state (None = inherit)
@@ -442,10 +475,10 @@ class FeatureFlagService:
         Returns:
             Created or updated override
         """
-        if org_id is None and user_id is None:
+        if tier is None and org_id is None and user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Must provide at least organization_id or user_id"
+                detail="Must provide at least tier, organization_id, or user_id"
             )
 
         # Get the flag
@@ -460,6 +493,11 @@ class FeatureFlagService:
         query = db.query(FeatureFlagOverride).filter(
             FeatureFlagOverride.flag_id == flag.id
         )
+
+        if tier is not None:
+            query = query.filter(FeatureFlagOverride.tier == tier)
+        else:
+            query = query.filter(FeatureFlagOverride.tier.is_(None))
 
         if org_id is not None:
             query = query.filter(FeatureFlagOverride.organization_id == org_id)
@@ -481,6 +519,7 @@ class FeatureFlagService:
             # Create new
             override = FeatureFlagOverride(
                 flag_id=flag.id,
+                tier=tier,
                 organization_id=org_id,
                 user_id=user_id,
                 enabled=enabled,
@@ -500,6 +539,7 @@ class FeatureFlagService:
         self,
         db: Session,
         flag_slug: str,
+        tier: Optional[str] = None,
         org_id: Optional[UUID] = None,
         user_id: Optional[UUID] = None
     ) -> bool:
@@ -509,6 +549,7 @@ class FeatureFlagService:
         Args:
             db: Database session
             flag_slug: Slug of the feature flag
+            tier: Tier for tier-level override
             org_id: Organization ID
             user_id: User ID
 
@@ -525,6 +566,11 @@ class FeatureFlagService:
         query = db.query(FeatureFlagOverride).filter(
             FeatureFlagOverride.flag_id == flag.id
         )
+
+        if tier is not None:
+            query = query.filter(FeatureFlagOverride.tier == tier)
+        else:
+            query = query.filter(FeatureFlagOverride.tier.is_(None))
 
         if org_id is not None:
             query = query.filter(FeatureFlagOverride.organization_id == org_id)

@@ -981,7 +981,6 @@ export default function JoinPage() {
                       question_id: q.id,
                       response_text: q.question_type === 'text' ? '' : undefined,
                       response_data: q.question_type !== 'text' ? (
-                        q.question_type === 'rating' ? { rating: 5 } :
                         q.question_type === 'multiple_choice' ? { selected: [] } :
                         {}
                       ) : undefined,
@@ -1008,7 +1007,6 @@ export default function JoinPage() {
             question_id: q.id,
             response_text: q.question_type === 'text' ? '' : undefined,
             response_data: q.question_type !== 'text' ? (
-              q.question_type === 'rating' ? { rating: 5 } :
               q.question_type === 'multiple_choice' ? { selected: [] } :
               {}
             ) : undefined,
@@ -1808,7 +1806,7 @@ export default function JoinPage() {
                         min={question.options?.min || 0}
                         max={question.options?.max || 10}
                         step={question.options?.step || 1}
-                        value={response?.response_data?.rating ?? 5}
+                        value={response?.response_data?.rating ?? null}
                         onChange={(rating) => updateRatingResponse(question.id, rating)}
                         minLabel={question.options?.min_label}
                         maxLabel={question.options?.max_label}

@@ -238,29 +238,82 @@ async def get_current_user_info(
 @router.get("/me/features")
 async def get_user_features(
     current_user: User = Depends(get_current_user),
+    org_id: str = Query(None, description="Optional organization ID for org context"),
     db: Session = Depends(get_db),
 ):
     """
     Get feature flags for the current user.
 
-    Returns all feature flags with their effective enabled state and config
-    for the current user's context (personal, not org-specific).
+    Returns all feature flags with their effective enabled state, config,
+    and usage for the current user's context.
+
+    If org_id is provided, returns features in the context of that organization
+    (using org's subscription tier and shared usage pool).
     """
+    from uuid import UUID as PyUUID
+    from app.models.organization import OrganizationMember
     from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+    from app.services.usage_service import usage_service
+
+    # Parse org_id if provided
+    parsed_org_id = None
+    if org_id:
+        try:
+            parsed_org_id = PyUUID(org_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid organization ID format"
+            )
+
+        # SECURITY: Validate user is a member of the org
+        membership = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == parsed_org_id,
+            OrganizationMember.user_id == current_user.id
+        ).first()
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not a member of this organization"
+            )
+
+    # Get tier based on context
+    tier = subscription_service.get_tier(
+        db,
+        user_id=current_user.id,
+        org_id=parsed_org_id
+    )
 
     all_flags = feature_flag_service.list_all_flags(db)
     features = {}
 
     for flag in all_flags:
         effective = feature_flag_service.get_flag(
-            db, flag.slug, user_id=current_user.id
+            db, flag.slug,
+            tier=tier,
+            org_id=parsed_org_id,
+            user_id=current_user.id
         )
+
+        # Get usage for config keys that look like limits
+        usage = {}
+        for key in effective.config:
+            if key.endswith('_per_month') or key.endswith('_limit'):
+                # Track usage at org level if org context, else personal
+                usage[key] = usage_service.get_usage(
+                    db, flag.slug,
+                    user_id=current_user.id if not parsed_org_id else None,
+                    org_id=parsed_org_id
+                )
+
         features[flag.slug] = {
             "enabled": effective.enabled,
             "config": effective.config,
+            "usage": usage,
         }
 
-    return {"features": features}
+    return {"features": features, "tier": tier}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

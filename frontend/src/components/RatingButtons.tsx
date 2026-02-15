@@ -4,7 +4,7 @@ interface RatingButtonsProps {
   min: number;
   max: number;
   step: number;
-  value: number;
+  value: number | null;
   onChange: (value: number) => void;
   showLabels?: boolean;
   minLabel?: string;
@@ -114,7 +114,11 @@ export default function RatingButtons({
       )}
 
       <div style={styles.selectedValue}>
-        Selected: <strong>{value}</strong>
+        {value !== null ? (
+          <>Selected: <strong>{value}</strong></>
+        ) : (
+          <span style={{ color: 'var(--color-primary-400)' }}>Tap to select a rating</span>
+        )}
       </div>
     </div>
   );

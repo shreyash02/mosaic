@@ -16,7 +16,8 @@ from app.models.continuous_trends import ContinuousTrends
 from app.models.conversation_reminder import ConversationReminder
 from app.models.conversation_announcement import ConversationAnnouncement
 from app.models.scheduler_job_log import SchedulerJobLog
-from app.models.feature_flag import FeatureFlag, FeatureFlagOverride
+from app.models.feature_flag import FeatureFlag, FeatureFlagOverride, FeatureUsage
+from app.models.subscription import Subscription
 
 __all__ = [
     "User",
@@ -38,4 +39,6 @@ __all__ = [
     "SchedulerJobLog",
     "FeatureFlag",
     "FeatureFlagOverride",
+    "FeatureUsage",
+    "Subscription",
 ]

@@ -356,7 +356,7 @@ export default function MobileQuestionCarousel({
               min={question.options?.min || 0}
               max={question.options?.max || 10}
               step={question.options?.step || 1}
-              value={response?.response_data?.rating ?? 5}
+              value={response?.response_data?.rating ?? null}
               onChange={(rating) => onUpdateRatingResponse(question.id, rating)}
               minLabel={question.options?.min_label}
               maxLabel={question.options?.max_label}

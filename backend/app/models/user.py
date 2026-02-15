@@ -45,6 +45,7 @@ class User(Base):
     organization_memberships = relationship("OrganizationMember", back_populates="user", cascade="all, delete-orphan")
     responses = relationship("Response", back_populates="participant", cascade="all, delete-orphan")
     series = relationship("Series", back_populates="creator", cascade="all, delete-orphan")
+    subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"
