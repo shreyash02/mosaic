@@ -97,7 +97,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
     >
       <div
         style={{
-          backgroundColor: 'var(--color-bg-primary)',
+          backgroundColor: 'var(--color-primary-50)',
           borderRadius: borders.radius.lg,
           padding: spacing[6],
           maxWidth: '500px',
@@ -141,8 +141,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 border: `1px solid var(--color-primary-300)`,
                 borderRadius: borders.radius.md,
                 fontSize: typography.fontSize.base,
-                backgroundColor: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)',
+                backgroundColor: 'var(--color-primary-100)',
+                color: 'var(--color-primary-900)',
               }}
             />
           </div>
@@ -169,8 +169,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 border: `1px solid var(--color-primary-300)`,
                 borderRadius: borders.radius.md,
                 fontSize: typography.fontSize.base,
-                backgroundColor: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)',
+                backgroundColor: 'var(--color-primary-100)',
+                color: 'var(--color-primary-900)',
               }}
             />
           </div>
@@ -205,8 +205,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                         ? '2px solid var(--color-primary-600)'
                         : '1px solid var(--color-primary-300)',
                       borderRadius: borders.radius.md,
-                      backgroundColor: icon === opt.id ? 'var(--color-primary-100)' : 'var(--color-bg-secondary)',
-                      color: icon === opt.id ? 'var(--color-primary-700)' : 'var(--color-text-secondary)',
+                      backgroundColor: icon === opt.id ? 'var(--color-primary-200)' : 'var(--color-primary-100)',
+                      color: icon === opt.id ? 'var(--color-primary-800)' : 'var(--color-primary-600)',
                       cursor: 'pointer',
                     }}
                   >
@@ -277,7 +277,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 checked={showVerbatimResponses}
                 onChange={e => setShowVerbatimResponses(e.target.checked)}
               />
-              <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-800)' }}>
                 Show verbatim responses in analysis
               </span>
             </label>
@@ -292,7 +292,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 checked={inviteOnly}
                 onChange={e => setInviteOnly(e.target.checked)}
               />
-              <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-800)' }}>
                 Invite-only (require invitation to respond)
               </span>
             </label>
@@ -312,8 +312,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 padding: `${spacing[2]} ${spacing[4]}`,
                 border: '1px solid var(--color-primary-300)',
                 borderRadius: borders.radius.md,
-                backgroundColor: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)',
+                backgroundColor: 'var(--color-primary-100)',
+                color: 'var(--color-primary-900)',
                 fontSize: typography.fontSize.sm,
                 cursor: 'pointer',
               }}
@@ -328,7 +328,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 border: 'none',
                 borderRadius: borders.radius.md,
                 backgroundColor: 'var(--color-primary-600)',
-                color: 'white',
+                color: 'var(--color-primary-50)',
                 fontSize: typography.fontSize.sm,
                 fontWeight: typography.fontWeight.medium,
                 cursor: saving ? 'not-allowed' : 'pointer',
