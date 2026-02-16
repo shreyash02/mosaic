@@ -362,6 +362,8 @@ class CollectionAnalysisService:
             prompt_parts.append("")
 
         prompt_parts.append("Provide a concise 2-3 sentence summary that synthesizes these insights and highlights the most important patterns and themes across this collection. Use plural language and refer to the collection as a whole, not individual conversations.")
+        prompt_parts.append("")
+        prompt_parts.append("IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #).")
 
         prompt = "\n".join(prompt_parts)
 

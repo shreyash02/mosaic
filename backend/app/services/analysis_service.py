@@ -360,7 +360,9 @@ Total responses across all questions: {total_responses}
 Question summaries:
 {chr(10).join(summaries)}
 
-Provide a concise, actionable summary of what these responses reveal about the overall feedback."""
+Provide a concise, actionable summary of what these responses reveal about the overall feedback.
+
+IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #)."""
 
         try:
             message = self.anthropic_client.messages.create(
@@ -642,7 +644,9 @@ Total responses: {len(all_texts)}
 Main themes identified:
 {chr(10).join(theme_descriptions)}
 
-Provide a concise, actionable summary of what these responses reveal."""
+Provide a concise, actionable summary of what these responses reveal.
+
+IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #)."""
 
         message = self.anthropic_client.messages.create(
             model=self.llm_model,
@@ -676,7 +680,9 @@ Responses:
 {chr(10).join(f"- {text}" for text in sample_texts)}
 {"..." if len(texts) > 10 else ""}
 
-Provide a concise summary of the key feedback."""
+Provide a concise summary of the key feedback.
+
+IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #)."""
 
         message = self.anthropic_client.messages.create(
             model=self.llm_model,
