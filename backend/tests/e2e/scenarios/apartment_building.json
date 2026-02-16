@@ -1,0 +1,230 @@
+{
+  "name": "apartment_building",
+  "title": "Resident Satisfaction Survey - Maple Heights",
+  "description": "Annual survey to understand resident satisfaction and priorities for building improvements",
+  "questions": [
+    {
+      "question_text": "What do you like most about living at Maple Heights?",
+      "question_type": "text",
+      "question_order": 0,
+      "is_required": true,
+      "options": null
+    },
+    {
+      "question_text": "How satisfied are you with the building overall?",
+      "question_type": "rating",
+      "question_order": 1,
+      "is_required": true,
+      "options": {"min": 1, "max": 10}
+    },
+    {
+      "question_text": "How long have you lived here?",
+      "question_type": "single_choice",
+      "question_order": 2,
+      "is_required": true,
+      "options": {
+        "choices": [
+          {"id": "dur-under1", "label": "Less than 1 year"},
+          {"id": "dur-1to3", "label": "1-3 years"},
+          {"id": "dur-3to5", "label": "3-5 years"},
+          {"id": "dur-over5", "label": "More than 5 years"}
+        ]
+      }
+    },
+    {
+      "question_text": "What are the biggest issues that need to be addressed?",
+      "question_type": "text",
+      "question_order": 3,
+      "is_required": true,
+      "options": null
+    },
+    {
+      "question_text": "Would you recommend Maple Heights to a friend?",
+      "question_type": "single_choice",
+      "question_order": 4,
+      "is_required": true,
+      "options": {
+        "choices": [
+          {"id": "rec-def-yes", "label": "Definitely yes"},
+          {"id": "rec-prob-yes", "label": "Probably yes"},
+          {"id": "rec-not-sure", "label": "Not sure"},
+          {"id": "rec-prob-no", "label": "Probably not"}
+        ]
+      }
+    },
+    {
+      "question_text": "Which amenities do you use regularly?",
+      "question_type": "multiple_choice",
+      "question_order": 5,
+      "is_required": false,
+      "options": {
+        "choices": [
+          {"id": "am-gym", "label": "Fitness center"},
+          {"id": "am-pool", "label": "Swimming pool"},
+          {"id": "am-lounge", "label": "Resident lounge"},
+          {"id": "am-laundry", "label": "Laundry facilities"},
+          {"id": "am-parking", "label": "Parking garage"},
+          {"id": "am-rooftop", "label": "Rooftop terrace"}
+        ]
+      }
+    },
+    {
+      "question_text": "What would make Maple Heights an even better place to live?",
+      "question_type": "text",
+      "question_order": 6,
+      "is_required": false,
+      "options": null
+    }
+  ],
+  "responses": [
+    {
+      "answers": {
+        "0": {"response_text": "The location is unbeatable. Walking distance to the subway, grocery stores, and several great restaurants. I can get anywhere in the city within 30 minutes."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "dur-1to3"}},
+        "3": {"response_text": "The elevator breaks down at least twice a month. For a 15-story building, this is unacceptable. Last week I had to walk up 12 flights with groceries."},
+        "4": {"response_data": {"selected": "rec-prob-yes"}},
+        "5": {"response_data": {"selected": ["am-gym", "am-parking", "am-laundry"]}},
+        "6": {"response_text": "Package room gets overwhelmed during holidays, needs a better system"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The neighbors are wonderful. We have an active community chat and organize game nights, holiday parties, and even a book club. It feels like a real community, not just an apartment building."},
+        "1": {"response_data": {"rating": 9}},
+        "2": {"response_data": {"selected": "dur-3to5"}},
+        "3": {"response_text": "Noise insulation between units is terrible. I can hear my upstairs neighbor's conversations clearly. The walls are paper thin and it affects my sleep and work-from-home experience."},
+        "4": {"response_data": {"selected": "rec-def-yes"}},
+        "5": {"response_data": {"selected": ["am-lounge", "am-rooftop", "am-gym"]}},
+        "6": {"response_text": "More community events organized by management would be great"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The apartment layouts are thoughtful and spacious for the price point. High ceilings, large windows with great natural light, and the in-unit washer/dryer is a huge plus."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "dur-under1"}},
+        "3": {"response_text": "The gym equipment is outdated and some machines have been broken for months. The treadmill display hasn't worked since I moved in. Management keeps saying it's being fixed."},
+        "4": {"response_data": {"selected": "rec-prob-yes"}},
+        "5": {"response_data": {"selected": ["am-gym", "am-pool", "am-laundry"]}},
+        "6": {"response_text": "Better gym equipment and a yoga/stretching room would be amazing"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "How convenient everything is. The building has a gym, pool, laundry, and the rooftop terrace. Plus the transit access means I don't need a car. It simplifies my life enormously."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "dur-1to3"}},
+        "3": {"response_text": "Elevator reliability is a serious problem. It's not just inconvenient - it's a safety issue for elderly residents and those with disabilities. This should be the top priority."},
+        "4": {"response_data": {"selected": "rec-not-sure"}},
+        "5": {"response_data": {"selected": ["am-pool", "am-rooftop", "am-parking"]}},
+        "6": {"response_text": "A co-working space with reliable wifi would be perfect for remote workers"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The sense of community. The building events, the friendly doorstaff, the way people hold the elevator for each other. There's a warmth here you don't find in most apartment buildings."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "dur-over5"}},
+        "3": {"response_text": "Sound insulation needs major improvement. I work from home and conference calls are constantly interrupted by neighbors' music and construction noise from above."},
+        "4": {"response_data": {"selected": "rec-def-yes"}},
+        "5": {"response_data": {"selected": ["am-lounge", "am-gym", "am-rooftop"]}},
+        "6": {"response_text": "Would love a small dog park or pet area in the building"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The transit access is phenomenal. Two subway lines within a 5-minute walk, plus several bus routes. My commute went from 45 minutes to 15 when I moved here."},
+        "1": {"response_data": {"rating": 6}},
+        "2": {"response_data": {"selected": "dur-1to3"}},
+        "3": {"response_text": "The heating and cooling system is unreliable. My apartment is either freezing or boiling. Management controls the thermostat centrally and doesn't adjust it based on actual conditions."},
+        "4": {"response_data": {"selected": "rec-not-sure"}},
+        "5": {"response_data": {"selected": ["am-laundry", "am-parking"]}},
+        "6": {"response_text": "Individual unit thermostats would solve the biggest daily frustration"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The building's architecture and common areas are beautiful. The lobby feels like a boutique hotel, and the rooftop views of the skyline are spectacular, especially at sunset."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "dur-under1"}},
+        "3": {"response_text": "The gym is embarrassing for a building at this price point. Half the machines are broken, there are no free weights above 50lbs, and it's too small for the number of residents."},
+        "4": {"response_data": {"selected": "rec-prob-yes"}},
+        "5": {"response_data": {"selected": ["am-rooftop", "am-gym", "am-pool"]}},
+        "6": null
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The community vibe. People actually know each other's names here. The resident lounge is always buzzing with activity - people studying, chatting, playing board games. It's genuinely social."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "dur-3to5"}},
+        "3": {"response_text": "Noise between units is the number one issue. I've had to buy a white noise machine and noise-canceling headphones just to sleep. The building should invest in soundproofing."},
+        "4": {"response_data": {"selected": "rec-def-yes"}},
+        "5": {"response_data": {"selected": ["am-lounge", "am-rooftop", "am-laundry"]}},
+        "6": {"response_text": "A quiet study room separate from the lounge would be helpful"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The space and layout of the units. Compared to other buildings in this area at similar prices, you get much more square footage. The closet space is especially generous."},
+        "1": {"response_data": {"rating": 5}},
+        "2": {"response_data": {"selected": "dur-1to3"}},
+        "3": {"response_text": "The elevator situation is dire. Both elevators were out simultaneously last month. Residents on upper floors were essentially trapped. There needs to be a proper maintenance schedule."},
+        "4": {"response_data": {"selected": "rec-prob-no"}},
+        "5": {"response_data": {"selected": ["am-laundry", "am-parking"]}},
+        "6": {"response_text": "Fix the basics before adding new amenities"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Location, location, location. Being in the heart of the neighborhood with cafes, parks, and shops all walkable. Weekend mornings at the farmers market two blocks away are my favorite."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "dur-1to3"}},
+        "3": {"response_text": "The HVAC system is a joke. In winter some units roast while others freeze. My bedroom is 10 degrees warmer than my living room. Central control doesn't work for a building this size."},
+        "4": {"response_data": {"selected": "rec-prob-yes"}},
+        "5": {"response_data": {"selected": ["am-gym", "am-pool", "am-rooftop"]}},
+        "6": {"response_text": "Bike storage in the garage would be very useful"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "I appreciate the friendly and responsive maintenance staff. When something breaks in my unit, they're usually there within a day. Ray and the team are genuinely helpful."},
+        "1": {"response_data": {"rating": 6}},
+        "2": {"response_data": {"selected": "dur-over5"}},
+        "3": {"response_text": "The sound issues are driving long-term residents away. Three neighbors on my floor have moved out citing noise. Double-glazed windows and floor insulation would make a massive difference."},
+        "4": {"response_data": {"selected": "rec-not-sure"}},
+        "5": {"response_data": {"selected": ["am-laundry", "am-lounge"]}},
+        "6": {"response_text": "Management should survey residents more often like this"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The pool and rooftop are amazing during summer. Having a pool in the city is such a luxury. The rooftop BBQ area has been perfect for hosting friends and family."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "dur-3to5"}},
+        "3": {"response_text": "Gym needs a complete overhaul. The cardio machines are from 2015 and barely functional. No power rack for serious lifting. It's the weakest amenity by far."},
+        "4": {"response_data": {"selected": "rec-def-yes"}},
+        "5": {"response_data": {"selected": ["am-pool", "am-rooftop", "am-gym"]}},
+        "6": {"response_text": "Extended pool hours on weekends would be fantastic"}
+      }
+    }
+  ],
+  "expected": {
+    "response_count": 12,
+    "rating_averages": {
+      "1": 7.166666666666667
+    },
+    "single_choice_counts": {
+      "2": {"Less than 1 year": 2, "1-3 years": 5, "3-5 years": 3, "More than 5 years": 2},
+      "4": {"Definitely yes": 4, "Probably yes": 4, "Not sure": 3, "Probably not": 1}
+    },
+    "multi_choice_counts": {
+      "5": {"Fitness center": 7, "Swimming pool": 5, "Resident lounge": 4, "Laundry facilities": 6, "Parking garage": 4, "Rooftop terrace": 7}
+    },
+    "text_themes": {
+      "0": ["Location and transit access", "Community and social atmosphere", "Space quality and amenities"],
+      "3": ["Elevator reliability and safety", "Noise and sound insulation", "Gym equipment quality", "HVAC and temperature control"]
+    }
+  }
+}

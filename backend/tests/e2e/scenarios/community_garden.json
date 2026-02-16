@@ -1,0 +1,196 @@
+{
+  "name": "community_garden",
+  "title": "Community Garden Feedback",
+  "description": "Help us improve the community garden experience for everyone",
+  "questions": [
+    {
+      "question_text": "What do you enjoy most about the community garden?",
+      "question_type": "text",
+      "question_order": 0,
+      "is_required": true,
+      "options": null
+    },
+    {
+      "question_text": "How satisfied are you with the garden overall?",
+      "question_type": "rating",
+      "question_order": 1,
+      "is_required": true,
+      "options": {"min": 1, "max": 10}
+    },
+    {
+      "question_text": "How often do you visit the garden?",
+      "question_type": "single_choice",
+      "question_order": 2,
+      "is_required": true,
+      "options": {
+        "choices": [
+          {"id": "sc-daily", "label": "Daily"},
+          {"id": "sc-weekly", "label": "Weekly"},
+          {"id": "sc-monthly", "label": "Monthly"},
+          {"id": "sc-rarely", "label": "Rarely"}
+        ]
+      }
+    },
+    {
+      "question_text": "What improvements would you suggest?",
+      "question_type": "text",
+      "question_order": 3,
+      "is_required": true,
+      "options": null
+    },
+    {
+      "question_text": "Which areas of the garden do you use?",
+      "question_type": "multiple_choice",
+      "question_order": 4,
+      "is_required": false,
+      "options": {
+        "choices": [
+          {"id": "mc-veg", "label": "Vegetable plots"},
+          {"id": "mc-flower", "label": "Flower beds"},
+          {"id": "mc-seat", "label": "Seating area"},
+          {"id": "mc-tool", "label": "Tool shed"},
+          {"id": "mc-compost", "label": "Composting area"}
+        ]
+      }
+    },
+    {
+      "question_text": "How well-maintained is the garden?",
+      "question_type": "rating",
+      "question_order": 5,
+      "is_required": true,
+      "options": {"min": 1, "max": 10}
+    },
+    {
+      "question_text": "Any other thoughts or suggestions?",
+      "question_type": "text",
+      "question_order": 6,
+      "is_required": false,
+      "options": null
+    }
+  ],
+  "responses": [
+    {
+      "answers": {
+        "0": {"response_text": "I love the sense of community. Meeting my neighbors while tending plots has been wonderful. We share tips, seeds, and even recipes from what we grow."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "sc-weekly"}},
+        "3": {"response_text": "We need more water spigots. The single hose connection means long waits during peak hours. A drip irrigation system would be ideal."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-flower", "mc-seat"]}},
+        "5": {"response_data": {"rating": 7}},
+        "6": {"response_text": "Love the monthly potluck tradition!"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The peace and quiet. It's a sanctuary from the noise of the city. Just sitting among the flowers and listening to birds is incredibly calming."},
+        "1": {"response_data": {"rating": 9}},
+        "2": {"response_data": {"selected": "sc-weekly"}},
+        "3": {"response_text": "Better communication about work days and events. A shared calendar or message board at the entrance would help everyone stay informed."},
+        "4": {"response_data": {"selected": ["mc-flower", "mc-seat"]}},
+        "5": {"response_data": {"rating": 8}}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Learning to grow my own vegetables has been transformative. I had zero gardening experience and now I'm growing tomatoes, peppers, and herbs successfully."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "sc-daily"}},
+        "3": {"response_text": "Install a rainwater collection system. It would be environmentally friendly and reduce our water bill. Also, more accessible water points throughout the garden."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-compost", "mc-tool"]}},
+        "5": {"response_data": {"rating": 6}},
+        "6": {"response_text": "Would love beginner gardening workshops"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The friendships I've made. My plot neighbors have become some of my closest friends. The garden creates a real sense of belonging in what can feel like an impersonal city."},
+        "1": {"response_data": {"rating": 9}},
+        "2": {"response_data": {"selected": "sc-weekly"}},
+        "3": {"response_text": "More shaded seating areas. During summer it gets too hot to rest between tasks. Some benches under trees or a pergola would be fantastic."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-seat", "mc-flower"]}},
+        "5": {"response_data": {"rating": 7}}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Being outdoors and connecting with nature. Watching seeds I planted turn into actual plants feels almost magical. The garden is my therapy."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "sc-weekly"}},
+        "3": {"response_text": "The watering situation needs improvement. Sometimes the hose doesn't reach my plot and I have to carry heavy watering cans back and forth."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-flower", "mc-seat", "mc-compost"]}},
+        "5": {"response_data": {"rating": 5}},
+        "6": {"response_text": "The butterfly garden section is beautiful"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The educational aspect. I've learned about composting, companion planting, and seasonal growing. The knowledge-sharing culture here is amazing."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "sc-monthly"}},
+        "3": {"response_text": "We need a better system for coordinating shared tool usage. Maybe a sign-out sheet or online booking for the rototiller and other expensive equipment."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-tool", "mc-compost"]}},
+        "5": {"response_data": {"rating": 6}},
+        "6": {"response_text": "The seed library is a great addition"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Sharing the harvest with my neighbors and seeing children learn where food comes from. The intergenerational connections in this garden are truly special."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "sc-daily"}},
+        "3": {"response_text": "Add more benches and maybe a small covered pavilion for gatherings. We often want to sit and chat but there's nowhere comfortable."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-seat"]}},
+        "5": {"response_data": {"rating": 7}},
+        "6": {"response_text": "The kids' plot is such a wonderful idea"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The natural beauty. Watching the seasons change through the garden is meditative. Spring blossoms, summer abundance, autumn colors - each visit feels renewing."},
+        "1": {"response_data": {"rating": 6}},
+        "2": {"response_data": {"selected": "sc-weekly"}},
+        "3": {"response_text": "More water access points please. Also the existing spigot sometimes has very low pressure, making watering time-consuming."},
+        "4": {"response_data": {"selected": ["mc-flower", "mc-seat", "mc-veg"]}},
+        "5": {"response_data": {"rating": 5}}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Discovering the science of growing food. Understanding soil pH, nutrient cycles, and pest management has been like taking a free university course."},
+        "1": {"response_data": {"rating": 5}},
+        "2": {"response_data": {"selected": "sc-monthly"}},
+        "3": {"response_text": "Communication could be much better. I often miss important announcements about plot assignments and seasonal cleanups. An email list or app would help."},
+        "4": {"response_data": {"selected": ["mc-veg", "mc-tool", "mc-compost"]}},
+        "5": {"response_data": {"rating": 4}},
+        "6": {"response_text": "Would appreciate a mentorship program for new gardeners"}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The camaraderie. Everyone helps each other out - sharing surplus produce, lending tools, giving advice. It truly feels like a village within the city."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "sc-rarely"}},
+        "3": {"response_text": "Better shade structures and comfortable seating. Also a covered area for rainy days when dedicated gardeners still want to work."},
+        "4": {"response_data": {"selected": ["mc-seat", "mc-veg", "mc-flower"]}},
+        "5": {"response_data": {"rating": 6}}
+      }
+    }
+  ],
+  "expected": {
+    "response_count": 10,
+    "rating_averages": {
+      "1": 7.4,
+      "5": 6.1
+    },
+    "single_choice_counts": {
+      "2": {"Daily": 2, "Weekly": 5, "Monthly": 2, "Rarely": 1}
+    },
+    "multi_choice_counts": {
+      "4": {"Vegetable plots": 9, "Flower beds": 6, "Seating area": 7, "Tool shed": 3, "Composting area": 4}
+    },
+    "text_themes": {
+      "0": ["Community and social connection", "Nature and relaxation", "Growing food and learning"],
+      "3": ["Water access and infrastructure", "Better communication and scheduling", "More seating and shade"]
+    }
+  }
+}

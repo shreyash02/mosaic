@@ -114,6 +114,42 @@ def api_client() -> APIClient:
 
 
 @pytest.fixture
+def verified_authenticated_client() -> Generator[APIClient, None, None]:
+    """Provide an authenticated API client with a verified email.
+
+    Some operations (e.g. activating conversations) require email_verified=True.
+    This fixture registers a user and directly updates the DB to verify their email.
+    """
+    client = APIClient()
+
+    unique_id = uuid.uuid4().hex[:8]
+    email = f"test_analysis_{unique_id}@example.com"
+    password = "testpassword123"
+    full_name = f"Analysis Tester {unique_id}"
+
+    assert client.register(email, password, full_name), "Failed to register test user"
+    assert client.login(email, password), "Failed to login test user"
+
+    # Directly verify email in DB (no verification email in test env)
+    try:
+        from app.core.config import settings
+        from sqlalchemy import create_engine, text as sa_text
+
+        engine = create_engine(settings.DATABASE_URL)
+        with engine.connect() as conn:
+            conn.execute(
+                sa_text("UPDATE users SET email_verified = true WHERE email = :email"),
+                {"email": email}
+            )
+            conn.commit()
+        engine.dispose()
+    except Exception as e:
+        pytest.skip(f"Could not verify email via DB: {e}")
+
+    yield client
+
+
+@pytest.fixture
 def authenticated_client() -> Generator[APIClient, None, None]:
     """Provide an authenticated API client with a unique test user."""
     client = APIClient()

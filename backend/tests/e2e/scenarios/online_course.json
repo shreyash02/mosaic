@@ -1,0 +1,183 @@
+{
+  "name": "online_course",
+  "title": "Introduction to Data Science - Course Feedback",
+  "description": "Share your experience with the course to help us improve future offerings",
+  "questions": [
+    {
+      "question_text": "What aspects of the course were most valuable to you?",
+      "question_type": "text",
+      "question_order": 0,
+      "is_required": true,
+      "options": null
+    },
+    {
+      "question_text": "How would you rate the overall course quality?",
+      "question_type": "rating",
+      "question_order": 1,
+      "is_required": true,
+      "options": {"min": 1, "max": 10}
+    },
+    {
+      "question_text": "How would you rate the pace of the course?",
+      "question_type": "single_choice",
+      "question_order": 2,
+      "is_required": true,
+      "options": {
+        "choices": [
+          {"id": "pace-slow", "label": "Too slow"},
+          {"id": "pace-right", "label": "Just right"},
+          {"id": "pace-fast", "label": "Too fast"},
+          {"id": "pace-uneven", "label": "Uneven pacing"}
+        ]
+      }
+    },
+    {
+      "question_text": "How would you rate the instructor's effectiveness?",
+      "question_type": "rating",
+      "question_order": 3,
+      "is_required": true,
+      "options": {"min": 1, "max": 10}
+    },
+    {
+      "question_text": "Which course components did you find most useful?",
+      "question_type": "multiple_choice",
+      "question_order": 4,
+      "is_required": true,
+      "options": {
+        "choices": [
+          {"id": "comp-lectures", "label": "Video lectures"},
+          {"id": "comp-exercises", "label": "Hands-on exercises"},
+          {"id": "comp-quizzes", "label": "Quizzes and assessments"},
+          {"id": "comp-project", "label": "Final project"},
+          {"id": "comp-community", "label": "Discussion forums"}
+        ]
+      }
+    },
+    {
+      "question_text": "What could be improved about the course?",
+      "question_type": "text",
+      "question_order": 5,
+      "is_required": true,
+      "options": null
+    }
+  ],
+  "responses": [
+    {
+      "answers": {
+        "0": {"response_text": "The hands-on exercises were incredible. Working with real datasets gave me practical skills I could immediately apply at work. The Jupyter notebook walkthroughs were especially helpful."},
+        "1": {"response_data": {"rating": 9}},
+        "2": {"response_data": {"selected": "pace-right"}},
+        "3": {"response_data": {"rating": 8}},
+        "4": {"response_data": {"selected": ["comp-exercises", "comp-project", "comp-lectures"]}},
+        "5": {"response_text": "More advanced topics toward the end. The course felt like it ended just as things were getting interesting. Would love a Part 2 covering deep learning."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The instructor's clear explanations of complex statistical concepts. They have a real talent for making abstract ideas concrete with everyday examples and analogies."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "pace-right"}},
+        "3": {"response_data": {"rating": 9}},
+        "4": {"response_data": {"selected": ["comp-lectures", "comp-exercises"]}},
+        "5": {"response_text": "The video production quality could be better. Some recordings had echo and the screen sharing was sometimes blurry, making code hard to read."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Learning Python for data analysis from scratch. I came in with zero coding experience and now I can write scripts to analyze CSV files and create visualizations. That's transformative."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "pace-fast"}},
+        "3": {"response_data": {"rating": 7}},
+        "4": {"response_data": {"selected": ["comp-exercises", "comp-quizzes"]}},
+        "5": {"response_text": "The pacing in weeks 3-5 was brutal. We went from basic Python to advanced pandas operations in just two weeks. Beginners need more time with fundamentals."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The final project was the highlight. Being able to choose our own dataset and present findings to the class made everything click. Applied learning at its best."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "pace-right"}},
+        "3": {"response_data": {"rating": 8}},
+        "4": {"response_data": {"selected": ["comp-project", "comp-exercises", "comp-community"]}},
+        "5": {"response_text": "More depth in the machine learning section. We barely scratched the surface of sklearn. Would have preferred less time on basic statistics and more on practical ML."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The structured approach to problem-solving. Learning the data science workflow - from data cleaning to EDA to modeling - gave me a framework I use every day now."},
+        "1": {"response_data": {"rating": 6}},
+        "2": {"response_data": {"selected": "pace-uneven"}},
+        "3": {"response_data": {"rating": 6}},
+        "4": {"response_data": {"selected": ["comp-exercises", "comp-lectures"]}},
+        "5": {"response_text": "The exercises need better instructions. Several times I spent more time figuring out what was being asked than actually solving the problem. Clearer specs would help."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The community aspect. The discussion forums were surprisingly active and helpful. Getting feedback from peers on my code was often more valuable than the lectures themselves."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "pace-right"}},
+        "3": {"response_data": {"rating": 7}},
+        "4": {"response_data": {"selected": ["comp-community", "comp-project", "comp-exercises"]}},
+        "5": {"response_text": "Needs more real-world case studies. The datasets were often too clean. Real data is messy and dealing with that messiness is a crucial skill that wasn't covered enough."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The practical coding exercises after each module. Unlike other courses where you just watch videos, this one forced you to actually write code and debug, which is where real learning happens."},
+        "1": {"response_data": {"rating": 9}},
+        "2": {"response_data": {"selected": "pace-right"}},
+        "3": {"response_data": {"rating": 9}},
+        "4": {"response_data": {"selected": ["comp-exercises", "comp-lectures", "comp-quizzes"]}},
+        "5": {"response_text": "Would be great to have optional advanced tracks for students who finish early. I often completed exercises quickly and had nothing to do until the next module."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Understanding statistics intuitively rather than through formulas. The instructor's visual explanations of concepts like regression, distributions, and hypothesis testing were eye-opening."},
+        "1": {"response_data": {"rating": 7}},
+        "2": {"response_data": {"selected": "pace-fast"}},
+        "3": {"response_data": {"rating": 8}},
+        "4": {"response_data": {"selected": ["comp-lectures", "comp-quizzes"]}},
+        "5": {"response_text": "Slow down weeks 3-5. The jump from Python basics to advanced data manipulation was too steep. Many classmates dropped off during that period."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "Building a portfolio project. Having a tangible deliverable at the end made this course worth every minute. I've already shown my project in two job interviews."},
+        "1": {"response_data": {"rating": 8}},
+        "2": {"response_data": {"selected": "pace-right"}},
+        "3": {"response_data": {"rating": 7}},
+        "4": {"response_data": {"selected": ["comp-project", "comp-exercises"]}},
+        "5": {"response_text": "Add more content on data visualization best practices. We learned matplotlib and seaborn basics but not how to tell a compelling story with data visually."}
+      }
+    },
+    {
+      "answers": {
+        "0": {"response_text": "The quizzes after each section kept me honest about what I actually understood versus what I thought I understood. They exposed gaps in my knowledge early."},
+        "1": {"response_data": {"rating": 6}},
+        "2": {"response_data": {"selected": "pace-uneven"}},
+        "3": {"response_data": {"rating": 6}},
+        "4": {"response_data": {"selected": ["comp-quizzes", "comp-exercises", "comp-community"]}},
+        "5": {"response_text": "The exercise instructions were vague in several modules. I wasted hours trying to understand what output was expected. Sample outputs or clearer rubrics would fix this."}
+      }
+    }
+  ],
+  "expected": {
+    "response_count": 10,
+    "rating_averages": {
+      "1": 7.5,
+      "3": 7.5
+    },
+    "single_choice_counts": {
+      "2": {"Too slow": 0, "Just right": 6, "Too fast": 2, "Uneven pacing": 2}
+    },
+    "multi_choice_counts": {
+      "4": {"Video lectures": 5, "Hands-on exercises": 9, "Quizzes and assessments": 4, "Final project": 4, "Discussion forums": 3}
+    },
+    "text_themes": {
+      "0": ["Hands-on exercises and practical coding", "Instructor quality and clear explanations", "Project-based learning and portfolio building"],
+      "5": ["Pacing issues especially mid-course", "Clearer exercise instructions needed", "More advanced and deeper content desired"]
+    }
+  }
+}
