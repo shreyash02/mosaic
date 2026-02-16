@@ -2,15 +2,17 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis } from '../types';
+import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis, SuggestedAction } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useFeature } from '../contexts/FeaturesContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 import EmptyState from '../components/EmptyState';
 import { SkeletonAnalysis } from '../components/Skeleton';
 import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
+import SuggestedActionsSection from '../components/SuggestedActions';
 
 const styles = {
   page: {
@@ -594,6 +596,7 @@ export default function AnalysisPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentOrgId } = useOrganization();
+  const { user } = useAuth();
   const pdfExportEnabled = useFeature('pdf_export');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -617,6 +620,8 @@ export default function AnalysisPage() {
     limit: number;
     usage: number;
   }>({ show: false, feature: '', limit: 0, usage: 0 });
+  const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
+  const isCreator = !!(user && fullConversation && fullConversation.creator_id === user.id);
 
   usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
 
@@ -745,6 +750,14 @@ export default function AnalysisPage() {
         organization_id: analysisData.organization_id || null,
       };
       setConversation(minimalConv);
+
+      // Load suggested actions (if any exist)
+      try {
+        const actionsData = await api.getSuggestedActions(id!, analysisData.id);
+        setSuggestedActions(actionsData.actions);
+      } catch {
+        // Actions may not exist yet — that's fine
+      }
 
       if (analysisData.show_verbatim_responses) {
         try {
@@ -1359,6 +1372,14 @@ export default function AnalysisPage() {
               ))}
             </div>
           )}
+
+          {/* Suggested Actions */}
+          <SuggestedActionsSection
+            conversationId={id!}
+            analysisId={analysis.id}
+            isCreator={isCreator}
+            initialActions={suggestedActions}
+          />
 
           {/* Question-by-Question Analysis */}
           <div style={{ marginBottom: spacing[6] }}>

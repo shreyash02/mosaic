@@ -431,6 +431,35 @@ export interface SurprisingInsight {
   description: string;
 }
 
+// Suggested actions from AI analysis
+export type ActionType = 'investigate' | 'communicate' | 'change' | 'celebrate' | 'monitor';
+export type ActionPriority = 'high' | 'medium' | 'low';
+export type ActionSentiment = 'positive' | 'negative' | 'neutral' | 'mixed';
+export type ActionStatus = 'suggested' | 'accepted' | 'dismissed' | 'completed' | 'converted_to_goal';
+
+export interface SuggestedAction {
+  id: string;
+  analysis_id: string;
+  conversation_id: string;
+  title: string;
+  description: string;
+  action_type: ActionType;
+  priority: ActionPriority;
+  sentiment: ActionSentiment;
+  related_cluster_ids: string[];
+  response_percentage: number | null;
+  status: ActionStatus;
+  dismissed_reason?: string;
+  created_at: string;
+}
+
+export interface SuggestedActionsResponse {
+  analysis_id: string;
+  conversation_id: string;
+  actions: SuggestedAction[];
+  total: number;
+}
+
 export interface Analysis {
   id: string;
   conversation_id: string;

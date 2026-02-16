@@ -69,6 +69,7 @@ import type {
   Notification,
   NotificationListResponse,
   UnreadCountResponse,
+  SuggestedActionsResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -470,6 +471,29 @@ class ApiService {
 
   async getAnalysisById(conversationId: string, analysisId: string): Promise<Analysis> {
     const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analyses/${analysisId}`);
+    return response.data;
+  }
+
+  // AI-suggested actions
+  async generateSuggestedActions(
+    conversationId: string,
+    analysisId: string,
+    regenerate: boolean = false,
+  ): Promise<SuggestedActionsResponse> {
+    const response = await this.client.post<SuggestedActionsResponse>(
+      `/conversations/${conversationId}/analyses/${analysisId}/suggested-actions`,
+      { regenerate },
+    );
+    return response.data;
+  }
+
+  async getSuggestedActions(
+    conversationId: string,
+    analysisId: string,
+  ): Promise<SuggestedActionsResponse> {
+    const response = await this.client.get<SuggestedActionsResponse>(
+      `/conversations/${conversationId}/analyses/${analysisId}/suggested-actions`,
+    );
     return response.data;
   }
 
