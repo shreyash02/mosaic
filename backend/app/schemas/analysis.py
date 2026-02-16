@@ -110,6 +110,9 @@ class Analysis(BaseModel):
     # Per-question analysis
     question_analyses: Optional[List["QuestionAnalysis"]] = []
 
+    # Context snapshot (what the AI saw when this analysis was run)
+    context_notes_snapshot: Optional[str] = None
+
     # Metadata
     embedding_provider: Optional[str] = None
     embedding_model: Optional[str] = None
@@ -244,6 +247,29 @@ class QuestionAnalysis(BaseModel):
 
     # For poll questions
     poll_stats: Optional[PollStatistics] = None
+
+
+# Lightweight analysis summary for list views
+class AnalysisSummary(BaseModel):
+    """Lightweight analysis summary for list views."""
+
+    id: UUID
+    conversation_id: UUID
+    created_at: datetime
+    total_responses_analyzed: Optional[int] = None
+    context_notes_snapshot: Optional[str] = None
+    llm_model: Optional[str] = None
+    analysis_duration_ms: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AnalysisListResponse(BaseModel):
+    """Response for listing analyses."""
+
+    conversation_id: UUID
+    total: int
+    analyses: List[AnalysisSummary]
 
 
 # Analysis status

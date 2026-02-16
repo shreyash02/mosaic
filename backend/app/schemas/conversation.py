@@ -134,6 +134,9 @@ class ConversationBase(BaseModel):
     analysis_interval: Optional[AnalysisInterval] = Field(None, description="How often to run periodic analysis (daily, weekly, biweekly, monthly)")
     analysis_timezone: Optional[str] = Field(None, description="Timezone for analysis window boundaries")
 
+    # Context for AI analysis (visible to all result viewers for transparency)
+    context_notes: Optional[str] = Field(None, max_length=5000, description="Free-form context to help AI generate better insights. Visible to all result viewers.")
+
     # Branding (overrides organization branding if set)
     brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL (overrides organization branding)")
     brand_name: Optional[str] = Field(None, max_length=255, description="Brand name (overrides organization branding)")
@@ -199,6 +202,9 @@ class ConversationUpdate(BaseModel):
     is_continuous: Optional[bool] = None
     analysis_interval: Optional[AnalysisInterval] = None
     analysis_timezone: Optional[str] = None
+
+    # Context for AI analysis
+    context_notes: Optional[str] = Field(None, max_length=5000, description="Free-form context to help AI generate better insights.")
 
     # Branding (overrides organization branding if set)
     brand_logo_url: Optional[str] = Field(None, max_length=500, description="Brand logo URL (overrides organization branding)")
@@ -269,6 +275,9 @@ class Conversation(ConversationBase):
     analysis_interval: Optional[AnalysisInterval] = None
     next_analysis_at: Optional[datetime] = None
     analysis_timezone: Optional[str] = None
+
+    # Context notes
+    context_notes_updated_at: Optional[datetime] = None
 
     # Archiving
     is_archived: bool = False

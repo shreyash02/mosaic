@@ -55,6 +55,12 @@ class Conversation(Base):
     header_image_url = Column(String(500), nullable=True)
     # Optional header image URL displayed when users are responding
 
+    # Context for AI analysis (visible to all result viewers for transparency)
+    context_notes = Column(Text, nullable=True)
+    # Free-form context from creator to help AI generate better insights
+    # e.g., "Remote team of 12 engineers. New manager joined in January."
+    context_notes_updated_at = Column(DateTime, nullable=True)
+
     # Branding (overrides organization branding if set)
     brand_logo_url = Column(String(500), nullable=True)
     brand_name = Column(String(255), nullable=True)

@@ -958,14 +958,15 @@ def run_periodic_analysis_task(
             Response.conversation_id == conversation_id
         ).all()
 
-        # Run windowed analysis
+        # Run windowed analysis with context notes
         analysis_service = AnalysisService()
         analysis_result = analysis_service.analyze_conversation_windowed(
             questions=questions,
             responses=responses,
             start_time=period_start,
             end_time=period_end,
-            min_cluster_size=2
+            min_cluster_size=2,
+            context_notes=conversation.context_notes
         )
 
         # Generate period label (use override if provided, for incremental analyses)
