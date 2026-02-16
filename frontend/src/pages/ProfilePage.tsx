@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { typography, spacing, borders, transitions } from '../styles';
 import type { UserWithAuthInfo } from '../types';
@@ -132,6 +133,74 @@ const styles = {
     fontSize: typography.fontSize.sm,
     marginBottom: spacing[4],
   },
+  profilePictureSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[6],
+    marginBottom: spacing[6],
+    paddingBottom: spacing[6],
+    borderBottom: '1px solid var(--color-primary-200)',
+  },
+  avatarContainer: {
+    position: 'relative' as const,
+    flexShrink: 0,
+  },
+  avatar: {
+    width: '96px',
+    height: '96px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+  },
+  avatarActions: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[2],
+  },
+  uploadButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-700)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  removeButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-error-600)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    border: 'none',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
+  avatarHint: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    marginTop: spacing[1],
+  },
 };
 
 const hoverStyles = `
@@ -145,16 +214,27 @@ const hoverStyles = `
   .profile-back-link:hover {
     color: var(--color-primary-900);
   }
+  .profile-upload-btn:hover:not(:disabled) {
+    background-color: var(--color-primary-200);
+    border-color: var(--color-primary-400);
+  }
+  .profile-remove-btn:hover:not(:disabled) {
+    background-color: var(--color-error-50);
+  }
 `;
 
 export default function ProfilePage() {
   usePageTitle('Profile');
+  const { refreshUser } = useAuth();
   const [profile, setProfile] = useState<UserWithAuthInfo | null>(null);
   const [fullName, setFullName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadProfile();
@@ -165,10 +245,76 @@ export default function ProfilePage() {
       const data = await api.getUserProfile();
       setProfile(data);
       setFullName(data.full_name || '');
+      setProfileImageUrl(data.profile_image_url || null);
     } catch (err: any) {
       setError('Failed to load profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Please upload a JPG, PNG, GIF, or WebP image');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+
+    setError('');
+    setImageUploading(true);
+
+    try {
+      // Upload image
+      const { url } = await api.uploadImage(file);
+
+      // Update profile with new image URL
+      await api.updateProfile({ profile_image_url: url });
+
+      setProfileImageUrl(url);
+      setProfile(prev => prev ? { ...prev, profile_image_url: url } : prev);
+      setSuccess('Profile picture updated');
+      setTimeout(() => setSuccess(''), 3000);
+
+      // Refresh user in auth context to update header
+      refreshUser();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to upload image');
+    } finally {
+      setImageUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    setError('');
+    setImageUploading(true);
+
+    try {
+      await api.updateProfile({ profile_image_url: '' });
+      setProfileImageUrl(null);
+      setProfile(prev => prev ? { ...prev, profile_image_url: undefined } : prev);
+      setSuccess('Profile picture removed');
+      setTimeout(() => setSuccess(''), 3000);
+
+      // Refresh user in auth context to update header
+      refreshUser();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to remove image');
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -183,6 +329,9 @@ export default function ProfilePage() {
       setSuccess('Profile updated successfully');
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
+
+      // Refresh user in auth context to update header
+      refreshUser();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update profile');
     } finally {
@@ -231,6 +380,59 @@ export default function ProfilePage() {
           {error && <div style={styles.errorMessage}>{error}</div>}
 
           <div style={styles.card}>
+            {/* Profile Picture Section */}
+            <div style={styles.profilePictureSection}>
+              <div style={styles.avatarContainer}>
+                <div style={styles.avatar}>
+                  {profileImageUrl ? (
+                    <img src={profileImageUrl} alt="Profile" style={styles.avatarImage} />
+                  ) : (
+                    fullName?.charAt(0).toUpperCase() || profile?.email?.charAt(0).toUpperCase() || 'U'
+                  )}
+                </div>
+              </div>
+              <div style={styles.avatarActions}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                  id="profile-image-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={imageUploading}
+                  style={styles.uploadButton}
+                  className="profile-upload-btn"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  {imageUploading ? 'Uploading...' : 'Upload Photo'}
+                </button>
+                {profileImageUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    disabled={imageUploading}
+                    style={styles.removeButton}
+                    className="profile-remove-btn"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Remove
+                  </button>
+                )}
+                <p style={styles.avatarHint}>JPG, PNG, GIF, or WebP. Max 5MB.</p>
+              </div>
+            </div>
+
             <h2 style={styles.cardTitle}>Account Information</h2>
 
             <form onSubmit={handleSubmit}>

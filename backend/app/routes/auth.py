@@ -521,6 +521,7 @@ async def get_user_profile(
         id=current_user.id,
         email=current_user.email,
         full_name=current_user.full_name,
+        profile_image_url=current_user.profile_image_url,
         email_verified=current_user.email_verified,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
@@ -538,10 +539,14 @@ async def update_profile(
     """
     Update user profile.
 
-    Currently supports updating full_name only.
+    Supports updating full_name and profile_image_url.
     """
     if profile_data.full_name is not None:
         current_user.full_name = profile_data.full_name
+
+    if profile_data.profile_image_url is not None:
+        # Allow setting to empty string to remove profile picture
+        current_user.profile_image_url = profile_data.profile_image_url or None
 
     db.commit()
     db.refresh(current_user)

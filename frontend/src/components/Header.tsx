@@ -248,7 +248,7 @@ export default function Header() {
               </Link>
             </nav>
 
-            {/* Search Button - Desktop */}
+            {/* Search Button */}
             <Link
               to="/search"
               className="header-search-btn"
@@ -274,7 +274,11 @@ export default function Header() {
                 aria-label="User menu"
               >
                 <div className="user-avatar">
-                  {user.full_name?.charAt(0).toUpperCase() || 'U'}
+                  {user.profile_image_url ? (
+                    <img src={user.profile_image_url} alt={user.full_name || 'Profile'} className="user-avatar-img" />
+                  ) : (
+                    user.full_name?.charAt(0).toUpperCase() || 'U'
+                  )}
                 </div>
               </button>
 
@@ -338,10 +342,13 @@ export default function Header() {
                 onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
                 aria-label="Profile menu"
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
-                </svg>
+                <div className="user-avatar">
+                  {user.profile_image_url ? (
+                    <img src={user.profile_image_url} alt={user.full_name || 'Profile'} className="user-avatar-img" />
+                  ) : (
+                    user.full_name?.charAt(0).toUpperCase() || 'U'
+                  )}
+                </div>
               </button>
 
               {/* Mobile Profile Dropdown */}

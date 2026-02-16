@@ -12,6 +12,7 @@ class UserBase(BaseModel):
 
     email: EmailStr
     full_name: Optional[str] = None
+    profile_image_url: Optional[str] = None
 
 
 # User creation schema (registration)
@@ -84,6 +85,7 @@ class ProfileUpdate(BaseModel):
     """Schema for updating user profile."""
 
     full_name: Optional[str] = Field(None, max_length=255)
+    profile_image_url: Optional[str] = Field(None, max_length=500)
 
 
 class PasswordChangeRequest(BaseModel):

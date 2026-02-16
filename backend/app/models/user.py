@@ -18,6 +18,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=True)  # Nullable for OAuth users
     full_name = Column(String(255), nullable=True)
+    profile_image_url = Column(String(500), nullable=True)  # Profile picture URL
     google_id = Column(String(255), nullable=True, unique=True, index=True)  # Google OAuth ID
 
     # Email preferences - JSON with boolean flags for each email type

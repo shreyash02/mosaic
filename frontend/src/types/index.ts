@@ -3,6 +3,7 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
+  profile_image_url?: string;
   email_verified: boolean;
   created_at: string;
   updated_at: string;
@@ -34,6 +35,7 @@ export interface UserWithAuthInfo extends User {
 
 export interface ProfileUpdateRequest {
   full_name?: string;
+  profile_image_url?: string;
 }
 
 export interface PasswordChangeRequest {
