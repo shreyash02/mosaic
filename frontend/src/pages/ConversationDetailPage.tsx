@@ -532,6 +532,120 @@ const getStatusStyle = (state: ConversationState): React.CSSProperties => {
   return styles[state];
 };
 
+function ContextNotesSection({ conversation, onUpdate }: { conversation: Conversation; onUpdate: () => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [value, setValue] = useState(conversation.context_notes || '');
+  const [saving, setSaving] = useState(false);
+  const isAnalyzing = conversation.state === ConversationState.ANALYZING;
+
+  useEffect(() => {
+    setValue(conversation.context_notes || '');
+  }, [conversation.context_notes]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.updateConversation(conversation.id, { context_notes: value.trim() || undefined });
+      onUpdate();
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to save context notes:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div style={{
+        backgroundColor: 'var(--color-primary-100)',
+        border: '1px solid var(--color-primary-300)',
+        borderRadius: borders.radius.lg,
+        padding: spacing[4],
+        marginBottom: spacing[4],
+      }}>
+        <label style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)', display: 'block', marginBottom: spacing[2] }}>
+          Context for AI
+        </label>
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g., Remote team of 12 engineers. New manager joined in January."
+          rows={12}
+          maxLength={5000}
+          style={{ width: '100%', marginBottom: spacing[2], fontFamily: 'inherit' }}
+          autoFocus
+        />
+        <small style={{ color: 'var(--color-primary-500)', display: 'block', marginBottom: spacing[3] }}>
+          Visible to everyone who can see the results. Helps the AI generate more relevant insights.
+        </small>
+        <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end' }}>
+          <button className="btn btn-secondary btn-small" onClick={() => { setValue(conversation.context_notes || ''); setIsEditing(false); }}>
+            Cancel
+          </button>
+          <button className="btn btn-primary btn-small" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (conversation.context_notes) {
+    return (
+      <div style={{
+        backgroundColor: 'var(--color-primary-100)',
+        border: '1px solid var(--color-primary-200)',
+        borderRadius: borders.radius.lg,
+        padding: spacing[4],
+        marginBottom: spacing[4],
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
+          <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-600)' }}>
+            Context for AI
+          </span>
+          {!isAnalyzing && (
+            <button
+              className="btn btn-secondary btn-small"
+              onClick={() => setIsEditing(true)}
+              style={{ fontSize: typography.fontSize.xs, padding: `${spacing[1]} ${spacing[2]}` }}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)', margin: 0, fontStyle: 'italic' }}>
+          "{conversation.context_notes}"
+        </p>
+      </div>
+    );
+  }
+
+  // No context notes yet - show a subtle add button (not during analyzing)
+  if (isAnalyzing) return null;
+
+  return (
+    <button
+      onClick={() => setIsEditing(true)}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: spacing[3],
+        marginBottom: spacing[4],
+        backgroundColor: 'transparent',
+        border: `1px dashed var(--color-primary-300)`,
+        borderRadius: borders.radius.lg,
+        color: 'var(--color-primary-500)',
+        fontSize: typography.fontSize.sm,
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      + Add context for AI (helps generate better insights)
+    </button>
+  );
+}
+
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -1254,6 +1368,9 @@ export default function ConversationDetailPage() {
         )}
       </header>
 
+      {/* Context Notes (editable by creator) */}
+      <ContextNotesSection conversation={conversation} onUpdate={loadConversation} />
+
       {/* Actions bar */}
       <div style={s.actionsBar} className="convo-detail-actions">
         {conversation.state === ConversationState.DRAFT && (
@@ -1409,17 +1526,26 @@ export default function ConversationDetailPage() {
         {conversation.state === ConversationState.ANALYZED && (
           <>
             {aiAnalysisEnabled && (
-              <ContextualHint
-                hintId="analysis-complete"
-                message="AI analysis is ready! View insights, themes, and summaries from your responses."
-                position="bottom"
-                icon="lightbulb"
-                delay={500}
-              >
-                <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
-                  View Analysis
-                </Link>
-              </ContextualHint>
+              <>
+                <ContextualHint
+                  hintId="analysis-complete"
+                  message="AI analysis is ready! View insights, themes, and summaries from your responses."
+                  position="bottom"
+                  icon="lightbulb"
+                  delay={500}
+                >
+                  <Link to={`/conversations/${id}/analysis`} style={s.buttonPrimary}>
+                    View Analysis
+                  </Link>
+                </ContextualHint>
+                <button
+                  onClick={handleAnalyze}
+                  style={s.buttonSecondary}
+                  disabled={actionLoading}
+                >
+                  Re-run Analysis
+                </button>
+              </>
             )}
             <button
               onClick={() => setShowFollowUpModal(true)}

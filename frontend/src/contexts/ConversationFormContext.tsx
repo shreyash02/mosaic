@@ -35,6 +35,7 @@ export interface ConversationFormState {
   participantTitle: string;
   description: string;
   headerImageUrl: string;
+  contextNotes: string;
 
   // Step 2: Privacy (manual mode only)
   anonymityLevel: AnonymityLevel;
@@ -112,6 +113,7 @@ const getDefaultFormState = (): ConversationFormState => ({
   participantTitle: '',
   description: '',
   headerImageUrl: '',
+  contextNotes: '',
 
   // Privacy
   anonymityLevel: AnonymityLevel.OPEN,
@@ -256,6 +258,7 @@ export function ConversationFormProvider({
       participantTitle: conversation.participant_title || '',
       description: conversation.description || '',
       headerImageUrl: conversation.header_image_url || '',
+      contextNotes: conversation.context_notes || '',
       anonymityLevel: conversation.anonymity_level,
       resultsAccess: conversation.results_access,
       showVerbatimResponses: conversation.show_verbatim_responses,

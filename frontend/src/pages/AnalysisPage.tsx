@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { Analysis, Conversation, ResponseWithQuestion, PeriodicAnalysis } from '../types';
+import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useFeature } from '../contexts/FeaturesContext';
@@ -590,7 +590,7 @@ const hoverStyles = `
 `;
 
 export default function AnalysisPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, analysisId } = useParams<{ id: string; analysisId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentOrgId } = useOrganization();
@@ -607,6 +607,8 @@ export default function AnalysisPage() {
   const [periodicAnalyses, setPeriodicAnalyses] = useState<PeriodicAnalysis[]>([]);
   const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
   const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisSummary[]>([]);
+  const [previousExpanded, setPreviousExpanded] = useState(false);
   const [pendingAnalysis, setPendingAnalysis] = useState<{ mode: 'update' | 'incremental'; startedAt: Date } | null>(null);
   const analysisDropdownRef = useRef<HTMLDivElement>(null);
   const [limitReached, setLimitReached] = useState<{
@@ -667,12 +669,32 @@ export default function AnalysisPage() {
     return () => clearInterval(pollInterval);
   }, [pendingAnalysis, id, periodicAnalyses.length]);
 
+  // Poll for re-analysis completion (non-continuous conversations)
+  useEffect(() => {
+    if (!id || !fullConversation || fullConversation.is_continuous || analysisId) return;
+    if (fullConversation.state !== 'analyzing') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const convData = await api.getConversation(id);
+        setFullConversation(convData);
+        if (convData.state === 'analyzed') {
+          loadAnalysis();
+        }
+      } catch (err) {
+        console.error('Error polling for re-analysis:', err);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [id, fullConversation?.state, analysisId]);
+
   useEffect(() => {
     if (id) {
       loadAnalysis();
       checkConversationAccess();
     }
-  }, [id]);
+  }, [id, analysisId]);
 
   const checkConversationAccess = async () => {
     if (!id) return;
@@ -701,8 +723,19 @@ export default function AnalysisPage() {
 
   const loadAnalysis = async () => {
     try {
-      const analysisData = await api.getAnalysis(id!);
+      // Fetch specific analysis by ID or latest
+      const analysisData = analysisId
+        ? await api.getAnalysisById(id!, analysisId)
+        : await api.getAnalysis(id!);
       setAnalysis(analysisData);
+
+      // Fetch analysis history list
+      try {
+        const historyData = await api.listAnalyses(id!);
+        setAnalysisHistory(historyData.analyses);
+      } catch (err) {
+        console.error('Failed to load analysis history:', err);
+      }
 
       const minimalConv: any = {
         id,
@@ -1231,6 +1264,68 @@ export default function AnalysisPage() {
             )}
           </header>
 
+          {/* Historical analysis banner */}
+          {analysisId && (
+            <div style={{
+              ...styles.card,
+              backgroundColor: 'var(--color-warning-100, #fef3c7)',
+              borderColor: 'var(--color-warning-300, #fcd34d)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: spacing[3],
+            }}>
+              <span style={{ color: 'var(--color-warning-800, #92400e)', fontSize: typography.fontSize.sm }}>
+                You are viewing a previous analysis from {formatDate(analysis.created_at, conversation?.timezone)}.
+              </span>
+              <Link
+                to={`/conversations/${id}/analysis`}
+                style={{
+                  color: 'var(--color-primary-600)',
+                  fontWeight: typography.fontWeight.medium,
+                  fontSize: typography.fontSize.sm,
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                View latest analysis
+              </Link>
+            </div>
+          )}
+
+          {/* Re-analysis in progress banner */}
+          {!analysisId && fullConversation?.state === 'analyzing' && (
+            <div style={{
+              ...styles.card,
+              backgroundColor: 'var(--color-info-100, #dbeafe)',
+              borderColor: 'var(--color-info-300, #93c5fd)',
+            }}>
+              <span style={{ color: 'var(--color-info-800, #1e40af)', fontSize: typography.fontSize.sm }}>
+                A new analysis is being generated. The results below are from the previous run.
+              </span>
+            </div>
+          )}
+
+          {/* Context Notes (visible to all result viewers) */}
+          {analysis.context_notes_snapshot && (
+            <div style={{
+              ...styles.card,
+              backgroundColor: 'var(--color-primary-100)',
+              borderColor: 'var(--color-primary-300)',
+            }}>
+              <h2 style={{ ...styles.cardTitle, fontSize: typography.fontSize.base }}>Context provided by creator</h2>
+              <p style={{
+                ...styles.summaryText,
+                fontStyle: 'italic',
+              }}>
+                "{analysis.context_notes_snapshot}"
+              </p>
+              <small style={{ color: 'var(--color-primary-500)', marginTop: spacing[2], display: 'block' }}>
+                This context was used to inform the AI analysis.
+              </small>
+            </div>
+          )}
+
           {/* Overall Summary */}
           <div style={styles.card}>
             <h2 style={styles.cardTitle}>Overall Summary</h2>
@@ -1482,6 +1577,73 @@ export default function AnalysisPage() {
                         </div>
                       ))}
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Previous Analyses */}
+          {!analysisId && analysisHistory.length > 1 && (
+            <div style={styles.card}>
+              <button
+                onClick={() => setPreviousExpanded(!previousExpanded)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  color: 'var(--color-primary-700)',
+                }}
+              >
+                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
+                  Previous Analyses ({analysisHistory.length - 1})
+                </h3>
+                <svg
+                  width="20" height="20" viewBox="0 0 20 20" fill="none"
+                  style={{
+                    transform: previousExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: transitions.duration.normal,
+                  }}
+                >
+                  <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {previousExpanded && (
+                <div style={{ marginTop: spacing[4], display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                  {analysisHistory.slice(1).map((hist) => (
+                    <Link
+                      key={hist.id}
+                      to={`/conversations/${id}/analysis/history/${hist.id}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: spacing[3],
+                        borderRadius: borders.radius.md,
+                        border: `1px solid var(--color-primary-200)`,
+                        textDecoration: 'none',
+                        color: 'var(--color-primary-700)',
+                        transition: transitions.duration.normal,
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+                        <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium }}>
+                          {formatDate(hist.created_at, conversation?.timezone)}
+                        </span>
+                        <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>
+                          {hist.total_responses_analyzed} responses analyzed
+                          {hist.context_notes_snapshot ? ' · With context notes' : ''}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)' }}>
+                        View →
+                      </span>
+                    </Link>
                   ))}
                 </div>
               )}

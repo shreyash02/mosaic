@@ -274,6 +274,15 @@ function App() {
             />
 
             <Route
+              path="/conversations/:id/analysis/history/:analysisId"
+              element={
+                <ProtectedRoute>
+                  <AnalysisPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/conversations/:id/analysis/:periodLabel"
               element={
                 <ProtectedRoute>

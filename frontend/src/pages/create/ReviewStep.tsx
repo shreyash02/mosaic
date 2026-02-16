@@ -229,6 +229,7 @@ export default function ReviewStep() {
         title: formState.title,
         ...(formState.participantTitle.trim() && { participant_title: formState.participantTitle.trim() }),
         description: formState.description,
+        ...(formState.contextNotes.trim() && { context_notes: formState.contextNotes.trim() }),
         ...(formState.headerImageUrl && { header_image_url: formState.headerImageUrl }),
         anonymity_level: formState.anonymityLevel,
         results_access: formState.resultsAccess,
@@ -522,6 +523,23 @@ export default function ReviewStep() {
               <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Title</div>
               <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>{formState.title}</div>
             </div>
+
+            {/* Context for AI */}
+            {formState.contextNotes.trim() && (
+              <div style={{ marginBottom: spacing[3] }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Context for AI</div>
+                <div style={{
+                  fontStyle: 'italic',
+                  color: 'var(--color-primary-700)',
+                  backgroundColor: 'var(--color-primary-100)',
+                  padding: spacing[3],
+                  borderRadius: '6px',
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {formState.contextNotes}
+                </div>
+              </div>
+            )}
 
             {/* Questions */}
             <div style={{ marginBottom: spacing[3] }}>

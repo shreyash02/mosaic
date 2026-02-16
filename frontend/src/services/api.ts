@@ -23,6 +23,7 @@ import type {
   DraftSaveResponse,
   DraftLoadResponse,
   Analysis,
+  AnalysisListResponse,
   PeriodicAnalysis,
   PeriodicAnalysisList,
   TriggerPeriodicAnalysisRequest,
@@ -459,6 +460,16 @@ class ApiService {
 
   async getAnalysis(conversationId: string): Promise<Analysis> {
     const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analysis`);
+    return response.data;
+  }
+
+  async listAnalyses(conversationId: string): Promise<AnalysisListResponse> {
+    const response = await this.client.get<AnalysisListResponse>(`/conversations/${conversationId}/analyses`);
+    return response.data;
+  }
+
+  async getAnalysisById(conversationId: string, analysisId: string): Promise<Analysis> {
+    const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analyses/${analysisId}`);
     return response.data;
   }
 

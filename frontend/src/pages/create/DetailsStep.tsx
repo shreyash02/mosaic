@@ -151,6 +151,21 @@ export default function DetailsStep() {
         </div>
 
         <div className="form-group">
+          <label htmlFor="contextNotes">Context for AI (optional)</label>
+          <textarea
+            id="contextNotes"
+            value={formState.contextNotes}
+            onChange={(e) => updateFormState({ contextNotes: e.target.value })}
+            placeholder="e.g., Remote team of 12 engineers. New manager joined in January. Last retro we discussed on-call burden."
+            rows={3}
+            maxLength={5000}
+          />
+          <small className="form-help-text">
+            Help the AI generate more relevant insights and suggestions. This will be visible to everyone who can see the results.
+          </small>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="headerImage">Header Image (optional)</label>
           <p className="form-help-text" style={{ marginBottom: '0.5rem' }}>
             Upload an image that will be displayed at the top when users are responding.

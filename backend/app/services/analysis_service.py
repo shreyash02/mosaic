@@ -27,7 +27,8 @@ class AnalysisService:
         self,
         questions: List[Question],
         responses: List[Response],
-        min_cluster_size: int = 2
+        min_cluster_size: int = 2,
+        context_notes: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Analyze all questions in a conversation with their responses.
@@ -36,6 +37,7 @@ class AnalysisService:
             questions: List of Question objects
             responses: List of Response objects
             min_cluster_size: Minimum number of responses to form a cluster (for text)
+            context_notes: Optional creator-provided context to help AI generate better insights
 
         Returns:
             Analysis results dict with per-question analysis
@@ -68,7 +70,7 @@ class AnalysisService:
             elif question.question_type in ['single_choice', 'multiple_choice']:
                 analysis = self._analyze_poll_question(question, q_responses)
             else:  # text
-                analysis = self._analyze_text_question(question, q_responses, min_cluster_size)
+                analysis = self._analyze_text_question(question, q_responses, min_cluster_size, context_notes)
 
             question_analyses.append(analysis)
             total_analyzed += len(q_responses)
@@ -76,10 +78,10 @@ class AnalysisService:
         duration_ms = int((time.time() - start_time) * 1000)
 
         # Generate "What Surprised Us" insights
-        surprising_insights = self._generate_surprising_insights(questions, responses, question_analyses)
+        surprising_insights = self._generate_surprising_insights(questions, responses, question_analyses, context_notes)
 
         return {
-            "overall_summary": self._generate_conversation_summary(question_analyses),
+            "overall_summary": self._generate_conversation_summary(question_analyses, context_notes),
             "question_analyses": question_analyses,
             "surprising_insights": surprising_insights,
             "embedding_provider": "openai",
@@ -98,7 +100,8 @@ class AnalysisService:
         responses: List[Response],
         start_time: datetime,
         end_time: datetime,
-        min_cluster_size: int = 2
+        min_cluster_size: int = 2,
+        context_notes: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Analyze responses within a specific time window.
@@ -113,6 +116,7 @@ class AnalysisService:
             start_time: Start of analysis window (UTC)
             end_time: End of analysis window (UTC)
             min_cluster_size: Minimum number of responses to form a cluster
+            context_notes: Optional creator-provided context to help AI generate better insights
 
         Returns:
             Analysis results dict with per-question analysis
@@ -140,13 +144,14 @@ class AnalysisService:
         ]
 
         # Use existing analyze_conversation method with filtered responses
-        return self.analyze_conversation(questions, windowed_responses, min_cluster_size)
+        return self.analyze_conversation(questions, windowed_responses, min_cluster_size, context_notes)
 
     def _analyze_text_question(
         self,
         question: Question,
         responses: List[Response],
-        min_cluster_size: int = 2
+        min_cluster_size: int = 2,
+        context_notes: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Analyze text question responses using embedding-based clustering and LLM summarization.
@@ -155,6 +160,7 @@ class AnalysisService:
             question: Question object
             responses: List of Response objects for this question
             min_cluster_size: Minimum number of responses to form a cluster
+            context_notes: Optional creator-provided context to help AI generate better insights
 
         Returns:
             Question analysis dict with themes
@@ -189,15 +195,15 @@ class AnalysisService:
         clusters = self._cluster_embeddings(embeddings, min_samples=min_cluster_size)
 
         # Analyze each cluster with LLM
-        themes = self._analyze_clusters(response_texts, clusters)
+        themes = self._analyze_clusters(response_texts, clusters, context_notes)
 
         base_result["themes"] = themes
-        
+
         # Generate a summary even when we have themes (for consistency)
         if response_texts:
             summary = self._generate_simple_summary(response_texts)
             base_result["summary"] = summary
-        
+
         return base_result
 
     def _analyze_rating_question(
@@ -318,12 +324,13 @@ class AnalysisService:
             }
         }
 
-    def _generate_conversation_summary(self, question_analyses: List[Dict[str, Any]]) -> str:
+    def _generate_conversation_summary(self, question_analyses: List[Dict[str, Any]], context_notes: Optional[str] = None) -> str:
         """
         Generate an overall summary for the entire conversation.
 
         Args:
             question_analyses: List of question analysis results
+            context_notes: Optional creator-provided context
 
         Returns:
             Overall summary text
@@ -353,7 +360,15 @@ class AnalysisService:
             else:
                 summaries.append(f"- \"{q_text}\": {count} responses")
 
-        prompt = f"""Summarize the key insights from this feedback analysis in 2-3 sentences.
+        context_section = ""
+        if context_notes:
+            context_section = f"""CONTEXT (provided by the creator):
+{context_notes}
+
+Consider this context when summarizing. Reference relevant details where they help explain the feedback patterns.
+
+"""
+        prompt = f"""{context_section}Summarize the key insights from this feedback analysis in 2-3 sentences.
 
 Total responses across all questions: {total_responses}
 
@@ -500,7 +515,8 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
     def _analyze_clusters(
         self,
         texts: List[str],
-        cluster_labels: np.ndarray
+        cluster_labels: np.ndarray,
+        context_notes: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Analyze each cluster to extract themes and sentiments.
@@ -508,6 +524,7 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
         Args:
             texts: Original response texts
             cluster_labels: Cluster assignments for each text
+            context_notes: Optional creator-provided context
 
         Returns:
             List of theme dictionaries
@@ -524,7 +541,7 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
             cluster_texts = [texts[i] for i in cluster_indices]
 
             # Analyze this cluster with Claude
-            theme_data = self._analyze_cluster_with_llm(cluster_texts)
+            theme_data = self._analyze_cluster_with_llm(cluster_texts, context_notes)
             theme_data["frequency"] = len(cluster_texts)
             themes.append(theme_data)
 
@@ -533,17 +550,26 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
 
         return themes
 
-    def _analyze_cluster_with_llm(self, cluster_texts: List[str]) -> Dict[str, Any]:
+    def _analyze_cluster_with_llm(self, cluster_texts: List[str], context_notes: Optional[str] = None) -> Dict[str, Any]:
         """
         Use Claude to analyze a cluster of responses.
 
         Args:
             cluster_texts: List of response texts in the cluster
+            context_notes: Optional creator-provided context
 
         Returns:
             Theme data with name, summary, perspectives, and key points
         """
-        prompt = f"""Analyze the following {len(cluster_texts)} responses and:
+        context_section = ""
+        if context_notes:
+            context_section = f"""CONTEXT (provided by the creator to help you understand the situation):
+{context_notes}
+
+Use this context to make your theme names and summaries more specific and relevant. For example, if the context mentions a recent organizational change, reference it when relevant rather than using generic theme names.
+
+"""
+        prompt = f"""{context_section}Analyze the following {len(cluster_texts)} responses and:
 1. Identify the main theme they share (give it a short name with 1-6 words)
 2. Provide a brief summary of what this theme encompasses
 3. Break down the theme into natural perspectives or viewpoints (don't force sentiment - use whatever grouping makes sense)
@@ -696,7 +722,8 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
         self,
         questions: List[Question],
         responses: List[Response],
-        question_analyses: List[Dict[str, Any]]
+        question_analyses: List[Dict[str, Any]],
+        context_notes: Optional[str] = None
     ) -> Optional[List[Dict[str, str]]]:
         """
         Generate "What Surprised Us" insights highlighting unexpected themes, tensions, and minority views.
@@ -705,6 +732,7 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
             questions: List of Question objects
             responses: List of Response objects
             question_analyses: List of question analysis results
+            context_notes: Optional creator-provided context
 
         Returns:
             List of surprising insights with title and description, or None if insufficient data
@@ -779,9 +807,16 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
 
         # Build prompt for surprising insights
         total_responses = len(responses)
-        prompt = f"""You are analyzing feedback data to identify surprising, unexpected, or noteworthy insights.
+        creator_context_section = ""
+        if context_notes:
+            creator_context_section = f"""CREATOR-PROVIDED CONTEXT:
+{context_notes}
 
-Focus on:
+Use this context to calibrate what counts as "surprising." For example, if the creator mentioned they recently made changes to address an issue, it's surprising if that issue is still a top theme. If they mentioned a recent event, insights related to it are expected — focus on what's unexpected given this background.
+
+"""
+        prompt = f"""You are analyzing feedback data to identify surprising, unexpected, or noteworthy insights.
+{creator_context_section}Focus on:
 1. Unexpected themes or patterns that emerge
 2. Tensions or contradictions in the responses
 3. Minority views that differ from the majority

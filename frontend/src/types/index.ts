@@ -198,6 +198,9 @@ export interface Conversation {
   analysis_interval?: AnalysisInterval;
   next_analysis_at?: string;
   analysis_timezone?: string;
+  // Context for AI analysis
+  context_notes?: string;
+  context_notes_updated_at?: string;
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
@@ -246,6 +249,8 @@ export interface ConversationCreate {
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
   analysis_timezone?: string;
+  // Context for AI analysis
+  context_notes?: string;
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
@@ -433,6 +438,7 @@ export interface Analysis {
   themes: Theme[];  // Deprecated
   question_analyses: QuestionAnalysis[];
   surprising_insights?: SurprisingInsight[];  // AI-generated "What Surprised Us" section
+  context_notes_snapshot?: string;  // Creator context used for this analysis
   embedding_provider: string;
   embedding_model: string;
   clustering_algorithm: string;
@@ -451,6 +457,23 @@ export interface Analysis {
   unique_participants?: number;
   conversation_activated_at?: string;
   conversation_closed_at?: string;
+}
+
+// Lightweight analysis summary for list views
+export interface AnalysisSummary {
+  id: string;
+  conversation_id: string;
+  created_at: string;
+  total_responses_analyzed?: number;
+  context_notes_snapshot?: string;
+  llm_model?: string;
+  analysis_duration_ms?: number;
+}
+
+export interface AnalysisListResponse {
+  conversation_id: string;
+  total: number;
+  analyses: AnalysisSummary[];
 }
 
 // Periodic analysis for continuous conversations

@@ -59,6 +59,9 @@ class Analysis(Base):
     #   ...
     # ]
 
+    # Context snapshot (what the AI saw when this analysis was run)
+    context_notes_snapshot = Column(Text, nullable=True)
+
     # Metadata
     embedding_provider = Column(String(50), nullable=True)  # 'openai'
     embedding_model = Column(String(100), nullable=True)  # 'text-embedding-3-small'

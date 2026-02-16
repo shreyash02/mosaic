@@ -20,6 +20,8 @@ from app.models.analysis import Analysis
 from app.schemas.analysis import (
     AnalyzeRequest,
     Analysis as AnalysisSchema,
+    AnalysisSummary,
+    AnalysisListResponse,
 )
 from app.schemas.conversation import ConversationState
 from app.schemas.common import SuccessResponse
@@ -37,7 +39,8 @@ limiter = Limiter(key_func=get_remote_address)
 def run_analysis_task(
     conversation_id: UUID,
     db_url: str,
-    min_cluster_size: int = 2
+    min_cluster_size: int = 2,
+    is_reanalysis: bool = False
 ):
     """
     Background task to run analysis.
@@ -46,6 +49,7 @@ def run_analysis_task(
         conversation_id: Conversation ID to analyze
         db_url: Database connection URL
         min_cluster_size: Minimum cluster size for DBSCAN
+        is_reanalysis: If True, skip sending notifications (user re-ran analysis)
     """
     # Create a new database session for this background task
     from sqlalchemy import create_engine
@@ -69,21 +73,24 @@ def run_analysis_task(
             Response.conversation_id == conversation_id
         ).all()
 
-        # Run analysis
+        # Run analysis with context notes
+        context_notes = conversation.context_notes
         analysis_service = AnalysisService()
         results = analysis_service.analyze_conversation(
             conversation.questions,
             responses,
-            min_cluster_size=min_cluster_size
+            min_cluster_size=min_cluster_size,
+            context_notes=context_notes
         )
 
-        # Store results in database
+        # Store results in database (snapshot context_notes so viewers see what the AI used)
         analysis = Analysis(
             conversation_id=conversation_id,
             overall_summary=results["overall_summary"],
             themes=results.get("themes", []),  # Deprecated field
             question_analyses=results["question_analyses"],
             surprising_insights=results.get("surprising_insights"),
+            context_notes_snapshot=context_notes,
             embedding_provider=results["embedding_provider"],
             embedding_model=results["embedding_model"],
             clustering_algorithm=results["clustering_algorithm"],
@@ -106,8 +113,8 @@ def run_analysis_task(
 
         db.commit()
 
-        # Send notifications to participants
-        if conversation:
+        # Send notifications to participants (skip on re-analysis to avoid duplicate notifications)
+        if conversation and not is_reanalysis:
             results_url = f"https://mosaic.app/analysis/{conversation.id}"  # Will be replaced by settings
 
             # Send Slack DM notifications to participants
@@ -316,15 +323,8 @@ async def trigger_analysis(
             detail="No responses to analyze"
         )
 
-    # Check if analysis already exists
-    existing_analysis = db.query(Analysis).filter(
-        Analysis.conversation_id == conversation_id
-    ).first()
-
-    if existing_analysis:
-        # Delete old analysis to replace with new one
-        db.delete(existing_analysis)
-        db.commit()
+    # Detect re-analysis (conversation already analyzed)
+    is_reanalysis = conversation.state == ConversationState.ANALYZED.value
 
     # Set conversation state to ANALYZING
     conversation.state = ConversationState.ANALYZING.value
@@ -345,7 +345,8 @@ async def trigger_analysis(
             run_analysis_task,
             conversation_id=conversation_id,
             db_url=settings.DATABASE_URL,
-            min_cluster_size=2
+            min_cluster_size=2,
+            is_reanalysis=is_reanalysis
         )
 
         return SuccessResponse(
@@ -357,7 +358,8 @@ async def trigger_analysis(
         run_analysis_task(
             conversation_id=conversation_id,
             db_url=settings.DATABASE_URL,
-            min_cluster_size=2
+            min_cluster_size=2,
+            is_reanalysis=is_reanalysis
         )
 
         return SuccessResponse(
@@ -366,35 +368,15 @@ async def trigger_analysis(
         )
 
 
-@router.get("/conversations/{conversation_id}/analysis", response_model=AnalysisSchema)
-async def get_analysis(
+def _check_analysis_access(
     conversation_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get analysis results for a conversation.
-
-    Access control based on results_access setting:
-    - CREATOR_ONLY: Only the conversation creator can view
-    - PARTICIPANTS: Creator and anyone who submitted a response can view
-    - PUBLIC_LINK: Anyone authenticated can view
-
-    Args:
-        conversation_id: Conversation ID
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        Analysis results
-
-    Raises:
-        HTTPException: If conversation not found, user doesn't have access, or no analysis exists
-    """
+    current_user: User,
+    db: Session
+) -> Conversation:
+    """Check if user has access to analysis for this conversation. Returns conversation."""
     from app.models.response import Response
     from app.schemas.conversation import ResultsAccess
 
-    # Get the conversation
     conversation = db.query(Conversation).filter(
         Conversation.id == conversation_id
     ).first()
@@ -405,19 +387,15 @@ async def get_analysis(
             detail="Conversation not found"
         )
 
-    # Check access permissions
     is_creator = conversation.creator_id == current_user.id
 
     if not is_creator:
-        # Not the creator - check results_access setting
         if conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
-            # Only creator can view
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found"
             )
         elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
-            # Check if user has submitted a response
             has_responded = db.query(Response).filter(
                 Response.conversation_id == conversation_id,
                 Response.participant_id == current_user.id
@@ -428,9 +406,56 @@ async def get_analysis(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Conversation not found"
                 )
-        # PUBLIC_LINK allows anyone authenticated to view (no additional check needed)
 
-    # Get analysis
+    return conversation
+
+
+def _enrich_analysis(analysis: Analysis, conversation: Conversation, db: Session) -> Analysis:
+    """Add conversation metadata and participant count to analysis."""
+    from sqlalchemy import func
+    from app.models.response import Response
+
+    analysis.conversation_title = conversation.title
+    analysis.conversation_timezone = conversation.timezone
+    analysis.show_verbatim_responses = conversation.show_verbatim_responses
+    analysis.organization_id = conversation.organization_id
+    analysis.conversation_activated_at = conversation.activated_at
+    analysis.conversation_closed_at = conversation.closed_at
+
+    unique_by_id = db.query(func.count(func.distinct(Response.participant_id))).filter(
+        Response.conversation_id == conversation.id,
+        Response.participant_id.isnot(None)
+    ).scalar() or 0
+
+    if unique_by_id == 0:
+        unique_by_code = db.query(func.count(func.distinct(Response.participant_code_used))).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used.isnot(None)
+        ).scalar() or 0
+
+        if unique_by_code > 0:
+            unique_participants = unique_by_code
+        else:
+            unique_submissions = db.query(func.count(func.distinct(Response.submitted_at))).filter(
+                Response.conversation_id == conversation.id
+            ).scalar() or 0
+            unique_participants = unique_submissions
+    else:
+        unique_participants = unique_by_id
+
+    analysis.unique_participants = unique_participants
+    return analysis
+
+
+@router.get("/conversations/{conversation_id}/analysis", response_model=AnalysisSchema)
+async def get_analysis(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the latest analysis results for a conversation."""
+    conversation = _check_analysis_access(conversation_id, current_user, db)
+
     analysis = db.query(Analysis).filter(
         Analysis.conversation_id == conversation_id
     ).order_by(
@@ -443,43 +468,50 @@ async def get_analysis(
             detail="No analysis found for this conversation"
         )
 
-    # Add conversation metadata to analysis response for participant access
-    analysis.conversation_title = conversation.title
-    analysis.conversation_timezone = conversation.timezone
-    analysis.show_verbatim_responses = conversation.show_verbatim_responses
-    analysis.organization_id = conversation.organization_id
-    analysis.conversation_activated_at = conversation.activated_at
-    analysis.conversation_closed_at = conversation.closed_at
+    return _enrich_analysis(analysis, conversation, db)
 
-    # Get unique participant count - count by participant_id or participant_code_used
-    from sqlalchemy import func, case
 
-    # Count unique participants (those with participant_id)
-    unique_by_id = db.query(func.count(func.distinct(Response.participant_id))).filter(
-        Response.conversation_id == conversation_id,
-        Response.participant_id.isnot(None)
-    ).scalar() or 0
+@router.get("/conversations/{conversation_id}/analyses", response_model=AnalysisListResponse)
+async def list_analyses(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List all analyses for a conversation, ordered by most recent first."""
+    _check_analysis_access(conversation_id, current_user, db)
 
-    # If no participants with IDs, count by participant_code_used or unique response submissions
-    if unique_by_id == 0:
-        # Count unique participant codes
-        unique_by_code = db.query(func.count(func.distinct(Response.participant_code_used))).filter(
-            Response.conversation_id == conversation_id,
-            Response.participant_code_used.isnot(None)
-        ).scalar() or 0
+    analyses = db.query(Analysis).filter(
+        Analysis.conversation_id == conversation_id
+    ).order_by(
+        Analysis.created_at.desc()
+    ).all()
 
-        if unique_by_code > 0:
-            unique_participants = unique_by_code
-        else:
-            # Fallback: count unique submitted_at timestamps (approximate unique submissions)
-            # Group responses by submitted_at to approximate unique respondents
-            unique_submissions = db.query(func.count(func.distinct(Response.submitted_at))).filter(
-                Response.conversation_id == conversation_id
-            ).scalar() or 0
-            unique_participants = unique_submissions
-    else:
-        unique_participants = unique_by_id
+    return AnalysisListResponse(
+        conversation_id=conversation_id,
+        total=len(analyses),
+        analyses=analyses
+    )
 
-    analysis.unique_participants = unique_participants
 
-    return analysis
+@router.get("/conversations/{conversation_id}/analyses/{analysis_id}", response_model=AnalysisSchema)
+async def get_analysis_by_id(
+    conversation_id: UUID,
+    analysis_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific analysis by ID."""
+    conversation = _check_analysis_access(conversation_id, current_user, db)
+
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.conversation_id == conversation_id
+    ).first()
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found"
+        )
+
+    return _enrich_analysis(analysis, conversation, db)
