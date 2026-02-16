@@ -68,6 +68,7 @@ from app.services.email_service import email_service
 from app.services.organization_service import check_organization_membership
 from app.services.scheduler_service import calculate_next_analysis_time
 from app.services.notification_service import notification_service
+from app.services.in_app_notification_service import in_app_notification_service
 from app.utils.email_preferences import should_send_email
 
 router = APIRouter()
@@ -2050,6 +2051,19 @@ async def delete_invitation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found"
         )
+
+    # Delete associated notification if the invited user exists
+    if invitation.invited_user_id:
+        try:
+            await in_app_notification_service.delete_by_entity(
+                db=db,
+                entity_type="conversation",
+                entity_id=conversation.id,
+                notification_type="invitation",
+                user_id=invitation.invited_user_id,
+            )
+        except Exception as e:
+            logging.error(f"Failed to delete notification for invitation {invitation_id}: {e}")
 
     db.delete(invitation)
     db.commit()

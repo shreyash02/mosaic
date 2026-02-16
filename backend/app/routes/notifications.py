@@ -58,12 +58,18 @@ class UnreadCountResponse(BaseModel):
 @router.get("/notifications/stream")
 async def notification_stream(
     token: str = Query(..., description="Access token for authentication"),
-    db: Session = Depends(get_db),
 ):
     """
     SSE endpoint for real-time notifications.
     Token must be passed as query param due to EventSource API limitations.
+
+    NOTE: We don't use Depends(get_db) here because the streaming response
+    would hold the database connection for the entire SSE session duration,
+    potentially exhausting the connection pool. Instead, we create a temporary
+    session just for user verification.
     """
+    from app.core.database import SessionLocal
+
     # Verify token and get user
     try:
         payload = decode_token(token)
@@ -75,13 +81,17 @@ async def notification_stream(
             detail="Invalid or expired token",
         )
 
-    # Verify user exists
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
+    # Verify user exists using a temporary session that's immediately closed
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+    finally:
+        db.close()
 
     async def event_generator():
         """Generate SSE events for the user."""

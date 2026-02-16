@@ -144,6 +144,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
     });
 
+    eventSource.addEventListener('notification_deleted', (event) => {
+      console.log('SSE notification_deleted received:', event.data);
+      const { id } = JSON.parse(event.data) as { id: string };
+
+      // Remove from notifications list
+      setNotifications(prev => {
+        const notification = prev.find(n => n.id === id);
+        if (notification && !notification.read) {
+          setUnreadCount(count => Math.max(0, count - 1));
+        }
+        return prev.filter(n => n.id !== id);
+      });
+    });
+
     eventSource.addEventListener('heartbeat', () => {
       // Keep alive - connection still active
     });
@@ -229,13 +243,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [loadNotifications]);
 
   // Initialize when auth changes
+  // Note: We intentionally exclude loadNotifications and setupEventSource from deps
+  // to prevent creating multiple SSE connections on re-renders
   useEffect(() => {
-    if (!authLoading) {
-      loadNotifications();
+    if (authLoading) return;
 
-      if (isAuthenticated) {
-        setupEventSource();
-      }
+    loadNotifications();
+
+    if (isAuthenticated) {
+      setupEventSource();
     }
 
     return () => {
@@ -247,7 +263,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [authLoading, isAuthenticated, loadNotifications, setupEventSource]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated]);
 
   const value = useMemo(() => ({
     notifications,

@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -83,7 +83,7 @@ class InAppNotificationService:
         response_count: int,
     ) -> Optional[Notification]:
         """Notify conversation creator when someone submits a response."""
-        action_url = f"/conversations/{conversation.id}/responses"
+        action_url = f"/conversations/{conversation.id}"
 
         return await self.create_notification(
             db=db,
@@ -189,6 +189,61 @@ class InAppNotificationService:
             entity_id=conversation.id,
             data={"action_url": action_url},
         )
+
+    async def delete_by_entity(
+        self,
+        db: Session,
+        entity_type: str,
+        entity_id: UUID,
+        notification_type: Optional[str] = None,
+        user_id: Optional[UUID] = None,
+    ) -> int:
+        """
+        Delete notifications associated with an entity.
+        Used when the source entity is invalidated (e.g., invitation deleted).
+        Broadcasts deletion via SSE for real-time UI updates.
+
+        Args:
+            db: Database session
+            entity_type: Type of entity (e.g., 'conversation', 'analysis')
+            entity_id: ID of the entity
+            notification_type: Optionally filter by notification type
+            user_id: Optionally filter by user (e.g., for invitation deletions)
+
+        Returns:
+            Number of notifications deleted
+        """
+        query = db.query(Notification).filter(
+            Notification.entity_type == entity_type,
+            Notification.entity_id == entity_id,
+        )
+
+        if notification_type:
+            query = query.filter(Notification.notification_type == notification_type)
+
+        if user_id:
+            query = query.filter(Notification.user_id == user_id)
+
+        # Get notifications before deleting (for SSE broadcast)
+        notifications = query.all()
+
+        if not notifications:
+            return 0
+
+        # Broadcast deletion to each affected user
+        for notification in notifications:
+            await sse_service.send_to_user(
+                user_id=notification.user_id,
+                event_type="notification_deleted",
+                data={"id": str(notification.id)},
+            )
+
+        # Delete the notifications
+        deleted_count = query.delete(synchronize_session=False)
+        db.commit()
+
+        logger.info(f"Deleted {deleted_count} notifications for {entity_type}:{entity_id}")
+        return deleted_count
 
 
 # Singleton instance
