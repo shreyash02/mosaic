@@ -204,6 +204,10 @@ export interface Conversation {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
+  // Individual mode (journal) fields
+  is_individual?: boolean;
+  journal_owner_id?: string;
+  journal_prompt?: string;
   // Archiving
   is_archived?: boolean;
   archived_at?: string;
@@ -254,6 +258,8 @@ export interface ConversationCreate {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
+  // Individual mode (journal)
+  is_individual?: boolean;
   // Slack channel notifications
   slack_channel_id?: string;
   slack_channel_name?: string;
@@ -283,6 +289,8 @@ export interface ConversationListItem {
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
   recurrence_paused?: boolean;
+  // Individual mode
+  is_individual?: boolean;
   // Continuous conversation fields
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
@@ -1208,4 +1216,88 @@ export interface NotificationListResponse {
 
 export interface UnreadCountResponse {
   count: number;
+}
+
+// ==========================================
+// Journal types (individual mode)
+// ==========================================
+
+export interface JournalEntry {
+  id: string;
+  text: string;
+  created_at: string;
+  is_edited: boolean;
+  edited_at?: string;
+  word_count: number;
+}
+
+export interface JournalEntryCreate {
+  text: string;
+}
+
+export interface JournalStreak {
+  current_streak: number;
+  longest_streak: number;
+  total_entries: number;
+  entries_this_week: number;
+  entries_this_month: number;
+  last_entry_at?: string;
+}
+
+export interface JournalEntryList {
+  conversation_id: string;
+  total_entries: number;
+  entries: JournalEntry[];
+  streak: JournalStreak;
+}
+
+export interface ThemeTimelineEntry {
+  theme: string;
+  first_seen?: string;
+  last_seen?: string;
+  entry_count: number;
+  trajectory: 'growing' | 'stable' | 'declining' | 'resolved';
+  summary: string;
+}
+
+export interface MoodDataPoint {
+  date: string;
+  sentiment_score: number;
+  dominant_mood: string;
+  entry_id?: string;
+}
+
+export interface MoodTrajectory {
+  data_points: MoodDataPoint[];
+  overall_trend: 'improving' | 'stable' | 'declining';
+  summary: string;
+}
+
+export interface PatternInsight {
+  pattern_type: 'recurring_concern' | 'positive_shift' | 'correlation' | 'cyclical';
+  title: string;
+  description: string;
+  confidence: number;
+}
+
+export interface JournalAnalysisResponse {
+  id: string;
+  conversation_id: string;
+  overall_summary?: string;
+  theme_timeline?: ThemeTimelineEntry[];
+  mood_trajectory?: MoodTrajectory;
+  patterns?: PatternInsight[];
+  total_entries_analyzed: number;
+  date_range_start?: string;
+  date_range_end?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalAnalysisStatus {
+  available: boolean;
+  needs_more_entries: boolean;
+  entries_until_analysis: number;
+  total_entries: number;
+  latest_analysis?: JournalAnalysisResponse;
 }

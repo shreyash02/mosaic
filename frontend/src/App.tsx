@@ -64,6 +64,10 @@ import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 import CollectionsPage from './pages/CollectionsPage';
 import CollectionDetailPage from './pages/CollectionDetailPage';
+import JournalsPage from './pages/JournalsPage';
+import JournalCreatePage from './pages/JournalCreatePage';
+import JournalDetailPage from './pages/JournalDetailPage';
+import JournalInsightsPage from './pages/JournalInsightsPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ProfilePage from './pages/ProfilePage';
@@ -382,6 +386,40 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CollectionDetailPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Journals (individual mode) */}
+            <Route
+              path="/journals"
+              element={
+                <ProtectedRoute>
+                  <JournalsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/new"
+              element={
+                <ProtectedRoute>
+                  <JournalCreatePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/:id"
+              element={
+                <ProtectedRoute>
+                  <JournalDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/:id/insights"
+              element={
+                <ProtectedRoute>
+                  <JournalInsightsPage />
                 </ProtectedRoute>
               }
             />

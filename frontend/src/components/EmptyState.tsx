@@ -96,6 +96,14 @@ const StarIcon = () => (
   </svg>
 );
 
+const JournalIcon = () => (
+  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="4" width="40" height="56" rx="4" stroke={'var(--color-primary-400)'} strokeWidth="2" fill={'var(--color-primary-100)'} />
+    <path d="M20 16H44M20 24H40M20 32H36" stroke={'var(--color-primary-400)'} strokeWidth="2" strokeLinecap="round" />
+    <path d="M20 44H32" stroke={'var(--color-primary-300)'} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 const iconMap = {
   conversation: ConversationIcon,
   conversations: ConversationIcon,
@@ -113,6 +121,8 @@ const iconMap = {
   members: MembersIcon,
   question: QuestionIcon,
   questions: QuestionIcon,
+  journal: JournalIcon,
+  journals: JournalIcon,
   star: StarIcon,
   default: SearchIcon,
 };
