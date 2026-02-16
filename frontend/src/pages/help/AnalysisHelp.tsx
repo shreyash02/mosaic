@@ -159,17 +159,11 @@ export default function AnalysisHelp() {
         </section>
 
         <section style={{ marginBottom: '3rem' }}>
-          <h2 style={{ marginBottom: '1.5rem' }}>Technical Details</h2>
+          <h2 style={{ marginBottom: '1.5rem' }}>How It Works</h2>
 
           <div style={{ marginLeft: '1rem' }}>
             <p style={{ marginBottom: '1.5rem' }}>
-              The analysis page provides transparency into which AI models were used. The embedding model converts text into numerical vectors that capture semantic meaning. The clustering algorithm (DBSCAN) groups similar responses together based on these embeddings.
-            </p>
-            <p style={{ marginBottom: '1.5rem' }}>
-              Finally, a large language model (Claude) generates the theme names, summaries, and insights by reading and understanding the grouped responses.
-            </p>
-            <p style={{ fontSize: '0.9rem', color: '#718096', marginBottom: '1.5rem' }}>
-              You can see processing time and number of clusters found at the bottom of the analysis page, giving you visibility into how the analysis was performed.
+              The analysis uses AI to group similar responses into themes and generate summaries and insights. Responses are first converted into numerical representations that capture their meaning, then clustered together based on similarity. Finally, AI reads and interprets the grouped responses to produce theme names, summaries, and actionable insights.
             </p>
           </div>
         </section>

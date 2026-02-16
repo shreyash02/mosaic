@@ -1493,18 +1493,6 @@ export default function AnalysisPage() {
             <h3 style={{ ...styles.sectionTitle, marginBottom: spacing[4] }}>Technical Details</h3>
             <div style={styles.detailsGrid}>
               <div style={styles.detailItem}>
-                <span style={styles.detailLabel}>Embedding Model</span>
-                <span style={styles.detailValue}>{analysis.embedding_provider} / {analysis.embedding_model}</span>
-              </div>
-              <div style={styles.detailItem}>
-                <span style={styles.detailLabel}>Clustering</span>
-                <span style={styles.detailValue}>{analysis.clustering_algorithm.toUpperCase()}</span>
-              </div>
-              <div style={styles.detailItem}>
-                <span style={styles.detailLabel}>LLM</span>
-                <span style={styles.detailValue}>{analysis.llm_provider} / {analysis.llm_model}</span>
-              </div>
-              <div style={styles.detailItem}>
                 <span style={styles.detailLabel}>Analysis Date</span>
                 <span style={styles.detailValue}>{formatDate(analysis.created_at, conversation?.timezone)}</span>
               </div>
