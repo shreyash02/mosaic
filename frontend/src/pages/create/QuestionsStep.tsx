@@ -213,7 +213,7 @@ export default function QuestionsStep() {
     newQuestions[index].question_type = type as any;
 
     if (type === 'rating') {
-      newQuestions[index].options = { min: 0, max: 10, step: 1 };
+      newQuestions[index].options = { min: 1, max: 10, step: 1 };
     } else if (type === 'single_choice') {
       newQuestions[index].options = {
         mode: 'single',
@@ -384,14 +384,14 @@ export default function QuestionsStep() {
       is_required: false,
     };
 
-    // Add options for rating questions
-    // Map scale_min/scale_max to min/max for consistency with the rest of the app
-    if (suggestion.type === 'rating' && suggestion.options) {
+    // Add options for rating questions — always 1-10 scale
+    if (suggestion.type === 'rating') {
       newQuestion.options = {
-        min: suggestion.options.scale_min || 1,
-        max: suggestion.options.scale_max || 5,
-        min_label: suggestion.options.scale_min_label || '',
-        max_label: suggestion.options.scale_max_label || '',
+        min: 1,
+        max: 10,
+        step: 1,
+        min_label: suggestion.options?.scale_min_label || '',
+        max_label: suggestion.options?.scale_max_label || '',
       };
     }
 
@@ -643,7 +643,7 @@ export default function QuestionsStep() {
                         {/* Rating info */}
                         {question.question_type === 'rating' && (
                           <div style={{ padding: spacing[3], backgroundColor: 'var(--color-primary-100)', borderRadius: borders.radius.md, marginBottom: spacing[4], fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
-                            Participants will rate on a scale from {question.options?.min ?? 0} to {question.options?.max ?? 10}.
+                            Participants will rate on a scale from 1 to 10.
                           </div>
                         )}
 

@@ -206,6 +206,8 @@ class RatingStatistics(BaseModel):
     average: float
     min_value: int
     max_value: int
+    scale_min: Optional[int] = None
+    scale_max: Optional[int] = None
     distribution: dict  # {0: 5, 1: 3, 2: 8, ...}
     total_responses: int
 

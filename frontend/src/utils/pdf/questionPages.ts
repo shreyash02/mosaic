@@ -291,17 +291,18 @@ function renderRatingQuestionAnalysis(doc: jsPDF, qa: QuestionAnalysis, startY: 
   const avgWidth = doc.getTextWidth(avgText); // Calculate width while font is still 36pt
   doc.text(avgText, x + 14, y + 58);
 
-  // Scale indicator "/ 10" - positioned after the average value
+  // Scale indicator - positioned after the average value
+  const scaleMax = qa.rating_stats.scale_max ?? 10;
   doc.setFontSize(14);
   doc.setFont(fontFamily, 'normal');
-  doc.text('/ 10', x + 14 + avgWidth + 8, y + 58);
+  doc.text(`/ ${scaleMax}`, x + 14 + avgWidth + 8, y + 58);
 
-  // Min/Max on the right side
+  // Scale range and total on the right side
+  const scaleMin = qa.rating_stats.scale_min ?? 1;
   doc.setTextColor(PDF_STYLES.colors.textMuted);
   doc.setFontSize(PDF_STYLES.fonts.body.size);
-  doc.text(`Min: ${qa.rating_stats.min_value}`, x + boxWidth + 25, y + 28);
-  doc.text(`Max: ${qa.rating_stats.max_value}`, x + boxWidth + 25, y + 46);
-  doc.text(`Total: ${qa.rating_stats.total_responses}`, x + boxWidth + 25, y + 64);
+  doc.text(`Scale: ${scaleMin}–${scaleMax}`, x + boxWidth + 25, y + 28);
+  doc.text(`Responses: ${qa.rating_stats.total_responses}`, x + boxWidth + 25, y + 46);
 
   y += boxHeight + 30;
 

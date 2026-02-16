@@ -617,8 +617,8 @@ export default function AdminConversationDetailPage() {
                       <div style={{ marginTop: spacing[4] }}>
                         <strong style={{ color: colors.primary[900] }}>Rating Statistics:</strong>
                         <div style={{ marginLeft: spacing[4], marginTop: spacing[2], color: colors.primary[700], fontSize: typography.fontSize.sm }}>
-                          <p>Average: {qa.rating_stats.average.toFixed(2)}</p>
-                          <p>Min: {qa.rating_stats.min_value} | Max: {qa.rating_stats.max_value}</p>
+                          <p>Average: {qa.rating_stats.average.toFixed(2)} / {qa.rating_stats.scale_max ?? 10}</p>
+                          <p>Scale: {qa.rating_stats.scale_min ?? 1}–{qa.rating_stats.scale_max ?? 10} | Responses: {qa.rating_stats.total_responses}</p>
                           <p>Distribution:</p>
                           <ul>
                             {Object.entries(qa.rating_stats.distribution).map(([rating, count]) => (

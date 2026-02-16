@@ -145,7 +145,7 @@ export default function ConversationPreview({
                       <div className="rating-input">
                         <input
                           type="range"
-                          min={question.options?.min || 0}
+                          min={question.options?.min || 1}
                           max={question.options?.max || 10}
                           value={Math.floor((question.options?.max || 10) / 2)}
                           disabled
@@ -154,7 +154,7 @@ export default function ConversationPreview({
                         <div className="rating-value">
                           <span className="rating-number">{Math.floor((question.options?.max || 10) / 2)}</span>
                           <span className="rating-range">
-                            ({question.options?.min || 0} - {question.options?.max || 10})
+                            ({question.options?.min || 1} - {question.options?.max || 10})
                           </span>
                         </div>
                       </div>

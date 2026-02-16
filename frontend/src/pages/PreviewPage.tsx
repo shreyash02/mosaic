@@ -804,7 +804,7 @@ export default function PreviewPage() {
 
                   {question.question_type === 'rating' && (
                     <RatingButtons
-                      min={question.options?.min || 0}
+                      min={question.options?.min || 1}
                       max={question.options?.max || 10}
                       step={question.options?.step || 1}
                       value={response?.response_data?.rating ?? null}

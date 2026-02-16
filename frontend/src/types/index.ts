@@ -398,6 +398,8 @@ export interface RatingStatistics {
   average: number;
   min_value: number;
   max_value: number;
+  scale_min?: number;
+  scale_max?: number;
   distribution: Record<string, number>;
   total_responses: number;
 }
@@ -435,6 +437,7 @@ export interface SurprisingInsight {
 export type ActionType = 'investigate' | 'communicate' | 'change' | 'celebrate' | 'monitor';
 export type ActionPriority = 'high' | 'medium' | 'low';
 export type ActionSentiment = 'positive' | 'negative' | 'neutral' | 'mixed';
+export type ActionSource = 'user_requested' | 'auto_generated';
 export type ActionStatus = 'suggested' | 'accepted' | 'dismissed' | 'completed' | 'converted_to_goal';
 
 export interface SuggestedAction {
@@ -448,6 +451,7 @@ export interface SuggestedAction {
   sentiment: ActionSentiment;
   related_cluster_ids: string[];
   response_percentage: number | null;
+  source: ActionSource;
   status: ActionStatus;
   dismissed_reason?: string;
   created_at: string;

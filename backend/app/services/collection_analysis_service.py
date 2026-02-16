@@ -228,10 +228,22 @@ class CollectionAnalysisService:
                         all_ratings.extend([avg] * count)
 
                 if all_ratings:
+                    # Get scale from first available rating_stats
+                    scale_min = None
+                    scale_max = None
+                    for qa_data in group_data:
+                        rs = qa_data["analysis"].get("rating_stats")
+                        if rs and rs.get("scale_max") is not None:
+                            scale_min = rs.get("scale_min", 1)
+                            scale_max = rs["scale_max"]
+                            break
+
                     aggregated_qa["rating_stats"] = {
                         "average": float(np.mean(all_ratings)),
                         "min_value": int(np.min(all_ratings)),
                         "max_value": int(np.max(all_ratings)),
+                        "scale_min": scale_min,
+                        "scale_max": scale_max,
                         "total_responses": len(all_ratings)
                     }
 
@@ -299,9 +311,8 @@ class CollectionAnalysisService:
                     summaries.append(f"- \"{q_text}\": {count} text responses")
             elif q_type == "rating" and qa.get("rating_stats"):
                 avg = qa["rating_stats"]["average"]
-                min_val = qa["rating_stats"]["min_value"]
-                max_val = qa["rating_stats"]["max_value"]
-                summaries.append(f"- \"{q_text}\": Average {avg:.1f}/10 (range: {min_val}-{max_val}, {count} responses)")
+                s_max = qa["rating_stats"].get("scale_max", 10)
+                summaries.append(f"- \"{q_text}\": Average {avg:.1f}/{s_max} ({count} responses)")
             elif q_type in ["single_choice", "multiple_choice"] and qa.get("poll_stats"):
                 top_choice = qa["poll_stats"]["choices"][0] if qa["poll_stats"]["choices"] else None
                 if top_choice:

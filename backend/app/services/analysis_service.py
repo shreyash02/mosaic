@@ -244,7 +244,7 @@ class AnalysisService:
 
         # Compute distribution
         distribution = {}
-        scale_min = question.options.get('min', 0) if question.options else 0
+        scale_min = question.options.get('min', 1) if question.options else 1
         scale_max = question.options.get('max', 10) if question.options else 10
 
         for i in range(scale_min, scale_max + 1):
@@ -260,6 +260,8 @@ class AnalysisService:
                 "average": round(average, 2),
                 "min_value": min_val,
                 "max_value": max_val,
+                "scale_min": scale_min,
+                "scale_max": scale_max,
                 "distribution": distribution,
                 "total_responses": len(ratings)
             }
@@ -349,7 +351,8 @@ class AnalysisService:
 
             if q_type == "rating" and qa.get("rating_stats"):
                 avg = qa["rating_stats"]["average"]
-                summaries.append(f"- \"{q_text}\": Average rating {avg}/10 ({count} responses)")
+                s_max = qa["rating_stats"].get("scale_max", 10)
+                summaries.append(f"- \"{q_text}\": Average rating {avg}/{s_max} ({count} responses)")
             elif q_type in ["single_choice", "multiple_choice"] and qa.get("poll_stats"):
                 top_choice = max(qa["poll_stats"]["choices"], key=lambda x: x["count"]) if qa["poll_stats"]["choices"] else None
                 if top_choice:
@@ -796,7 +799,8 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
                     context_item += "  No themes identified and no responses found."
             elif q_type == "rating" and qa.get("rating_stats"):
                 stats = qa["rating_stats"]
-                context_item += f"  Average: {stats['average']}/10, Range: {stats['min_value']}-{stats['max_value']}"
+                s_max = stats.get("scale_max", 10)
+                context_item += f"  Average: {stats['average']}/{s_max}, Range: {stats['min_value']}-{stats['max_value']}"
             elif q_type in ["single_choice", "multiple_choice"] and qa.get("poll_stats"):
                 stats = qa["poll_stats"]
                 top_choice = max(stats["choices"], key=lambda x: x["count"]) if stats["choices"] else None

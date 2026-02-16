@@ -741,7 +741,7 @@ async def submit_response(
                 )
             # Get min/max from options or use defaults
             options = question.options or {}
-            min_val = options.get('min', 0)
+            min_val = options.get('min', 1)
             max_val = options.get('max', 10)
             if not isinstance(rating, (int, float)) or rating < min_val or rating > max_val:
                 raise HTTPException(

@@ -1446,11 +1446,11 @@ export default function AnalysisPage() {
                       <div style={styles.ratingDisplay}>
                         <div style={styles.ratingAverage}>
                           <span style={styles.averageValue}>{qa.rating_stats.average}</span>
-                          <span style={styles.averageScale}> / 10</span>
+                          <span style={styles.averageScale}> / {qa.rating_stats.scale_max ?? 10}</span>
                         </div>
                         <div style={styles.ratingRange}>
-                          <span>Min: {qa.rating_stats.min_value}</span>
-                          <span>Max: {qa.rating_stats.max_value}</span>
+                          <span>Scale: {qa.rating_stats.scale_min ?? 1}–{qa.rating_stats.scale_max ?? 10}</span>
+                          <span>{qa.rating_stats.total_responses} responses</span>
                         </div>
                       </div>
 

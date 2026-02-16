@@ -448,7 +448,7 @@ function QuestionCard({
               fontSize: typography.fontSize.sm,
               color: 'var(--color-primary-600)',
             }}>
-              Participants will rate on a scale from 0 to 10 using a slider.
+              Participants will rate on a scale from 1 to 10.
             </div>
           )}
 

@@ -117,7 +117,7 @@ class TestDataService:
         elif question.question_type == 'rating':
             # Generate random rating
             options = question.options or {}
-            min_val = options.get('min', 0)
+            min_val = options.get('min', 1)
             max_val = options.get('max', 10)
             # Slightly bias towards middle-high values for realism
             rating = self._generate_weighted_rating(min_val, max_val)
