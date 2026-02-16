@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useFeature } from '../contexts/FeaturesContext';
 import { useTheme, SunIcon, MoonIcon } from '../contexts/ThemeContext';
+import { NotificationCenter } from './NotificationCenter';
 import './Header.css';
 
 export default function Header() {
@@ -253,6 +254,9 @@ export default function Header() {
                 <path d="m21 21-4.35-4.35" />
               </svg>
             </Link>
+
+            {/* Notifications - Desktop */}
+            <NotificationCenter />
 
             {/* Theme Toggle - Desktop */}
             <button

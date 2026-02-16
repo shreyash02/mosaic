@@ -4,10 +4,12 @@ import { FeaturesProvider } from './contexts/FeaturesContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConversationFormProvider } from './contexts/ConversationFormContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
+import { ToastContainer } from './components/Toast';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -92,6 +94,7 @@ function App() {
           <Router>
             <OrganizationProvider>
             <FeaturesProvider>
+            <NotificationProvider>
             <div className="App">
               <Header />
               <EmailVerificationBanner />
@@ -421,7 +424,9 @@ function App() {
             <Route path="/help/slack-integration" element={<SlackIntegrationHelp />} />
               </Routes>
               </main>
+              <ToastContainer />
             </div>
+            </NotificationProvider>
             </FeaturesProvider>
             </OrganizationProvider>
           </Router>

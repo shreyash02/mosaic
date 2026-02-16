@@ -1067,3 +1067,37 @@ export interface EffectiveFeatureFlag {
 export interface FeatureFlagList {
   flags: FeatureFlag[];
 }
+
+// Notification types
+export type NotificationType =
+  | 'response_submitted'
+  | 'analysis_ready'
+  | 'announcement'
+  | 'closing_soon'
+  | 'invitation';
+
+export interface Notification {
+  id: string;
+  notification_type: NotificationType;
+  title: string;
+  message: string;
+  entity_type?: string;
+  entity_id?: string;
+  data?: {
+    action_url?: string;
+    conversation_id?: string;
+    [key: string]: unknown;
+  };
+  read: boolean;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}

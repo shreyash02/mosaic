@@ -14,6 +14,7 @@ from app.models.response import Response
 from app.models.user import User
 from app.services.email_service import email_service
 from app.services.notification_service import notification_service
+from app.services.in_app_notification_service import in_app_notification_service
 from app.utils.email_preferences import should_send_email
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ class AnnouncementService:
         for email, user_id in recipients:
             slack_sent = False
             email_sent = False
+            in_app_sent = False
 
             # Try Slack notification for registered users (if org has Slack)
             if user_id and conversation.organization_id:
@@ -113,6 +115,22 @@ class AnnouncementService:
                 except Exception as e:
                     logger.error(
                         f"Failed to send Slack announcement to user {user_id}: {e}",
+                        exc_info=True
+                    )
+
+            # Send in-app notification for registered users
+            if user_id:
+                try:
+                    await in_app_notification_service.notify_announcement(
+                        db=db,
+                        user_id=user_id,
+                        conversation=conversation,
+                        announcement_message=announcement.message,
+                    )
+                    in_app_sent = True
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send in-app announcement to user {user_id}: {e}",
                         exc_info=True
                     )
 
@@ -132,7 +150,7 @@ class AnnouncementService:
                         exc_info=True
                     )
 
-            if slack_sent or email_sent:
+            if slack_sent or email_sent or in_app_sent:
                 sent_count += 1
 
         # Update announcement record

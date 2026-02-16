@@ -65,6 +65,9 @@ import type {
   SearchResponse,
   SearchSuggestionsResponse,
   QuestionSuggestionResponse,
+  Notification,
+  NotificationListResponse,
+  UnreadCountResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -866,6 +869,37 @@ class ApiService {
       tier: string;
     }>(`/auth/me/features${params}`);
     return response.data;
+  }
+
+  // Notifications
+  async getNotifications(
+    limit: number = 20,
+    offset: number = 0,
+    unreadOnly: boolean = false
+  ): Promise<NotificationListResponse> {
+    const response = await this.client.get<NotificationListResponse>('/notifications', {
+      params: { limit, offset, unread_only: unreadOnly }
+    });
+    return response.data;
+  }
+
+  async getUnreadNotificationCount(): Promise<UnreadCountResponse> {
+    const response = await this.client.get<UnreadCountResponse>('/notifications/unread-count');
+    return response.data;
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<Notification> {
+    const response = await this.client.post<Notification>(`/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  async markAllNotificationsAsRead(): Promise<{ updated_count: number }> {
+    const response = await this.client.post<{ updated_count: number }>('/notifications/mark-all-read');
+    return response.data;
+  }
+
+  async deleteNotification(notificationId: string): Promise<void> {
+    await this.client.delete(`/notifications/${notificationId}`);
   }
 }
 

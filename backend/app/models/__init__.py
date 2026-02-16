@@ -18,6 +18,7 @@ from app.models.conversation_announcement import ConversationAnnouncement
 from app.models.scheduler_job_log import SchedulerJobLog
 from app.models.feature_flag import FeatureFlag, FeatureFlagOverride, FeatureUsage
 from app.models.subscription import Subscription
+from app.models.notification import Notification
 
 __all__ = [
     "User",
@@ -41,4 +42,5 @@ __all__ = [
     "FeatureFlagOverride",
     "FeatureUsage",
     "Subscription",
+    "Notification",
 ]

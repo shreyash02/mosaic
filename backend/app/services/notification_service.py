@@ -11,6 +11,7 @@ from app.models.conversation import Conversation
 from app.models.slack_workspace_connection import SlackWorkspaceConnection
 from app.models.user_slack_connection import UserSlackConnection
 from app.services.slack_service import slack_service
+from app.services.in_app_notification_service import in_app_notification_service
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class NotificationService:
         db: Session,
     ) -> bool:
         """
-        Send Slack notification when a user is added to a conversation.
+        Send notification when a user is added to a conversation.
 
         Args:
             user_id: The user being invited
@@ -35,15 +36,30 @@ class NotificationService:
             db: Database session
 
         Returns:
-            True if notification was sent successfully, False otherwise
+            True if any notification was sent successfully, False otherwise
         """
+        inviter_name = inviter.full_name if inviter and inviter.full_name else None
+        slack_success = False
+
+        # Send in-app notification first (always, regardless of Slack)
+        try:
+            await in_app_notification_service.notify_invitation(
+                db=db,
+                user_id=user_id,
+                conversation=conversation,
+                inviter_name=inviter_name,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send in-app invitation notification: {e}", exc_info=True)
+
+        # Then try Slack notification if configured
         if not settings.slack_enabled:
-            return False
+            return True  # In-app was sent
 
         # Get the organization's Slack connection
         if not conversation.organization_id:
             logger.debug("Conversation has no organization, skipping Slack notification")
-            return False
+            return True  # In-app was sent
 
         slack_connection = db.query(SlackWorkspaceConnection).filter(
             SlackWorkspaceConnection.organization_id == conversation.organization_id,
@@ -52,13 +68,13 @@ class NotificationService:
 
         if not slack_connection:
             logger.debug("Organization has no Slack connection")
-            return False
+            return True  # In-app was sent
 
         # Get the user being invited
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             logger.warning(f"User {user_id} not found for Slack notification")
-            return False
+            return True  # In-app was sent
 
         # Find user's Slack ID
         slack_user_id = await self._get_slack_user_id(
@@ -69,11 +85,10 @@ class NotificationService:
 
         if not slack_user_id:
             logger.debug(f"Could not find Slack user for {user.email}")
-            return False
+            return True  # In-app was sent
 
         # Build the message
         join_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
-        inviter_name = inviter.full_name if inviter and inviter.full_name else None
 
         blocks, fallback_text = slack_service.build_invitation_message(
             conversation_title=conversation.title,
@@ -82,19 +97,19 @@ class NotificationService:
         )
 
         # Send the DM
-        success = await slack_service.send_dm(
+        slack_success = await slack_service.send_dm(
             encrypted_token=slack_connection.bot_access_token_encrypted,
             slack_user_id=slack_user_id,
             blocks=blocks,
             fallback_text=fallback_text,
         )
 
-        if success:
+        if slack_success:
             logger.info(f"Sent Slack invitation notification to user {user_id}")
         else:
             logger.warning(f"Failed to send Slack notification to user {user_id}")
 
-        return success
+        return True  # In-app was sent
 
     async def notify_conversation_closing_soon(
         self,
@@ -103,7 +118,7 @@ class NotificationService:
         db: Session,
     ) -> bool:
         """
-        Send Slack notification when a conversation is closing soon.
+        Send notification when a conversation is closing soon.
 
         Args:
             user_id: The user to notify
@@ -111,14 +126,33 @@ class NotificationService:
             db: Database session
 
         Returns:
-            True if notification was sent successfully, False otherwise
+            True if any notification was sent successfully, False otherwise
         """
+        # Send in-app notification first (always, regardless of Slack)
+        try:
+            # Calculate hours remaining
+            hours_remaining = 24  # Default
+            if conversation.auto_close_at:
+                from datetime import datetime
+                remaining = conversation.auto_close_at - datetime.utcnow()
+                hours_remaining = max(1, int(remaining.total_seconds() / 3600))
+
+            await in_app_notification_service.notify_closing_soon(
+                db=db,
+                user_id=user_id,
+                conversation=conversation,
+                hours_remaining=hours_remaining,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send in-app closing soon notification: {e}", exc_info=True)
+
+        # Then try Slack notification if configured
         if not settings.slack_enabled:
-            return False
+            return True
 
         # Get the organization's Slack connection
         if not conversation.organization_id:
-            return False
+            return True
 
         slack_connection = db.query(SlackWorkspaceConnection).filter(
             SlackWorkspaceConnection.organization_id == conversation.organization_id,
@@ -126,12 +160,12 @@ class NotificationService:
         ).first()
 
         if not slack_connection:
-            return False
+            return True
 
         # Get the user
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            return False
+            return True
 
         # Find user's Slack ID
         slack_user_id = await self._get_slack_user_id(
@@ -141,7 +175,7 @@ class NotificationService:
         )
 
         if not slack_user_id:
-            return False
+            return True
 
         # Build the message
         respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
@@ -153,17 +187,17 @@ class NotificationService:
         )
 
         # Send the DM
-        success = await slack_service.send_dm(
+        slack_success = await slack_service.send_dm(
             encrypted_token=slack_connection.bot_access_token_encrypted,
             slack_user_id=slack_user_id,
             blocks=blocks,
             fallback_text=fallback_text,
         )
 
-        if success:
+        if slack_success:
             logger.info(f"Sent Slack closing warning to user {user_id} for conversation {conversation.id}")
 
-        return success
+        return True
 
     async def notify_analysis_ready(
         self,
@@ -171,9 +205,7 @@ class NotificationService:
         db: Session,
     ) -> int:
         """
-        Send Slack notification to all participants when analysis is ready.
-
-        Only sends if results_access allows participants to view results.
+        Send notification when analysis is ready.
 
         Args:
             conversation: The conversation that was analyzed
@@ -182,17 +214,34 @@ class NotificationService:
         Returns:
             Number of notifications sent successfully
         """
-        if not settings.slack_enabled:
-            return 0
+        # Always notify the creator with in-app notification first
+        try:
+            from app.models.analysis import Analysis
+            analysis = db.query(Analysis).filter(
+                Analysis.conversation_id == conversation.id
+            ).order_by(Analysis.created_at.desc()).first()
 
-        # Only notify if participants can actually view the results
+            if analysis:
+                await in_app_notification_service.notify_analysis_ready(
+                    db=db,
+                    user_id=conversation.creator_id,
+                    conversation=conversation,
+                    analysis_id=analysis.id,
+                )
+        except Exception as e:
+            logger.error(f"Failed to send in-app analysis ready notification: {e}", exc_info=True)
+
+        # Skip Slack notifications to participants if results_access is creator_only
         if conversation.results_access == "creator_only":
-            logger.debug("Skipping analysis notification - results_access is creator_only")
-            return 0
+            logger.debug("Skipping Slack analysis notification - results_access is creator_only")
+            return 1  # In-app to creator was sent
+
+        if not settings.slack_enabled:
+            return 1
 
         # Get the organization's Slack connection
         if not conversation.organization_id:
-            return 0
+            return 1
 
         slack_connection = db.query(SlackWorkspaceConnection).filter(
             SlackWorkspaceConnection.organization_id == conversation.organization_id,
@@ -200,7 +249,7 @@ class NotificationService:
         ).first()
 
         if not slack_connection:
-            return 0
+            return 1
 
         # Import here to avoid circular imports
         from app.models.response import Response
@@ -215,7 +264,7 @@ class NotificationService:
         participant_ids = [p[0] for p in participant_ids]
 
         if not participant_ids:
-            return 0
+            return 1
 
         # Build the message
         results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
@@ -225,7 +274,7 @@ class NotificationService:
             results_url=results_url,
         )
 
-        sent_count = 0
+        sent_count = 1  # Creator in-app already sent
         for participant_id in participant_ids:
             user = db.query(User).filter(User.id == participant_id).first()
             if not user:
@@ -260,7 +309,7 @@ class NotificationService:
         db: Session,
     ) -> bool:
         """
-        Send Slack notification when a user submits a response.
+        Send notification when a user submits a response.
 
         Args:
             user_id: The user who submitted
@@ -268,14 +317,34 @@ class NotificationService:
             db: Database session
 
         Returns:
-            True if notification was sent successfully, False otherwise
+            True if any notification was sent successfully, False otherwise
         """
+        # Send in-app notification to the CREATOR that someone responded (always, regardless of Slack)
+        try:
+            # Don't notify if the creator is the one who responded
+            if conversation.creator_id != user_id:
+                from app.models.response import Response
+                response_count = db.query(Response).filter(
+                    Response.conversation_id == conversation.id,
+                    Response.status == "submitted",
+                ).count()
+
+                await in_app_notification_service.notify_response_submitted(
+                    db=db,
+                    creator_id=conversation.creator_id,
+                    conversation=conversation,
+                    response_count=response_count,
+                )
+        except Exception as e:
+            logger.error(f"Failed to send in-app response notification to creator: {e}", exc_info=True)
+
+        # Then try Slack confirmation to the responder if configured
         if not settings.slack_enabled:
-            return False
+            return True
 
         # Get the organization's Slack connection
         if not conversation.organization_id:
-            return False
+            return True
 
         slack_connection = db.query(SlackWorkspaceConnection).filter(
             SlackWorkspaceConnection.organization_id == conversation.organization_id,
@@ -283,12 +352,12 @@ class NotificationService:
         ).first()
 
         if not slack_connection:
-            return False
+            return True
 
         # Get the user
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            return False
+            return True
 
         # Find user's Slack ID
         slack_user_id = await self._get_slack_user_id(
@@ -298,7 +367,7 @@ class NotificationService:
         )
 
         if not slack_user_id:
-            return False
+            return True
 
         # Build the message
         results_url = f"{settings.FRONTEND_URL}/analysis/{conversation.id}"
@@ -309,17 +378,17 @@ class NotificationService:
         )
 
         # Send the DM
-        success = await slack_service.send_dm(
+        slack_success = await slack_service.send_dm(
             encrypted_token=slack_connection.bot_access_token_encrypted,
             slack_user_id=slack_user_id,
             blocks=blocks,
             fallback_text=fallback_text,
         )
 
-        if success:
+        if slack_success:
             logger.info(f"Sent Slack response confirmation to user {user_id} for conversation {conversation.id}")
 
-        return success
+        return True
 
     async def notify_reminder(
         self,
