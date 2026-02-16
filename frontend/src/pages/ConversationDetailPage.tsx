@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Series } from '../types';
+import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Series, SuggestedAction } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
 import ConversationPreview from '../components/ConversationPreview';
 import QRCodePoster from '../components/QRCodePoster';
@@ -153,6 +154,7 @@ const s = {
   actionsBar: {
     display: 'flex',
     flexWrap: 'wrap' as const,
+    alignItems: 'center',
     gap: spacing[3],
     marginBottom: spacing[6],
     padding: spacing[4],
@@ -649,12 +651,14 @@ function ContextNotesSection({ conversation, onUpdate }: { conversation: Convers
 export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { currentOrgId } = useOrganization();
   const { completeStep } = useOnboarding();
   const aiAnalysisEnabled = useFeature('ai_analysis');
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [stats, setStats] = useState<ResponseStats | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [organizationName, setOrganizationName] = useState<string | null>(null);
@@ -693,6 +697,8 @@ export default function ConversationDetailPage() {
   const [selectedAnalysisInterval, setSelectedAnalysisInterval] = useState<string>('');
   const [updatingAnalysisSchedule, setUpdatingAnalysisSchedule] = useState(false);
   const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const analysisDropdownRef = useRef<HTMLDivElement>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [showExtendModal, setShowExtendModal] = useState(false);
@@ -723,6 +729,21 @@ export default function ConversationDetailPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showAnalysisDropdown]);
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMoreMenu]);
 
   useEffect(() => {
     if (id) {
@@ -885,6 +906,13 @@ export default function ConversationDetailPage() {
         try {
           const analysisData = await api.getAnalysis(id!);
           setAnalysis(analysisData);
+          // Load suggested actions
+          try {
+            const actionsData = await api.getSuggestedActions(id!, analysisData.id);
+            setSuggestedActions(actionsData.actions);
+          } catch {
+            // Actions may not exist yet
+          }
         } catch {
           // Analysis not available yet
         }
@@ -1557,37 +1585,196 @@ export default function ConversationDetailPage() {
           </>
         )}
 
-        <button onClick={() => setShowPreview(true)} style={s.buttonSecondary}>
-          Preview
-        </button>
+        {/* Three-dot menu for tertiary actions */}
+        <div ref={moreMenuRef} style={{ position: 'relative', marginLeft: 'auto' }}>
+          <button
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: spacing[2],
+              borderRadius: borders.radius.md,
+              color: 'var(--color-primary-500)',
+            }}
+            className="more-menu-trigger"
+            aria-expanded={showMoreMenu}
+            aria-haspopup="menu"
+            aria-label="More actions"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <circle cx="4" cy="10" r="1.75" />
+              <circle cx="10" cy="10" r="1.75" />
+              <circle cx="16" cy="10" r="1.75" />
+            </svg>
+          </button>
+          {showMoreMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: spacing[1],
+                backgroundColor: 'var(--color-primary-50)',
+                border: '1px solid var(--color-primary-300)',
+                borderRadius: borders.radius.md,
+                boxShadow: shadows.md,
+                zIndex: 10,
+                minWidth: '160px',
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                onClick={() => { setShowPreview(true); setShowMoreMenu(false); }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: `${spacing[3]} ${spacing[4]}`,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: typography.fontSize.sm,
+                  color: 'var(--color-primary-900)',
+                }}
+                className="more-menu-item"
+              >
+                Preview
+              </button>
+              {conversation.is_archived ? (
+                <button
+                  onClick={() => { handleUnarchive(); setShowMoreMenu(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: `${spacing[3]} ${spacing[4]}`,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-900)',
+                    opacity: actionLoading ? 0.6 : 1,
+                  }}
+                  className="more-menu-item"
+                  disabled={actionLoading}
+                >
+                  Unarchive
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setShowArchiveModal(true); setShowMoreMenu(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: `${spacing[3]} ${spacing[4]}`,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-900)',
+                    opacity: actionLoading ? 0.6 : 1,
+                  }}
+                  className="more-menu-item"
+                  disabled={actionLoading}
+                >
+                  Archive
+                </button>
+              )}
+              <div style={{ height: '1px', backgroundColor: 'var(--color-primary-200)', margin: `${spacing[1]} 0` }} />
+              <button
+                onClick={() => { setShowDeleteModal(true); setShowMoreMenu(false); }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: `${spacing[3]} ${spacing[4]}`,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                  fontSize: typography.fontSize.sm,
+                  color: 'var(--color-error)',
+                  opacity: actionLoading ? 0.6 : 1,
+                }}
+                className="more-menu-item"
+                disabled={actionLoading}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
 
-        {conversation.is_archived ? (
-          <button
-            onClick={handleUnarchive}
-            style={s.buttonSecondary}
-            disabled={actionLoading}
-          >
-            Unarchive
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowArchiveModal(true)}
-            style={s.buttonSecondary}
-            disabled={actionLoading}
-          >
-            Archive
-          </button>
-        )}
+        {/* Inline action summary — visible at top without scrolling */}
+        {conversation.state === ConversationState.ANALYZED && suggestedActions.length > 0 && user && conversation.creator_id === user.id && (() => {
+          const counts: Record<string, number> = {};
+          for (const a of suggestedActions) {
+            counts[a.status] = (counts[a.status] || 0) + 1;
+          }
+          const pills: { label: string; count: number; color: string; bg: string }[] = [
+            { label: 'Accepted', count: counts.accepted || 0, color: 'var(--color-success-text, #166534)', bg: 'var(--color-success-light, #f0fdf4)' },
+            { label: 'Completed', count: counts.completed || 0, color: 'var(--color-primary-700)', bg: 'var(--color-primary-100)' },
+            { label: 'Deferred', count: counts.deferred || 0, color: 'var(--color-primary-600)', bg: 'var(--color-primary-100)' },
+            { label: 'Suggested', count: counts.suggested || 0, color: 'var(--color-warning-text, #92400e)', bg: 'var(--color-warning-light, #fffbeb)' },
+            { label: 'Dismissed', count: counts.dismissed || 0, color: 'var(--color-primary-400)', bg: 'var(--color-primary-50)' },
+          ].filter(p => p.count > 0);
 
-        {conversation.is_archived && (
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            style={s.buttonSecondary}
-            disabled={actionLoading}
-          >
-            Delete
-          </button>
-        )}
+          return (
+            <div style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              paddingTop: spacing[3],
+              borderTop: '1px solid var(--color-primary-200)',
+            }}>
+              <Link
+                to={`/conversations/${id}/analysis`}
+                state={{ activeTab: 'actions' }}
+                style={{
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  color: 'var(--color-primary-600)',
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Actions:
+              </Link>
+              {pills.map(p => (
+                <span key={p.label} style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spacing[1],
+                  padding: `2px ${spacing[2]}`,
+                  borderRadius: borders.radius.full,
+                  fontSize: typography.fontSize.xs,
+                  fontWeight: typography.fontWeight.medium,
+                  backgroundColor: p.bg,
+                  color: p.color,
+                }}>
+                  <span style={{ fontWeight: typography.fontWeight.semibold }}>{p.count}</span> {p.label}
+                </span>
+              ))}
+              <Link
+                to={`/conversations/${id}/analysis`}
+                state={{ activeTab: 'actions' }}
+                style={{
+                  fontSize: typography.fontSize.xs,
+                  color: 'var(--color-primary-500)',
+                  textDecoration: 'none',
+                  marginLeft: 'auto',
+                }}
+              >
+                View all →
+              </Link>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Activation blockers */}

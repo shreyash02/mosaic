@@ -621,15 +621,21 @@ export default function AnalysisPage() {
     usage: number;
   }>({ show: false, feature: '', limit: 0, usage: 0 });
   const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
+  const [activeTab, setActiveTab] = useState<'analysis' | 'actions'>('analysis');
   const isCreator = !!(user && fullConversation && fullConversation.creator_id === user.id);
 
   usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
 
-  // Check if navigated from ConversationDetailPage with analysis triggered
+  // Check if navigated from ConversationDetailPage with analysis triggered or tab pre-selected
   useEffect(() => {
-    const state = location.state as { analysisTriggered?: 'update' | 'incremental' } | null;
+    const state = location.state as { analysisTriggered?: 'update' | 'incremental'; activeTab?: 'analysis' | 'actions' } | null;
     if (state?.analysisTriggered) {
       setPendingAnalysis({ mode: state.analysisTriggered, startedAt: new Date() });
+    }
+    if (state?.activeTab) {
+      setActiveTab(state.activeTab);
+    }
+    if (state?.analysisTriggered || state?.activeTab) {
       // Clear the state so it doesn't trigger again on refresh
       navigate(location.pathname, { replace: true, state: {} });
     }
@@ -1277,6 +1283,74 @@ export default function AnalysisPage() {
             )}
           </header>
 
+          {/* Tab bar */}
+          {suggestedActions.length > 0 && (
+            <div style={{
+              display: 'flex',
+              gap: spacing[1],
+              borderBottom: '2px solid var(--color-primary-200)',
+              marginBottom: spacing[4],
+            }}>
+              <button
+                onClick={() => { setActiveTab('analysis'); window.scrollTo({ top: 0 }); }}
+                style={{
+                  padding: `${spacing[2]} ${spacing[4]}`,
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  color: activeTab === 'analysis' ? 'var(--color-primary-900)' : 'var(--color-primary-500)',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'analysis' ? '2px solid var(--color-primary-900)' : '2px solid transparent',
+                  marginBottom: '-2px',
+                  cursor: 'pointer',
+                  transition: transitions.duration.fast,
+                }}
+              >
+                Analysis
+              </button>
+              <button
+                onClick={() => { setActiveTab('actions'); window.scrollTo({ top: 0 }); }}
+                style={{
+                  padding: `${spacing[2]} ${spacing[4]}`,
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  color: activeTab === 'actions' ? 'var(--color-primary-900)' : 'var(--color-primary-500)',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'actions' ? '2px solid var(--color-primary-900)' : '2px solid transparent',
+                  marginBottom: '-2px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  transition: transitions.duration.fast,
+                }}
+              >
+                Actions
+                {(() => {
+                  const count = suggestedActions.filter(a => a.status !== 'dismissed').length;
+                  return count > 0 ? (
+                    <span style={{
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.semibold,
+                      backgroundColor: activeTab === 'actions' ? 'var(--color-primary-900)' : 'var(--color-primary-300)',
+                      color: 'var(--color-primary-50)',
+                      borderRadius: borders.radius.full,
+                      padding: `0 ${spacing[2]}`,
+                      minWidth: '20px',
+                      textAlign: 'center',
+                      lineHeight: '20px',
+                    }}>
+                      {count}
+                    </span>
+                  ) : null;
+                })()}
+              </button>
+            </div>
+          )}
+
+          {/* === Analysis Tab === */}
+          {activeTab === 'analysis' && (<>
           {/* Historical analysis banner */}
           {analysisId && (
             <div style={{
@@ -1379,6 +1453,7 @@ export default function AnalysisPage() {
             analysisId={analysis.id}
             isCreator={isCreator}
             initialActions={suggestedActions}
+            onActionsChange={setSuggestedActions}
           />
 
           {/* Question-by-Question Analysis */}
@@ -1681,6 +1756,58 @@ export default function AnalysisPage() {
               </div>
             </div>
           </div>
+          </>)}
+
+          {/* === Actions Tab === */}
+          {activeTab === 'actions' && (<>
+            {/* Stats row */}
+            {suggestedActions.length > 0 && (() => {
+              const counts: Record<string, number> = {};
+              for (const a of suggestedActions) {
+                counts[a.status] = (counts[a.status] || 0) + 1;
+              }
+              const pills: { label: string; count: number; color: string; bg: string }[] = [
+                { label: 'Accepted', count: counts.accepted || 0, color: 'var(--color-success-text, #166534)', bg: 'var(--color-success-light, #f0fdf4)' },
+                { label: 'Completed', count: counts.completed || 0, color: 'var(--color-primary-700)', bg: 'var(--color-primary-100)' },
+                { label: 'Deferred', count: counts.deferred || 0, color: 'var(--color-primary-600)', bg: 'var(--color-primary-100)' },
+                { label: 'Suggested', count: counts.suggested || 0, color: 'var(--color-warning-text, #92400e)', bg: 'var(--color-warning-light, #fffbeb)' },
+                { label: 'Dismissed', count: counts.dismissed || 0, color: 'var(--color-primary-400)', bg: 'var(--color-primary-50)' },
+              ].filter(p => p.count > 0);
+
+              return (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  marginBottom: spacing[4],
+                  flexWrap: 'wrap',
+                }}>
+                  {pills.map(p => (
+                    <span key={p.label} style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: spacing[1],
+                      padding: `${spacing[1]} ${spacing[3]}`,
+                      borderRadius: borders.radius.full,
+                      fontSize: typography.fontSize.sm,
+                      fontWeight: typography.fontWeight.medium,
+                      backgroundColor: p.bg,
+                      color: p.color,
+                    }}>
+                      <span style={{ fontWeight: typography.fontWeight.semibold }}>{p.count}</span> {p.label}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
+            <SuggestedActionsSection
+              conversationId={id!}
+              analysisId={analysis.id}
+              isCreator={isCreator}
+              initialActions={suggestedActions}
+              onActionsChange={setSuggestedActions}
+            />
+          </>)}
         </div>
       </div>
 

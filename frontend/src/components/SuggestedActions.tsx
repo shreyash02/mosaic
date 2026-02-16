@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useCallback, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../contexts/NotificationContext';
 import type { SuggestedAction, ActionType, ActionPriority, ActionStatus } from '../types';
@@ -11,6 +11,7 @@ interface SuggestedActionsProps {
   analysisId: string;
   isCreator: boolean;
   initialActions?: SuggestedAction[];
+  onActionsChange?: (actions: SuggestedAction[]) => void;
 }
 
 const ACTION_TYPE_CONFIG: Record<ActionType, { label: string; icon: ReactNode }> = {
@@ -381,12 +382,22 @@ export default function SuggestedActions({
   analysisId,
   isCreator,
   initialActions,
+  onActionsChange,
 }: SuggestedActionsProps) {
-  const [actions, setActions] = useState<SuggestedAction[]>(
+  const [actions, setActionsRaw] = useState<SuggestedAction[]>(
     initialActions ? [...initialActions].sort(prioritySort) : [],
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Wrap setActions to also notify parent
+  const setActions = useCallback((update: SuggestedAction[] | ((prev: SuggestedAction[]) => SuggestedAction[])) => {
+    setActionsRaw(prev => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      onActionsChange?.(next);
+      return next;
+    });
+  }, [onActionsChange]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showDismissed, setShowDismissed] = useState(false);
   const { addToast } = useToast();

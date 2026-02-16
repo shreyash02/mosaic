@@ -452,6 +452,14 @@ html.dark .filter-dropdown-item:hover {
   background-color: #374151;
 }
 
+html.dark .more-menu-trigger:hover {
+  background-color: #374151;
+}
+
+html.dark .more-menu-item:hover {
+  background-color: #374151;
+}
+
 /* Messages */
 html.dark .error-message {
   background-color: #450a0a;
@@ -1392,6 +1400,18 @@ h3 {
 
 .filter-dropdown-item:hover {
   background: #f7fafc;
+}
+
+.more-menu-trigger:hover {
+  background-color: var(--color-primary-200);
+}
+
+.more-menu-item:hover {
+  background: var(--color-primary-100);
+}
+
+.more-menu-item:disabled:hover {
+  background: transparent;
 }
 
 .filter-dropdown-item input[type="checkbox"],
