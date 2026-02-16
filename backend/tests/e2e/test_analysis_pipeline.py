@@ -33,19 +33,6 @@ SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
 
 # =============================================================================
-# Pytest hooks for --generate-scenario flag
-# =============================================================================
-
-def pytest_addoption(parser):
-    parser.addoption(
-        "--generate-scenario",
-        action="store",
-        default=None,
-        help="Generate an additional scenario on-the-fly for the given topic"
-    )
-
-
-# =============================================================================
 # Scenario loading
 # =============================================================================
 
@@ -467,7 +454,7 @@ class TestAnalysisPipeline:
             payload["participant_code"] = codes[i]
 
             submit_url = f"{BASE_URL}/api/conversations/{codes[i]}/responses"
-            with httpx.Client() as http_client:
+            with httpx.Client(timeout=30.0) as http_client:
                 response = http_client.post(
                     submit_url,
                     json=payload,

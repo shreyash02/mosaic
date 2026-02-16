@@ -8,6 +8,15 @@ import os
 import uuid
 import pytest
 import httpx
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--generate-scenario",
+        action="store",
+        default=None,
+        help="Generate an additional analysis test scenario on-the-fly for the given topic"
+    )
 from datetime import datetime, timedelta, timezone
 from typing import Generator, Dict, Any, Optional
 
@@ -33,9 +42,13 @@ class APIClient:
             headers["Authorization"] = f"Bearer {self.token}"
         return headers
 
+    def _client(self) -> httpx.Client:
+        """Create an httpx client with appropriate timeout."""
+        return httpx.Client(timeout=30.0)
+
     def get(self, path: str, **kwargs) -> httpx.Response:
         """Make a GET request."""
-        with httpx.Client() as client:
+        with self._client() as client:
             return client.get(
                 f"{self.base_url}{path}",
                 headers=self._get_headers(),
@@ -44,7 +57,7 @@ class APIClient:
 
     def post(self, path: str, json: Dict = None, **kwargs) -> httpx.Response:
         """Make a POST request."""
-        with httpx.Client() as client:
+        with self._client() as client:
             return client.post(
                 f"{self.base_url}{path}",
                 headers=self._get_headers(),
@@ -54,7 +67,7 @@ class APIClient:
 
     def put(self, path: str, json: Dict = None, **kwargs) -> httpx.Response:
         """Make a PUT request."""
-        with httpx.Client() as client:
+        with self._client() as client:
             return client.put(
                 f"{self.base_url}{path}",
                 headers=self._get_headers(),
@@ -64,7 +77,7 @@ class APIClient:
 
     def patch(self, path: str, json: Dict = None, **kwargs) -> httpx.Response:
         """Make a PATCH request."""
-        with httpx.Client() as client:
+        with self._client() as client:
             return client.patch(
                 f"{self.base_url}{path}",
                 headers=self._get_headers(),
@@ -74,7 +87,7 @@ class APIClient:
 
     def delete(self, path: str, **kwargs) -> httpx.Response:
         """Make a DELETE request."""
-        with httpx.Client() as client:
+        with self._client() as client:
             return client.delete(
                 f"{self.base_url}{path}",
                 headers=self._get_headers(),
