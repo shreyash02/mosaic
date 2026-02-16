@@ -30,10 +30,12 @@ export default function Header() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileProfileRef = useRef<HTMLDivElement>(null);
   const mobileMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     logout();
@@ -58,21 +60,25 @@ export default function Header() {
       if (mobileProfileRef.current && !mobileProfileRef.current.contains(event.target as Node)) {
         setMobileProfileOpen(false);
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
     };
 
-    if (showOrgDropdown || mobileMenuOpen || mobileProfileOpen) {
+    if (showOrgDropdown || mobileMenuOpen || mobileProfileOpen || showUserDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showOrgDropdown, mobileMenuOpen, mobileProfileOpen]);
+  }, [showOrgDropdown, mobileMenuOpen, mobileProfileOpen, showUserDropdown]);
 
-  // Close mobile menus on route change
+  // Close menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
     setMobileProfileOpen(false);
+    setShowUserDropdown(false);
   }, [location.pathname]);
 
   return (
@@ -258,29 +264,71 @@ export default function Header() {
             {/* Notifications - Desktop */}
             <NotificationCenter />
 
-            {/* Theme Toggle - Desktop */}
-            <button
-              onClick={toggleTheme}
-              className="theme-toggle desktop-theme-toggle"
-              aria-label={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
-              title={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
-            >
-              {resolvedTheme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
-            </button>
-
-            {/* Desktop User Info */}
-            <div className="user-info desktop-user-info">
-              <div className="user-details">
-                <span className="user-name">{user.full_name}</span>
-                <span className="user-email">{user.email}</span>
-              </div>
-              <div className="user-menu-links">
-                <Link to="/profile" className="user-menu-link">Profile</Link>
-                <Link to="/settings" className="user-menu-link">Settings</Link>
-              </div>
-              <button onClick={handleLogout} className="btn-logout">
-                Logout
+            {/* Desktop User Menu */}
+            <div className="user-dropdown-container desktop-user-dropdown" ref={userDropdownRef}>
+              <button
+                className="user-dropdown-trigger"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                aria-expanded={showUserDropdown}
+                aria-haspopup="menu"
+                aria-label="User menu"
+              >
+                <div className="user-avatar">
+                  {user.full_name?.charAt(0).toUpperCase() || 'U'}
+                </div>
               </button>
+
+              {showUserDropdown && (
+                <div className="user-dropdown-menu">
+                  <div className="user-dropdown-info">
+                    <span className="user-dropdown-name">{user.full_name}</span>
+                    <span className="user-dropdown-email">{user.email}</span>
+                  </div>
+                  <div className="user-dropdown-divider" />
+                  <Link
+                    to="/profile"
+                    className="user-dropdown-item"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Profile
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="user-dropdown-item"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    Settings
+                  </Link>
+                  <div className="user-dropdown-divider" />
+                  <button
+                    onClick={toggleTheme}
+                    className="user-dropdown-item"
+                  >
+                    {resolvedTheme === 'light' ? <MoonIcon size={16} /> : <SunIcon size={16} />}
+                    {resolvedTheme === 'light' ? 'Dark Mode' : 'Light Mode'}
+                  </button>
+                  <div className="user-dropdown-divider" />
+                  <button
+                    onClick={handleLogout}
+                    className="user-dropdown-item user-dropdown-logout"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Mobile Profile Button - Right side */}

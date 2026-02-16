@@ -250,11 +250,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     loadNotifications();
 
+    // In development (HTTP/1.1), delay SSE connection to allow initial page requests
+    // to complete first. This prevents SSE from blocking other requests on the same connection.
+    // In production (HTTP/2), multiplexing handles this, so no delay needed.
+    let sseTimeout: ReturnType<typeof setTimeout> | null = null;
     if (isAuthenticated) {
-      setupEventSource();
+      const delay = import.meta.env.DEV ? 2000 : 0;
+      sseTimeout = setTimeout(() => {
+        setupEventSource();
+      }, delay);
     }
 
     return () => {
+      if (sseTimeout) {
+        clearTimeout(sseTimeout);
+      }
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;

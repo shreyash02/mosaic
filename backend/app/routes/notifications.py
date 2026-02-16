@@ -100,6 +100,8 @@ async def notification_stream(
         try:
             # Send connected event
             yield sse_service.format_sse_message("connected", {"status": "connected"})
+            # Yield control to allow other requests to be processed
+            await asyncio.sleep(0)
 
             while True:
                 try:
@@ -114,10 +116,14 @@ async def notification_stream(
                         message["event"],
                         message["data"]
                     )
+                    # Yield control after each message
+                    await asyncio.sleep(0)
 
                 except asyncio.TimeoutError:
                     # Send heartbeat
                     yield sse_service.format_sse_message("heartbeat", {"timestamp": datetime.utcnow().isoformat()})
+                    # Yield control after heartbeat
+                    await asyncio.sleep(0)
 
         except asyncio.CancelledError:
             logger.info(f"SSE connection cancelled for user {user_id}")
@@ -130,9 +136,10 @@ async def notification_stream(
         event_generator(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "Access-Control-Allow-Origin": "*",
         },
     )
 
