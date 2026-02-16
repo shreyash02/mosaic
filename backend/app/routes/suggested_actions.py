@@ -197,6 +197,7 @@ async def generate_suggested_actions(
             sentiment=d["sentiment"],
             related_cluster_ids=d.get("related_cluster_ids", []),
             response_percentage=d.get("response_percentage"),
+            source="user_requested",
             status="suggested",
             created_at=datetime.utcnow(),
         )

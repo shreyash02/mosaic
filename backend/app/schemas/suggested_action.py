@@ -28,6 +28,11 @@ class ActionSentiment(str, Enum):
     mixed = "mixed"
 
 
+class ActionSource(str, Enum):
+    user_requested = "user_requested"
+    auto_generated = "auto_generated"
+
+
 class ActionStatus(str, Enum):
     suggested = "suggested"
     accepted = "accepted"
@@ -48,6 +53,7 @@ class SuggestedAction(BaseModel):
     sentiment: ActionSentiment
     related_cluster_ids: Optional[List[str]] = None
     response_percentage: Optional[float] = None
+    source: ActionSource = ActionSource.user_requested
     status: ActionStatus = ActionStatus.suggested
     dismissed_reason: Optional[str] = None
     created_at: datetime

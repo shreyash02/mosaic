@@ -276,7 +276,9 @@ export default function SuggestedActions({
       {hasActions && !loading && (
         <>
           <p style={styles.subtitle}>
-            AI-generated suggestions based on your feedback.
+            {actions.some(a => a.source === 'auto_generated')
+              ? 'Auto-suggested based on your feedback patterns.'
+              : 'AI-generated suggestions based on your feedback.'}
           </p>
           {actions.map((action) => {
             const priorityCfg = PRIORITY_CONFIG[action.priority];

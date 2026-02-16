@@ -29,6 +29,9 @@ class SuggestedAction(Base):
     related_cluster_ids = Column(JSONB, nullable=True)
     response_percentage = Column(Float, nullable=True)
 
+    # Source: how this action was created
+    source = Column(String(20), nullable=False, default="user_requested")  # user_requested, auto_generated
+
     # Status (Phase 1: always 'suggested'; Phase 2+: accepted, dismissed, converted_to_goal)
     status = Column(String(50), nullable=False, default="suggested")
     dismissed_reason = Column(Text, nullable=True)

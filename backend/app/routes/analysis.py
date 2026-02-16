@@ -113,6 +113,109 @@ def run_analysis_task(
 
         db.commit()
 
+        # Auto-generate suggested actions if confidence is high enough
+        try:
+            from app.services.suggested_action_service import SuggestedActionService
+            from app.models.suggested_action import SuggestedAction as SuggestedActionModel
+
+            if SuggestedActionService.should_auto_suggest(
+                results["question_analyses"],
+                results.get("surprising_insights"),
+                results["total_responses_analyzed"],
+            ):
+                # Check if actions already exist for this analysis (idempotent)
+                existing_actions = db.query(SuggestedActionModel).filter(
+                    SuggestedActionModel.analysis_id == analysis.id
+                ).first()
+
+                if not existing_actions:
+                    # Check feature flag + usage limits for the creator
+                    from app.services.feature_flag_service import feature_flag_service
+                    from app.services.subscription_service import subscription_service
+                    from app.services.usage_service import usage_service
+                    from app.models.user import User as UserModel
+
+                    creator = db.query(UserModel).filter(
+                        UserModel.id == conversation.creator_id
+                    ).first()
+
+                    if creator:
+                        tier = subscription_service.get_tier(
+                            db, user_id=creator.id, org_id=conversation.organization_id
+                        )
+                        flag_enabled = feature_flag_service.is_enabled(
+                            db, "ai_suggested_actions",
+                            tier=tier,
+                            org_id=conversation.organization_id,
+                            user_id=creator.id,
+                        )
+
+                        if flag_enabled:
+                            limit = feature_flag_service.get_config_value(
+                                db, "ai_suggested_actions", "generations_per_month",
+                                tier=tier,
+                                org_id=conversation.organization_id,
+                                user_id=creator.id,
+                            )
+                            usage_user_id = None if conversation.organization_id else creator.id
+                            usage_org_id = conversation.organization_id
+
+                            is_allowed, _ = usage_service.check_limit(
+                                db, "ai_suggested_actions", limit,
+                                user_id=usage_user_id,
+                                org_id=usage_org_id,
+                            )
+
+                            if is_allowed:
+                                service = SuggestedActionService()
+                                action_dicts = service.generate_actions(
+                                    conversation_title=conversation.title,
+                                    conversation_description=conversation.description,
+                                    overall_summary=results["overall_summary"],
+                                    question_analyses=results["question_analyses"],
+                                    surprising_insights=results.get("surprising_insights"),
+                                    context_notes=context_notes,
+                                    total_responses=results["total_responses_analyzed"],
+                                )
+
+                                if action_dicts:
+                                    from uuid import uuid4
+
+                                    for d in action_dicts:
+                                        action = SuggestedActionModel(
+                                            id=uuid4(),
+                                            analysis_id=analysis.id,
+                                            conversation_id=conversation_id,
+                                            title=d["title"],
+                                            description=d["description"],
+                                            action_type=d["action_type"],
+                                            priority=d["priority"],
+                                            sentiment=d["sentiment"],
+                                            related_cluster_ids=d.get("related_cluster_ids", []),
+                                            response_percentage=d.get("response_percentage"),
+                                            source="auto_generated",
+                                            status="suggested",
+                                            created_at=datetime.utcnow(),
+                                        )
+                                        db.add(action)
+
+                                    usage_service.increment_usage(
+                                        db, "ai_suggested_actions",
+                                        user_id=usage_user_id,
+                                        org_id=usage_org_id,
+                                    )
+                                    db.commit()
+                                    logger.info(
+                                        f"Auto-generated {len(action_dicts)} suggested actions "
+                                        f"for conversation {conversation_id}"
+                                    )
+        except Exception as e:
+            logger.error(
+                f"Auto-suggestion failed for conversation {conversation_id}: {e}",
+                exc_info=True,
+            )
+            # Don't fail the analysis over auto-suggestion errors
+
         # Send notifications to participants (skip on re-analysis to avoid duplicate notifications)
         if conversation and not is_reanalysis:
             results_url = f"https://mosaic.app/analysis/{conversation.id}"  # Will be replaced by settings

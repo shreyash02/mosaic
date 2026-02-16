@@ -15,9 +15,63 @@ logger = logging.getLogger(__name__)
 class SuggestedActionService:
     """Generates suggested actions from analysis data using an LLM."""
 
+    MIN_RESPONSES_FOR_AUTO = 5
+    THEME_FREQUENCY_THRESHOLD = 0.30  # 30% of responses
+    LOW_RATING_THRESHOLD_10 = 4.0  # on a 1-10 scale
+    LOW_RATING_THRESHOLD_5 = 2.0  # on a 1-5 scale
+
     def __init__(self):
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         self.llm_model = "claude-sonnet-4-5-20250929"
+
+    @staticmethod
+    def should_auto_suggest(
+        question_analyses: List[Dict[str, Any]],
+        surprising_insights: Optional[List[Dict[str, Any]]],
+        total_responses: int,
+    ) -> bool:
+        """
+        Evaluate whether analysis results warrant auto-generating suggested actions.
+
+        Returns True when confidence is high enough:
+        - At least 5 responses (too few = unreliable signal)
+        - AND at least one of:
+          - A text theme covers >= 30% of responses for that question
+          - A rating question has a low average (<=4.0 on 1-10 or <=2.0 on 1-5)
+          - Surprising insights were generated (indicates non-obvious patterns)
+        """
+        if total_responses < SuggestedActionService.MIN_RESPONSES_FOR_AUTO:
+            return False
+
+        # Check for surprising insights
+        if surprising_insights and len(surprising_insights) > 0:
+            return True
+
+        for qa in (question_analyses or []):
+            q_type = qa.get("question_type", "text")
+            response_count = qa.get("response_count", 0)
+
+            # Check text themes for high-frequency patterns
+            if q_type == "text" and response_count > 0:
+                for theme in (qa.get("themes") or []):
+                    frequency = theme.get("frequency", 0)
+                    if frequency / response_count >= SuggestedActionService.THEME_FREQUENCY_THRESHOLD:
+                        return True
+
+            # Check for low ratings
+            if q_type == "rating" and qa.get("rating_stats"):
+                stats = qa["rating_stats"]
+                avg = stats.get("average")
+                if avg is not None:
+                    scale_max = stats.get("scale_max", stats.get("max_value", 10))
+                    if scale_max <= 5:
+                        if avg <= SuggestedActionService.LOW_RATING_THRESHOLD_5:
+                            return True
+                    else:
+                        if avg <= SuggestedActionService.LOW_RATING_THRESHOLD_10:
+                            return True
+
+        return False
 
     def generate_actions(
         self,
