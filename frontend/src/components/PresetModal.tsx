@@ -97,7 +97,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
     >
       <div
         style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--color-bg-primary)',
           borderRadius: borders.radius.lg,
           padding: spacing[6],
           maxWidth: '500px',
@@ -141,6 +141,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 border: `1px solid var(--color-primary-300)`,
                 borderRadius: borders.radius.md,
                 fontSize: typography.fontSize.base,
+                backgroundColor: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
               }}
             />
           </div>
@@ -167,6 +169,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 border: `1px solid var(--color-primary-300)`,
                 borderRadius: borders.radius.md,
                 fontSize: typography.fontSize.base,
+                backgroundColor: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
               }}
             />
           </div>
@@ -199,10 +203,10 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                       justifyContent: 'center',
                       border: icon === opt.id
                         ? '2px solid var(--color-primary-600)'
-                        : '1px solid var(--color-primary-200)',
+                        : '1px solid var(--color-primary-300)',
                       borderRadius: borders.radius.md,
-                      backgroundColor: icon === opt.id ? 'var(--color-primary-50)' : 'white',
-                      color: icon === opt.id ? 'var(--color-primary-700)' : 'var(--color-primary-500)',
+                      backgroundColor: icon === opt.id ? 'var(--color-primary-100)' : 'var(--color-bg-secondary)',
+                      color: icon === opt.id ? 'var(--color-primary-700)' : 'var(--color-text-secondary)',
                       cursor: 'pointer',
                     }}
                   >
@@ -273,7 +277,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 checked={showVerbatimResponses}
                 onChange={e => setShowVerbatimResponses(e.target.checked)}
               />
-              <span style={{ fontSize: typography.fontSize.sm }}>
+              <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-text-primary)' }}>
                 Show verbatim responses in analysis
               </span>
             </label>
@@ -288,7 +292,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 checked={inviteOnly}
                 onChange={e => setInviteOnly(e.target.checked)}
               />
-              <span style={{ fontSize: typography.fontSize.sm }}>
+              <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-text-primary)' }}>
                 Invite-only (require invitation to respond)
               </span>
             </label>
@@ -308,7 +312,8 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
                 padding: `${spacing[2]} ${spacing[4]}`,
                 border: '1px solid var(--color-primary-300)',
                 borderRadius: borders.radius.md,
-                backgroundColor: 'white',
+                backgroundColor: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
                 fontSize: typography.fontSize.sm,
                 cursor: 'pointer',
               }}
