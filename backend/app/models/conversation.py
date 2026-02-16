@@ -89,6 +89,14 @@ class Conversation(Base):
     auto_analyze = Column(Boolean, default=False, nullable=False)
     # if true, trigger analysis automatically when conversation closes
 
+    # Individual mode (journals)
+    is_individual = Column(Boolean, default=False, nullable=False)
+    # True if this conversation is a personal journal (single owner, no participants)
+    journal_owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    # The user who owns this journal. Always equals creator_id for journals.
+    journal_prompt = Column(Text, nullable=True)
+    # Optional recurring prompt shown to the journal owner when adding entries
+
     # Continuous conversation mode
     is_continuous = Column(Boolean, default=False, nullable=False)
     # True if this conversation stays open indefinitely for ongoing feedback collection
@@ -164,9 +172,15 @@ class Conversation(Base):
     series = relationship("Series", back_populates="conversations", foreign_keys=[series_id])
     series_template_rel = relationship("Series", back_populates="templates", foreign_keys=[template_series_id])
 
+    # Journal owner relationship
+    journal_owner = relationship("User", foreign_keys=[journal_owner_id])
+
     # Continuous conversation relationships
     periodic_analyses = relationship("PeriodicAnalysis", back_populates="conversation", cascade="all, delete-orphan", order_by="PeriodicAnalysis.period_start.desc()")
     continuous_trends = relationship("ContinuousTrends", back_populates="conversation", uselist=False, cascade="all, delete-orphan")
+
+    # Journal analysis relationships
+    journal_analyses = relationship("JournalAnalysis", back_populates="conversation", cascade="all, delete-orphan", order_by="JournalAnalysis.created_at.desc()")
 
     def __repr__(self):
         return f"<Conversation(id={self.id}, title={self.title}, state={self.state})>"

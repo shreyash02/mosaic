@@ -300,6 +300,9 @@ async def create_conversation(
                     detail="You don't have access to this series"
                 )
 
+    # Determine if this is a journal (individual mode)
+    is_journal = conversation_data.is_individual or False
+
     # Create conversation
     conversation = Conversation(
         creator_id=current_user.id,
@@ -310,18 +313,27 @@ async def create_conversation(
         description=conversation_data.description,
         header_image_url=conversation_data.header_image_url,
         access_code=access_code,
-        anonymity_level=conversation_data.anonymity_level.value,
-        results_access=conversation_data.results_access.value,
-        invite_only=conversation_data.invite_only,
+        # For journals, force specific defaults
+        anonymity_level="platform_tracked" if is_journal else conversation_data.anonymity_level.value,
+        results_access="creator_only" if is_journal else conversation_data.results_access.value,
+        invite_only=True if is_journal else conversation_data.invite_only,
         auto_analyze=conversation_data.auto_analyze,
         max_response_length=conversation_data.max_response_length,
-        duration_minutes=conversation_data.duration_minutes,
-        scheduled_activate_at=scheduled_activate_at_utc,
-        auto_close_at=auto_close_at_utc,
-        manual_close_enabled=conversation_data.manual_close_enabled,
-        time_extension_enabled=conversation_data.time_extension_enabled,
+        duration_minutes=None if is_journal else conversation_data.duration_minutes,
+        scheduled_activate_at=None if is_journal else scheduled_activate_at_utc,
+        auto_close_at=None if is_journal else auto_close_at_utc,
+        manual_close_enabled=False if is_journal else conversation_data.manual_close_enabled,
+        time_extension_enabled=False if is_journal else conversation_data.time_extension_enabled,
         timezone=conversation_timezone,
-        state=ConversationState.DRAFT.value,
+        # Journals activate immediately, skip draft
+        state=ConversationState.ACTIVE.value if is_journal else ConversationState.DRAFT.value,
+        activated_at=datetime.utcnow() if is_journal else None,
+        show_verbatim_responses=True if is_journal else conversation_data.show_verbatim_responses,
+        allow_response_editing=True if is_journal else conversation_data.allow_response_editing,
+        # Individual mode fields
+        is_individual=is_journal,
+        journal_owner_id=current_user.id if is_journal else None,
+        journal_prompt=conversation_data.questions[0].question_text if is_journal and conversation_data.questions else None,
         # Template fields
         is_template=conversation_data.is_template or False,
         template_series_id=conversation_data.template_series_id,
@@ -332,8 +344,8 @@ async def create_conversation(
         recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
-        # Continuous conversation fields
-        is_continuous=conversation_data.is_continuous or False,
+        # Continuous conversation fields - journals are always continuous
+        is_continuous=True if is_journal else (conversation_data.is_continuous or False),
         analysis_interval=conversation_data.analysis_interval.value if conversation_data.analysis_interval else None,
         analysis_timezone=conversation_data.analysis_timezone,
         # Context for AI analysis
@@ -368,6 +380,7 @@ async def list_conversations(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     state: Optional[ConversationState] = None,
+    mode: Optional[str] = Query(None, pattern="^(group|individual|all)$", description="Filter by conversation mode: group, individual, or all"),
     include_archived: bool = Query(False, description="Include archived conversations"),
     archived_only: bool = Query(False, description="Only show archived conversations"),
     current_user: User = Depends(get_current_user),
@@ -423,6 +436,13 @@ async def list_conversations(
     if state:
         query = query.filter(Conversation.state == state.value)
 
+    # Filter by mode (group vs individual/journal)
+    if mode == "individual":
+        query = query.filter(Conversation.is_individual == True)
+    elif mode == "group":
+        query = query.filter(Conversation.is_individual == False)
+    # mode == "all" or None: no filter
+
     query = query.order_by(Conversation.created_at.desc())
     query = query.offset(skip).limit(limit)
 
@@ -472,6 +492,8 @@ async def list_conversations(
             # Recurring conversation fields
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
+            # Individual mode
+            "is_individual": conv.is_individual or False,
         }
         conversations.append(ConversationListItem(**conv_dict))
 

@@ -129,6 +129,9 @@ class ConversationBase(BaseModel):
     recurrence_end_date: Optional[datetime] = Field(None, description="When to stop creating instances (only set on template)")
     recurrence_paused: bool = Field(False, description="If True, automatic instance creation is paused (only set on template)")
 
+    # Individual mode (journal) fields
+    is_individual: bool = Field(False, description="True if this is a personal journal (single owner, no participants)")
+
     # Continuous conversation fields
     is_continuous: bool = Field(False, description="True if this conversation stays open indefinitely for ongoing feedback collection")
     analysis_interval: Optional[AnalysisInterval] = Field(None, description="How often to run periodic analysis (daily, weekly, biweekly, monthly)")
@@ -270,6 +273,11 @@ class Conversation(ConversationBase):
     recurrence_end_date: Optional[datetime] = None
     recurrence_paused: bool = False
 
+    # Individual mode (journal) fields
+    is_individual: bool = False
+    journal_owner_id: Optional[UUID] = None
+    journal_prompt: Optional[str] = None
+
     # Continuous conversation fields
     is_continuous: bool = False
     analysis_interval: Optional[AnalysisInterval] = None
@@ -368,6 +376,9 @@ class ConversationListItem(BaseModel):
     is_recurring_instance: bool = False
     recurrence_pattern: Optional[RecurrencePattern] = None
     recurrence_paused: bool = False
+
+    # Individual mode
+    is_individual: bool = False
 
     # Continuous conversation fields
     is_continuous: bool = False
