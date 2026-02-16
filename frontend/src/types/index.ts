@@ -437,8 +437,8 @@ export interface SurprisingInsight {
 export type ActionType = 'investigate' | 'communicate' | 'change' | 'celebrate' | 'monitor';
 export type ActionPriority = 'high' | 'medium' | 'low';
 export type ActionSentiment = 'positive' | 'negative' | 'neutral' | 'mixed';
-export type ActionSource = 'user_requested' | 'auto_generated';
-export type ActionStatus = 'suggested' | 'accepted' | 'dismissed' | 'completed' | 'converted_to_goal';
+export type ActionSource = 'user_requested' | 'auto_generated' | 'manual';
+export type ActionStatus = 'suggested' | 'accepted' | 'deferred' | 'dismissed' | 'completed' | 'converted_to_goal';
 
 export interface SuggestedAction {
   id: string;
@@ -455,6 +455,29 @@ export interface SuggestedAction {
   status: ActionStatus;
   dismissed_reason?: string;
   created_at: string;
+  accepted_at?: string | null;
+  completed_at?: string | null;
+  dismissed_at?: string | null;
+  deferred_at?: string | null;
+  updated_at?: string | null;
+  created_by_id?: string | null;
+}
+
+export interface UpdateActionStatusRequest {
+  status: ActionStatus;
+  dismissed_reason?: string;
+}
+
+export interface EditActionRequest {
+  title?: string;
+  description?: string;
+}
+
+export interface CreateActionRequest {
+  title: string;
+  description: string;
+  action_type?: ActionType;
+  priority?: ActionPriority;
 }
 
 export interface SuggestedActionsResponse {

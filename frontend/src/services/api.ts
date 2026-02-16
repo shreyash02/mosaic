@@ -70,6 +70,10 @@ import type {
   NotificationListResponse,
   UnreadCountResponse,
   SuggestedActionsResponse,
+  SuggestedAction,
+  UpdateActionStatusRequest,
+  EditActionRequest,
+  CreateActionRequest,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -493,6 +497,44 @@ class ApiService {
   ): Promise<SuggestedActionsResponse> {
     const response = await this.client.get<SuggestedActionsResponse>(
       `/conversations/${conversationId}/analyses/${analysisId}/suggested-actions`,
+    );
+    return response.data;
+  }
+
+  async updateActionStatus(
+    conversationId: string,
+    analysisId: string,
+    actionId: string,
+    body: UpdateActionStatusRequest,
+  ): Promise<SuggestedAction> {
+    const response = await this.client.patch<SuggestedAction>(
+      `/conversations/${conversationId}/analyses/${analysisId}/suggested-actions/${actionId}/status`,
+      body,
+    );
+    return response.data;
+  }
+
+  async editAction(
+    conversationId: string,
+    analysisId: string,
+    actionId: string,
+    body: EditActionRequest,
+  ): Promise<SuggestedAction> {
+    const response = await this.client.patch<SuggestedAction>(
+      `/conversations/${conversationId}/analyses/${analysisId}/suggested-actions/${actionId}`,
+      body,
+    );
+    return response.data;
+  }
+
+  async createManualAction(
+    conversationId: string,
+    analysisId: string,
+    body: CreateActionRequest,
+  ): Promise<SuggestedAction> {
+    const response = await this.client.post<SuggestedAction>(
+      `/conversations/${conversationId}/analyses/${analysisId}/suggested-actions/manual`,
+      body,
     );
     return response.data;
   }

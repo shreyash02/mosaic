@@ -16,14 +16,27 @@ from app.models.conversation import Conversation
 from app.models.suggested_action import SuggestedAction
 from app.models.user import User
 from app.schemas.suggested_action import (
+    CreateActionRequest,
+    EditActionRequest,
     GenerateActionsRequest,
     SuggestedActionsResponse,
+    UpdateActionStatusRequest,
+    SuggestedAction as SuggestedActionSchema,
 )
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
+
+# Valid status transitions
+VALID_TRANSITIONS: dict[str, set[str]] = {
+    "suggested": {"accepted", "dismissed", "deferred"},
+    "deferred": {"accepted", "dismissed", "suggested"},  # suggested = undo defer
+    "accepted": {"completed", "suggested"},              # suggested = undo accept
+    "dismissed": {"suggested"},                          # undo dismiss
+    "completed": {"accepted"},                           # undo complete
+}
 
 
 def _check_analysis_access(
@@ -63,6 +76,21 @@ def _check_analysis_access(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
 
     return conversation, analysis, is_creator
+
+
+def _get_action_or_404(
+    action_id: UUID,
+    analysis_id: UUID,
+    db: Session,
+) -> SuggestedAction:
+    """Get an action by ID or raise 404."""
+    action = db.query(SuggestedAction).filter(
+        SuggestedAction.id == action_id,
+        SuggestedAction.analysis_id == analysis_id,
+    ).first()
+    if not action:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action not found")
+    return action
 
 
 @router.post(
@@ -150,10 +178,14 @@ async def generate_suggested_actions(
             total=len(existing),
         )
 
-    # Delete existing if regenerating
+    # Delete only AI-generated actions if regenerating (preserve manual actions)
+    manual_actions = []
     if existing and regenerate:
         for action in existing:
-            db.delete(action)
+            if action.source == "manual":
+                manual_actions.append(action)
+            else:
+                db.delete(action)
         db.flush()
 
     # Generate via LLM
@@ -208,11 +240,14 @@ async def generate_suggested_actions(
     for action in actions:
         db.refresh(action)
 
+    # Include preserved manual actions in response
+    all_actions = manual_actions + actions
+
     return SuggestedActionsResponse(
         analysis_id=analysis_id,
         conversation_id=conversation_id,
-        actions=actions,
-        total=len(actions),
+        actions=all_actions,
+        total=len(all_actions),
     )
 
 
@@ -241,3 +276,158 @@ async def get_suggested_actions(
         actions=actions,
         total=len(actions),
     )
+
+
+@router.patch(
+    "/conversations/{conversation_id}/analyses/{analysis_id}/suggested-actions/{action_id}/status",
+    response_model=SuggestedActionSchema,
+)
+async def update_action_status(
+    conversation_id: UUID,
+    analysis_id: UUID,
+    action_id: UUID,
+    body: UpdateActionStatusRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update action status (accept, dismiss, complete, undo). Creator-only."""
+    conversation, analysis, is_creator = _check_analysis_access(
+        conversation_id, analysis_id, current_user, db
+    )
+    if not is_creator:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the conversation creator can update action status",
+        )
+
+    action = _get_action_or_404(action_id, analysis_id, db)
+
+    new_status = body.status.value
+    allowed = VALID_TRANSITIONS.get(action.status, set())
+    if new_status not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot transition from '{action.status}' to '{new_status}'",
+        )
+
+    now = datetime.utcnow()
+
+    # Apply transition
+    if new_status == "accepted":
+        action.accepted_at = now
+        # If undoing complete, clear completed_at
+        if action.status == "completed":
+            action.completed_at = None
+        # If coming from deferred, clear deferred_at
+        elif action.status == "deferred":
+            action.deferred_at = None
+    elif new_status == "deferred":
+        action.deferred_at = now
+    elif new_status == "dismissed":
+        action.dismissed_at = now
+        action.dismissed_reason = body.dismissed_reason
+        # If coming from deferred, clear deferred_at
+        if action.status == "deferred":
+            action.deferred_at = None
+    elif new_status == "completed":
+        action.completed_at = now
+    elif new_status == "suggested":
+        # Undo: clear the timestamp for the previous state
+        if action.status == "accepted":
+            action.accepted_at = None
+        elif action.status == "dismissed":
+            action.dismissed_at = None
+            action.dismissed_reason = None
+        elif action.status == "deferred":
+            action.deferred_at = None
+
+    action.status = new_status
+    action.updated_at = now
+
+    db.commit()
+    db.refresh(action)
+    return action
+
+
+@router.patch(
+    "/conversations/{conversation_id}/analyses/{analysis_id}/suggested-actions/{action_id}",
+    response_model=SuggestedActionSchema,
+)
+async def edit_action(
+    conversation_id: UUID,
+    analysis_id: UUID,
+    action_id: UUID,
+    body: EditActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Edit an action's title/description. Creator-only. Cannot edit dismissed actions."""
+    conversation, analysis, is_creator = _check_analysis_access(
+        conversation_id, analysis_id, current_user, db
+    )
+    if not is_creator:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the conversation creator can edit actions",
+        )
+
+    action = _get_action_or_404(action_id, analysis_id, db)
+
+    if action.status == "dismissed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot edit a dismissed action",
+        )
+
+    if body.title is not None:
+        action.title = body.title
+    if body.description is not None:
+        action.description = body.description
+
+    action.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(action)
+    return action
+
+
+@router.post(
+    "/conversations/{conversation_id}/analyses/{analysis_id}/suggested-actions/manual",
+    response_model=SuggestedActionSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_manual_action(
+    conversation_id: UUID,
+    analysis_id: UUID,
+    body: CreateActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a manual action. Creator-only."""
+    conversation, analysis, is_creator = _check_analysis_access(
+        conversation_id, analysis_id, current_user, db
+    )
+    if not is_creator:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the conversation creator can create actions",
+        )
+
+    action = SuggestedAction(
+        id=uuid4(),
+        analysis_id=analysis_id,
+        conversation_id=conversation_id,
+        title=body.title,
+        description=body.description,
+        action_type=body.action_type.value,
+        priority=body.priority.value,
+        sentiment="neutral",
+        source="manual",
+        status="suggested",
+        created_by_id=current_user.id,
+        created_at=datetime.utcnow(),
+    )
+    db.add(action)
+    db.commit()
+    db.refresh(action)
+    return action
