@@ -20,9 +20,9 @@ export default function IntentSelection({
 }: IntentSelectionProps) {
   const presetsEnabled = useFeature('conversation_presets');
 
-  // Filter presets: exclude 'custom' and check feature flags
+  // Filter presets: exclude 'custom', 'quick_poll', and check feature flags
   const intents = (Object.keys(INTENT_PRESETS) as IntentType[]).filter(id => {
-    if (id === 'custom') return false;
+    if (id === 'custom' || id === 'quick_poll') return false;
     const preset = INTENT_PRESETS[id];
     // If preset requires a feature flag and it's not enabled, hide it
     if (preset.featureFlag && !presetsEnabled) return false;
