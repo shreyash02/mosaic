@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers, used by Alembic.
 revision: str = 'add_individual_mode'
-down_revision: Union[str, None] = 'seed_feature_flags'
+down_revision: Union[str, None] = 'add_insight_annotations'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

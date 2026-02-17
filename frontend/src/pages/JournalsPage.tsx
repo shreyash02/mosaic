@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { ConversationListItem } from '../types';
+import type { JournalListItem } from '../types';
 import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -109,7 +109,7 @@ export default function JournalsPage() {
   const journalsEnabled = useFeature('journals');
   usePageTitle('Journals');
 
-  const [journals, setJournals] = useState<ConversationListItem[]>([]);
+  const [journals, setJournals] = useState<JournalListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -122,7 +122,7 @@ export default function JournalsPage() {
     const loadJournals = async () => {
       try {
         setLoading(true);
-        const data = await api.getConversations({ mode: 'individual' });
+        const data = await api.getJournals();
         setJournals(data);
       } catch (err) {
         console.error('Failed to load journals:', err);
@@ -199,9 +199,18 @@ export default function JournalsPage() {
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                     </svg>
-                    {journal.response_count || 0} {journal.response_count === 1 ? 'entry' : 'entries'}
+                    {journal.total_entries} {journal.total_entries === 1 ? 'entry' : 'entries'}
                   </span>
-                  {journal.created_at && (
+                  {journal.current_streak >= 2 && (
+                    <span style={s.cardStat}>
+                      {journal.current_streak}-day streak
+                    </span>
+                  )}
+                  {journal.last_entry_at ? (
+                    <span style={s.cardStat}>
+                      Last {formatRelativeTime(journal.last_entry_at)}
+                    </span>
+                  ) : (
                     <span style={s.cardStat}>
                       Created {formatRelativeTime(journal.created_at)}
                     </span>

@@ -77,6 +77,10 @@ import type {
   InsightAnnotation,
   UpsertAnnotationRequest,
   AnnotationsListResponse,
+  Journal,
+  JournalListItem,
+  JournalCreate,
+  JournalUpdate,
   JournalEntry,
   JournalEntryList,
   JournalEntryCreate,
@@ -1022,6 +1026,39 @@ class ApiService {
 
   // Journal endpoints (individual mode)
 
+  // --- Journal CRUD ---
+
+  async createJournal(data: JournalCreate): Promise<Journal> {
+    const response = await this.client.post<Journal>('/journals', data);
+    return response.data;
+  }
+
+  async getJournals(options?: { skip?: number; limit?: number }): Promise<JournalListItem[]> {
+    const params = new URLSearchParams();
+    if (options?.skip !== undefined) params.append('skip', String(options.skip));
+    if (options?.limit !== undefined) params.append('limit', String(options.limit));
+    const queryString = params.toString();
+    const url = `/journals${queryString ? `?${queryString}` : ''}`;
+    const response = await this.client.get<JournalListItem[]>(url);
+    return response.data;
+  }
+
+  async getJournal(journalId: string): Promise<Journal> {
+    const response = await this.client.get<Journal>(`/journals/${journalId}`);
+    return response.data;
+  }
+
+  async updateJournal(journalId: string, data: JournalUpdate): Promise<Journal> {
+    const response = await this.client.patch<Journal>(`/journals/${journalId}`, data);
+    return response.data;
+  }
+
+  async deleteJournal(journalId: string): Promise<void> {
+    await this.client.delete(`/journals/${journalId}`);
+  }
+
+  // --- Journal entries ---
+
   async getJournalEntries(
     journalId: string,
     options?: { skip?: number; limit?: number; sort?: 'asc' | 'desc' }
@@ -1050,6 +1087,12 @@ class ApiService {
     const response = await this.client.patch<JournalEntry>(`/journals/${journalId}/entries/${entryId}`, data);
     return response.data;
   }
+
+  async deleteJournalEntry(journalId: string, entryId: string): Promise<void> {
+    await this.client.delete(`/journals/${journalId}/entries/${entryId}`);
+  }
+
+  // --- Journal analysis ---
 
   async getJournalAnalysis(journalId: string): Promise<JournalAnalysisStatus> {
     const response = await this.client.get<JournalAnalysisStatus>(`/journals/${journalId}/analysis`);

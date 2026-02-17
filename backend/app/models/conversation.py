@@ -156,7 +156,7 @@ class Conversation(Base):
     search_vector = Column(TSVECTOR, nullable=True)
 
     # Relationships
-    creator = relationship("User", back_populates="conversations")
+    creator = relationship("User", back_populates="conversations", foreign_keys=[creator_id])
     organization = relationship("Organization", back_populates="conversations")
     questions = relationship("Question", back_populates="conversation", cascade="all, delete-orphan", order_by="Question.question_order")
     responses = relationship("Response", back_populates="conversation", cascade="all, delete-orphan")

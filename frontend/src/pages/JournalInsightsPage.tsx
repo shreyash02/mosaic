@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../services/api';
-import type { Conversation, JournalAnalysisStatus } from '../types';
+import type { Journal, JournalAnalysisStatus } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -270,7 +270,7 @@ const s = {
 export default function JournalInsightsPage() {
   const { id } = useParams<{ id: string }>();
 
-  const [journal, setJournal] = useState<Conversation | null>(null);
+  const [journal, setJournal] = useState<Journal | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<JournalAnalysisStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -284,7 +284,7 @@ export default function JournalInsightsPage() {
     try {
       setLoading(true);
       const [journalData, analysisData] = await Promise.all([
-        api.getConversation(id),
+        api.getJournal(id),
         api.getJournalAnalysis(id),
       ]);
       setJournal(journalData);

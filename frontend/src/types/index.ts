@@ -95,9 +95,6 @@ export enum RecurrencePattern {
   QUARTERLY = 'quarterly',
 }
 
-// Continuous conversation analysis interval
-export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
-
 export type QuestionType = 'text' | 'rating' | 'single_choice' | 'multiple_choice';
 
 export interface PollChoice {
@@ -1222,9 +1219,83 @@ export interface UnreadCountResponse {
 // Journal types (individual mode)
 // ==========================================
 
-export interface JournalEntry {
+export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+
+export interface JournalPrompt {
   id: string;
   text: string;
+  type: 'text' | 'rating';
+  order_index: number;
+  rating_min?: number;
+  rating_max?: number;
+}
+
+export interface JournalPromptCreate {
+  text: string;
+  type: 'text' | 'rating';
+  order_index: number;
+  rating_min?: number;
+  rating_max?: number;
+}
+
+export interface Journal {
+  id: string;
+  title: string;
+  description?: string;
+  prompts: JournalPrompt[];
+  analysis_interval?: AnalysisInterval;
+  total_entries: number;
+  streak: JournalStreak;
+  has_analysis: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalListItem {
+  id: string;
+  title: string;
+  description?: string;
+  prompt_count: number;
+  total_entries: number;
+  current_streak: number;
+  last_entry_at?: string;
+  has_analysis: boolean;
+  analysis_interval?: AnalysisInterval;
+  created_at: string;
+}
+
+export interface JournalCreate {
+  title: string;
+  description?: string;
+  prompts: JournalPromptCreate[];
+  analysis_interval: AnalysisInterval;
+}
+
+export interface JournalUpdate {
+  title?: string;
+  description?: string;
+  prompts?: JournalPromptCreate[];
+  analysis_interval?: AnalysisInterval;
+}
+
+export interface PromptResponse {
+  prompt_id: string;
+  text?: string;
+  rating_value?: number;
+}
+
+export interface EntryPromptResponse {
+  prompt_id: string;
+  prompt_text: string;
+  type: 'text' | 'rating';
+  text?: string;
+  rating_value?: number;
+}
+
+export interface JournalEntry {
+  id: string;
+  entry_number: number;
+  responses: EntryPromptResponse[];
   created_at: string;
   is_edited: boolean;
   edited_at?: string;
@@ -1232,7 +1303,7 @@ export interface JournalEntry {
 }
 
 export interface JournalEntryCreate {
-  text: string;
+  responses: PromptResponse[];
 }
 
 export interface JournalStreak {
@@ -1245,8 +1316,9 @@ export interface JournalStreak {
 }
 
 export interface JournalEntryList {
-  conversation_id: string;
+  journal_id: string;
   total_entries: number;
+  has_more: boolean;
   entries: JournalEntry[];
   streak: JournalStreak;
 }
@@ -1282,7 +1354,7 @@ export interface PatternInsight {
 
 export interface JournalAnalysisResponse {
   id: string;
-  conversation_id: string;
+  journal_id: string;
   overall_summary?: string;
   theme_timeline?: ThemeTimelineEntry[];
   mood_trajectory?: MoodTrajectory;

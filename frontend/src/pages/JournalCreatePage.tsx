@@ -1,27 +1,204 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { AnonymityLevel, ResultsAccess } from '../types';
+import type { JournalPromptCreate, AnalysisInterval } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-const JOURNAL_TEMPLATES = [
-  { id: 'daily', title: 'Daily Reflection', prompt: 'How was your day? What stood out to you?', emoji: '\u{1F31F}' },
-  { id: 'gratitude', title: 'Gratitude Journal', prompt: 'What are you grateful for today?', emoji: '\u{1F64F}' },
-  { id: 'goals', title: 'Goals & Progress', prompt: 'What progress did you make toward your goals today?', emoji: '\u{1F3AF}' },
-  { id: 'morning', title: 'Morning Pages', prompt: 'Write freely about whatever comes to mind this morning.', emoji: '\u{2600}\u{FE0F}' },
-  { id: 'evening', title: 'Evening Wind-Down', prompt: 'What went well today? What would you do differently?', emoji: '\u{1F319}' },
-  { id: 'mood', title: 'Mood Check-In', prompt: 'How are you feeling right now? What emotions are present?', emoji: '\u{1F60A}' },
-  { id: 'work', title: 'Work Journal', prompt: 'What did you accomplish today? What challenges did you face?', emoji: '\u{1F4BC}' },
-  { id: 'learning', title: 'Learning Log', prompt: 'What did you learn today? How will you apply it?', emoji: '\u{1F4DA}' },
-  { id: 'creative', title: 'Creative Journal', prompt: 'Describe an idea, observation, or creative thought from today.', emoji: '\u{1F3A8}' },
-  { id: 'fitness', title: 'Fitness & Health', prompt: 'How did you take care of your body today? How do you feel physically?', emoji: '\u{1F4AA}' },
-  { id: 'mindfulness', title: 'Mindfulness', prompt: 'Take a moment to reflect. What are you aware of right now?', emoji: '\u{1F9D8}' },
-  { id: 'decisions', title: 'Decision Journal', prompt: 'What decisions did you make today and why?', emoji: '\u{1F914}' },
-  { id: 'relationships', title: 'Relationships', prompt: 'How did you connect with others today? What stood out?', emoji: '\u{1F91D}' },
-  { id: 'challenges', title: 'Challenges & Growth', prompt: 'What challenges are you facing? What are you learning from them?', emoji: '\u{1F331}' },
-  { id: 'wins', title: 'Wins & Celebrations', prompt: 'What are you proud of today, no matter how small?', emoji: '\u{1F389}' },
-  { id: 'freeform', title: 'Free Writing', prompt: 'Write about anything. No rules, no structure.', emoji: '\u{270D}\u{FE0F}' },
+interface JournalTemplate {
+  id: string;
+  title: string;
+  emoji: string;
+  prompts: { text: string; type: 'text' | 'rating' }[];
+  cadence: string;
+}
+
+const JOURNAL_TEMPLATES: JournalTemplate[] = [
+  {
+    id: 'weekly-checkin',
+    title: 'Weekly Check-in',
+    emoji: '\u{1F4CB}',
+    prompts: [
+      { text: 'What went well this week?', type: 'text' },
+      { text: 'What was challenging?', type: 'text' },
+      { text: 'What do you want to focus on next week?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'gratitude',
+    title: 'Gratitude Log',
+    emoji: '\u{1F64F}',
+    prompts: [
+      { text: 'What are you grateful for today?', type: 'text' },
+      { text: 'Who made a difference for you today?', type: 'text' },
+    ],
+    cadence: 'Daily',
+  },
+  {
+    id: '1on1',
+    title: '1:1 Reflections',
+    emoji: '\u{1F91D}',
+    prompts: [
+      { text: 'What do I want to discuss in my next 1:1?', type: 'text' },
+      { text: 'What feedback do I want to share?', type: 'text' },
+      { text: 'What support do I need?', type: 'text' },
+      { text: 'What wins should I highlight?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'mood',
+    title: 'Mood Tracker',
+    emoji: '\u{1F60A}',
+    prompts: [
+      { text: 'How are you feeling right now?', type: 'rating' },
+      { text: "What's influencing your mood?", type: 'text' },
+      { text: 'What would help you feel better?', type: 'text' },
+    ],
+    cadence: 'Daily',
+  },
+  {
+    id: 'career',
+    title: 'Career Growth',
+    emoji: '\u{1F680}',
+    prompts: [
+      { text: 'What skills am I developing?', type: 'text' },
+      { text: 'What was my biggest professional win this period?', type: 'text' },
+      { text: 'What would I do differently?', type: 'text' },
+      { text: "What's my next growth goal?", type: 'text' },
+    ],
+    cadence: 'Biweekly',
+  },
+  {
+    id: 'learning',
+    title: 'Learning Journal',
+    emoji: '\u{1F4DA}',
+    prompts: [
+      { text: 'What did I learn today?', type: 'text' },
+      { text: 'How does this connect to what I already know?', type: 'text' },
+      { text: 'How might I apply this?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'decision',
+    title: 'Decision Log',
+    emoji: '\u{1F914}',
+    prompts: [
+      { text: 'What decision did I make?', type: 'text' },
+      { text: 'What factors did I consider?', type: 'text' },
+      { text: 'What alternatives did I reject and why?', type: 'text' },
+      { text: 'How do I feel about this decision?', type: 'text' },
+    ],
+    cadence: 'As needed',
+  },
+  {
+    id: 'energy',
+    title: 'Energy Audit',
+    emoji: '\u{26A1}',
+    prompts: [
+      { text: 'What gave you energy today?', type: 'text' },
+      { text: 'What drained your energy?', type: 'text' },
+      { text: 'How would you rate your energy level?', type: 'rating' },
+    ],
+    cadence: 'Daily',
+  },
+  {
+    id: 'coaching',
+    title: 'Coaching Journal',
+    emoji: '\u{1F3AF}',
+    prompts: [
+      { text: 'What came up in my session?', type: 'text' },
+      { text: 'What new insight did I gain?', type: 'text' },
+      { text: 'What am I committing to before next session?', type: 'text' },
+      { text: 'What resistance am I noticing?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'retro',
+    title: 'Project Retrospective',
+    emoji: '\u{1F504}',
+    prompts: [
+      { text: 'What progress was made?', type: 'text' },
+      { text: 'What blocked progress?', type: 'text' },
+      { text: 'What should change going forward?', type: 'text' },
+      { text: 'What am I proud of?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'mindfulness',
+    title: 'Mindfulness',
+    emoji: '\u{1F9D8}',
+    prompts: [
+      { text: 'What am I noticing right now?', type: 'text' },
+      { text: 'What thoughts keep returning?', type: 'text' },
+      { text: 'What am I choosing to let go of?', type: 'text' },
+    ],
+    cadence: 'Daily',
+  },
+  {
+    id: 'creative',
+    title: 'Creative Practice',
+    emoji: '\u{1F3A8}',
+    prompts: [
+      { text: 'What did I create or work on?', type: 'text' },
+      { text: 'What felt easy? What felt hard?', type: 'text' },
+      { text: 'What do I want to try next?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'reading',
+    title: 'Reading Notes',
+    emoji: '\u{1F4D6}',
+    prompts: [
+      { text: 'What am I reading?', type: 'text' },
+      { text: 'What passage or idea stood out?', type: 'text' },
+      { text: 'How does this relate to my life or work?', type: 'text' },
+    ],
+    cadence: 'As needed',
+  },
+  {
+    id: 'values',
+    title: 'Values Alignment',
+    emoji: '\u{1F9ED}',
+    prompts: [
+      { text: 'How did my actions align with my values today?', type: 'text' },
+      { text: 'Where did I compromise?', type: 'text' },
+      { text: 'What choice am I most proud of?', type: 'text' },
+    ],
+    cadence: 'Weekly',
+  },
+  {
+    id: 'habits',
+    title: 'Habit Tracker',
+    emoji: '\u{2705}',
+    prompts: [
+      { text: 'Which habits did I follow through on today?', type: 'text' },
+      { text: 'What got in the way?', type: 'text' },
+      { text: "What's my plan for tomorrow?", type: 'text' },
+    ],
+    cadence: 'Daily',
+  },
+  {
+    id: 'freeform',
+    title: 'Free Writing',
+    emoji: '\u{270D}\u{FE0F}',
+    prompts: [
+      { text: 'Write about anything. No rules, no structure.', type: 'text' },
+    ],
+    cadence: 'Any time',
+  },
+];
+
+const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every two weeks' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'daily', label: 'Daily' },
 ];
 
 const s = {
@@ -164,9 +341,62 @@ const s = {
     fontFamily: 'inherit',
     boxSizing: 'border-box' as const,
   },
+  select: {
+    width: '100%',
+    padding: `${spacing[3]} ${spacing[4]}`,
+    fontSize: typography.fontSize.base,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  },
   hint: {
     fontSize: typography.fontSize.xs,
     color: 'var(--color-primary-500)',
+  },
+  promptList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[3],
+  },
+  promptRow: {
+    display: 'flex',
+    gap: spacing[2],
+    alignItems: 'center',
+  },
+  promptInput: {
+    flex: 1,
+    padding: `${spacing[2]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  },
+  removeButton: {
+    padding: spacing[2],
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--color-primary-400)',
+    borderRadius: borders.radius.sm,
+    display: 'inline-flex',
+    flexShrink: 0,
+  },
+  addPromptButton: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-600)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    border: '1px dashed var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    textAlign: 'left' as const,
   },
   actions: {
     display: 'flex',
@@ -219,8 +449,11 @@ export default function JournalCreatePage() {
 
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [prompt, setPrompt] = useState('');
   const [description, setDescription] = useState('');
+  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' }[]>([
+    { text: '', type: 'text' },
+  ]);
+  const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -229,42 +462,55 @@ export default function JournalCreatePage() {
     if (!template) return;
 
     if (selectedTemplate === templateId) {
-      // Deselect
       setSelectedTemplate(null);
       setTitle('');
-      setPrompt('');
+      setDescription('');
+      setPrompts([{ text: '', type: 'text' }]);
     } else {
       setSelectedTemplate(templateId);
       setTitle(template.title);
-      setPrompt(template.prompt);
+      setPrompts(template.prompts.map(p => ({ text: p.text, type: p.type })));
     }
+  };
+
+  const handlePromptChange = (index: number, value: string) => {
+    setPrompts(prev => prev.map((p, i) => i === index ? { ...p, text: value } : p));
+  };
+
+  const handleAddPrompt = () => {
+    if (prompts.length >= 10) return;
+    setPrompts(prev => [...prev, { text: '', type: 'text' }]);
+  };
+
+  const handleRemovePrompt = (index: number) => {
+    if (prompts.length <= 1) return;
+    setPrompts(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !prompt.trim()) return;
+    const validPrompts = prompts.filter(p => p.text.trim());
+    if (!title.trim() || validPrompts.length === 0) return;
 
     try {
       setCreating(true);
       setError('');
 
-      const conversation = await api.createConversation({
+      const promptsData: JournalPromptCreate[] = validPrompts.map((p, i) => ({
+        text: p.text.trim(),
+        type: p.type,
+        order_index: i,
+        ...(p.type === 'rating' ? { rating_min: 1, rating_max: 10 } : {}),
+      }));
+
+      const journal = await api.createJournal({
         title: title.trim(),
         description: description.trim() || undefined,
-        is_individual: true,
-        anonymity_level: AnonymityLevel.PLATFORM_TRACKED,
-        results_access: ResultsAccess.CREATOR_ONLY,
-        questions: [{
-          question_text: prompt.trim(),
-          question_type: 'text',
-          question_order: 0,
-        }],
+        prompts: promptsData,
+        analysis_interval: analysisInterval,
       });
 
-      // Auto-activate the journal
-      await api.activateConversation(conversation.id);
-
-      navigate(`/journals/${conversation.id}`);
+      navigate(`/journals/${journal.id}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create journal';
       setError(message);
@@ -272,7 +518,8 @@ export default function JournalCreatePage() {
     }
   };
 
-  const isValid = title.trim().length > 0 && prompt.trim().length > 0;
+  const validPrompts = prompts.filter(p => p.text.trim());
+  const isValid = title.trim().length > 0 && validPrompts.length > 0;
 
   return (
     <div style={s.page}>
@@ -287,7 +534,7 @@ export default function JournalCreatePage() {
         <div style={s.header}>
           <h1 style={s.title}>Start a New Journal</h1>
           <p style={s.subtitle}>
-            Choose a template to get started quickly, or create your own with a custom prompt.
+            Choose a template to get started quickly, or create your own with custom prompts.
           </p>
         </div>
 
@@ -305,7 +552,9 @@ export default function JournalCreatePage() {
             >
               <span style={s.templateEmoji}>{template.emoji}</span>
               <span style={s.templateTitle}>{template.title}</span>
-              <span style={s.templatePrompt}>{template.prompt}</span>
+              <span style={s.templatePrompt}>
+                {template.prompts.length} {template.prompts.length === 1 ? 'prompt' : 'prompts'} &middot; {template.cadence}
+              </span>
             </button>
           ))}
         </div>
@@ -330,23 +579,8 @@ export default function JournalCreatePage() {
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="My Journal"
-                maxLength={500}
+                maxLength={200}
               />
-            </div>
-
-            <div style={s.formGroup}>
-              <label style={s.label}>
-                Daily Prompt <span style={s.required}>*</span>
-              </label>
-              <textarea
-                style={{ ...s.textarea, minHeight: '80px' }}
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                placeholder="What would you like to reflect on each day?"
-                maxLength={5000}
-                rows={3}
-              />
-              <span style={s.hint}>This prompt will guide your daily entries</span>
             </div>
 
             <div style={s.formGroup}>
@@ -355,10 +589,67 @@ export default function JournalCreatePage() {
                 style={s.textarea}
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Optional description for your journal"
-                maxLength={5000}
+                placeholder="Only you can see this. It helps the AI understand your context."
+                maxLength={500}
                 rows={2}
               />
+            </div>
+
+            <div style={s.formGroup}>
+              <label style={s.label}>
+                Prompts <span style={s.required}>*</span>
+              </label>
+              <span style={s.hint}>Questions you'll reflect on each time you write an entry</span>
+              <div style={s.promptList}>
+                {prompts.map((prompt, index) => (
+                  <div key={index} style={s.promptRow}>
+                    <input
+                      style={s.promptInput}
+                      type="text"
+                      value={prompt.text}
+                      onChange={e => handlePromptChange(index, e.target.value)}
+                      placeholder={`Prompt ${index + 1}`}
+                      maxLength={2000}
+                    />
+                    {prompts.length > 1 && (
+                      <button
+                        type="button"
+                        style={s.removeButton}
+                        onClick={() => handleRemovePrompt(index)}
+                        title="Remove prompt"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {prompts.length < 10 && (
+                  <button
+                    type="button"
+                    style={s.addPromptButton}
+                    onClick={handleAddPrompt}
+                  >
+                    + Add another prompt
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={s.formGroup}>
+              <label style={s.label}>Analysis Frequency</label>
+              <select
+                style={s.select}
+                value={analysisInterval}
+                onChange={e => setAnalysisInterval(e.target.value as AnalysisInterval)}
+              >
+                {ANALYSIS_INTERVALS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <span style={s.hint}>How often AI analyzes your entries for patterns and themes</span>
             </div>
 
             <div style={s.actions}>

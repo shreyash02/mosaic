@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Conversation, JournalEntry, JournalStreak } from '../types';
+import type { Journal, JournalEntry, JournalStreak, JournalPrompt, PromptResponse } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
@@ -44,10 +44,9 @@ const s = {
     color: 'var(--color-primary-900)',
     marginBottom: spacing[1],
   },
-  prompt: {
+  description: {
     fontSize: typography.fontSize.sm,
     color: 'var(--color-primary-600)',
-    fontStyle: 'italic',
     lineHeight: typography.lineHeight.relaxed,
   },
   insightsLink: {
@@ -104,17 +103,26 @@ const s = {
     marginBottom: spacing[6],
     boxShadow: shadows.sm,
   },
-  writeLabel: {
+  writeTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+    marginBottom: spacing[4],
+  },
+  promptGroup: {
+    marginBottom: spacing[4],
+  },
+  promptLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     color: 'var(--color-primary-700)',
-    marginBottom: spacing[3],
+    marginBottom: spacing[2],
     display: 'block',
   },
   writeTextarea: {
     width: '100%',
-    minHeight: '120px',
-    padding: spacing[4],
+    minHeight: '80px',
+    padding: spacing[3],
     fontSize: typography.fontSize.base,
     lineHeight: typography.lineHeight.relaxed,
     border: '1px solid var(--color-primary-300)',
@@ -128,15 +136,32 @@ const s = {
     overflow: 'hidden',
     transition: transitions.duration.normal,
   },
-  writeFooter: {
+  ratingContainer: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing[3],
+    gap: spacing[2],
   },
-  wordCount: {
+  ratingInput: {
+    width: '80px',
+    padding: spacing[2],
+    fontSize: typography.fontSize.base,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
+    outline: 'none',
+    fontFamily: 'inherit',
+    textAlign: 'center' as const,
+  },
+  ratingScale: {
     fontSize: typography.fontSize.xs,
     color: 'var(--color-primary-500)',
+  },
+  writeFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: spacing[3],
   },
   saveButton: {
     display: 'inline-flex',
@@ -183,6 +208,12 @@ const s = {
     color: 'var(--color-primary-600)',
     fontWeight: typography.fontWeight.medium,
   },
+  entryNumber: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-400)',
+    marginLeft: spacing[2],
+    fontWeight: typography.fontWeight.normal,
+  },
   entryMeta: {
     display: 'flex',
     alignItems: 'center',
@@ -198,12 +229,28 @@ const s = {
     color: 'var(--color-primary-500)',
     fontStyle: 'italic',
   },
+  entryResponse: {
+    marginBottom: spacing[3],
+  },
+  entryPromptText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-500)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    marginBottom: spacing[1],
+  },
   entryText: {
     fontSize: typography.fontSize.base,
     color: 'var(--color-primary-800)',
     lineHeight: typography.lineHeight.relaxed,
     whiteSpace: 'pre-wrap' as const,
     wordBreak: 'break-word' as const,
+  },
+  entryRating: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
   },
   readMore: {
     color: 'var(--color-primary-600)',
@@ -230,7 +277,7 @@ const s = {
   // Edit mode
   editTextarea: {
     width: '100%',
-    minHeight: '80px',
+    minHeight: '60px',
     padding: spacing[3],
     fontSize: typography.fontSize.base,
     lineHeight: typography.lineHeight.relaxed,
@@ -309,12 +356,17 @@ const s = {
   },
 };
 
+function autoResize(textarea: HTMLTextAreaElement) {
+  textarea.style.height = 'auto';
+  textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
 export default function JournalDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   // Journal metadata
-  const [journal, setJournal] = useState<Conversation | null>(null);
+  const [journal, setJournal] = useState<Journal | null>(null);
   const [loadingJournal, setLoadingJournal] = useState(true);
 
   // Entries
@@ -324,14 +376,16 @@ export default function JournalDetailPage() {
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Write area
-  const [newText, setNewText] = useState('');
+  // Write area - per-prompt responses
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [ratingResponses, setRatingResponses] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  // Edit state
+  // Edit state - per-prompt responses
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
+  const [editResponses, setEditResponses] = useState<Record<string, string>>({});
+  const [editRatingResponses, setEditRatingResponses] = useState<Record<string, number>>({});
   const [editSaving, setEditSaving] = useState(false);
 
   // Expanded entries
@@ -341,16 +395,10 @@ export default function JournalDetailPage() {
 
   usePageTitle(journal?.title || 'Journal');
 
-  // Auto-resize textarea
-  const autoResize = useCallback((textarea: HTMLTextAreaElement) => {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, []);
-
   const loadJournal = useCallback(async () => {
     if (!id) return;
     try {
-      const data = await api.getConversation(id);
+      const data = await api.getJournal(id);
       setJournal(data);
     } catch {
       setError('Journal not found');
@@ -384,17 +432,42 @@ export default function JournalDetailPage() {
     loadEntries();
   }, [loadJournal, loadEntries]);
 
+  const buildResponses = (prompts: JournalPrompt[], textMap: Record<string, string>, ratingMap: Record<string, number>): PromptResponse[] => {
+    return prompts.map(p => {
+      const resp: PromptResponse = { prompt_id: p.id };
+      if (p.type === 'rating') {
+        resp.rating_value = ratingMap[p.id];
+      }
+      if (p.type === 'text') {
+        resp.text = textMap[p.id]?.trim() || '';
+      }
+      return resp;
+    });
+  };
+
+  const hasContent = () => {
+    if (!journal) return false;
+    return journal.prompts.some(p => {
+      if (p.type === 'text') return (responses[p.id] || '').trim().length > 0;
+      if (p.type === 'rating') return ratingResponses[p.id] !== undefined;
+      return false;
+    });
+  };
+
   const handleNewEntry = async () => {
-    if (!id || !newText.trim()) return;
+    if (!id || !journal || !hasContent()) return;
     try {
       setSaving(true);
       setSaveError('');
-      await api.createJournalEntry(id, { text: newText.trim() });
-      setNewText('');
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
-      // Reload entries to get fresh data + streak
+      await api.createJournalEntry(id, {
+        responses: buildResponses(journal.prompts, responses, ratingResponses),
+      });
+      setResponses({});
+      setRatingResponses({});
+      // Reset textarea heights
+      Object.values(textareaRefs.current).forEach(ta => {
+        if (ta) ta.style.height = 'auto';
+      });
       await loadEntries();
     } catch {
       setSaveError('Failed to save entry. Please try again.');
@@ -403,14 +476,29 @@ export default function JournalDetailPage() {
     }
   };
 
+  const startEditing = (entry: JournalEntry) => {
+    const textMap: Record<string, string> = {};
+    const ratingMap: Record<string, number> = {};
+    for (const r of entry.responses) {
+      if (r.type === 'text' && r.text) textMap[r.prompt_id] = r.text;
+      if (r.type === 'rating' && r.rating_value !== undefined) ratingMap[r.prompt_id] = r.rating_value;
+    }
+    setEditingId(entry.id);
+    setEditResponses(textMap);
+    setEditRatingResponses(ratingMap);
+  };
+
   const handleEditSave = async (entryId: string) => {
-    if (!id || !editText.trim()) return;
+    if (!id || !journal) return;
     try {
       setEditSaving(true);
-      const updated = await api.updateJournalEntry(id, entryId, { text: editText.trim() });
+      const updated = await api.updateJournalEntry(id, entryId, {
+        responses: buildResponses(journal.prompts, editResponses, editRatingResponses),
+      });
       setEntries(prev => prev.map(e => e.id === entryId ? updated : e));
       setEditingId(null);
-      setEditText('');
+      setEditResponses({});
+      setEditRatingResponses({});
     } catch {
       // Keep edit mode open on error
     } finally {
@@ -426,23 +514,12 @@ export default function JournalDetailPage() {
   const toggleExpand = (entryId: string) => {
     setExpandedEntries(prev => {
       const next = new Set(prev);
-      if (next.has(entryId)) {
-        next.delete(entryId);
-      } else {
-        next.add(entryId);
-      }
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
       return next;
     });
   };
 
-  const getPromptText = () => {
-    if (journal?.questions && journal.questions.length > 0) {
-      return journal.questions[0].question_text;
-    }
-    return journal?.journal_prompt || '';
-  };
-
-  const wordCount = newText.trim() ? newText.trim().split(/\s+/).length : 0;
   const hasMore = entries.length < totalEntries;
 
   if (loadingJournal) {
@@ -486,8 +563,8 @@ export default function JournalDetailPage() {
           <div style={s.headerTop}>
             <div>
               <h1 style={s.title}>{journal?.title}</h1>
-              {getPromptText() && (
-                <p style={s.prompt}>{getPromptText()}</p>
+              {journal?.description && (
+                <p style={s.description}>{journal.description}</p>
               )}
             </div>
             <Link to={`/journals/${id}/insights`} style={s.insightsLink}>
@@ -525,41 +602,69 @@ export default function JournalDetailPage() {
           </div>
         )}
 
-        {/* Write Area */}
-        <div style={s.writeArea}>
-          <label style={s.writeLabel}>
-            {getPromptText() || 'Write a new entry'}
-          </label>
-          <textarea
-            ref={textareaRef}
-            style={s.writeTextarea}
-            value={newText}
-            onChange={e => {
-              setNewText(e.target.value);
-              autoResize(e.target);
-            }}
-            placeholder="Start writing..."
-            maxLength={50000}
-          />
-          {saveError && (
-            <div style={{ ...s.error, marginTop: spacing[2], marginBottom: 0 }}>
-              {saveError}
+        {/* Write Area - Multi-prompt */}
+        {journal && journal.prompts.length > 0 && (
+          <div style={s.writeArea}>
+            <div style={s.writeTitle}>New Entry</div>
+            {journal.prompts.map(prompt => (
+              <div key={prompt.id} style={s.promptGroup}>
+                <label style={s.promptLabel}>{prompt.text}</label>
+                {prompt.type === 'text' ? (
+                  <textarea
+                    ref={el => { textareaRefs.current[prompt.id] = el; }}
+                    style={s.writeTextarea}
+                    value={responses[prompt.id] || ''}
+                    onChange={e => {
+                      setResponses(prev => ({ ...prev, [prompt.id]: e.target.value }));
+                      autoResize(e.target);
+                    }}
+                    placeholder="Start writing..."
+                    maxLength={50000}
+                  />
+                ) : (
+                  <div style={s.ratingContainer}>
+                    <input
+                      type="number"
+                      style={s.ratingInput}
+                      value={ratingResponses[prompt.id] ?? ''}
+                      onChange={e => {
+                        const val = e.target.value === '' ? undefined : Number(e.target.value);
+                        setRatingResponses(prev => {
+                          const next = { ...prev };
+                          if (val === undefined) delete next[prompt.id];
+                          else next[prompt.id] = val;
+                          return next;
+                        });
+                      }}
+                      min={prompt.rating_min ?? 1}
+                      max={prompt.rating_max ?? 10}
+                    />
+                    <span style={s.ratingScale}>
+                      {prompt.rating_min ?? 1} - {prompt.rating_max ?? 10}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+            {saveError && (
+              <div style={{ ...s.error, marginTop: spacing[2], marginBottom: 0 }}>
+                {saveError}
+              </div>
+            )}
+            <div style={s.writeFooter}>
+              <button
+                style={{
+                  ...s.saveButton,
+                  ...(!hasContent() || saving ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                }}
+                onClick={handleNewEntry}
+                disabled={!hasContent() || saving}
+              >
+                {saving ? 'Saving...' : 'Save Entry'}
+              </button>
             </div>
-          )}
-          <div style={s.writeFooter}>
-            <span style={s.wordCount}>{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
-            <button
-              style={{
-                ...s.saveButton,
-                ...(!newText.trim() || saving ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-              }}
-              onClick={handleNewEntry}
-              disabled={!newText.trim() || saving}
-            >
-              {saving ? 'Saving...' : 'Save Entry'}
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Entry Timeline */}
         {!loadingEntries && entries.length > 0 && (
@@ -578,10 +683,6 @@ export default function JournalDetailPage() {
           <>
             {entries.map(entry => {
               const isExpanded = expandedEntries.has(entry.id);
-              const needsTruncation = entry.text.length > TRUNCATE_LENGTH;
-              const displayText = needsTruncation && !isExpanded
-                ? entry.text.slice(0, TRUNCATE_LENGTH) + '...'
-                : entry.text;
               const isEditing = editingId === entry.id;
 
               return (
@@ -589,6 +690,7 @@ export default function JournalDetailPage() {
                   <div style={s.entryHeader}>
                     <span style={s.entryDate}>
                       {formatDate(entry.created_at)}
+                      <span style={s.entryNumber}>#{entry.entry_number}</span>
                     </span>
                     <div style={s.entryMeta}>
                       {entry.is_edited && (
@@ -600,10 +702,7 @@ export default function JournalDetailPage() {
                       {!isEditing && (
                         <button
                           style={s.editButton}
-                          onClick={() => {
-                            setEditingId(entry.id);
-                            setEditText(entry.text);
-                          }}
+                          onClick={() => startEditing(entry)}
                           title="Edit entry"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -617,21 +716,45 @@ export default function JournalDetailPage() {
 
                   {isEditing ? (
                     <>
-                      <textarea
-                        style={s.editTextarea}
-                        value={editText}
-                        onChange={e => setEditText(e.target.value)}
-                        maxLength={50000}
-                        rows={5}
-                      />
+                      {entry.responses.map(r => (
+                        <div key={r.prompt_id} style={s.promptGroup}>
+                          <label style={s.promptLabel}>{r.prompt_text}</label>
+                          {r.type === 'text' ? (
+                            <textarea
+                              style={s.editTextarea}
+                              value={editResponses[r.prompt_id] || ''}
+                              onChange={e => setEditResponses(prev => ({ ...prev, [r.prompt_id]: e.target.value }))}
+                              maxLength={50000}
+                              rows={3}
+                            />
+                          ) : (
+                            <div style={s.ratingContainer}>
+                              <input
+                                type="number"
+                                style={s.ratingInput}
+                                value={editRatingResponses[r.prompt_id] ?? ''}
+                                onChange={e => {
+                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                  setEditRatingResponses(prev => {
+                                    const next = { ...prev };
+                                    if (val === undefined) delete next[r.prompt_id];
+                                    else next[r.prompt_id] = val;
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
                       <div style={s.editActions}>
                         <button
                           style={{
                             ...s.editSave,
-                            ...(!editText.trim() || editSaving ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                            ...(editSaving ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
                           }}
                           onClick={() => handleEditSave(entry.id)}
-                          disabled={!editText.trim() || editSaving}
+                          disabled={editSaving}
                         >
                           {editSaving ? 'Saving...' : 'Save'}
                         </button>
@@ -639,7 +762,8 @@ export default function JournalDetailPage() {
                           style={s.editCancel}
                           onClick={() => {
                             setEditingId(null);
-                            setEditText('');
+                            setEditResponses({});
+                            setEditRatingResponses({});
                           }}
                         >
                           Cancel
@@ -648,15 +772,38 @@ export default function JournalDetailPage() {
                     </>
                   ) : (
                     <>
-                      <div style={s.entryText}>{displayText}</div>
-                      {needsTruncation && (
-                        <button
-                          style={s.readMore}
-                          onClick={() => toggleExpand(entry.id)}
-                        >
-                          {isExpanded ? 'Show less' : 'Read more'}
-                        </button>
-                      )}
+                      {entry.responses.map((r, i) => {
+                        const showLabel = entry.responses.length > 1;
+                        const fullText = r.text || '';
+                        const needsTruncation = r.type === 'text' && fullText.length > TRUNCATE_LENGTH;
+                        const displayText = needsTruncation && !isExpanded
+                          ? fullText.slice(0, TRUNCATE_LENGTH) + '...'
+                          : fullText;
+
+                        return (
+                          <div key={r.prompt_id} style={{
+                            ...s.entryResponse,
+                            ...(i === entry.responses.length - 1 ? { marginBottom: 0 } : {}),
+                          }}>
+                            {showLabel && (
+                              <div style={s.entryPromptText}>{r.prompt_text}</div>
+                            )}
+                            {r.type === 'rating' ? (
+                              <div style={s.entryRating}>{r.rating_value}</div>
+                            ) : (
+                              <div style={s.entryText}>{displayText}</div>
+                            )}
+                            {needsTruncation && (
+                              <button
+                                style={s.readMore}
+                                onClick={() => toggleExpand(entry.id)}
+                              >
+                                {isExpanded ? 'Show less' : 'Read more'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </>
                   )}
                 </div>
