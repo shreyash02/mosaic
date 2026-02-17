@@ -25,6 +25,7 @@ from app.models.journal_template import JournalTemplate
 from app.models.response import Response
 from app.models.question import Question
 from app.models.journal_analysis import JournalAnalysis
+from app.models.journal_entry_analysis import JournalEntryAnalysis
 from app.models.user import User
 from app.schemas.journal import (
     JournalCreate,
@@ -37,11 +38,13 @@ from app.schemas.journal import (
     JournalEntry,
     JournalEntryList,
     EntryPromptResponse,
+    JournalEntryAnalysisResponse,
     JournalStreak,
     JournalAnalysisResponse,
     JournalAnalysisStatus,
     JournalTemplateResponse,
     JournalTemplatePrompt,
+    _validate_frequency_pair,
 )
 from app.services.scheduler_service import calculate_next_analysis_time
 
@@ -77,14 +80,44 @@ def run_journal_analysis_task(journal_id: UUID, db_url: str):
         ).order_by(Question.question_order).all()
         question_map = {str(q.id): q for q in questions}
 
-        responses = db.query(Response).filter(
-            Response.conversation_id == conv.id,
-            Response.status == "submitted",
-        ).order_by(Response.submitted_at.asc()).all()
+        # Check for previous analysis (windowed mode)
+        previous_analysis = db.query(JournalAnalysis).filter(
+            JournalAnalysis.conversation_id == conv.id,
+        ).order_by(JournalAnalysis.created_at.desc()).first()
 
-        if len(responses) < MIN_ENTRIES_FOR_ANALYSIS:
-            logger.warning(f"Journal {journal_id} has fewer than {MIN_ENTRIES_FOR_ANALYSIS} entries, skipping analysis")
-            return
+        prior_context = None
+
+        if previous_analysis and previous_analysis.date_range_end:
+            # Windowed: only fetch entries since last analysis
+            responses = db.query(Response).filter(
+                Response.conversation_id == conv.id,
+                Response.status == "submitted",
+                Response.submitted_at > previous_analysis.date_range_end,
+            ).order_by(Response.submitted_at.asc()).all()
+
+            if len(responses) < 1:
+                logger.info(f"Journal {journal_id} has no new entries since last analysis, skipping")
+                return
+
+            # Build prior context from previous analysis
+            prior_context = {
+                "total_entries_analyzed": previous_analysis.total_entries_analyzed,
+                "date_range_start": previous_analysis.date_range_start.strftime("%Y-%m-%d") if previous_analysis.date_range_start else "",
+                "date_range_end": previous_analysis.date_range_end.strftime("%Y-%m-%d") if previous_analysis.date_range_end else "",
+                "overall_summary": previous_analysis.overall_summary or "",
+                "theme_timeline": previous_analysis.theme_timeline or [],
+                "patterns": previous_analysis.patterns or [],
+            }
+        else:
+            # First analysis: fetch all responses
+            responses = db.query(Response).filter(
+                Response.conversation_id == conv.id,
+                Response.status == "submitted",
+            ).order_by(Response.submitted_at.asc()).all()
+
+            if len(responses) < MIN_ENTRIES_FOR_ANALYSIS:
+                logger.warning(f"Journal {journal_id} has fewer than {MIN_ENTRIES_FOR_ANALYSIS} entries, skipping analysis")
+                return
 
         # Build entries list for the analysis service
         entries = []
@@ -133,6 +166,7 @@ def run_journal_analysis_task(journal_id: UUID, db_url: str):
             journal_title=conv.title,
             journal_description=conv.description,
             prompts=prompts,
+            prior_context=prior_context,
         )
 
         # Determine date range
@@ -160,6 +194,146 @@ def run_journal_analysis_task(journal_id: UUID, db_url: str):
 
     except Exception as e:
         logger.error(f"Journal analysis failed for {journal_id}: {e}", exc_info=True)
+        db.rollback()
+    finally:
+        db.close()
+        engine.dispose()
+
+
+def run_entry_analysis_task(response_id: UUID, journal_id: UUID, db_url: str):
+    """Background task to run per-entry analysis via LLM."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.journal_analysis_service import JournalAnalysisService
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        journal = db.query(JournalModel).filter(
+            JournalModel.id == journal_id,
+        ).first()
+        if not journal:
+            logger.error(f"Journal {journal_id} not found for entry analysis")
+            return
+
+        conv = journal.conversation
+
+        response = db.query(Response).filter(
+            Response.id == response_id,
+            Response.status == "submitted",
+        ).first()
+        if not response:
+            logger.error(f"Response {response_id} not found for entry analysis")
+            return
+
+        # Check if analysis already exists
+        existing = db.query(JournalEntryAnalysis).filter(
+            JournalEntryAnalysis.response_id == response_id,
+        ).first()
+        if existing:
+            return
+
+        questions = db.query(Question).filter(
+            Question.conversation_id == conv.id,
+        ).order_by(Question.question_order).all()
+        question_map = {str(q.id): q for q in questions}
+
+        # Build current entry dict
+        entry_responses = []
+        if response.response_data and "entry_responses" in response.response_data:
+            for r in response.response_data["entry_responses"]:
+                pid = r.get("prompt_id", "")
+                q = question_map.get(pid)
+                entry_responses.append({
+                    "prompt_text": q.question_text if q else r.get("prompt_text", ""),
+                    "type": q.question_type if q else r.get("type", "text"),
+                    "text": r.get("text"),
+                    "rating_value": r.get("rating_value"),
+                    "choice_value": r.get("choice_value"),
+                })
+
+        entry_date = response.submitted_at or response.last_saved_at
+        entry_number = db.query(func.count(Response.id)).filter(
+            Response.conversation_id == conv.id,
+            Response.status == "submitted",
+            Response.submitted_at <= response.submitted_at,
+        ).scalar() or 1
+
+        current_entry = {
+            "entry_number": entry_number,
+            "date": entry_date.strftime("%Y-%m-%d") if entry_date else "",
+            "responses": entry_responses,
+        }
+
+        # Fetch last 5 previous entries for connection context
+        recent_responses = db.query(Response).filter(
+            Response.conversation_id == conv.id,
+            Response.status == "submitted",
+            Response.id != response_id,
+        ).order_by(Response.submitted_at.desc()).limit(5).all()
+
+        recent_entries = []
+        for i, resp in enumerate(reversed(recent_responses)):
+            resp_entries = []
+            if resp.response_data and "entry_responses" in resp.response_data:
+                for r in resp.response_data["entry_responses"]:
+                    pid = r.get("prompt_id", "")
+                    q = question_map.get(pid)
+                    resp_entries.append({
+                        "prompt_text": q.question_text if q else r.get("prompt_text", ""),
+                        "type": q.question_type if q else r.get("type", "text"),
+                        "text": r.get("text"),
+                        "rating_value": r.get("rating_value"),
+                        "choice_value": r.get("choice_value"),
+                    })
+            rd = resp.submitted_at or resp.last_saved_at
+            recent_entries.append({
+                "entry_number": i + 1,
+                "date": rd.strftime("%Y-%m-%d") if rd else "",
+                "responses": resp_entries,
+            })
+
+        # Build prompt definitions
+        prompts = []
+        for q in questions:
+            p = {"text": q.question_text, "type": q.question_type or "text"}
+            if q.options:
+                p.update(q.options)
+            prompts.append(p)
+
+        # Run analysis
+        service = JournalAnalysisService()
+        results = service.analyze_entry(
+            entry=current_entry,
+            journal_title=conv.title,
+            journal_description=conv.description,
+            prompts=prompts,
+            recent_entries=recent_entries if recent_entries else None,
+        )
+
+        # Store results
+        entry_analysis = JournalEntryAnalysis(
+            response_id=response_id,
+            conversation_id=conv.id,
+            themes=results.get("themes"),
+            mood_score=results.get("mood_score"),
+            mood_label=results.get("mood_label"),
+            key_takeaway=results.get("key_takeaway"),
+            connections=results.get("connections"),
+            suggested_followups=results.get("suggested_followups"),
+            llm_provider=results.get("llm_provider"),
+            llm_model=results.get("llm_model"),
+            analysis_duration_ms=results.get("analysis_duration_ms"),
+        )
+        db.add(entry_analysis)
+        db.commit()
+
+        logger.info(f"Entry analysis completed for response {response_id} in {results.get('analysis_duration_ms', 0)}ms")
+
+    except Exception as e:
+        logger.error(f"Entry analysis failed for response {response_id}: {e}", exc_info=True)
         db.rollback()
     finally:
         db.close()
@@ -244,6 +418,7 @@ def _response_to_entry(
     response: Response,
     entry_number: int,
     question_map: dict[str, Question],
+    entry_analysis: JournalEntryAnalysis | None = None,
 ) -> JournalEntry:
     """Convert a Response record to a JournalEntry schema."""
     # Parse structured per-prompt responses from response_data
@@ -274,6 +449,19 @@ def _response_to_entry(
 
     word_count = len((response.response_text or "").split())
 
+    analysis_data = None
+    if entry_analysis:
+        analysis_data = JournalEntryAnalysisResponse(
+            id=entry_analysis.id,
+            themes=entry_analysis.themes or [],
+            mood_score=entry_analysis.mood_score or 0.0,
+            mood_label=entry_analysis.mood_label or "",
+            key_takeaway=entry_analysis.key_takeaway or "",
+            connections=entry_analysis.connections or "",
+            suggested_followups=entry_analysis.suggested_followups or [],
+            created_at=entry_analysis.created_at,
+        )
+
     return JournalEntry(
         id=response.id,
         entry_number=entry_number,
@@ -282,6 +470,7 @@ def _response_to_entry(
         is_edited=response.is_edited or False,
         edited_at=response.edited_at,
         word_count=word_count,
+        analysis=analysis_data,
     )
 
 
@@ -662,6 +851,14 @@ async def update_journal(
     if data.strict_frequency is not None:
         journal.strict_frequency = data.strict_frequency
 
+    # Validate resolved frequency pair before commit
+    resolved_entry_freq = journal.entry_frequency
+    resolved_analysis_interval = conv.analysis_interval
+    try:
+        _validate_frequency_pair(resolved_entry_freq, resolved_analysis_interval)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
     # Replace prompts if provided
     if data.prompts is not None:
         # Delete existing questions
@@ -744,11 +941,20 @@ async def list_journal_entries(
     question_map = _build_question_map(conv, db)
     streak = _get_streak(journal, db)
 
+    # Batch-load entry analyses for these responses
+    response_ids = [r.id for r in responses]
+    entry_analyses = {}
+    if response_ids:
+        analyses = db.query(JournalEntryAnalysis).filter(
+            JournalEntryAnalysis.response_id.in_(response_ids),
+        ).all()
+        entry_analyses = {a.response_id: a for a in analyses}
+
     # Compute entry numbers (total - skip - index for descending order)
     entries = []
     for i, resp in enumerate(responses):
         entry_number = total_entries - skip - i
-        entries.append(_response_to_entry(resp, entry_number, question_map))
+        entries.append(_response_to_entry(resp, entry_number, question_map, entry_analyses.get(resp.id)))
 
     return JournalEntryList(
         journal_id=journal.id,
@@ -767,6 +973,7 @@ async def list_journal_entries(
 async def create_journal_entry(
     journal_id: UUID,
     entry: JournalEntryCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -823,6 +1030,15 @@ async def create_journal_entry(
     db.commit()
     db.refresh(response)
 
+    # Queue per-entry analysis in background
+    from app.core.config import settings
+    background_tasks.add_task(
+        run_entry_analysis_task,
+        response_id=response.id,
+        journal_id=journal.id,
+        db_url=str(settings.DATABASE_URL),
+    )
+
     # Compute entry number
     entry_number = _get_entry_count(conv.id, db)
 
@@ -857,6 +1073,11 @@ async def get_journal_entry(
 
     question_map = _build_question_map(conv, db)
 
+    # Load entry analysis
+    entry_analysis = db.query(JournalEntryAnalysis).filter(
+        JournalEntryAnalysis.response_id == entry_id,
+    ).first()
+
     # Compute this entry's number
     entries_before = db.query(func.count(Response.id)).filter(
         Response.conversation_id == conv.id,
@@ -864,7 +1085,7 @@ async def get_journal_entry(
         Response.submitted_at <= response.submitted_at,
     ).scalar() or 0
 
-    return _response_to_entry(response, entries_before, question_map)
+    return _response_to_entry(response, entries_before, question_map, entry_analysis)
 
 
 @router.patch(
@@ -1030,7 +1251,12 @@ async def trigger_journal_analysis(
 
     total_entries = _get_entry_count(conv.id, db)
 
-    if total_entries < MIN_ENTRIES_FOR_ANALYSIS:
+    # Check if there's a previous analysis (windowed mode needs only 1 new entry)
+    has_previous = db.query(JournalAnalysis.id).filter(
+        JournalAnalysis.conversation_id == conv.id,
+    ).first() is not None
+
+    if not has_previous and total_entries < MIN_ENTRIES_FOR_ANALYSIS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Need at least {MIN_ENTRIES_FOR_ANALYSIS} entries to run analysis. Currently have {total_entries}."

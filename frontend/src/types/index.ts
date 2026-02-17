@@ -1299,6 +1299,17 @@ export interface EntryPromptResponse {
   choice_value?: string;
 }
 
+export interface JournalEntryAnalysis {
+  id: string;
+  themes: string[];
+  mood_score: number;
+  mood_label: string;
+  key_takeaway: string;
+  connections: string;
+  suggested_followups: string[];
+  created_at: string;
+}
+
 export interface JournalEntry {
   id: string;
   entry_number: number;
@@ -1307,6 +1318,7 @@ export interface JournalEntry {
   is_edited: boolean;
   edited_at?: string;
   word_count: number;
+  analysis?: JournalEntryAnalysis;
 }
 
 export interface JournalEntryCreate {

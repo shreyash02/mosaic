@@ -27,6 +27,7 @@ class JournalAnalysisService:
         journal_title: str,
         journal_description: str | None = None,
         prompts: list[dict] | None = None,
+        prior_context: dict | None = None,
     ) -> dict:
         """
         Analyze journal entries and return structured insights.
@@ -36,6 +37,7 @@ class JournalAnalysisService:
             journal_title: Title of the journal
             journal_description: Optional description/context
             prompts: List of prompt dicts with text and type
+            prior_context: Previous analysis context for windowed mode
 
         Returns:
             Dict with overall_summary, theme_timeline, mood_trajectory, patterns
@@ -60,13 +62,48 @@ class JournalAnalysisService:
         if entries:
             date_range = f"from {entries[0]['date']} to {entries[-1]['date']}"
 
+        # Build prior context section for windowed analysis
+        prior_section = ""
+        if prior_context:
+            theme_lines = []
+            for t in prior_context.get("theme_timeline", []):
+                if isinstance(t, dict):
+                    trajectory = t.get("trajectory", "stable")
+                    summary = t.get("summary", "")
+                    theme_lines.append(f"- {t.get('theme', '')} ({trajectory}): {summary}")
+            pattern_lines = []
+            for p in prior_context.get("patterns", []):
+                if isinstance(p, dict):
+                    pattern_lines.append(f"- {p.get('title', '')}: {p.get('description', '')}")
+
+            prior_section = f"""
+## Previous Analysis Context
+Your previous analysis covered {prior_context.get('total_entries_analyzed', 0)} entries from {prior_context.get('date_range_start', '?')} to {prior_context.get('date_range_end', '?')}:
+
+### Summary
+{prior_context.get('overall_summary', '')}
+
+### Themes Tracked
+{chr(10).join(theme_lines) if theme_lines else '(none)'}
+
+### Patterns Identified
+{chr(10).join(pattern_lines) if pattern_lines else '(none)'}
+
+## New Entries
+The following {len(entries)} new entries were written since your last analysis.
+- Update theme trajectories based on new evidence
+- Identify NEW themes that emerged
+- Track mood for the new entries only
+- Note pattern shifts: what changed, persisted, or resolved
+"""
+
         user_prompt = f"""Analyze this personal journal and return structured insights as JSON.
 
 Journal: "{journal_title}"
 {f'Context: {journal_description}' if journal_description else ''}
 {f'Prompts used: {prompt_descriptions}' if prompt_descriptions else ''}
 Entries: {len(entries)} entries {date_range}
-
+{prior_section}
 {formatted_entries}
 
 Return a JSON object with exactly these fields:
@@ -131,6 +168,100 @@ Guidelines:
             "theme_timeline": result.get("theme_timeline", []),
             "mood_trajectory": result.get("mood_trajectory", {}),
             "patterns": result.get("patterns", []),
+            "llm_provider": "anthropic",
+            "llm_model": self.model,
+            "analysis_duration_ms": duration_ms,
+        }
+
+    def analyze_entry(
+        self,
+        entry: dict,
+        journal_title: str,
+        journal_description: str | None = None,
+        prompts: list[dict] | None = None,
+        recent_entries: list[dict] | None = None,
+    ) -> dict:
+        """
+        Analyze a single journal entry and return structured insights.
+
+        Args:
+            entry: Dict with entry_number, date, responses
+            journal_title: Title of the journal
+            journal_description: Optional description/context
+            prompts: List of prompt dicts with text and type
+            recent_entries: Last 3-5 entries for connection detection
+
+        Returns:
+            Dict with themes, mood_score, mood_label, key_takeaway, connections, suggested_followups
+        """
+        start_time = time.time()
+
+        formatted_entry = self._format_entries([entry])
+        prompt_descriptions = self._format_prompts(prompts) if prompts else ""
+
+        recent_context = ""
+        if recent_entries:
+            recent_context = (
+                "\n\n## Recent Previous Entries (for context/connections)\n"
+                + self._format_entries(recent_entries)
+            )
+
+        system_prompt = (
+            "You are an insightful personal journal analyst. You provide immediate "
+            "feedback on individual journal entries — identifying themes, mood, key "
+            "takeaways, and connections to previous entries. Be warm, specific, and concise. "
+            "Always respond with valid JSON only — no markdown, no explanation outside the JSON."
+        )
+
+        user_prompt = f"""Analyze this single journal entry and return structured insights as JSON.
+
+Journal: "{journal_title}"
+{f'Context: {journal_description}' if journal_description else ''}
+{f'Prompts used: {prompt_descriptions}' if prompt_descriptions else ''}
+
+## Current Entry
+{formatted_entry}
+{recent_context}
+
+Return a JSON object with exactly these fields:
+
+{{
+  "themes": ["theme1", "theme2"],
+  "mood_score": 0.5,
+  "mood_label": "cautiously optimistic",
+  "key_takeaway": "A 1-2 sentence summary of the core insight or reflection in this entry.",
+  "connections": "How this entry relates to or builds on previous entries. Empty string if this is the first entry or no connections exist.",
+  "suggested_followups": ["A follow-up question to explore...", "Another prompt to dig deeper..."]
+}}
+
+Guidelines:
+- themes: 1-5 short theme labels relevant to THIS entry
+- mood_score: -1.0 (very negative) to 1.0 (very positive), reflecting the emotional tone
+- mood_label: 1-3 word description of the dominant mood
+- key_takeaway: The single most important insight or reflection. Keep it concise.
+- connections: Only if previous entries are provided. Note patterns, shifts, or continuations.
+- suggested_followups: 1-3 thought-provoking follow-up questions for future reflection
+- Return ONLY the JSON object, nothing else."""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+
+        result_text = response.content[0].text
+        result = self._parse_json(result_text)
+
+        duration_ms = int((time.time() - start_time) * 1000)
+
+        return {
+            "themes": result.get("themes", []),
+            "mood_score": result.get("mood_score", 0.0),
+            "mood_label": result.get("mood_label", ""),
+            "key_takeaway": result.get("key_takeaway", ""),
+            "connections": result.get("connections", ""),
+            "suggested_followups": result.get("suggested_followups", []),
             "llm_provider": "anthropic",
             "llm_model": self.model,
             "analysis_duration_ms": duration_ms,

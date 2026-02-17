@@ -27,6 +27,8 @@ const ENTRY_FREQUENCIES: { value: EntryFrequency; label: string }[] = [
   { value: 'unlimited', label: 'Unlimited' },
 ];
 
+const FREQ_DAYS: Record<string, number> = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
+
 const s = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
@@ -342,6 +344,23 @@ export default function JournalCreatePage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
+  // Filter analysis intervals based on entry frequency
+  const filteredIntervals = ANALYSIS_INTERVALS.filter(opt => {
+    if (entryFrequency === 'unlimited') return true;
+    return (FREQ_DAYS[opt.value] ?? 0) >= (FREQ_DAYS[entryFrequency] ?? 0);
+  });
+
+  // Auto-correct analysis interval when entry frequency changes
+  useEffect(() => {
+    if (entryFrequency === 'unlimited') return;
+    const entryDays = FREQ_DAYS[entryFrequency] ?? 0;
+    const analysisDays = FREQ_DAYS[analysisInterval] ?? 0;
+    if (analysisDays < entryDays) {
+      const firstValid = filteredIntervals[0];
+      if (firstValid) setAnalysisInterval(firstValid.value);
+    }
+  }, [entryFrequency]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     api.getJournalTemplates()
       .then(setTemplates)
@@ -607,7 +626,7 @@ export default function JournalCreatePage() {
               <label style={s.label}>Analysis Frequency</label>
               <CustomSelect
                 value={analysisInterval}
-                options={ANALYSIS_INTERVALS}
+                options={filteredIntervals}
                 onChange={v => setAnalysisInterval(v as AnalysisInterval)}
                 minWidth="200px"
               />

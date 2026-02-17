@@ -343,6 +343,71 @@ const s = {
     fontFamily: 'inherit',
     boxSizing: 'border-box' as const,
   },
+  // AI Insights
+  insightsToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: `${spacing[2]} 0`,
+    marginTop: spacing[2],
+    color: 'var(--color-primary-600)',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+  },
+  insightsContent: {
+    marginTop: spacing[2],
+    padding: spacing[4],
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.md,
+    border: '1px solid var(--color-primary-200)',
+  },
+  insightsRow: {
+    marginBottom: spacing[3],
+  },
+  insightsLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-500)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    marginBottom: spacing[1],
+  },
+  insightsText: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-700)',
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  moodBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.full,
+  },
+  themePill: {
+    display: 'inline-block',
+    padding: `${spacing[1]} ${spacing[2]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-200)',
+    borderRadius: borders.radius.full,
+    marginRight: spacing[1],
+    marginBottom: spacing[1],
+  },
+  followupItem: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-600)',
+    lineHeight: typography.lineHeight.relaxed,
+    paddingLeft: spacing[3],
+    position: 'relative' as const,
+    marginBottom: spacing[1],
+  },
   editActions: {
     display: 'flex',
     gap: spacing[2],
@@ -487,6 +552,12 @@ function formatDuration(createdAt: string): string {
   return `${years === 1 ? '1 year' : `${years} years`} and ${remainingMonths === 1 ? '1 month' : `${remainingMonths} months`}`;
 }
 
+function getMoodColor(score: number): { bg: string; color: string } {
+  if (score >= 0.3) return { bg: 'var(--color-primary-200)', color: 'var(--color-primary-800)' };
+  if (score <= -0.3) return { bg: '#fecaca', color: '#991b1b' };
+  return { bg: 'var(--color-primary-150, var(--color-primary-200))', color: 'var(--color-primary-600)' };
+}
+
 function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = 'auto';
   textarea.style.height = `${textarea.scrollHeight}px`;
@@ -524,6 +595,8 @@ export default function JournalDetailPage() {
 
   // Expanded entries
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
+  // Expanded AI insights
+  const [expandedInsights, setExpandedInsights] = useState<Set<string>>(new Set());
 
   const [error, setError] = useState('');
 
@@ -666,6 +739,15 @@ export default function JournalDetailPage() {
 
   const toggleExpand = (entryId: string) => {
     setExpandedEntries(prev => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  };
+
+  const toggleInsights = (entryId: string) => {
+    setExpandedInsights(prev => {
       const next = new Set(prev);
       if (next.has(entryId)) next.delete(entryId);
       else next.add(entryId);
@@ -1064,7 +1146,7 @@ export default function JournalDetailPage() {
                         return (
                           <div key={r.prompt_id} style={{
                             ...s.entryResponse,
-                            ...(i === entry.responses.length - 1 ? { marginBottom: 0 } : {}),
+                            ...(i === entry.responses.length - 1 && !entry.analysis ? { marginBottom: 0 } : {}),
                           }}>
                             {showLabel && (
                               <div style={s.entryPromptText}>{r.prompt_text}</div>
@@ -1087,6 +1169,85 @@ export default function JournalDetailPage() {
                           </div>
                         );
                       })}
+                      {/* AI Insights (per-entry analysis) */}
+                      {entry.analysis && (
+                        <>
+                          <button
+                            style={s.insightsToggle}
+                            onClick={() => toggleInsights(entry.id)}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                            </svg>
+                            AI Insights
+                            <svg
+                              width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              style={{ transform: expandedInsights.has(entry.id) ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                          {expandedInsights.has(entry.id) && (() => {
+                            const a = entry.analysis!;
+                            const moodColors = getMoodColor(a.mood_score);
+                            return (
+                              <div style={s.insightsContent}>
+                                {/* Mood badge */}
+                                {a.mood_label && (
+                                  <div style={s.insightsRow}>
+                                    <span style={{
+                                      ...s.moodBadge,
+                                      backgroundColor: moodColors.bg,
+                                      color: moodColors.color,
+                                    }}>
+                                      {a.mood_label}
+                                      <span style={{ opacity: 0.7, marginLeft: spacing[1] }}>
+                                        {a.mood_score > 0 ? '+' : ''}{a.mood_score.toFixed(1)}
+                                      </span>
+                                    </span>
+                                  </div>
+                                )}
+                                {/* Themes */}
+                                {a.themes.length > 0 && (
+                                  <div style={s.insightsRow}>
+                                    <div style={s.insightsLabel}>Themes</div>
+                                    <div>
+                                      {a.themes.map((theme, ti) => (
+                                        <span key={ti} style={s.themePill}>{theme}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Key takeaway */}
+                                {a.key_takeaway && (
+                                  <div style={s.insightsRow}>
+                                    <div style={s.insightsLabel}>Key Takeaway</div>
+                                    <div style={s.insightsText}>{a.key_takeaway}</div>
+                                  </div>
+                                )}
+                                {/* Connections */}
+                                {a.connections && (
+                                  <div style={s.insightsRow}>
+                                    <div style={s.insightsLabel}>Connections</div>
+                                    <div style={s.insightsText}>{a.connections}</div>
+                                  </div>
+                                )}
+                                {/* Follow-ups */}
+                                {a.suggested_followups.length > 0 && (
+                                  <div style={{ ...s.insightsRow, marginBottom: 0 }}>
+                                    <div style={s.insightsLabel}>Follow-up Prompts</div>
+                                    {a.suggested_followups.map((q, qi) => (
+                                      <div key={qi} style={s.followupItem}>
+                                        &bull; {q}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </>
+                      )}
                     </>
                   )}
                 </div>

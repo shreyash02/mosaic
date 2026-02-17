@@ -26,6 +26,15 @@ const EMPTY_FORM: TemplateFormData = {
   is_active: true,
 };
 
+const FREQ_DAYS: Record<string, number> = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
+
+const ALL_ANALYSIS_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Biweekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
 export default function AdminJournalTemplatesPage() {
   usePageTitle('Journal Templates - Admin');
   const navigate = useNavigate();
@@ -343,7 +352,25 @@ export default function AdminJournalTemplatesPage() {
                 <label>Entry Frequency</label>
                 <select
                   value={formData.entry_frequency}
-                  onChange={e => setFormData(prev => ({ ...prev, entry_frequency: e.target.value }))}
+                  onChange={e => {
+                    const newFreq = e.target.value;
+                    setFormData(prev => {
+                      const updated = { ...prev, entry_frequency: newFreq };
+                      // Auto-correct analysis interval if it becomes invalid
+                      if (newFreq) {
+                        const entryDays = FREQ_DAYS[newFreq] ?? 0;
+                        const analysisDays = FREQ_DAYS[prev.analysis_interval] ?? 0;
+                        if (analysisDays < entryDays) {
+                          // Pick first valid option
+                          const firstValid = ALL_ANALYSIS_OPTIONS.find(
+                            opt => (FREQ_DAYS[opt.value] ?? 0) >= entryDays
+                          );
+                          if (firstValid) updated.analysis_interval = firstValid.value;
+                        }
+                      }
+                      return updated;
+                    });
+                  }}
                 >
                   <option value="">Unlimited</option>
                   <option value="daily">Daily</option>
@@ -359,10 +386,15 @@ export default function AdminJournalTemplatesPage() {
                   value={formData.analysis_interval}
                   onChange={e => setFormData(prev => ({ ...prev, analysis_interval: e.target.value }))}
                 >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Biweekly</option>
-                  <option value="monthly">Monthly</option>
+                  {ALL_ANALYSIS_OPTIONS
+                    .filter(opt => {
+                      if (!formData.entry_frequency) return true; // unlimited
+                      return (FREQ_DAYS[opt.value] ?? 0) >= (FREQ_DAYS[formData.entry_frequency] ?? 0);
+                    })
+                    .map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))
+                  }
                 </select>
               </div>
 

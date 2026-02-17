@@ -7,8 +7,30 @@ The API uses /journals/ and these schemas — never exposing conversation intern
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from enum import Enum
+
+
+# --- Frequency validation ---
+
+FREQUENCY_ORDER = {"daily": 1, "weekly": 7, "biweekly": 14, "monthly": 30}
+
+
+def _validate_frequency_pair(entry_freq: str | None, analysis_interval: str | None):
+    """Validate that analysis_interval is not more frequent than entry_frequency.
+
+    Rule: analysis interval (in days) must be >= entry frequency (in days).
+    E.g. monthly entries cannot have daily analysis.
+    """
+    if not entry_freq or entry_freq == "unlimited":
+        return
+    entry_days = FREQUENCY_ORDER.get(entry_freq)
+    analysis_days = FREQUENCY_ORDER.get(analysis_interval) if analysis_interval else None
+    if entry_days and analysis_days and analysis_days < entry_days:
+        raise ValueError(
+            f"Analysis interval '{analysis_interval}' cannot be more frequent "
+            f"than entry frequency '{entry_freq}'"
+        )
 
 
 # --- Enums ---
@@ -71,6 +93,12 @@ class JournalCreate(BaseModel):
     entry_frequency: Optional[EntryFrequency] = None
     strict_frequency: bool = False
 
+    @model_validator(mode="after")
+    def validate_frequency(self):
+        entry_freq = self.entry_frequency.value if self.entry_frequency else None
+        _validate_frequency_pair(entry_freq, self.analysis_interval.value)
+        return self
+
 
 class JournalUpdate(BaseModel):
     """Update journal settings. All fields optional."""
@@ -81,6 +109,13 @@ class JournalUpdate(BaseModel):
     analysis_interval: Optional[AnalysisInterval] = None
     entry_frequency: Optional[EntryFrequency] = None
     strict_frequency: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_frequency(self):
+        if self.entry_frequency is not None and self.analysis_interval is not None:
+            entry_freq = self.entry_frequency.value if self.entry_frequency else None
+            _validate_frequency_pair(entry_freq, self.analysis_interval.value)
+        return self
 
 
 class Journal(BaseModel):
@@ -153,6 +188,21 @@ class EntryPromptResponse(BaseModel):
     choice_value: Optional[str] = None
 
 
+class JournalEntryAnalysisResponse(BaseModel):
+    """Per-entry AI analysis results."""
+
+    id: UUID
+    themes: List[str] = []
+    mood_score: float = 0.0
+    mood_label: str = ""
+    key_takeaway: str = ""
+    connections: str = ""
+    suggested_followups: List[str] = []
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class JournalEntry(BaseModel):
     """A single journal entry (one Response record with structured response_data)."""
 
@@ -163,6 +213,7 @@ class JournalEntry(BaseModel):
     is_edited: bool = False
     edited_at: Optional[datetime] = None
     word_count: int = 0
+    analysis: Optional[JournalEntryAnalysisResponse] = None
 
     model_config = {"from_attributes": True}
 
@@ -297,6 +348,11 @@ class JournalTemplateCreate(BaseModel):
     display_order: int = 0
     is_active: bool = True
 
+    @model_validator(mode="after")
+    def validate_frequency(self):
+        _validate_frequency_pair(self.entry_frequency, self.analysis_interval)
+        return self
+
 
 class JournalTemplateUpdate(BaseModel):
     """Update a journal template (admin only). All fields optional."""
@@ -310,3 +366,9 @@ class JournalTemplateUpdate(BaseModel):
     strict_frequency: Optional[bool] = None
     display_order: Optional[int] = None
     is_active: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_frequency(self):
+        if self.entry_frequency is not None and self.analysis_interval is not None:
+            _validate_frequency_pair(self.entry_frequency, self.analysis_interval)
+        return self
