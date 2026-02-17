@@ -1,28 +1,146 @@
-"""Journal-specific schemas for individual mode."""
+"""Journal-specific schemas for individual mode.
+
+Journals are user-facing entities backed by the Conversation model internally.
+The API uses /journals/ and these schemas — never exposing conversation internals.
+"""
 
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field
+from enum import Enum
+
+
+# --- Enums ---
+
+class AnalysisInterval(str, Enum):
+    """How often to run periodic analysis."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
+# --- Prompt schemas ---
+
+class JournalPromptCreate(BaseModel):
+    """A prompt in a journal creation request."""
+
+    text: str = Field(..., min_length=1, max_length=2000)
+    type: str = Field("text", pattern="^(text|rating)$")
+    order_index: int = Field(..., ge=0)
+    rating_min: Optional[int] = None
+    rating_max: Optional[int] = None
+
+
+class JournalPrompt(BaseModel):
+    """A prompt in a journal (backed by Question model)."""
+
+    id: UUID
+    text: str
+    type: str
+    order_index: int
+    rating_min: Optional[int] = None
+    rating_max: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+
+# --- Journal CRUD schemas ---
+
+class JournalCreate(BaseModel):
+    """Create a new journal."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=500)
+    prompts: List[JournalPromptCreate] = Field(..., min_length=1, max_length=10)
+    analysis_interval: AnalysisInterval = Field(AnalysisInterval.WEEKLY)
+
+
+class JournalUpdate(BaseModel):
+    """Update journal settings. All fields optional."""
+
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=500)
+    prompts: Optional[List[JournalPromptCreate]] = Field(None, min_length=1, max_length=10)
+    analysis_interval: Optional[AnalysisInterval] = None
+
+
+class Journal(BaseModel):
+    """Full journal detail response."""
+
+    id: UUID
+    title: str
+    description: Optional[str] = None
+    prompts: List[JournalPrompt] = []
+    analysis_interval: Optional[str] = None
+    total_entries: int = 0
+    streak: "JournalStreak"
+    has_analysis: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class JournalListItem(BaseModel):
+    """Journal summary for list views."""
+
+    id: UUID
+    title: str
+    description: Optional[str] = None
+    prompt_count: int = 0
+    total_entries: int = 0
+    current_streak: int = 0
+    last_entry_at: Optional[datetime] = None
+    has_analysis: bool = False
+    analysis_interval: Optional[str] = None
+    created_at: datetime
 
 
 # --- Entry schemas ---
 
-class JournalEntryCreate(BaseModel):
-    """Create a journal entry."""
+class PromptResponse(BaseModel):
+    """A single prompt's response within an entry."""
 
-    text: str = Field(..., min_length=1, max_length=50000)
+    prompt_id: UUID
+    text: Optional[str] = Field(None, max_length=50000)
+    rating_value: Optional[int] = None
+
+
+class JournalEntryCreate(BaseModel):
+    """Create a journal entry with per-prompt responses."""
+
+    responses: List[PromptResponse] = Field(..., min_length=1)
+
+
+class JournalEntryUpdate(BaseModel):
+    """Update a journal entry."""
+
+    responses: List[PromptResponse] = Field(..., min_length=1)
+
+
+class EntryPromptResponse(BaseModel):
+    """A prompt response within an entry (read model)."""
+
+    prompt_id: UUID
+    prompt_text: str
+    type: str = "text"
+    text: Optional[str] = None
+    rating_value: Optional[int] = None
 
 
 class JournalEntry(BaseModel):
-    """A single journal entry (backed by Response model)."""
+    """A single journal entry (one Response record with structured response_data)."""
 
     id: UUID
-    text: str
+    entry_number: int
+    responses: List[EntryPromptResponse] = []
     created_at: datetime
     is_edited: bool = False
     edited_at: Optional[datetime] = None
-    word_count: int
+    word_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -41,8 +159,9 @@ class JournalStreak(BaseModel):
 class JournalEntryList(BaseModel):
     """Paginated list of journal entries."""
 
-    conversation_id: UUID
+    journal_id: UUID
     total_entries: int
+    has_more: bool = False
     entries: List[JournalEntry]
     streak: JournalStreak
 
@@ -90,7 +209,7 @@ class JournalAnalysisResponse(BaseModel):
     """Journal-specific analysis results."""
 
     id: UUID
-    conversation_id: UUID
+    journal_id: UUID
     overall_summary: Optional[str] = None
     theme_timeline: Optional[List[ThemeTimelineEntry]] = None
     mood_trajectory: Optional[MoodTrajectory] = None

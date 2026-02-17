@@ -437,11 +437,14 @@ async def list_conversations(
         query = query.filter(Conversation.state == state.value)
 
     # Filter by mode (group vs individual/journal)
+    # Default: exclude journals (they have their own /api/journals endpoint)
     if mode == "individual":
         query = query.filter(Conversation.is_individual == True)
-    elif mode == "group":
+    elif mode == "all":
+        pass  # No filter — include everything
+    else:
+        # Default (None or "group"): exclude journals
         query = query.filter(Conversation.is_individual == False)
-    # mode == "all" or None: no filter
 
     query = query.order_by(Conversation.created_at.desc())
     query = query.offset(skip).limit(limit)
