@@ -158,11 +158,54 @@ const s = {
     fontSize: typography.fontSize.xs,
     color: 'var(--color-primary-500)',
   },
+  choiceContainer: {
+    display: 'inline-flex',
+  },
+  choicePill: {
+    padding: `${spacing[2]} ${spacing[4]}`,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: 0,
+    cursor: 'pointer',
+    transition: 'background-color 150ms, color 150ms',
+    outline: 'none',
+    position: 'relative' as const,
+    zIndex: 0,
+    marginLeft: '-1px',
+  },
+  choicePillFirst: {
+    borderRadius: `${borders.radius.md} 0 0 ${borders.radius.md}`,
+    marginLeft: 0,
+  },
+  choicePillLast: {
+    borderRadius: `0 ${borders.radius.md} ${borders.radius.md} 0`,
+  },
+  choicePillSelected: {
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
+    borderColor: 'var(--color-primary-900)',
+    zIndex: 1,
+  },
   writeFooter: {
     display: 'flex',
     justifyContent: 'flex-end',
     alignItems: 'center',
+    gap: spacing[3],
     marginTop: spacing[3],
+  },
+  resetButton: {
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-500)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    border: 'none',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
   },
   saveButton: {
     display: 'inline-flex',
@@ -252,6 +295,15 @@ const s = {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     color: 'var(--color-primary-900)',
+  },
+  entryChoice: {
+    display: 'inline-block',
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-200)',
+    borderRadius: borders.radius.full,
   },
   readMore: {
     color: 'var(--color-primary-600)',
@@ -459,6 +511,7 @@ export default function JournalDetailPage() {
   // Write area - per-prompt responses
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [ratingResponses, setRatingResponses] = useState<Record<string, number>>({});
+  const [choiceResponses, setChoiceResponses] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -466,6 +519,7 @@ export default function JournalDetailPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editResponses, setEditResponses] = useState<Record<string, string>>({});
   const [editRatingResponses, setEditRatingResponses] = useState<Record<string, number>>({});
+  const [editChoiceResponses, setEditChoiceResponses] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
 
   // Expanded entries
@@ -516,7 +570,7 @@ export default function JournalDetailPage() {
     loadEntries();
   }, [loadJournal, loadEntries]);
 
-  const buildResponses = (prompts: JournalPrompt[], textMap: Record<string, string>, ratingMap: Record<string, number>): PromptResponse[] => {
+  const buildResponses = (prompts: JournalPrompt[], textMap: Record<string, string>, ratingMap: Record<string, number>, choiceMap: Record<string, string>): PromptResponse[] => {
     return prompts.map(p => {
       const resp: PromptResponse = { prompt_id: p.id };
       if (p.type === 'rating') {
@@ -524,6 +578,9 @@ export default function JournalDetailPage() {
       }
       if (p.type === 'text') {
         resp.text = textMap[p.id]?.trim() || '';
+      }
+      if (p.type === 'single_choice') {
+        resp.choice_value = choiceMap[p.id] || undefined;
       }
       return resp;
     });
@@ -534,6 +591,7 @@ export default function JournalDetailPage() {
     return journal.prompts.some(p => {
       if (p.type === 'text') return (responses[p.id] || '').trim().length > 0;
       if (p.type === 'rating') return ratingResponses[p.id] !== undefined;
+      if (p.type === 'single_choice') return !!choiceResponses[p.id];
       return false;
     });
   };
@@ -544,10 +602,11 @@ export default function JournalDetailPage() {
       setSaving(true);
       setSaveError('');
       await api.createJournalEntry(id, {
-        responses: buildResponses(journal.prompts, responses, ratingResponses),
+        responses: buildResponses(journal.prompts, responses, ratingResponses, choiceResponses),
       });
       setResponses({});
       setRatingResponses({});
+      setChoiceResponses({});
       // Reset textarea heights
       Object.values(textareaRefs.current).forEach(ta => {
         if (ta) ta.style.height = 'auto';
@@ -563,13 +622,16 @@ export default function JournalDetailPage() {
   const startEditing = (entry: JournalEntry) => {
     const textMap: Record<string, string> = {};
     const ratingMap: Record<string, number> = {};
+    const choiceMap: Record<string, string> = {};
     for (const r of entry.responses) {
       if (r.type === 'text' && r.text) textMap[r.prompt_id] = r.text;
       if (r.type === 'rating' && r.rating_value !== undefined) ratingMap[r.prompt_id] = r.rating_value;
+      if (r.type === 'single_choice' && r.choice_value) choiceMap[r.prompt_id] = r.choice_value;
     }
     setEditingId(entry.id);
     setEditResponses(textMap);
     setEditRatingResponses(ratingMap);
+    setEditChoiceResponses(choiceMap);
   };
 
   const handleEditSave = async (entryId: string) => {
@@ -577,12 +639,13 @@ export default function JournalDetailPage() {
     try {
       setEditSaving(true);
       const updated = await api.updateJournalEntry(id, entryId, {
-        responses: buildResponses(journal.prompts, editResponses, editRatingResponses),
+        responses: buildResponses(journal.prompts, editResponses, editRatingResponses, editChoiceResponses),
       });
       setEntries(prev => prev.map(e => e.id === entryId ? updated : e));
       setEditingId(null);
       setEditResponses({});
       setEditRatingResponses({});
+      setEditChoiceResponses({});
     } catch {
       // Keep edit mode open on error
     } finally {
@@ -648,6 +711,20 @@ export default function JournalDetailPage() {
 
   return (
     <div style={s.page}>
+      <style>{`
+        .choice-pill:focus,
+        .choice-pill:focus-visible,
+        .choice-pill:active {
+          outline: none !important;
+          box-shadow: none !important;
+          border-color: var(--color-primary-300) !important;
+        }
+        .choice-pill.selected:focus,
+        .choice-pill.selected:focus-visible,
+        .choice-pill.selected:active {
+          border-color: var(--color-primary-900) !important;
+        }
+      `}</style>
       <div style={s.container}>
         <Link to="/journals" style={s.backLink}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -731,7 +808,7 @@ export default function JournalDetailPage() {
                     placeholder="Start writing..."
                     maxLength={50000}
                   />
-                ) : (
+                ) : prompt.type === 'rating' ? (
                   <div style={s.ratingContainer}>
                     <input
                       type="number"
@@ -753,7 +830,33 @@ export default function JournalDetailPage() {
                       {prompt.rating_min ?? 1} - {prompt.rating_max ?? 10}
                     </span>
                   </div>
-                )}
+                ) : prompt.type === 'single_choice' && prompt.choices ? (
+                  <div style={s.choiceContainer}>
+                    {prompt.choices.map((choice, ci) => {
+                      const isSelected = choiceResponses[prompt.id] === choice;
+                      return (
+                        <button
+                          key={choice}
+                          type="button"
+                          className={`choice-pill${isSelected ? ' selected' : ''}`}
+                          style={{
+                            ...s.choicePill,
+                            ...(ci === 0 ? s.choicePillFirst : {}),
+                            ...(ci === (prompt.choices?.length ?? 0) - 1 ? s.choicePillLast : {}),
+                            ...(isSelected ? s.choicePillSelected : {}),
+                          }}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => setChoiceResponses(prev => ({
+                            ...prev,
+                            [prompt.id]: prev[prompt.id] === choice ? '' : choice,
+                          }))}
+                        >
+                          {choice}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ))}
             {saveError && (
@@ -762,6 +865,23 @@ export default function JournalDetailPage() {
               </div>
             )}
             <div style={s.writeFooter}>
+              <button
+                type="button"
+                style={s.resetButton}
+                onClick={() => {
+                  setResponses({});
+                  setRatingResponses({});
+                  setChoiceResponses({});
+                  Object.values(textareaRefs.current).forEach(ta => {
+                    if (ta) ta.style.height = 'auto';
+                  });
+                  if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                  }
+                }}
+              >
+                Reset
+              </button>
               <button
                 style={{
                   ...s.saveButton,
@@ -826,37 +946,66 @@ export default function JournalDetailPage() {
 
                   {isEditing ? (
                     <>
-                      {entry.responses.map(r => (
-                        <div key={r.prompt_id} style={s.promptGroup}>
-                          <label style={s.promptLabel}>{r.prompt_text}</label>
-                          {r.type === 'text' ? (
-                            <textarea
-                              style={s.editTextarea}
-                              value={editResponses[r.prompt_id] || ''}
-                              onChange={e => setEditResponses(prev => ({ ...prev, [r.prompt_id]: e.target.value }))}
-                              maxLength={50000}
-                              rows={3}
-                            />
-                          ) : (
-                            <div style={s.ratingContainer}>
-                              <input
-                                type="number"
-                                style={s.ratingInput}
-                                value={editRatingResponses[r.prompt_id] ?? ''}
-                                onChange={e => {
-                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                  setEditRatingResponses(prev => {
-                                    const next = { ...prev };
-                                    if (val === undefined) delete next[r.prompt_id];
-                                    else next[r.prompt_id] = val;
-                                    return next;
-                                  });
-                                }}
+                      {entry.responses.map(r => {
+                        const promptDef = journal?.prompts.find(p => p.id === r.prompt_id);
+                        return (
+                          <div key={r.prompt_id} style={s.promptGroup}>
+                            <label style={s.promptLabel}>{r.prompt_text}</label>
+                            {r.type === 'text' ? (
+                              <textarea
+                                style={s.editTextarea}
+                                value={editResponses[r.prompt_id] || ''}
+                                onChange={e => setEditResponses(prev => ({ ...prev, [r.prompt_id]: e.target.value }))}
+                                maxLength={50000}
+                                rows={3}
                               />
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            ) : r.type === 'rating' ? (
+                              <div style={s.ratingContainer}>
+                                <input
+                                  type="number"
+                                  style={s.ratingInput}
+                                  value={editRatingResponses[r.prompt_id] ?? ''}
+                                  onChange={e => {
+                                    const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                    setEditRatingResponses(prev => {
+                                      const next = { ...prev };
+                                      if (val === undefined) delete next[r.prompt_id];
+                                      else next[r.prompt_id] = val;
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              </div>
+                            ) : r.type === 'single_choice' && promptDef?.choices ? (
+                              <div style={s.choiceContainer}>
+                                {promptDef.choices.map((choice, ci) => {
+                                  const isSelected = editChoiceResponses[r.prompt_id] === choice;
+                                  return (
+                                    <button
+                                      key={choice}
+                                      type="button"
+                                      className={`choice-pill${isSelected ? ' selected' : ''}`}
+                                      style={{
+                                        ...s.choicePill,
+                                        ...(ci === 0 ? s.choicePillFirst : {}),
+                                        ...(ci === (promptDef.choices?.length ?? 0) - 1 ? s.choicePillLast : {}),
+                                        ...(isSelected ? s.choicePillSelected : {}),
+                                      }}
+                                      onMouseDown={e => e.preventDefault()}
+                                      onClick={() => setEditChoiceResponses(prev => ({
+                                        ...prev,
+                                        [r.prompt_id]: prev[r.prompt_id] === choice ? '' : choice,
+                                      }))}
+                                    >
+                                      {choice}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                       <div style={s.editActions}>
                         <button
                           style={{
@@ -874,6 +1023,7 @@ export default function JournalDetailPage() {
                             setEditingId(null);
                             setEditResponses({});
                             setEditRatingResponses({});
+                            setEditChoiceResponses({});
                           }}
                         >
                           Cancel
@@ -900,6 +1050,8 @@ export default function JournalDetailPage() {
                             )}
                             {r.type === 'rating' ? (
                               <div style={s.entryRating}>{r.rating_value}</div>
+                            ) : r.type === 'single_choice' ? (
+                              <div style={s.entryChoice}>{r.choice_value}</div>
                             ) : (
                               <div style={s.entryText}>{displayText}</div>
                             )}

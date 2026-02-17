@@ -92,6 +92,7 @@ def _questions_to_prompts(questions: list[Question]) -> list[JournalPrompt]:
             order_index=q.question_order,
             rating_min=q.options.get("rating_min") if q.options else None,
             rating_max=q.options.get("rating_max") if q.options else None,
+            choices=q.options.get("choices") if q.options else None,
         )
         for q in sorted(questions, key=lambda q: q.question_order)
     ]
@@ -138,6 +139,7 @@ def _response_to_entry(
                 type=q.question_type if q else r.get("type", "text"),
                 text=r.get("text"),
                 rating_value=r.get("rating_value"),
+                choice_value=r.get("choice_value"),
             ))
     else:
         # Legacy: single-text entry without structured data
@@ -175,6 +177,8 @@ def _build_response_text(responses: list, question_map: dict[str, Question]) -> 
             parts.append(f"**{prompt_text}**\n{r.text}")
         elif r.rating_value is not None:
             parts.append(f"**{prompt_text}**\n{r.rating_value}")
+        elif r.choice_value is not None:
+            parts.append(f"**{prompt_text}**\n{r.choice_value}")
     return "\n\n".join(parts)
 
 
@@ -188,6 +192,7 @@ def _build_response_data(responses: list, question_map: dict[str, Question]) -> 
                 "type": question_map[str(r.prompt_id)].question_type if str(r.prompt_id) in question_map else "text",
                 "text": r.text,
                 "rating_value": r.rating_value,
+                "choice_value": r.choice_value,
             }
             for r in responses
         ]
@@ -337,6 +342,8 @@ async def create_journal(
                 "rating_min": prompt.rating_min or 1,
                 "rating_max": prompt.rating_max or 10,
             }
+        elif prompt.type == "single_choice" and prompt.choices:
+            options = {"choices": prompt.choices}
         question = Question(
             conversation_id=conversation.id,
             question_text=prompt.text,
@@ -484,6 +491,8 @@ async def update_journal(
                     "rating_min": prompt.rating_min or 1,
                     "rating_max": prompt.rating_max or 10,
                 }
+            elif prompt.type == "single_choice" and prompt.choices:
+                options = {"choices": prompt.choices}
             question = Question(
                 conversation_id=journal.id,
                 question_text=prompt.text,

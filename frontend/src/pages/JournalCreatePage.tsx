@@ -10,7 +10,7 @@ interface JournalTemplate {
   id: string;
   title: string;
   emoji: string;
-  prompts: { text: string; type: 'text' | 'rating' }[];
+  prompts: { text: string; type: 'text' | 'rating' | 'single_choice'; choices?: string[] }[];
   cadence: string;
 }
 
@@ -178,9 +178,10 @@ const JOURNAL_TEMPLATES: JournalTemplate[] = [
     title: 'Habit Tracker',
     emoji: '\u{2705}',
     prompts: [
-      { text: 'Which habits did I follow through on today?', type: 'text' },
-      { text: 'What got in the way?', type: 'text' },
-      { text: "What's my plan for tomorrow?", type: 'text' },
+      { text: 'Did you exercise today?', type: 'single_choice', choices: ['Yes', 'No'] },
+      { text: 'Did you eat all your meals?', type: 'single_choice', choices: ['Yes', 'No'] },
+      { text: 'Did you get enough sleep?', type: 'single_choice', choices: ['Yes', 'No'] },
+      { text: 'How was your day?', type: 'text' },
     ],
     cadence: 'Daily',
   },
@@ -193,6 +194,12 @@ const JOURNAL_TEMPLATES: JournalTemplate[] = [
     ],
     cadence: 'Any time',
   },
+];
+
+const PROMPT_TYPES = [
+  { value: 'text', label: 'Text' },
+  { value: 'rating', label: 'Rating' },
+  { value: 'single_choice', label: 'Choice' },
 ];
 
 const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
@@ -256,6 +263,7 @@ const s = {
     cursor: 'pointer',
     transition: transitions.duration.normal,
     textAlign: 'left' as const,
+    outline: 'none',
   },
   templateCardSelected: {
     borderColor: 'var(--color-primary-900)',
@@ -279,10 +287,24 @@ const s = {
     lineHeight: typography.lineHeight.relaxed,
     display: 'block',
   },
+  showMoreButton: {
+    display: 'block',
+    margin: `${spacing[4]} auto 0`,
+    padding: `${spacing[2]} ${spacing[5]}`,
+    backgroundColor: 'var(--color-primary-100)',
+    color: 'var(--color-primary-900)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+  },
   divider: {
     display: 'flex',
     alignItems: 'center',
     gap: spacing[4],
+    marginTop: spacing[4],
     marginBottom: spacing[6],
     color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
@@ -371,7 +393,7 @@ const s = {
   },
   promptInput: {
     flex: 1,
-    padding: `${spacing[2]} ${spacing[3]}`,
+    padding: `${spacing[3]} ${spacing[3]}`,
     fontSize: typography.fontSize.sm,
     border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
@@ -451,9 +473,10 @@ export default function JournalCreatePage() {
   usePageTitle('New Journal');
 
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' }[]>([
+  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' | 'single_choice'; choices?: string[] }[]>([
     { text: '', type: 'text' },
   ]);
   const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
@@ -468,11 +491,11 @@ export default function JournalCreatePage() {
       setSelectedTemplate(null);
       setTitle('');
       setDescription('');
-      setPrompts([{ text: '', type: 'text' }]);
+      setPrompts([{ text: '', type: 'text' as const }]);
     } else {
       setSelectedTemplate(templateId);
       setTitle(template.title);
-      setPrompts(template.prompts.map(p => ({ text: p.text, type: p.type })));
+      setPrompts(template.prompts.map(p => ({ text: p.text, type: p.type, choices: p.choices })));
     }
   };
 
@@ -482,7 +505,7 @@ export default function JournalCreatePage() {
 
   const handleAddPrompt = () => {
     if (prompts.length >= 10) return;
-    setPrompts(prev => [...prev, { text: '', type: 'text' }]);
+    setPrompts(prev => [...prev, { text: '', type: 'text' as const }]);
   };
 
   const handleRemovePrompt = (index: number) => {
@@ -504,6 +527,7 @@ export default function JournalCreatePage() {
         type: p.type,
         order_index: i,
         ...(p.type === 'rating' ? { rating_min: 1, rating_max: 10 } : {}),
+        ...(p.type === 'single_choice' && p.choices ? { choices: p.choices } : {}),
       }));
 
       const journal = await api.createJournal({
@@ -543,7 +567,7 @@ export default function JournalCreatePage() {
 
         <h2 style={s.sectionTitle}>Templates</h2>
         <div style={s.templateGrid}>
-          {JOURNAL_TEMPLATES.map(template => (
+          {(showAllTemplates ? JOURNAL_TEMPLATES : JOURNAL_TEMPLATES.slice(0, 6)).map(template => (
             <button
               key={template.id}
               type="button"
@@ -561,6 +585,15 @@ export default function JournalCreatePage() {
             </button>
           ))}
         </div>
+        {JOURNAL_TEMPLATES.length > 6 && (
+          <button
+            type="button"
+            style={s.showMoreButton}
+            onClick={() => setShowAllTemplates(!showAllTemplates)}
+          >
+            {showAllTemplates ? 'Show fewer templates' : `Show ${JOURNAL_TEMPLATES.length - 6} more templates`}
+          </button>
+        )}
 
         <div style={s.divider}>
           <div style={s.dividerLine} />
@@ -605,27 +638,58 @@ export default function JournalCreatePage() {
               <span style={s.hint}>Questions you'll reflect on each time you write an entry</span>
               <div style={s.promptList}>
                 {prompts.map((prompt, index) => (
-                  <div key={index} style={s.promptRow}>
-                    <input
-                      style={s.promptInput}
-                      type="text"
-                      value={prompt.text}
-                      onChange={e => handlePromptChange(index, e.target.value)}
-                      placeholder={`Prompt ${index + 1}`}
-                      maxLength={2000}
-                    />
-                    {prompts.length > 1 && (
-                      <button
-                        type="button"
-                        style={s.removeButton}
-                        onClick={() => handleRemovePrompt(index)}
-                        title="Remove prompt"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
+                  <div key={index} style={{ display: 'flex', flexDirection: 'column' as const, gap: spacing[2] }}>
+                    <div style={s.promptRow}>
+                      <input
+                        style={s.promptInput}
+                        type="text"
+                        value={prompt.text}
+                        onChange={e => handlePromptChange(index, e.target.value)}
+                        placeholder={`Prompt ${index + 1}`}
+                        maxLength={2000}
+                      />
+                      <CustomSelect
+                        value={prompt.type}
+                        options={PROMPT_TYPES}
+                        onChange={v => {
+                          const newType = v as 'text' | 'rating' | 'single_choice';
+                          setPrompts(prev => prev.map((p, i) => i === index ? {
+                            ...p,
+                            type: newType,
+                            choices: newType === 'single_choice' ? (p.choices || ['Yes', 'No']) : undefined,
+                          } : p));
+                        }}
+                        minWidth="100px"
+                      />
+                      {prompts.length > 1 && (
+                        <button
+                          type="button"
+                          style={s.removeButton}
+                          onClick={() => handleRemovePrompt(index)}
+                          title="Remove prompt"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    {prompt.type === 'single_choice' && (
+                      <input
+                        style={{
+                          ...s.promptInput,
+                          fontSize: typography.fontSize.xs,
+                          color: 'var(--color-primary-600)',
+                        }}
+                        type="text"
+                        value={(prompt.choices || []).join(', ')}
+                        onChange={e => {
+                          const choices = e.target.value.split(',').map(c => c.trim()).filter(Boolean);
+                          setPrompts(prev => prev.map((p, i) => i === index ? { ...p, choices } : p));
+                        }}
+                        placeholder="Choices (comma-separated, e.g. Yes, No)"
+                      />
                     )}
                   </div>
                 ))}

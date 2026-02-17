@@ -28,10 +28,11 @@ class JournalPromptCreate(BaseModel):
     """A prompt in a journal creation request."""
 
     text: str = Field(..., min_length=1, max_length=2000)
-    type: str = Field("text", pattern="^(text|rating)$")
+    type: str = Field("text", pattern="^(text|rating|single_choice)$")
     order_index: int = Field(..., ge=0)
     rating_min: Optional[int] = None
     rating_max: Optional[int] = None
+    choices: Optional[List[str]] = None
 
 
 class JournalPrompt(BaseModel):
@@ -43,6 +44,7 @@ class JournalPrompt(BaseModel):
     order_index: int
     rating_min: Optional[int] = None
     rating_max: Optional[int] = None
+    choices: Optional[List[str]] = None
 
     model_config = {"from_attributes": True}
 
@@ -107,6 +109,7 @@ class PromptResponse(BaseModel):
     prompt_id: UUID
     text: Optional[str] = Field(None, max_length=50000)
     rating_value: Optional[int] = None
+    choice_value: Optional[str] = None
 
 
 class JournalEntryCreate(BaseModel):
@@ -129,6 +132,7 @@ class EntryPromptResponse(BaseModel):
     type: str = "text"
     text: Optional[str] = None
     rating_value: Optional[int] = None
+    choice_value: Optional[str] = None
 
 
 class JournalEntry(BaseModel):

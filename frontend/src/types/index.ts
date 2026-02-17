@@ -1224,18 +1224,20 @@ export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export interface JournalPrompt {
   id: string;
   text: string;
-  type: 'text' | 'rating';
+  type: 'text' | 'rating' | 'single_choice';
   order_index: number;
   rating_min?: number;
   rating_max?: number;
+  choices?: string[];
 }
 
 export interface JournalPromptCreate {
   text: string;
-  type: 'text' | 'rating';
+  type: 'text' | 'rating' | 'single_choice';
   order_index: number;
   rating_min?: number;
   rating_max?: number;
+  choices?: string[];
 }
 
 export interface Journal {
@@ -1282,14 +1284,16 @@ export interface PromptResponse {
   prompt_id: string;
   text?: string;
   rating_value?: number;
+  choice_value?: string;
 }
 
 export interface EntryPromptResponse {
   prompt_id: string;
   prompt_text: string;
-  type: 'text' | 'rating';
+  type: 'text' | 'rating' | 'single_choice';
   text?: string;
   rating_value?: number;
+  choice_value?: string;
 }
 
 export interface JournalEntry {
