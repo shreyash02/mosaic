@@ -529,3 +529,86 @@
 .form-group input::placeholder {
   color: var(--color-primary-500);
 }
+
+/* Modal Overlay */
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-6);
+}
+
+.admin-modal {
+  background: var(--color-primary-50);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--spacing-8);
+}
+
+.admin-modal h2 {
+  margin: 0 0 var(--spacing-6) 0;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-primary-900);
+}
+
+.admin-modal h3 {
+  margin: 0 0 var(--spacing-3) 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary-900);
+}
+
+.admin-modal p {
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.admin-modal .form-group {
+  margin-bottom: var(--spacing-4);
+}
+
+.admin-modal .form-group select {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-primary-50);
+  color: var(--color-primary-900);
+  width: 100%;
+}
+
+.admin-modal .form-group select:focus {
+  outline: none;
+  border-color: var(--color-primary-900);
+  box-shadow: 0 0 0 2px rgba(26, 26, 46, 0.1);
+}
+
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background: var(--color-success-light);
+  color: #166534;
+}
+
+.status-badge.inactive {
+  background: var(--color-primary-200);
+  color: var(--color-primary-600);
+}

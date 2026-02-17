@@ -85,6 +85,7 @@ import type {
   JournalEntryList,
   JournalEntryCreate,
   JournalAnalysisStatus,
+  JournalTemplate,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1025,6 +1026,13 @@ class ApiService {
   }
 
   // Journal endpoints (individual mode)
+
+  // --- Journal templates (public) ---
+
+  async getJournalTemplates(): Promise<JournalTemplate[]> {
+    const response = await this.client.get<JournalTemplate[]>('/journals/templates');
+    return response.data;
+  }
 
   // --- Journal CRUD ---
 

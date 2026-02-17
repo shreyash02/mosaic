@@ -201,10 +201,6 @@ export interface Conversation {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
-  // Individual mode (journal) fields
-  is_individual?: boolean;
-  journal_owner_id?: string;
-  journal_prompt?: string;
   // Archiving
   is_archived?: boolean;
   archived_at?: string;
@@ -255,8 +251,6 @@ export interface ConversationCreate {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
-  // Individual mode (journal)
-  is_individual?: boolean;
   // Slack channel notifications
   slack_channel_id?: string;
   slack_channel_name?: string;
@@ -286,7 +280,7 @@ export interface ConversationListItem {
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
   recurrence_paused?: boolean;
-  // Individual mode
+  // Individual mode (backed by Journal model)
   is_individual?: boolean;
   // Continuous conversation fields
   is_continuous?: boolean;
@@ -1220,6 +1214,7 @@ export interface UnreadCountResponse {
 // ==========================================
 
 export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type EntryFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'unlimited';
 
 export interface JournalPrompt {
   id: string;
@@ -1246,6 +1241,8 @@ export interface Journal {
   description?: string;
   prompts: JournalPrompt[];
   analysis_interval?: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency: boolean;
   total_entries: number;
   streak: JournalStreak;
   has_analysis: boolean;
@@ -1263,6 +1260,8 @@ export interface JournalListItem {
   last_entry_at?: string;
   has_analysis: boolean;
   analysis_interval?: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency: boolean;
   created_at: string;
 }
 
@@ -1271,6 +1270,8 @@ export interface JournalCreate {
   description?: string;
   prompts: JournalPromptCreate[];
   analysis_interval: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency?: boolean;
 }
 
 export interface JournalUpdate {
@@ -1278,6 +1279,8 @@ export interface JournalUpdate {
   description?: string;
   prompts?: JournalPromptCreate[];
   analysis_interval?: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency?: boolean;
 }
 
 export interface PromptResponse {
@@ -1376,4 +1379,26 @@ export interface JournalAnalysisStatus {
   entries_until_analysis: number;
   total_entries: number;
   latest_analysis?: JournalAnalysisResponse;
+}
+
+// Journal templates (admin-managed)
+export interface JournalTemplatePrompt {
+  text: string;
+  type: 'text' | 'rating' | 'single_choice';
+  choices?: string[];
+}
+
+export interface JournalTemplate {
+  id: string;
+  title: string;
+  emoji: string;
+  description?: string;
+  prompts: JournalTemplatePrompt[];
+  entry_frequency?: string;
+  analysis_interval: string;
+  strict_frequency: boolean;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

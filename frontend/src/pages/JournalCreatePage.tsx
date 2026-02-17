@@ -1,200 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { JournalPromptCreate, AnalysisInterval } from '../types';
+import type { JournalPromptCreate, AnalysisInterval, EntryFrequency, JournalTemplate } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import CustomSelect from '../components/CustomSelect';
-
-interface JournalTemplate {
-  id: string;
-  title: string;
-  emoji: string;
-  prompts: { text: string; type: 'text' | 'rating' | 'single_choice'; choices?: string[] }[];
-  cadence: string;
-}
-
-const JOURNAL_TEMPLATES: JournalTemplate[] = [
-  {
-    id: 'weekly-checkin',
-    title: 'Weekly Check-in',
-    emoji: '\u{1F4CB}',
-    prompts: [
-      { text: 'What went well this week?', type: 'text' },
-      { text: 'What was challenging?', type: 'text' },
-      { text: 'What do you want to focus on next week?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'gratitude',
-    title: 'Gratitude Log',
-    emoji: '\u{1F64F}',
-    prompts: [
-      { text: 'What are you grateful for today?', type: 'text' },
-      { text: 'Who made a difference for you today?', type: 'text' },
-    ],
-    cadence: 'Daily',
-  },
-  {
-    id: '1on1',
-    title: '1:1 Reflections',
-    emoji: '\u{1F91D}',
-    prompts: [
-      { text: 'What do I want to discuss in my next 1:1?', type: 'text' },
-      { text: 'What feedback do I want to share?', type: 'text' },
-      { text: 'What support do I need?', type: 'text' },
-      { text: 'What wins should I highlight?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'mood',
-    title: 'Mood Tracker',
-    emoji: '\u{1F60A}',
-    prompts: [
-      { text: 'How are you feeling right now?', type: 'rating' },
-      { text: "What's influencing your mood?", type: 'text' },
-      { text: 'What would help you feel better?', type: 'text' },
-    ],
-    cadence: 'Daily',
-  },
-  {
-    id: 'career',
-    title: 'Career Growth',
-    emoji: '\u{1F680}',
-    prompts: [
-      { text: 'What skills am I developing?', type: 'text' },
-      { text: 'What was my biggest professional win this period?', type: 'text' },
-      { text: 'What would I do differently?', type: 'text' },
-      { text: "What's my next growth goal?", type: 'text' },
-    ],
-    cadence: 'Biweekly',
-  },
-  {
-    id: 'learning',
-    title: 'Learning Journal',
-    emoji: '\u{1F4DA}',
-    prompts: [
-      { text: 'What did I learn today?', type: 'text' },
-      { text: 'How does this connect to what I already know?', type: 'text' },
-      { text: 'How might I apply this?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'decision',
-    title: 'Decision Log',
-    emoji: '\u{1F914}',
-    prompts: [
-      { text: 'What decision did I make?', type: 'text' },
-      { text: 'What factors did I consider?', type: 'text' },
-      { text: 'What alternatives did I reject and why?', type: 'text' },
-      { text: 'How do I feel about this decision?', type: 'text' },
-    ],
-    cadence: 'As needed',
-  },
-  {
-    id: 'energy',
-    title: 'Energy Audit',
-    emoji: '\u{26A1}',
-    prompts: [
-      { text: 'What gave you energy today?', type: 'text' },
-      { text: 'What drained your energy?', type: 'text' },
-      { text: 'How would you rate your energy level?', type: 'rating' },
-    ],
-    cadence: 'Daily',
-  },
-  {
-    id: 'coaching',
-    title: 'Coaching Journal',
-    emoji: '\u{1F3AF}',
-    prompts: [
-      { text: 'What came up in my session?', type: 'text' },
-      { text: 'What new insight did I gain?', type: 'text' },
-      { text: 'What am I committing to before next session?', type: 'text' },
-      { text: 'What resistance am I noticing?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'retro',
-    title: 'Project Retrospective',
-    emoji: '\u{1F504}',
-    prompts: [
-      { text: 'What progress was made?', type: 'text' },
-      { text: 'What blocked progress?', type: 'text' },
-      { text: 'What should change going forward?', type: 'text' },
-      { text: 'What am I proud of?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'mindfulness',
-    title: 'Mindfulness',
-    emoji: '\u{1F9D8}',
-    prompts: [
-      { text: 'What am I noticing right now?', type: 'text' },
-      { text: 'What thoughts keep returning?', type: 'text' },
-      { text: 'What am I choosing to let go of?', type: 'text' },
-    ],
-    cadence: 'Daily',
-  },
-  {
-    id: 'creative',
-    title: 'Creative Practice',
-    emoji: '\u{1F3A8}',
-    prompts: [
-      { text: 'What did I create or work on?', type: 'text' },
-      { text: 'What felt easy? What felt hard?', type: 'text' },
-      { text: 'What do I want to try next?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'reading',
-    title: 'Reading Notes',
-    emoji: '\u{1F4D6}',
-    prompts: [
-      { text: 'What am I reading?', type: 'text' },
-      { text: 'What passage or idea stood out?', type: 'text' },
-      { text: 'How does this relate to my life or work?', type: 'text' },
-    ],
-    cadence: 'As needed',
-  },
-  {
-    id: 'values',
-    title: 'Values Alignment',
-    emoji: '\u{1F9ED}',
-    prompts: [
-      { text: 'How did my actions align with my values today?', type: 'text' },
-      { text: 'Where did I compromise?', type: 'text' },
-      { text: 'What choice am I most proud of?', type: 'text' },
-    ],
-    cadence: 'Weekly',
-  },
-  {
-    id: 'habits',
-    title: 'Habit Tracker',
-    emoji: '\u{2705}',
-    prompts: [
-      { text: 'Did you exercise today?', type: 'single_choice', choices: ['Yes', 'No'] },
-      { text: 'Did you eat all your meals?', type: 'single_choice', choices: ['Yes', 'No'] },
-      { text: 'Did you get enough sleep?', type: 'single_choice', choices: ['Yes', 'No'] },
-      { text: 'How was your day?', type: 'text' },
-    ],
-    cadence: 'Daily',
-  },
-  {
-    id: 'freeform',
-    title: 'Free Writing',
-    emoji: '\u{270D}\u{FE0F}',
-    prompts: [
-      { text: 'Write about anything. No rules, no structure.', type: 'text' },
-    ],
-    cadence: 'Any time',
-  },
-];
 
 const PROMPT_TYPES = [
   { value: 'text', label: 'Text' },
@@ -207,6 +17,14 @@ const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
   { value: 'biweekly', label: 'Every two weeks' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'daily', label: 'Daily' },
+];
+
+const ENTRY_FREQUENCIES: { value: EntryFrequency; label: string }[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every two weeks' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'unlimited', label: 'Unlimited' },
 ];
 
 const s = {
@@ -468,10 +286,50 @@ const s = {
   },
 };
 
+// Map frequency/interval to a display label
+function frequencyLabel(freq?: string): string {
+  switch (freq) {
+    case 'daily': return 'Daily';
+    case 'weekly': return 'Weekly';
+    case 'biweekly': return 'Biweekly';
+    case 'monthly': return 'Monthly';
+    default: return 'Any time';
+  }
+}
+
+// Compute a human-readable "next date" from a frequency
+function nextDateLabel(freq?: string): string {
+  const now = new Date();
+  let next: Date;
+  switch (freq) {
+    case 'daily':
+      next = new Date(now);
+      next.setDate(next.getDate() + 1);
+      break;
+    case 'weekly':
+      next = new Date(now);
+      next.setDate(next.getDate() + 7);
+      break;
+    case 'biweekly':
+      next = new Date(now);
+      next.setDate(next.getDate() + 14);
+      break;
+    case 'monthly':
+      next = new Date(now);
+      next.setMonth(next.getMonth() + 1);
+      break;
+    default:
+      return 'Any time';
+  }
+  return next.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function JournalCreatePage() {
   const navigate = useNavigate();
   usePageTitle('New Journal');
 
+  const [templates, setTemplates] = useState<JournalTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [title, setTitle] = useState('');
@@ -480,11 +338,19 @@ export default function JournalCreatePage() {
     { text: '', type: 'text' },
   ]);
   const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
+  const [entryFrequency, setEntryFrequency] = useState<EntryFrequency>('daily');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    api.getJournalTemplates()
+      .then(setTemplates)
+      .catch(() => {})
+      .finally(() => setTemplatesLoading(false));
+  }, []);
+
   const handleTemplateSelect = (templateId: string) => {
-    const template = JOURNAL_TEMPLATES.find(t => t.id === templateId);
+    const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
     if (selectedTemplate === templateId) {
@@ -492,10 +358,15 @@ export default function JournalCreatePage() {
       setTitle('');
       setDescription('');
       setPrompts([{ text: '', type: 'text' as const }]);
+      setEntryFrequency('daily');
+      setAnalysisInterval('weekly');
     } else {
       setSelectedTemplate(templateId);
       setTitle(template.title);
       setPrompts(template.prompts.map(p => ({ text: p.text, type: p.type, choices: p.choices })));
+      setAnalysisInterval((template.analysis_interval || 'weekly') as AnalysisInterval);
+      const freq = template.entry_frequency;
+      setEntryFrequency(freq ? freq as EntryFrequency : 'unlimited');
     }
   };
 
@@ -535,6 +406,8 @@ export default function JournalCreatePage() {
         description: description.trim() || undefined,
         prompts: promptsData,
         analysis_interval: analysisInterval,
+        entry_frequency: entryFrequency !== 'unlimited' ? entryFrequency : undefined,
+        strict_frequency: true,
       });
 
       navigate(`/journals/${journal.id}`);
@@ -566,34 +439,45 @@ export default function JournalCreatePage() {
         </div>
 
         <h2 style={s.sectionTitle}>Templates</h2>
-        <div style={s.templateGrid}>
-          {(showAllTemplates ? JOURNAL_TEMPLATES : JOURNAL_TEMPLATES.slice(0, 6)).map(template => (
-            <button
-              key={template.id}
-              type="button"
-              style={{
-                ...s.templateCard,
-                ...(selectedTemplate === template.id ? s.templateCardSelected : {}),
-              }}
-              onClick={() => handleTemplateSelect(template.id)}
-            >
-              <span style={s.templateEmoji}>{template.emoji}</span>
-              <span style={s.templateTitle}>{template.title}</span>
-              <span style={s.templatePrompt}>
-                {template.prompts.length} {template.prompts.length === 1 ? 'prompt' : 'prompts'} &middot; {template.cadence}
-              </span>
-            </button>
-          ))}
-        </div>
-        {JOURNAL_TEMPLATES.length > 6 && (
-          <button
-            type="button"
-            style={s.showMoreButton}
-            onClick={() => setShowAllTemplates(!showAllTemplates)}
-          >
-            {showAllTemplates ? 'Show fewer templates' : `Show ${JOURNAL_TEMPLATES.length - 6} more templates`}
-          </button>
-        )}
+        {templatesLoading ? (
+          <div style={{ textAlign: 'center', padding: spacing[6], color: 'var(--color-primary-500)' }}>
+            Loading templates...
+          </div>
+        ) : templates.length > 0 ? (
+          <>
+            <div style={s.templateGrid}>
+              {(showAllTemplates ? templates : templates.slice(0, 6)).map(template => (
+                <button
+                  key={template.id}
+                  type="button"
+                  style={{
+                    ...s.templateCard,
+                    ...(selectedTemplate === template.id ? s.templateCardSelected : {}),
+                  }}
+                  onClick={() => handleTemplateSelect(template.id)}
+                >
+                  <span style={s.templateEmoji}>{template.emoji}</span>
+                  <span style={s.templateTitle}>{template.title}</span>
+                  <span style={s.templatePrompt}>
+                    {template.prompts.length} {template.prompts.length === 1 ? 'prompt' : 'prompts'}
+                  </span>
+                  <span style={{ ...s.templatePrompt, marginTop: spacing[1] }}>
+                    Entry: {frequencyLabel(template.entry_frequency)} &middot; Analysis: {frequencyLabel(template.analysis_interval)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {templates.length > 6 && (
+              <button
+                type="button"
+                style={s.showMoreButton}
+                onClick={() => setShowAllTemplates(!showAllTemplates)}
+              >
+                {showAllTemplates ? 'Show fewer templates' : `Show ${templates.length - 6} more templates`}
+              </button>
+            )}
+          </>
+        ) : null}
 
         <div style={s.divider}>
           <div style={s.dividerLine} />
@@ -706,6 +590,20 @@ export default function JournalCreatePage() {
             </div>
 
             <div style={s.formGroup}>
+              <label style={s.label}>Entry Frequency</label>
+              <CustomSelect
+                value={entryFrequency}
+                options={ENTRY_FREQUENCIES}
+                onChange={v => setEntryFrequency(v as EntryFrequency)}
+                minWidth="200px"
+              />
+              <span style={s.hint}>
+                How often you plan to write entries
+                {entryFrequency !== 'unlimited' && ` (next entry: ${nextDateLabel(entryFrequency)})`}
+              </span>
+            </div>
+
+            <div style={s.formGroup}>
               <label style={s.label}>Analysis Frequency</label>
               <CustomSelect
                 value={analysisInterval}
@@ -713,7 +611,10 @@ export default function JournalCreatePage() {
                 onChange={v => setAnalysisInterval(v as AnalysisInterval)}
                 minWidth="200px"
               />
-              <span style={s.hint}>How often AI analyzes your entries for patterns and themes</span>
+              <span style={s.hint}>
+                How often AI analyzes your entries for patterns and themes
+                {` (first analysis: ${nextDateLabel(analysisInterval)})`}
+              </span>
             </div>
 
             <div style={s.actions}>

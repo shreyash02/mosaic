@@ -612,8 +612,14 @@ export default function JournalDetailPage() {
         if (ta) ta.style.height = 'auto';
       });
       await loadEntries();
-    } catch {
-      setSaveError('Failed to save entry. Please try again.');
+    } catch (err: unknown) {
+      // Check for 429 (strict frequency enforcement)
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (axiosErr?.response?.status === 429) {
+        setSaveError(axiosErr.response.data?.detail || "You've already written an entry for this period.");
+      } else {
+        setSaveError('Failed to save entry. Please try again.');
+      }
     } finally {
       setSaving(false);
     }
@@ -740,6 +746,21 @@ export default function JournalDetailPage() {
               <h1 style={s.title}>{journal?.title}</h1>
               {journal?.description && (
                 <p style={s.description}>{journal.description}</p>
+              )}
+              {journal?.entry_frequency && (
+                <span style={{
+                  display: 'inline-block',
+                  marginTop: spacing[2],
+                  padding: `${spacing[1]} ${spacing[3]}`,
+                  fontSize: typography.fontSize.xs,
+                  fontWeight: typography.fontWeight.medium,
+                  color: 'var(--color-primary-700)',
+                  backgroundColor: 'var(--color-primary-200)',
+                  borderRadius: borders.radius.full,
+                }}>
+                  {journal.entry_frequency.charAt(0).toUpperCase() + journal.entry_frequency.slice(1)}
+                  {journal.strict_frequency ? ' \u00b7 Strict' : ''}
+                </span>
               )}
             </div>
             <div style={s.headerActions}>
