@@ -306,7 +306,7 @@ export default function DashboardPage() {
 
         if (isPersonalWorkspace) {
           const allConversations = await api.getConversations();
-          data = allConversations.filter(c => !c.organization_id && !c.is_template);
+          data = allConversations.filter(c => !c.organization_id && !c.is_template && !c.is_individual);
         } else {
           const allConversations = await api.listOrganizationConversations(currentOrgId!);
           data = allConversations.filter(c => !c.is_template);

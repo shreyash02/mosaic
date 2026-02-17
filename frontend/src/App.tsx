@@ -49,6 +49,7 @@ import AdminEmailPreviewPage from './pages/AdminEmailPreviewPage';
 import AdminTestGenerationPage from './pages/AdminTestGenerationPage';
 import AdminSchedulerPage from './pages/AdminSchedulerPage';
 import AdminFeaturesPage from './pages/AdminFeaturesPage';
+import AdminJournalTemplatesPage from './pages/AdminJournalTemplatesPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -64,6 +65,11 @@ import InviteMembersPage from './pages/InviteMembersPage';
 import AcceptOrganizationInvitePage from './pages/AcceptOrganizationInvitePage';
 import CollectionsPage from './pages/CollectionsPage';
 import CollectionDetailPage from './pages/CollectionDetailPage';
+import JournalsPage from './pages/JournalsPage';
+import JournalCreatePage from './pages/JournalCreatePage';
+import JournalDetailPage from './pages/JournalDetailPage';
+import JournalInsightsPage from './pages/JournalInsightsPage';
+import JournalSettingsPage from './pages/JournalSettingsPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ProfilePage from './pages/ProfilePage';
@@ -386,6 +392,48 @@ function App() {
               }
             />
 
+            {/* Journals (individual mode) */}
+            <Route
+              path="/journals"
+              element={
+                <ProtectedRoute>
+                  <JournalsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/new"
+              element={
+                <ProtectedRoute>
+                  <JournalCreatePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/:id"
+              element={
+                <ProtectedRoute>
+                  <JournalDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/:id/settings"
+              element={
+                <ProtectedRoute>
+                  <JournalSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/:id/insights"
+              element={
+                <ProtectedRoute>
+                  <JournalInsightsPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/search"
               element={
@@ -418,6 +466,7 @@ function App() {
             <Route path="/adminportal/email-preview" element={<AdminEmailPreviewPage />} />
             <Route path="/adminportal/test-generation" element={<AdminTestGenerationPage />} />
             <Route path="/adminportal/features" element={<AdminFeaturesPage />} />
+            <Route path="/adminportal/journal-templates" element={<AdminJournalTemplatesPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />

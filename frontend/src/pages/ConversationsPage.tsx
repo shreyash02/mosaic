@@ -609,9 +609,9 @@ export default function ConversationsPage() {
       const data = await api.getConversations({ archivedOnly: true });
       // Filter by organization if not in personal workspace
       if (isPersonalWorkspace) {
-        setArchivedConversations(data.filter(c => !c.organization_id));
+        setArchivedConversations(data.filter(c => !c.organization_id && !c.is_individual));
       } else {
-        setArchivedConversations(data.filter(c => c.organization_id === currentOrgId));
+        setArchivedConversations(data.filter(c => c.organization_id === currentOrgId && !c.is_individual));
       }
       setArchivedLoaded(true);
     } catch (err: any) {
@@ -630,7 +630,7 @@ export default function ConversationsPage() {
 
       if (isPersonalWorkspace) {
         const allConversations = await api.getConversations();
-        data = allConversations.filter(c => !c.organization_id);
+        data = allConversations.filter(c => !c.organization_id && !c.is_individual);
 
         try {
           const participatedData = await api.getParticipatedConversations();

@@ -369,6 +369,9 @@ class ConversationListItem(BaseModel):
     recurrence_pattern: Optional[RecurrencePattern] = None
     recurrence_paused: bool = False
 
+    # Individual mode (backed by Journal model)
+    is_individual: bool = False
+
     # Continuous conversation fields
     is_continuous: bool = False
 

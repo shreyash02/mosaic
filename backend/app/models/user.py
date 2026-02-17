@@ -41,7 +41,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
-    conversations = relationship("Conversation", back_populates="creator", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="creator", cascade="all, delete-orphan", foreign_keys="Conversation.creator_id")
     organizations_created = relationship("Organization", back_populates="creator", cascade="all, delete-orphan")
     organization_memberships = relationship("OrganizationMember", back_populates="user", cascade="all, delete-orphan")
     responses = relationship("Response", back_populates="participant", cascade="all, delete-orphan")

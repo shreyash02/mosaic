@@ -322,6 +322,8 @@ async def create_conversation(
         time_extension_enabled=conversation_data.time_extension_enabled,
         timezone=conversation_timezone,
         state=ConversationState.DRAFT.value,
+        show_verbatim_responses=conversation_data.show_verbatim_responses,
+        allow_response_editing=conversation_data.allow_response_editing,
         # Template fields
         is_template=conversation_data.is_template or False,
         template_series_id=conversation_data.template_series_id,
@@ -332,8 +334,8 @@ async def create_conversation(
         recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
-        # Continuous conversation fields
-        is_continuous=conversation_data.is_continuous or False,
+        # Continuous conversation fields - journals are always continuous
+        is_continuous=True if is_journal else (conversation_data.is_continuous or False),
         analysis_interval=conversation_data.analysis_interval.value if conversation_data.analysis_interval else None,
         analysis_timezone=conversation_data.analysis_timezone,
         # Context for AI analysis
@@ -368,6 +370,7 @@ async def list_conversations(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     state: Optional[ConversationState] = None,
+    mode: Optional[str] = Query(None, pattern="^(group|individual|all)$", description="Filter by conversation mode: group, individual, or all"),
     include_archived: bool = Query(False, description="Include archived conversations"),
     archived_only: bool = Query(False, description="Only show archived conversations"),
     current_user: User = Depends(get_current_user),
@@ -423,6 +426,17 @@ async def list_conversations(
     if state:
         query = query.filter(Conversation.state == state.value)
 
+    # Filter by mode (group vs individual/journal)
+    # Default: exclude journals (they have their own /api/journals endpoint)
+    from app.models.journal import Journal as JournalModel
+    if mode == "individual":
+        query = query.filter(Conversation.journal.has())
+    elif mode == "all":
+        pass  # No filter — include everything
+    else:
+        # Default (None or "group"): exclude journals
+        query = query.filter(~Conversation.journal.has())
+
     query = query.order_by(Conversation.created_at.desc())
     query = query.offset(skip).limit(limit)
 
@@ -472,6 +486,8 @@ async def list_conversations(
             # Recurring conversation fields
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
+            # Individual mode
+            "is_individual": conv.journal is not None,
         }
         conversations.append(ConversationListItem(**conv_dict))
 

@@ -128,7 +128,7 @@ export default function CustomSelect({
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, openUpward: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -142,16 +142,35 @@ export default function CustomSelect({
     return options.filter((opt) => opt.label.toLowerCase().includes(query));
   }, [options, searchQuery]);
 
-  // Update dropdown position when opened
+  // Update dropdown position when opened, and reposition/close on scroll
   useEffect(() => {
-    if (isOpen && triggerRef.current) {
+    if (!isOpen || !triggerRef.current) return;
+
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const dropdownHeight = 300; // maxHeight of dropdown
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+
       setDropdownPosition({
-        top: rect.bottom + 4,
+        top: openUpward ? rect.top - 4 : rect.bottom + 4,
         left: rect.left,
         width: rect.width,
+        openUpward,
       });
-    }
+    };
+
+    updatePosition();
+
+    const handleScroll = () => {
+      setIsOpen(false);
+      setSearchQuery('');
+    };
+
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
   }, [isOpen]);
 
   // Focus search input when dropdown opens
@@ -205,7 +224,9 @@ export default function CustomSelect({
       id="custom-select-dropdown"
       style={{
         ...s.dropdown,
-        top: dropdownPosition.top,
+        ...(dropdownPosition.openUpward
+          ? { bottom: window.innerHeight - dropdownPosition.top, top: 'auto' }
+          : { top: dropdownPosition.top }),
         left: dropdownPosition.left,
         width: dropdownWidth,
       }}

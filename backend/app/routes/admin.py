@@ -3,6 +3,7 @@
 import logging
 import traceback
 import uuid
+from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
@@ -21,6 +22,7 @@ from app.models.conversation import Conversation
 from app.models.response import Response
 from app.models.analysis import Analysis
 from app.models.organization import Organization
+from app.models.journal_template import JournalTemplate
 from app.schemas.admin import (
     AdminLoginRequest,
     AdminToken,
@@ -1629,4 +1631,196 @@ def _generate_recurring_instance_html(conversation_title, instance_number, join_
     </body>
     </html>
     """
+
+
+# ============================================================
+# Journal Template CRUD (admin only)
+# ============================================================
+
+from app.schemas.journal import (
+    JournalTemplateResponse,
+    JournalTemplateCreate,
+    JournalTemplateUpdate,
+    JournalTemplatePrompt,
+)
+
+
+@router.get("/journal-templates", response_model=List[JournalTemplateResponse])
+async def admin_list_journal_templates(
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """List all journal templates (including inactive), ordered by display_order."""
+    templates = db.query(JournalTemplate).order_by(
+        JournalTemplate.display_order
+    ).all()
+
+    return [
+        JournalTemplateResponse(
+            id=t.id,
+            title=t.title,
+            emoji=t.emoji,
+            description=t.description,
+            prompts=[JournalTemplatePrompt(**p) for p in (t.prompts or [])],
+            entry_frequency=t.entry_frequency,
+            analysis_interval=t.analysis_interval,
+            strict_frequency=t.strict_frequency,
+            display_order=t.display_order,
+            is_active=t.is_active,
+            created_at=t.created_at,
+            updated_at=t.updated_at,
+        )
+        for t in templates
+    ]
+
+
+@router.get("/journal-templates/{template_id}", response_model=JournalTemplateResponse)
+async def admin_get_journal_template(
+    template_id: UUID,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Get a single journal template by ID."""
+    t = db.query(JournalTemplate).filter(JournalTemplate.id == template_id).first()
+    if not t:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+
+    return JournalTemplateResponse(
+        id=t.id,
+        title=t.title,
+        emoji=t.emoji,
+        description=t.description,
+        prompts=[JournalTemplatePrompt(**p) for p in (t.prompts or [])],
+        entry_frequency=t.entry_frequency,
+        analysis_interval=t.analysis_interval,
+        strict_frequency=t.strict_frequency,
+        display_order=t.display_order,
+        is_active=t.is_active,
+        created_at=t.created_at,
+        updated_at=t.updated_at,
+    )
+
+
+@router.post("/journal-templates", response_model=JournalTemplateResponse, status_code=status.HTTP_201_CREATED)
+async def admin_create_journal_template(
+    data: JournalTemplateCreate,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Create a new journal template."""
+    VALID_FREQUENCIES = {"daily", "weekly", "biweekly", "monthly"}
+    VALID_INTERVALS = {"daily", "weekly", "biweekly", "monthly"}
+
+    if data.entry_frequency and data.entry_frequency not in VALID_FREQUENCIES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid entry_frequency: {data.entry_frequency}",
+        )
+    if data.analysis_interval not in VALID_INTERVALS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid analysis_interval: {data.analysis_interval}",
+        )
+
+    t = JournalTemplate(
+        title=data.title,
+        emoji=data.emoji,
+        description=data.description,
+        prompts=[p.model_dump() for p in data.prompts],
+        entry_frequency=data.entry_frequency,
+        analysis_interval=data.analysis_interval,
+        strict_frequency=data.strict_frequency,
+        display_order=data.display_order,
+        is_active=data.is_active,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    return JournalTemplateResponse(
+        id=t.id,
+        title=t.title,
+        emoji=t.emoji,
+        description=t.description,
+        prompts=[JournalTemplatePrompt(**p) for p in (t.prompts or [])],
+        entry_frequency=t.entry_frequency,
+        analysis_interval=t.analysis_interval,
+        strict_frequency=t.strict_frequency,
+        display_order=t.display_order,
+        is_active=t.is_active,
+        created_at=t.created_at,
+        updated_at=t.updated_at,
+    )
+
+
+@router.patch("/journal-templates/{template_id}", response_model=JournalTemplateResponse)
+async def admin_update_journal_template(
+    template_id: UUID,
+    data: JournalTemplateUpdate,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Update a journal template."""
+    t = db.query(JournalTemplate).filter(JournalTemplate.id == template_id).first()
+    if not t:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+
+    VALID_FREQUENCIES = {"daily", "weekly", "biweekly", "monthly"}
+    VALID_INTERVALS = {"daily", "weekly", "biweekly", "monthly"}
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    if "entry_frequency" in update_data and update_data["entry_frequency"] is not None:
+        if update_data["entry_frequency"] not in VALID_FREQUENCIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid entry_frequency: {update_data['entry_frequency']}",
+            )
+
+    if "analysis_interval" in update_data and update_data["analysis_interval"] is not None:
+        if update_data["analysis_interval"] not in VALID_INTERVALS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid analysis_interval: {update_data['analysis_interval']}",
+            )
+
+    for field, value in update_data.items():
+        if field == "prompts" and value is not None:
+            setattr(t, field, [p.model_dump() if hasattr(p, 'model_dump') else p for p in value])
+        else:
+            setattr(t, field, value)
+
+    t.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(t)
+
+    return JournalTemplateResponse(
+        id=t.id,
+        title=t.title,
+        emoji=t.emoji,
+        description=t.description,
+        prompts=[JournalTemplatePrompt(**p) for p in (t.prompts or [])],
+        entry_frequency=t.entry_frequency,
+        analysis_interval=t.analysis_interval,
+        strict_frequency=t.strict_frequency,
+        display_order=t.display_order,
+        is_active=t.is_active,
+        created_at=t.created_at,
+        updated_at=t.updated_at,
+    )
+
+
+@router.delete("/journal-templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_journal_template(
+    template_id: UUID,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Hard delete a journal template."""
+    t = db.query(JournalTemplate).filter(JournalTemplate.id == template_id).first()
+    if not t:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+
+    db.delete(t)
+    db.commit()
 

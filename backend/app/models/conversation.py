@@ -148,7 +148,7 @@ class Conversation(Base):
     search_vector = Column(TSVECTOR, nullable=True)
 
     # Relationships
-    creator = relationship("User", back_populates="conversations")
+    creator = relationship("User", back_populates="conversations", foreign_keys=[creator_id])
     organization = relationship("Organization", back_populates="conversations")
     questions = relationship("Question", back_populates="conversation", cascade="all, delete-orphan", order_by="Question.question_order")
     responses = relationship("Response", back_populates="conversation", cascade="all, delete-orphan")
@@ -167,6 +167,10 @@ class Conversation(Base):
     # Continuous conversation relationships
     periodic_analyses = relationship("PeriodicAnalysis", back_populates="conversation", cascade="all, delete-orphan", order_by="PeriodicAnalysis.period_start.desc()")
     continuous_trends = relationship("ContinuousTrends", back_populates="conversation", uselist=False, cascade="all, delete-orphan")
+
+    # Journal relationships
+    journal = relationship("Journal", back_populates="conversation", uselist=False, cascade="all, delete-orphan")
+    journal_analyses = relationship("JournalAnalysis", back_populates="conversation", cascade="all, delete-orphan", order_by="JournalAnalysis.created_at.desc()")
 
     def __repr__(self):
         return f"<Conversation(id={self.id}, title={self.title}, state={self.state})>"

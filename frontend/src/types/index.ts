@@ -95,9 +95,6 @@ export enum RecurrencePattern {
   QUARTERLY = 'quarterly',
 }
 
-// Continuous conversation analysis interval
-export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
-
 export type QuestionType = 'text' | 'rating' | 'single_choice' | 'multiple_choice';
 
 export interface PollChoice {
@@ -283,6 +280,8 @@ export interface ConversationListItem {
   is_recurring_instance?: boolean;
   recurrence_pattern?: RecurrencePattern;
   recurrence_paused?: boolean;
+  // Individual mode (backed by Journal model)
+  is_individual?: boolean;
   // Continuous conversation fields
   is_continuous?: boolean;
   analysis_interval?: AnalysisInterval;
@@ -1208,4 +1207,210 @@ export interface NotificationListResponse {
 
 export interface UnreadCountResponse {
   count: number;
+}
+
+// ==========================================
+// Journal types (individual mode)
+// ==========================================
+
+export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type EntryFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'unlimited';
+
+export interface JournalPrompt {
+  id: string;
+  text: string;
+  type: 'text' | 'rating' | 'single_choice';
+  order_index: number;
+  rating_min?: number;
+  rating_max?: number;
+  choices?: string[];
+}
+
+export interface JournalPromptCreate {
+  text: string;
+  type: 'text' | 'rating' | 'single_choice';
+  order_index: number;
+  rating_min?: number;
+  rating_max?: number;
+  choices?: string[];
+}
+
+export interface Journal {
+  id: string;
+  title: string;
+  description?: string;
+  prompts: JournalPrompt[];
+  analysis_interval?: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency: boolean;
+  total_entries: number;
+  streak: JournalStreak;
+  has_analysis: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalListItem {
+  id: string;
+  title: string;
+  description?: string;
+  prompt_count: number;
+  total_entries: number;
+  current_streak: number;
+  last_entry_at?: string;
+  has_analysis: boolean;
+  analysis_interval?: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency: boolean;
+  created_at: string;
+}
+
+export interface JournalCreate {
+  title: string;
+  description?: string;
+  prompts: JournalPromptCreate[];
+  analysis_interval: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency?: boolean;
+}
+
+export interface JournalUpdate {
+  title?: string;
+  description?: string;
+  prompts?: JournalPromptCreate[];
+  analysis_interval?: AnalysisInterval;
+  entry_frequency?: EntryFrequency;
+  strict_frequency?: boolean;
+}
+
+export interface PromptResponse {
+  prompt_id: string;
+  text?: string;
+  rating_value?: number;
+  choice_value?: string;
+}
+
+export interface EntryPromptResponse {
+  prompt_id: string;
+  prompt_text: string;
+  type: 'text' | 'rating' | 'single_choice';
+  text?: string;
+  rating_value?: number;
+  choice_value?: string;
+}
+
+export interface JournalEntryAnalysis {
+  id: string;
+  themes: string[];
+  mood_score: number;
+  mood_label: string;
+  key_takeaway: string;
+  connections: string;
+  suggested_followups: string[];
+  created_at: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  entry_number: number;
+  responses: EntryPromptResponse[];
+  created_at: string;
+  is_edited: boolean;
+  edited_at?: string;
+  word_count: number;
+  analysis?: JournalEntryAnalysis;
+}
+
+export interface JournalEntryCreate {
+  responses: PromptResponse[];
+}
+
+export interface JournalStreak {
+  current_streak: number;
+  longest_streak: number;
+  total_entries: number;
+  entries_this_week: number;
+  entries_this_month: number;
+  last_entry_at?: string;
+}
+
+export interface JournalEntryList {
+  journal_id: string;
+  total_entries: number;
+  has_more: boolean;
+  entries: JournalEntry[];
+  streak: JournalStreak;
+}
+
+export interface ThemeTimelineEntry {
+  theme: string;
+  first_seen?: string;
+  last_seen?: string;
+  entry_count: number;
+  trajectory: 'growing' | 'stable' | 'declining' | 'resolved';
+  summary: string;
+}
+
+export interface MoodDataPoint {
+  date: string;
+  sentiment_score: number;
+  dominant_mood: string;
+  entry_id?: string;
+}
+
+export interface MoodTrajectory {
+  data_points: MoodDataPoint[];
+  overall_trend: 'improving' | 'stable' | 'declining';
+  summary: string;
+}
+
+export interface PatternInsight {
+  pattern_type: 'recurring_concern' | 'positive_shift' | 'correlation' | 'cyclical';
+  title: string;
+  description: string;
+  confidence: number;
+}
+
+export interface JournalAnalysisResponse {
+  id: string;
+  journal_id: string;
+  overall_summary?: string;
+  theme_timeline?: ThemeTimelineEntry[];
+  mood_trajectory?: MoodTrajectory;
+  patterns?: PatternInsight[];
+  total_entries_analyzed: number;
+  date_range_start?: string;
+  date_range_end?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalAnalysisStatus {
+  available: boolean;
+  needs_more_entries: boolean;
+  entries_until_analysis: number;
+  total_entries: number;
+  latest_analysis?: JournalAnalysisResponse;
+}
+
+// Journal templates (admin-managed)
+export interface JournalTemplatePrompt {
+  text: string;
+  type: 'text' | 'rating' | 'single_choice';
+  choices?: string[];
+}
+
+export interface JournalTemplate {
+  id: string;
+  title: string;
+  emoji: string;
+  description?: string;
+  prompts: JournalTemplatePrompt[];
+  entry_frequency?: string;
+  analysis_interval: string;
+  strict_frequency: boolean;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

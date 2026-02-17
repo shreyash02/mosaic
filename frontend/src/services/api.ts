@@ -77,6 +77,15 @@ import type {
   InsightAnnotation,
   UpsertAnnotationRequest,
   AnnotationsListResponse,
+  Journal,
+  JournalListItem,
+  JournalCreate,
+  JournalUpdate,
+  JournalEntry,
+  JournalEntryList,
+  JournalEntryCreate,
+  JournalAnalysisStatus,
+  JournalTemplate,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -247,10 +256,11 @@ class ApiService {
     return response.data;
   }
 
-  async getConversations(options?: { includeArchived?: boolean; archivedOnly?: boolean }): Promise<ConversationListItem[]> {
+  async getConversations(options?: { includeArchived?: boolean; archivedOnly?: boolean; mode?: 'group' | 'individual' | 'all' }): Promise<ConversationListItem[]> {
     const params = new URLSearchParams();
     if (options?.includeArchived) params.append('include_archived', 'true');
     if (options?.archivedOnly) params.append('archived_only', 'true');
+    if (options?.mode) params.append('mode', options.mode);
     const queryString = params.toString();
     const url = queryString ? `/conversations?${queryString}` : '/conversations';
     const response = await this.client.get<ConversationListItem[]>(url);
@@ -1013,6 +1023,93 @@ class ApiService {
 
   async deleteNotification(notificationId: string): Promise<void> {
     await this.client.delete(`/notifications/${notificationId}`);
+  }
+
+  // Journal endpoints (individual mode)
+
+  // --- Journal templates (public) ---
+
+  async getJournalTemplates(): Promise<JournalTemplate[]> {
+    const response = await this.client.get<JournalTemplate[]>('/journals/templates');
+    return response.data;
+  }
+
+  // --- Journal CRUD ---
+
+  async createJournal(data: JournalCreate): Promise<Journal> {
+    const response = await this.client.post<Journal>('/journals', data);
+    return response.data;
+  }
+
+  async getJournals(options?: { skip?: number; limit?: number }): Promise<JournalListItem[]> {
+    const params = new URLSearchParams();
+    if (options?.skip !== undefined) params.append('skip', String(options.skip));
+    if (options?.limit !== undefined) params.append('limit', String(options.limit));
+    const queryString = params.toString();
+    const url = `/journals${queryString ? `?${queryString}` : ''}`;
+    const response = await this.client.get<JournalListItem[]>(url);
+    return response.data;
+  }
+
+  async getJournal(journalId: string): Promise<Journal> {
+    const response = await this.client.get<Journal>(`/journals/${journalId}`);
+    return response.data;
+  }
+
+  async updateJournal(journalId: string, data: JournalUpdate): Promise<Journal> {
+    const response = await this.client.patch<Journal>(`/journals/${journalId}`, data);
+    return response.data;
+  }
+
+  async deleteJournal(journalId: string): Promise<void> {
+    await this.client.delete(`/journals/${journalId}`);
+  }
+
+  // --- Journal entries ---
+
+  async getJournalEntries(
+    journalId: string,
+    options?: { skip?: number; limit?: number; sort?: 'asc' | 'desc' }
+  ): Promise<JournalEntryList> {
+    const params = new URLSearchParams();
+    if (options?.skip !== undefined) params.append('skip', String(options.skip));
+    if (options?.limit !== undefined) params.append('limit', String(options.limit));
+    if (options?.sort) params.append('sort', options.sort);
+    const queryString = params.toString();
+    const url = `/journals/${journalId}/entries${queryString ? `?${queryString}` : ''}`;
+    const response = await this.client.get<JournalEntryList>(url);
+    return response.data;
+  }
+
+  async createJournalEntry(journalId: string, data: JournalEntryCreate): Promise<JournalEntry> {
+    const response = await this.client.post<JournalEntry>(`/journals/${journalId}/entries`, data);
+    return response.data;
+  }
+
+  async getJournalEntry(journalId: string, entryId: string): Promise<JournalEntry> {
+    const response = await this.client.get<JournalEntry>(`/journals/${journalId}/entries/${entryId}`);
+    return response.data;
+  }
+
+  async updateJournalEntry(journalId: string, entryId: string, data: JournalEntryCreate): Promise<JournalEntry> {
+    const response = await this.client.patch<JournalEntry>(`/journals/${journalId}/entries/${entryId}`, data);
+    return response.data;
+  }
+
+  async deleteJournalEntry(journalId: string, entryId: string): Promise<void> {
+    await this.client.delete(`/journals/${journalId}/entries/${entryId}`);
+  }
+
+  // --- Journal analysis ---
+
+  async getJournalAnalysis(journalId: string): Promise<JournalAnalysisStatus> {
+    const response = await this.client.get<JournalAnalysisStatus>(`/journals/${journalId}/analysis`);
+    return response.data;
+  }
+
+  async triggerJournalAnalysis(journalId: string): Promise<{ status: string; message: string; total_entries: number }> {
+    const response = await this.client.post<{ status: string; message: string; total_entries: number }>(`/journals/${journalId}/analyze`, {});
+    return response.data;
   }
 }
 

@@ -305,6 +305,9 @@ export default function AdminPortalPage() {
               <Link to="/adminportal/features" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
                 Features
               </Link>
+              <Link to="/adminportal/journal-templates" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
+                Journal Templates
+              </Link>
             </div>
           )}
         </div>

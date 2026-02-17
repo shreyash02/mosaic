@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.conversation import Conversation
+from app.models.journal import Journal as JournalModel
 from app.models.response import Response
 from app.models.question import Question
 from app.models.conversation_invitation import ConversationInvitation
@@ -1201,34 +1202,80 @@ async def check_periodic_analyses():
 
             for conv in conversations:
                 try:
-                    logger.info(f"Triggering periodic analysis for conversation {conv.id}")
+                    # Check if this conversation backs a journal
+                    journal = db.query(JournalModel).filter(
+                        JournalModel.conversation_id == conv.id,
+                    ).first()
 
-                    # Calculate analysis window
                     period_end = conv.next_analysis_at
-                    period_start = calculate_period_start(period_end, conv.analysis_interval)
 
-                    # Check if there are responses in this window
-                    response_count = db.query(Response).filter(
-                        Response.conversation_id == conv.id,
-                        Response.submitted_at >= period_start,
-                        Response.submitted_at < period_end
-                    ).count()
+                    if journal:
+                        # Journal: run cumulative analysis (themes, mood, patterns)
+                        from app.routes.journals import run_journal_analysis_task
+                        from app.services.feature_flag_service import feature_flag_service
+                        from app.services.subscription_service import subscription_service
+                        from app.services.usage_service import usage_service
 
-                    if response_count > 0:
-                        # Trigger analysis in background
-                        task = asyncio.create_task(
-                            asyncio.to_thread(
-                                run_periodic_analysis_task,
-                                conv.id,
-                                period_start,
-                                period_end,
-                                conv.analysis_interval,
-                                settings.DATABASE_URL
+                        # Check feature flag for journal owner
+                        owner_tier = subscription_service.get_tier(db, user_id=journal.owner_id)
+                        if not feature_flag_service.is_enabled(
+                            db, "journals", tier=owner_tier, user_id=journal.owner_id,
+                        ):
+                            logger.info(f"Journals feature disabled for owner of journal {journal.id}, skipping")
+                        else:
+                            # Check monthly analysis limit
+                            analysis_limit = feature_flag_service.get_config_value(
+                                db, "journals", "journal_analyses_per_month",
+                                tier=owner_tier, user_id=journal.owner_id,
                             )
-                        )
-                        # Don't await - let it run in background
+                            skip_analysis = False
+                            if analysis_limit is not None and analysis_limit != -1:
+                                is_allowed, current_usage = usage_service.check_limit(
+                                    db, "journal_analyses", analysis_limit,
+                                    user_id=journal.owner_id,
+                                )
+                                if not is_allowed:
+                                    logger.info(f"Journal analysis limit reached for owner of journal {journal.id} ({current_usage}/{analysis_limit}), skipping")
+                                    skip_analysis = True
+
+                            if not skip_analysis:
+                                usage_service.increment_usage(
+                                    db, "journal_analyses", user_id=journal.owner_id,
+                                )
+                                logger.info(f"Triggering journal analysis for journal {journal.id} (conversation {conv.id})")
+                                asyncio.create_task(
+                                    asyncio.to_thread(
+                                        run_journal_analysis_task,
+                                        journal.id,
+                                        settings.DATABASE_URL,
+                                    )
+                                )
                     else:
-                        logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
+                        # Group conversation: run windowed periodic analysis
+                        logger.info(f"Triggering periodic analysis for conversation {conv.id}")
+
+                        period_start = calculate_period_start(period_end, conv.analysis_interval)
+
+                        # Check if there are responses in this window
+                        response_count = db.query(Response).filter(
+                            Response.conversation_id == conv.id,
+                            Response.submitted_at >= period_start,
+                            Response.submitted_at < period_end
+                        ).count()
+
+                        if response_count > 0:
+                            asyncio.create_task(
+                                asyncio.to_thread(
+                                    run_periodic_analysis_task,
+                                    conv.id,
+                                    period_start,
+                                    period_end,
+                                    conv.analysis_interval,
+                                    settings.DATABASE_URL
+                                )
+                            )
+                        else:
+                            logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
 
                     # Update next_analysis_at regardless (even if no responses, move to next period)
                     conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
