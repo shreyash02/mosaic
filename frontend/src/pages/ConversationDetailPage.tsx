@@ -698,6 +698,7 @@ export default function ConversationDetailPage() {
   const [updatingAnalysisSchedule, setUpdatingAnalysisSchedule] = useState(false);
   const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [analysisLinkCopied, setAnalysisLinkCopied] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const analysisDropdownRef = useRef<HTMLDivElement>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
@@ -1335,6 +1336,23 @@ export default function ConversationDetailPage() {
               Long-running
             </span>
           )}
+          {conversation.state === ConversationState.ANALYZED && suggestedActions.length > 0 && user && conversation.creator_id === user.id && (() => {
+            const completed = suggestedActions.filter(a => a.status === 'completed').length;
+            const pending = suggestedActions.filter(a => a.status === 'suggested' || a.status === 'accepted').length;
+            const parts: string[] = [];
+            if (completed > 0) parts.push(`${completed} action${completed !== 1 ? 's' : ''} completed`);
+            if (pending > 0) parts.push(`${pending} action${pending !== 1 ? 's' : ''} pending`);
+            if (parts.length === 0) return null;
+            return (
+              <span style={{
+                fontSize: typography.fontSize.xs,
+                color: 'var(--color-primary-500)',
+                fontWeight: typography.fontWeight.medium,
+              }}>
+                · {parts.join(', ')}
+              </span>
+            );
+          })()}
           {conversation.state !== ConversationState.DRAFT && (
             <button
               onClick={copyHeaderLink}
@@ -1566,6 +1584,20 @@ export default function ConversationDetailPage() {
                     View Analysis
                   </Link>
                 </ContextualHint>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/conversations/${id}/analysis`);
+                    setAnalysisLinkCopied(true);
+                    setTimeout(() => setAnalysisLinkCopied(false), 2000);
+                  }}
+                  style={{ ...s.buttonSecondary, gap: spacing[2] }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                  </svg>
+                  {analysisLinkCopied ? 'Copied!' : 'Copy Analysis Link'}
+                </button>
                 <button
                   onClick={handleAnalyze}
                   style={s.buttonSecondary}

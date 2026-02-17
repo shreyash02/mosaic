@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis, SuggestedAction } from '../types';
+import { ResultsAccess } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -622,6 +623,7 @@ export default function AnalysisPage() {
   }>({ show: false, feature: '', limit: 0, usage: 0 });
   const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
   const [activeTab, setActiveTab] = useState<'analysis' | 'actions'>('analysis');
+  const [linkCopied, setLinkCopied] = useState(false);
   const isCreator = !!(user && fullConversation && fullConversation.creator_id === user.id);
 
   usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
@@ -1268,19 +1270,62 @@ export default function AnalysisPage() {
               <h1 style={styles.title}>Analysis Results</h1>
               <p style={styles.subtitle}>{conversation?.title || fullConversation?.title || 'Untitled'}</p>
             </div>
-            {pdfExportEnabled && (
-              <button
-                onClick={handleExportPDF}
-                style={{
-                  ...styles.buttonSecondary,
-                  ...(isExporting ? styles.buttonDisabled : {}),
-                }}
-                className="analysis-btn-secondary"
-                disabled={isExporting}
-              >
-                {isExporting ? 'Exporting...' : 'Export PDF'}
-              </button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+              {isCreator && fullConversation && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    }}
+                    style={{ ...styles.buttonSecondary, gap: spacing[2] }}
+                    className="analysis-btn-secondary"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                    </svg>
+                    {linkCopied ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  {linkCopied && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: spacing[2],
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      backgroundColor: 'var(--color-primary-800)',
+                      color: 'var(--color-primary-50)',
+                      borderRadius: borders.radius.md,
+                      fontSize: typography.fontSize.xs,
+                      whiteSpace: 'nowrap',
+                      zIndex: 10,
+                      boxShadow: shadows.md,
+                    }}>
+                      {fullConversation.results_access === ResultsAccess.PUBLIC_LINK
+                        ? 'Anyone with this link can view'
+                        : fullConversation.results_access === ResultsAccess.PARTICIPANTS
+                          ? 'Only participants can view'
+                          : 'Only you can view this analysis'}
+                    </div>
+                  )}
+                </div>
+              )}
+              {pdfExportEnabled && (
+                <button
+                  onClick={handleExportPDF}
+                  style={{
+                    ...styles.buttonSecondary,
+                    ...(isExporting ? styles.buttonDisabled : {}),
+                  }}
+                  className="analysis-btn-secondary"
+                  disabled={isExporting}
+                >
+                  {isExporting ? 'Exporting...' : 'Export PDF'}
+                </button>
+              )}
+            </div>
           </header>
 
           {/* Tab bar */}
