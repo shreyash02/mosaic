@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { JournalPromptCreate, AnalysisInterval } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import CustomSelect from '../components/CustomSelect';
 
 interface JournalTemplate {
   id: string;
@@ -270,11 +271,13 @@ const s = {
     fontWeight: typography.fontWeight.semibold,
     color: 'var(--color-primary-900)',
     marginBottom: spacing[1],
+    display: 'block',
   },
   templatePrompt: {
     fontSize: typography.fontSize.xs,
     color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
+    display: 'block',
   },
   divider: {
     display: 'flex',
@@ -640,15 +643,12 @@ export default function JournalCreatePage() {
 
             <div style={s.formGroup}>
               <label style={s.label}>Analysis Frequency</label>
-              <select
-                style={s.select}
+              <CustomSelect
                 value={analysisInterval}
-                onChange={e => setAnalysisInterval(e.target.value as AnalysisInterval)}
-              >
-                {ANALYSIS_INTERVALS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                options={ANALYSIS_INTERVALS}
+                onChange={v => setAnalysisInterval(v as AnalysisInterval)}
+                minWidth="200px"
+              />
               <span style={s.hint}>How often AI analyzes your entries for patterns and themes</span>
             </div>
 
