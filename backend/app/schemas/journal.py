@@ -22,6 +22,16 @@ class AnalysisInterval(str, Enum):
     MONTHLY = "monthly"
 
 
+class EntryFrequency(str, Enum):
+    """How often the user should write entries."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+    UNLIMITED = "unlimited"
+
+
 # --- Prompt schemas ---
 
 class JournalPromptCreate(BaseModel):
@@ -58,6 +68,8 @@ class JournalCreate(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     prompts: List[JournalPromptCreate] = Field(..., min_length=1, max_length=10)
     analysis_interval: AnalysisInterval = Field(AnalysisInterval.WEEKLY)
+    entry_frequency: Optional[EntryFrequency] = None
+    strict_frequency: bool = False
 
 
 class JournalUpdate(BaseModel):
@@ -67,6 +79,8 @@ class JournalUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     prompts: Optional[List[JournalPromptCreate]] = Field(None, min_length=1, max_length=10)
     analysis_interval: Optional[AnalysisInterval] = None
+    entry_frequency: Optional[EntryFrequency] = None
+    strict_frequency: Optional[bool] = None
 
 
 class Journal(BaseModel):
@@ -77,6 +91,8 @@ class Journal(BaseModel):
     description: Optional[str] = None
     prompts: List[JournalPrompt] = []
     analysis_interval: Optional[str] = None
+    entry_frequency: Optional[str] = None
+    strict_frequency: bool = False
     total_entries: int = 0
     streak: "JournalStreak"
     has_analysis: bool = False
@@ -98,6 +114,8 @@ class JournalListItem(BaseModel):
     last_entry_at: Optional[datetime] = None
     has_analysis: bool = False
     analysis_interval: Optional[str] = None
+    entry_frequency: Optional[str] = None
+    strict_frequency: bool = False
     created_at: datetime
 
 
@@ -235,3 +253,60 @@ class JournalAnalysisStatus(BaseModel):
     entries_until_analysis: int = 0
     total_entries: int = 0
     latest_analysis: Optional[JournalAnalysisResponse] = None
+
+
+# --- Template schemas ---
+
+class JournalTemplatePrompt(BaseModel):
+    """A prompt definition within a journal template."""
+
+    text: str
+    type: str  # text, rating, single_choice
+    choices: Optional[List[str]] = None
+
+
+class JournalTemplateResponse(BaseModel):
+    """Full journal template response."""
+
+    id: UUID
+    title: str
+    emoji: str
+    description: Optional[str] = None
+    prompts: List[JournalTemplatePrompt]
+    entry_frequency: Optional[str] = None
+    analysis_interval: str = "weekly"
+    strict_frequency: bool = False
+    display_order: int = 0
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class JournalTemplateCreate(BaseModel):
+    """Create a new journal template (admin only)."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    emoji: str = Field(..., min_length=1, max_length=10)
+    description: Optional[str] = Field(None, max_length=500)
+    prompts: List[JournalTemplatePrompt] = Field(..., min_length=1, max_length=10)
+    entry_frequency: Optional[str] = None
+    analysis_interval: str = "weekly"
+    strict_frequency: bool = False
+    display_order: int = 0
+    is_active: bool = True
+
+
+class JournalTemplateUpdate(BaseModel):
+    """Update a journal template (admin only). All fields optional."""
+
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    emoji: Optional[str] = Field(None, min_length=1, max_length=10)
+    description: Optional[str] = None
+    prompts: Optional[List[JournalTemplatePrompt]] = None
+    entry_frequency: Optional[str] = None
+    analysis_interval: Optional[str] = None
+    strict_frequency: Optional[bool] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None

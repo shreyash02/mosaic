@@ -1,11 +1,11 @@
 """Add individual mode (journals) support
 
-Adds is_individual, journal_owner_id, journal_prompt columns to conversations table.
+Creates journals table for journal-specific settings (backed by Conversation).
 Creates journal_analyses table for cumulative temporal analysis.
 Adds optimized indexes for journal queries.
 
 Revision ID: add_individual_mode
-Revises: seed_feature_flags
+Revises: add_insight_annotations
 Create Date: 2026-02-16 12:00:00.000000
 
 """
@@ -24,26 +24,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add journal columns to conversations table
-    op.add_column('conversations', sa.Column('is_individual', sa.Boolean(), nullable=False, server_default='false'))
-    op.add_column('conversations', sa.Column('journal_owner_id', UUID(as_uuid=True), nullable=True))
-    op.add_column('conversations', sa.Column('journal_prompt', sa.Text(), nullable=True))
-
-    # Add foreign key for journal_owner_id
-    op.create_foreign_key(
-        'fk_conversations_journal_owner',
-        'conversations', 'users',
-        ['journal_owner_id'], ['id'],
-        ondelete='SET NULL'
+    # Create journals table
+    op.create_table(
+        'journals',
+        sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
+        sa.Column('conversation_id', UUID(as_uuid=True), sa.ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False, unique=True),
+        sa.Column('owner_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('entry_frequency', sa.String(50), nullable=True),
+        sa.Column('strict_frequency', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
     )
 
-    # Partial index for fast "list my journals" queries
-    op.create_index(
-        'idx_conversations_journal_owner',
-        'conversations',
-        ['journal_owner_id'],
-        postgresql_where=sa.text("is_individual = true")
-    )
+    op.create_index('idx_journals_owner', 'journals', ['owner_id'])
 
     # Create journal_analyses table
     op.create_table(
@@ -79,8 +72,5 @@ def downgrade() -> None:
     op.drop_index('idx_responses_journal_timeline', 'responses')
     op.drop_index('idx_journal_analyses_conversation', 'journal_analyses')
     op.drop_table('journal_analyses')
-    op.drop_index('idx_conversations_journal_owner', 'conversations')
-    op.drop_constraint('fk_conversations_journal_owner', 'conversations', type_='foreignkey')
-    op.drop_column('conversations', 'journal_prompt')
-    op.drop_column('conversations', 'journal_owner_id')
-    op.drop_column('conversations', 'is_individual')
+    op.drop_index('idx_journals_owner', 'journals')
+    op.drop_table('journals')

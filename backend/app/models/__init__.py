@@ -21,7 +21,9 @@ from app.models.subscription import Subscription
 from app.models.notification import Notification
 from app.models.suggested_action import SuggestedAction
 from app.models.insight_annotation import InsightAnnotation
+from app.models.journal import Journal
 from app.models.journal_analysis import JournalAnalysis
+from app.models.journal_template import JournalTemplate
 
 __all__ = [
     "User",
@@ -48,5 +50,7 @@ __all__ = [
     "Notification",
     "SuggestedAction",
     "InsightAnnotation",
+    "Journal",
     "JournalAnalysis",
+    "JournalTemplate",
 ]

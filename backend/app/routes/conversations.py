@@ -300,9 +300,6 @@ async def create_conversation(
                     detail="You don't have access to this series"
                 )
 
-    # Determine if this is a journal (individual mode)
-    is_journal = conversation_data.is_individual or False
-
     # Create conversation
     conversation = Conversation(
         creator_id=current_user.id,
@@ -313,27 +310,20 @@ async def create_conversation(
         description=conversation_data.description,
         header_image_url=conversation_data.header_image_url,
         access_code=access_code,
-        # For journals, force specific defaults
-        anonymity_level="platform_tracked" if is_journal else conversation_data.anonymity_level.value,
-        results_access="creator_only" if is_journal else conversation_data.results_access.value,
-        invite_only=True if is_journal else conversation_data.invite_only,
+        anonymity_level=conversation_data.anonymity_level.value,
+        results_access=conversation_data.results_access.value,
+        invite_only=conversation_data.invite_only,
         auto_analyze=conversation_data.auto_analyze,
         max_response_length=conversation_data.max_response_length,
-        duration_minutes=None if is_journal else conversation_data.duration_minutes,
-        scheduled_activate_at=None if is_journal else scheduled_activate_at_utc,
-        auto_close_at=None if is_journal else auto_close_at_utc,
-        manual_close_enabled=False if is_journal else conversation_data.manual_close_enabled,
-        time_extension_enabled=False if is_journal else conversation_data.time_extension_enabled,
+        duration_minutes=conversation_data.duration_minutes,
+        scheduled_activate_at=scheduled_activate_at_utc,
+        auto_close_at=auto_close_at_utc,
+        manual_close_enabled=conversation_data.manual_close_enabled,
+        time_extension_enabled=conversation_data.time_extension_enabled,
         timezone=conversation_timezone,
-        # Journals activate immediately, skip draft
-        state=ConversationState.ACTIVE.value if is_journal else ConversationState.DRAFT.value,
-        activated_at=datetime.utcnow() if is_journal else None,
-        show_verbatim_responses=True if is_journal else conversation_data.show_verbatim_responses,
-        allow_response_editing=True if is_journal else conversation_data.allow_response_editing,
-        # Individual mode fields
-        is_individual=is_journal,
-        journal_owner_id=current_user.id if is_journal else None,
-        journal_prompt=conversation_data.questions[0].question_text if is_journal and conversation_data.questions else None,
+        state=ConversationState.DRAFT.value,
+        show_verbatim_responses=conversation_data.show_verbatim_responses,
+        allow_response_editing=conversation_data.allow_response_editing,
         # Template fields
         is_template=conversation_data.is_template or False,
         template_series_id=conversation_data.template_series_id,
@@ -438,13 +428,14 @@ async def list_conversations(
 
     # Filter by mode (group vs individual/journal)
     # Default: exclude journals (they have their own /api/journals endpoint)
+    from app.models.journal import Journal as JournalModel
     if mode == "individual":
-        query = query.filter(Conversation.is_individual == True)
+        query = query.filter(Conversation.journal.has())
     elif mode == "all":
         pass  # No filter — include everything
     else:
         # Default (None or "group"): exclude journals
-        query = query.filter(Conversation.is_individual == False)
+        query = query.filter(~Conversation.journal.has())
 
     query = query.order_by(Conversation.created_at.desc())
     query = query.offset(skip).limit(limit)
@@ -496,7 +487,7 @@ async def list_conversations(
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
             # Individual mode
-            "is_individual": conv.is_individual or False,
+            "is_individual": conv.journal is not None,
         }
         conversations.append(ConversationListItem(**conv_dict))
 
