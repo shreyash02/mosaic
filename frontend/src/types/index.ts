@@ -487,6 +487,33 @@ export interface SuggestedActionsResponse {
   total: number;
 }
 
+// Insight Annotations
+export type AnnotationTargetType = 'theme' | 'surprising_insight' | 'question' | 'overall_summary';
+
+export interface InsightAnnotation {
+  id: string;
+  analysis_id: string;
+  target_type: AnnotationTargetType;
+  target_key: Record<string, string>;
+  starred: boolean;
+  note: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface UpsertAnnotationRequest {
+  target_type: AnnotationTargetType;
+  target_key: Record<string, string>;
+  starred?: boolean;
+  note?: string | null;
+}
+
+export interface AnnotationsListResponse {
+  analysis_id: string;
+  annotations: InsightAnnotation[];
+  total: number;
+}
+
 export interface Analysis {
   id: string;
   conversation_id: string;

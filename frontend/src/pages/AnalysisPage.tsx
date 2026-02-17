@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis, SuggestedAction } from '../types';
+import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis, SuggestedAction, InsightAnnotation, AnnotationTargetType } from '../types';
 import { ResultsAccess } from '../types';
 import { formatDate } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -624,7 +624,82 @@ export default function AnalysisPage() {
   const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
   const [activeTab, setActiveTab] = useState<'analysis' | 'actions'>('analysis');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [annotations, setAnnotations] = useState<InsightAnnotation[]>([]);
+  const [savingAnnotation, setSavingAnnotation] = useState<string | null>(null);
+  const noteInputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const isCreator = !!(user && fullConversation && fullConversation.creator_id === user.id);
+
+  // Annotation helpers
+  const sortedStringify = (obj: Record<string, string>) =>
+    JSON.stringify(Object.keys(obj).sort().reduce<Record<string, string>>((acc, k) => { acc[k] = obj[k]; return acc; }, {}));
+
+  const annotationKey = (targetType: AnnotationTargetType, targetKey: Record<string, string>) =>
+    `${targetType}:${sortedStringify(targetKey)}`;
+
+  const getAnnotation = useCallback((targetType: AnnotationTargetType, targetKey: Record<string, string>) =>
+    annotations.find(a =>
+      a.target_type === targetType &&
+      sortedStringify(a.target_key) === sortedStringify(targetKey)
+    ), [annotations]);
+
+  const handleToggleStar = async (targetType: AnnotationTargetType, targetKey: Record<string, string>) => {
+    if (!id || !analysis) return;
+    const key = annotationKey(targetType, targetKey);
+    setSavingAnnotation(key);
+    try {
+      const existing = getAnnotation(targetType, targetKey);
+      const newStarred = !existing?.starred;
+      await api.upsertAnnotation(id, analysis.id, {
+        target_type: targetType,
+        target_key: targetKey,
+        starred: newStarred,
+      });
+      // Reload annotations
+      const data = await api.getAnnotations(id, analysis.id);
+      setAnnotations(data.annotations);
+    } catch (err) {
+      console.error('Failed to toggle star:', err);
+    } finally {
+      setSavingAnnotation(null);
+    }
+  };
+
+  const handleSaveNote = async (targetType: AnnotationTargetType, targetKey: Record<string, string>, note: string) => {
+    if (!id || !analysis) return;
+    const key = annotationKey(targetType, targetKey);
+    setSavingAnnotation(key);
+    try {
+      await api.upsertAnnotation(id, analysis.id, {
+        target_type: targetType,
+        target_key: targetKey,
+        note: note,
+      });
+      const data = await api.getAnnotations(id, analysis.id);
+      setAnnotations(data.annotations);
+      // Collapse note input if note was removed
+      if (!note) {
+        setExpandedNotes(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to save note:', err);
+    } finally {
+      setSavingAnnotation(null);
+    }
+  };
+
+  const toggleNoteExpanded = (key: string) => {
+    setExpandedNotes(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   usePageTitle(conversation ? `Analysis - ${conversation.title}` : 'Analysis');
 
@@ -765,6 +840,14 @@ export default function AnalysisPage() {
         setSuggestedActions(actionsData.actions);
       } catch {
         // Actions may not exist yet — that's fine
+      }
+
+      // Load annotations (creator-only, 403 for others is fine)
+      try {
+        const annotationsData = await api.getAnnotations(id!, analysisData.id);
+        setAnnotations(annotationsData.annotations);
+      } catch {
+        // Not a creator or annotations not available
       }
 
       if (analysisData.show_verbatim_responses) {
@@ -1463,6 +1546,63 @@ export default function AnalysisPage() {
             <h2 style={styles.cardTitle}>Overall Summary</h2>
             <p style={styles.summaryText}>{analysis.overall_summary}</p>
 
+            {/* Annotation: note only */}
+            {isCreator && (() => {
+              const targetKey = {};
+              const key = annotationKey('overall_summary', targetKey);
+              const ann = getAnnotation('overall_summary', targetKey);
+              const isExpanded = expandedNotes.has(key) || !!ann?.note;
+              return (
+                <div style={{ marginBottom: spacing[3] }}>
+                  {!isExpanded ? (
+                    <button
+                      onClick={() => toggleNoteExpanded(key)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', padding: 0 }}
+                    >
+                      Add note
+                    </button>
+                  ) : (
+                    <div style={{ marginTop: spacing[2] }}>
+                      <textarea
+                        ref={(el) => { if (el) noteInputRefs.current.set(key, el); else noteInputRefs.current.delete(key); }}
+                        defaultValue={ann?.note || ''}
+                        placeholder="Add a personal note..."
+                        rows={2}
+                        style={{
+                          width: '100%',
+                          padding: spacing[2],
+                          fontSize: typography.fontSize.sm,
+                          border: '1px solid var(--color-primary-300)',
+                          borderRadius: borders.radius.md,
+                          backgroundColor: 'var(--color-primary-50)',
+                          color: 'var(--color-primary-900)',
+                          resize: 'vertical',
+                          fontFamily: 'inherit',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1], alignItems: 'center' }}>
+                        <button
+                          onClick={() => { const el = noteInputRefs.current.get(key); if (el) handleSaveNote('overall_summary', targetKey, el.value); }}
+                          disabled={savingAnnotation === key}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)', padding: 0, fontWeight: typography.fontWeight.medium }}
+                        >
+                          {savingAnnotation === key ? 'Saving...' : 'Save'}
+                        </button>
+                        {ann?.note && (
+                          <button
+                            onClick={() => { handleSaveNote('overall_summary', targetKey, ''); const el = noteInputRefs.current.get(key); if (el) el.value = ''; }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-error)', padding: 0 }}
+                          >
+                            Remove note
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div style={styles.metaGrid}>
               <div style={styles.metaItem}>
                 <span style={styles.metaLabel}>Responses Analyzed</span>
@@ -1483,12 +1623,93 @@ export default function AnalysisPage() {
           {analysis.surprising_insights && analysis.surprising_insights.length > 0 && (
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>What Surprised Us</h2>
-              {analysis.surprising_insights.map((insight, index) => (
-                <div key={index} style={styles.insightItem}>
-                  <h3 style={styles.insightTitle}>{insight.title}</h3>
-                  <p style={styles.insightDescription}>{insight.description}</p>
-                </div>
-              ))}
+              {analysis.surprising_insights.map((insight, index) => {
+                const targetKey = { insight_title: insight.title };
+                const key = annotationKey('surprising_insight', targetKey);
+                const ann = getAnnotation('surprising_insight', targetKey);
+                const isStarred = ann?.starred || false;
+                const noteExpanded = expandedNotes.has(key) || !!ann?.note;
+                return (
+                  <div key={index} style={styles.insightItem}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+                      {isCreator && (
+                        <button
+                          onClick={() => handleToggleStar('surprising_insight', targetKey)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '2px',
+                            marginTop: '2px',
+                            color: isStarred ? 'var(--color-primary-900)' : 'var(--color-primary-400)',
+                            opacity: savingAnnotation === key ? 0.5 : 1,
+                            flexShrink: 0,
+                          }}
+                          disabled={savingAnnotation === key}
+                          title={isStarred ? 'Unstar' : 'Star'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill={isStarred ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                        </button>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <h3 style={styles.insightTitle}>{insight.title}</h3>
+                        <p style={styles.insightDescription}>{insight.description}</p>
+                      </div>
+                    </div>
+                    {isCreator && (
+                      <div style={{ marginTop: spacing[2], marginLeft: isCreator ? '24px' : 0 }}>
+                        {!noteExpanded ? (
+                          <button
+                            onClick={() => toggleNoteExpanded(key)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', padding: 0 }}
+                          >
+                            Add note
+                          </button>
+                        ) : (
+                          <div>
+                            <textarea
+                              ref={(el) => { if (el) noteInputRefs.current.set(key, el); else noteInputRefs.current.delete(key); }}
+                              defaultValue={ann?.note || ''}
+                              placeholder="Add a personal note..."
+                              rows={2}
+                              style={{
+                                width: '100%',
+                                padding: spacing[2],
+                                fontSize: typography.fontSize.sm,
+                                border: '1px solid var(--color-primary-300)',
+                                borderRadius: borders.radius.md,
+                                backgroundColor: 'var(--color-primary-50)',
+                                color: 'var(--color-primary-900)',
+                                resize: 'vertical',
+                                fontFamily: 'inherit',
+                              }}
+                            />
+                            <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1], alignItems: 'center' }}>
+                              <button
+                                onClick={() => { const el = noteInputRefs.current.get(key); if (el) handleSaveNote('surprising_insight', targetKey, el.value); }}
+                                disabled={savingAnnotation === key}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)', padding: 0, fontWeight: typography.fontWeight.medium }}
+                              >
+                                {savingAnnotation === key ? 'Saving...' : 'Save'}
+                              </button>
+                              {ann?.note && (
+                                <button
+                                  onClick={() => { handleSaveNote('surprising_insight', targetKey, ''); const el = noteInputRefs.current.get(key); if (el) el.value = ''; }}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-error)', padding: 0 }}
+                                >
+                                  Remove note
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1512,51 +1733,191 @@ export default function AnalysisPage() {
                     <h3 style={styles.questionTitle}>
                       Q{index + 1}. {qa.question_text}
                     </h3>
-                    <div style={styles.questionMeta}>
-                      <span style={styles.badge}>{qa.question_type.replace('_', ' ')}</span>
-                      <span style={styles.responseCount}>{qa.response_count} responses</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                      <div style={styles.questionMeta}>
+                        <span style={styles.badge}>{qa.question_type.replace('_', ' ')}</span>
+                        <span style={styles.responseCount}>{qa.response_count} responses</span>
+                      </div>
+                      {isCreator && (() => {
+                        const targetKey = { question_id: qa.question_id };
+                        const key = annotationKey('question', targetKey);
+                        const ann = getAnnotation('question', targetKey);
+                        return !ann?.note && !expandedNotes.has(key) ? (
+                          <button
+                            onClick={() => toggleNoteExpanded(key)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', padding: 0 }}
+                          >
+                            Add note
+                          </button>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
+
+                  {/* Question-level note */}
+                  {isCreator && (() => {
+                    const targetKey = { question_id: qa.question_id };
+                    const key = annotationKey('question', targetKey);
+                    const ann = getAnnotation('question', targetKey);
+                    const noteExpanded = expandedNotes.has(key) || !!ann?.note;
+                    if (!noteExpanded) return null;
+                    return (
+                      <div style={{ marginBottom: spacing[3] }}>
+                        <textarea
+                          ref={(el) => { if (el) noteInputRefs.current.set(key, el); else noteInputRefs.current.delete(key); }}
+                          defaultValue={ann?.note || ''}
+                          placeholder="Add a personal note about this question..."
+                          rows={2}
+                          style={{
+                            width: '100%',
+                            padding: spacing[2],
+                            fontSize: typography.fontSize.sm,
+                            border: '1px solid var(--color-primary-300)',
+                            borderRadius: borders.radius.md,
+                            backgroundColor: 'var(--color-primary-50)',
+                            color: 'var(--color-primary-900)',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1], alignItems: 'center' }}>
+                          <button
+                            onClick={() => { const el = noteInputRefs.current.get(key); if (el) handleSaveNote('question', targetKey, el.value); }}
+                            disabled={savingAnnotation === key}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)', padding: 0, fontWeight: typography.fontWeight.medium }}
+                          >
+                            {savingAnnotation === key ? 'Saving...' : 'Save'}
+                          </button>
+                          {ann?.note && (
+                            <button
+                              onClick={() => { handleSaveNote('question', targetKey, ''); const el = noteInputRefs.current.get(key); if (el) el.value = ''; }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-error)', padding: 0 }}
+                            >
+                              Remove note
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Text Question Analysis */}
                   {qa.question_type === 'text' && qa.themes && qa.themes.length > 0 && (
                     <div>
                       <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginBottom: spacing[3] }}>Themes</h4>
-                      {qa.themes.map((theme, themeIndex) => (
-                        <div key={themeIndex} style={styles.themeCard}>
-                          <div style={styles.themeHeader}>
-                            <span style={styles.themeName}>{theme.theme}</span>
-                            <span style={styles.frequencyBadge}>{theme.frequency} responses</span>
-                          </div>
-                          <p style={styles.themeSummary}>{theme.summary}</p>
+                      {qa.themes.map((theme, themeIndex) => {
+                        const targetKey = { question_id: qa.question_id, theme_name: theme.theme };
+                        const key = annotationKey('theme', targetKey);
+                        const ann = getAnnotation('theme', targetKey);
+                        const isStarred = ann?.starred || false;
+                        const noteExpanded = expandedNotes.has(key) || !!ann?.note;
+                        return (
+                          <div key={themeIndex} style={styles.themeCard}>
+                            <div style={styles.themeHeader}>
+                              {isCreator && (
+                                <button
+                                  onClick={() => handleToggleStar('theme', targetKey)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '2px',
+                                    color: isStarred ? 'var(--color-primary-900)' : 'var(--color-primary-400)',
+                                    opacity: savingAnnotation === key ? 0.5 : 1,
+                                    flexShrink: 0,
+                                  }}
+                                  disabled={savingAnnotation === key}
+                                  title={isStarred ? 'Unstar' : 'Star'}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill={isStarred ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                  </svg>
+                                </button>
+                              )}
+                              <span style={styles.themeName}>{theme.theme}</span>
+                              <span style={styles.frequencyBadge}>{theme.frequency} responses</span>
+                            </div>
+                            <p style={styles.themeSummary}>{theme.summary}</p>
 
-                          {theme.perspectives && theme.perspectives.length > 0 && (
-                            <div>
-                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-600)', marginTop: spacing[3], marginBottom: spacing[2] }}>Perspectives</h5>
-                              {theme.perspectives.map((perspective, perspectiveIndex) => (
-                                <div key={perspectiveIndex} style={styles.perspectiveItem}>
-                                  <div style={styles.perspectiveHeader}>
-                                    <span style={styles.perspectiveName}>{perspective.name}</span>
-                                    <span style={styles.perspectiveCount}>{perspective.count} responses</span>
+                            {theme.perspectives && theme.perspectives.length > 0 && (
+                              <div>
+                                <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-600)', marginTop: spacing[3], marginBottom: spacing[2] }}>Perspectives</h5>
+                                {theme.perspectives.map((perspective, perspectiveIndex) => (
+                                  <div key={perspectiveIndex} style={styles.perspectiveItem}>
+                                    <div style={styles.perspectiveHeader}>
+                                      <span style={styles.perspectiveName}>{perspective.name}</span>
+                                      <span style={styles.perspectiveCount}>{perspective.count} responses</span>
+                                    </div>
+                                    <p style={styles.perspectiveSummary}>{perspective.summary}</p>
                                   </div>
-                                  <p style={styles.perspectiveSummary}>{perspective.summary}</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {theme.key_points && theme.key_points.length > 0 && (
-                            <div>
-                              <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-600)', marginTop: spacing[3], marginBottom: spacing[2] }}>Key Points</h5>
-                              <ul style={styles.keyPointsList}>
-                                {theme.key_points.map((point, pointIndex) => (
-                                  <li key={pointIndex} style={styles.keyPoint}>{point}</li>
                                 ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                              </div>
+                            )}
+
+                            {theme.key_points && theme.key_points.length > 0 && (
+                              <div>
+                                <h5 style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-600)', marginTop: spacing[3], marginBottom: spacing[2] }}>Key Points</h5>
+                                <ul style={styles.keyPointsList}>
+                                  {theme.key_points.map((point, pointIndex) => (
+                                    <li key={pointIndex} style={styles.keyPoint}>{point}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Theme annotation note */}
+                            {isCreator && (
+                              <div style={{ marginTop: spacing[2] }}>
+                                {!noteExpanded ? (
+                                  <button
+                                    onClick={() => toggleNoteExpanded(key)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', padding: 0 }}
+                                  >
+                                    Add note
+                                  </button>
+                                ) : (
+                                  <div>
+                                    <textarea
+                                      ref={(el) => { if (el) noteInputRefs.current.set(key, el); else noteInputRefs.current.delete(key); }}
+                                      defaultValue={ann?.note || ''}
+                                      placeholder="Add a personal note about this theme..."
+                                      rows={2}
+                                      style={{
+                                        width: '100%',
+                                        padding: spacing[2],
+                                        fontSize: typography.fontSize.sm,
+                                        border: '1px solid var(--color-primary-300)',
+                                        borderRadius: borders.radius.md,
+                                        backgroundColor: 'var(--color-primary-50)',
+                                        color: 'var(--color-primary-900)',
+                                        resize: 'vertical',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    />
+                                    <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1], alignItems: 'center' }}>
+                                      <button
+                                        onClick={() => { const el = noteInputRefs.current.get(key); if (el) handleSaveNote('theme', targetKey, el.value); }}
+                                        disabled={savingAnnotation === key}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)', padding: 0, fontWeight: typography.fontWeight.medium }}
+                                      >
+                                        {savingAnnotation === key ? 'Saving...' : 'Save'}
+                                      </button>
+                                      {ann?.note && (
+                                        <button
+                                          onClick={() => { handleSaveNote('theme', targetKey, ''); const el = noteInputRefs.current.get(key); if (el) el.value = ''; }}
+                                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: typography.fontSize.xs, color: 'var(--color-error)', padding: 0 }}
+                                        >
+                                          Remove note
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 

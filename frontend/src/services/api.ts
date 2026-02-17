@@ -74,6 +74,9 @@ import type {
   UpdateActionStatusRequest,
   EditActionRequest,
   CreateActionRequest,
+  InsightAnnotation,
+  UpsertAnnotationRequest,
+  AnnotationsListResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -537,6 +540,39 @@ class ApiService {
       body,
     );
     return response.data;
+  }
+
+  // Insight annotations
+  async getAnnotations(
+    conversationId: string,
+    analysisId: string,
+  ): Promise<AnnotationsListResponse> {
+    const response = await this.client.get<AnnotationsListResponse>(
+      `/conversations/${conversationId}/analyses/${analysisId}/annotations`,
+    );
+    return response.data;
+  }
+
+  async upsertAnnotation(
+    conversationId: string,
+    analysisId: string,
+    body: UpsertAnnotationRequest,
+  ): Promise<InsightAnnotation> {
+    const response = await this.client.put<InsightAnnotation>(
+      `/conversations/${conversationId}/analyses/${analysisId}/annotations`,
+      body,
+    );
+    return response.data;
+  }
+
+  async deleteAnnotation(
+    conversationId: string,
+    analysisId: string,
+    annotationId: string,
+  ): Promise<void> {
+    await this.client.delete(
+      `/conversations/${conversationId}/analyses/${analysisId}/annotations/${annotationId}`,
+    );
   }
 
   // AI-powered question suggestions

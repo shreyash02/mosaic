@@ -20,6 +20,7 @@ from app.models.feature_flag import FeatureFlag, FeatureFlagOverride, FeatureUsa
 from app.models.subscription import Subscription
 from app.models.notification import Notification
 from app.models.suggested_action import SuggestedAction
+from app.models.insight_annotation import InsightAnnotation
 
 __all__ = [
     "User",
@@ -45,4 +46,5 @@ __all__ = [
     "Subscription",
     "Notification",
     "SuggestedAction",
+    "InsightAnnotation",
 ]
