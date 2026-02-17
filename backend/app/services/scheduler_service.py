@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.conversation import Conversation
+from app.models.journal import Journal as JournalModel
 from app.models.response import Response
 from app.models.question import Question
 from app.models.conversation_invitation import ConversationInvitation
@@ -1201,34 +1202,50 @@ async def check_periodic_analyses():
 
             for conv in conversations:
                 try:
-                    logger.info(f"Triggering periodic analysis for conversation {conv.id}")
+                    # Check if this conversation backs a journal
+                    journal = db.query(JournalModel).filter(
+                        JournalModel.conversation_id == conv.id,
+                    ).first()
 
-                    # Calculate analysis window
                     period_end = conv.next_analysis_at
-                    period_start = calculate_period_start(period_end, conv.analysis_interval)
 
-                    # Check if there are responses in this window
-                    response_count = db.query(Response).filter(
-                        Response.conversation_id == conv.id,
-                        Response.submitted_at >= period_start,
-                        Response.submitted_at < period_end
-                    ).count()
-
-                    if response_count > 0:
-                        # Trigger analysis in background
-                        task = asyncio.create_task(
+                    if journal:
+                        # Journal: run cumulative analysis (themes, mood, patterns)
+                        from app.routes.journals import run_journal_analysis_task
+                        logger.info(f"Triggering journal analysis for journal {journal.id} (conversation {conv.id})")
+                        asyncio.create_task(
                             asyncio.to_thread(
-                                run_periodic_analysis_task,
-                                conv.id,
-                                period_start,
-                                period_end,
-                                conv.analysis_interval,
-                                settings.DATABASE_URL
+                                run_journal_analysis_task,
+                                journal.id,
+                                settings.DATABASE_URL,
                             )
                         )
-                        # Don't await - let it run in background
                     else:
-                        logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
+                        # Group conversation: run windowed periodic analysis
+                        logger.info(f"Triggering periodic analysis for conversation {conv.id}")
+
+                        period_start = calculate_period_start(period_end, conv.analysis_interval)
+
+                        # Check if there are responses in this window
+                        response_count = db.query(Response).filter(
+                            Response.conversation_id == conv.id,
+                            Response.submitted_at >= period_start,
+                            Response.submitted_at < period_end
+                        ).count()
+
+                        if response_count > 0:
+                            asyncio.create_task(
+                                asyncio.to_thread(
+                                    run_periodic_analysis_task,
+                                    conv.id,
+                                    period_start,
+                                    period_end,
+                                    conv.analysis_interval,
+                                    settings.DATABASE_URL
+                                )
+                            )
+                        else:
+                            logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
 
                     # Update next_analysis_at regardless (even if no responses, move to next period)
                     conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
