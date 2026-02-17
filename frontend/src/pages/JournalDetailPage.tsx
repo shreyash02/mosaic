@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Journal, JournalEntry, JournalStreak, JournalPrompt, PromptResponse } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
+import Modal from '../components/Modal';
 
 const ENTRIES_PER_PAGE = 20;
 const TRUNCATE_LENGTH = 400;
@@ -354,7 +355,85 @@ const s = {
     color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  deleteButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-500)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: '1px solid var(--color-primary-300)',
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+  },
+  modalText: {
+    fontSize: typography.fontSize.base,
+    color: 'var(--color-primary-700)',
+    lineHeight: typography.lineHeight.relaxed,
+    marginBottom: spacing[6],
+  },
+  modalWarning: {
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-900)',
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: spacing[3],
+  },
+  modalCancel: {
+    padding: `${spacing[2]} ${spacing[5]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-700)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: '1px solid var(--color-primary-300)',
+    cursor: 'pointer',
+  },
+  modalDelete: {
+    padding: `${spacing[2]} ${spacing[5]}`,
+    backgroundColor: 'var(--color-error)',
+    color: '#fff',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.md,
+    border: 'none',
+    cursor: 'pointer',
+  },
 };
+
+function formatDuration(createdAt: string): string {
+  const start = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - start.getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 1) return 'today';
+  if (days === 1) return '1 day';
+  if (days < 7) return `${days} days`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return weeks === 1 ? '1 week' : `${weeks} weeks`;
+  }
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return months === 1 ? '1 month' : `${months} months`;
+  }
+  const years = Math.floor(days / 365);
+  const remainingMonths = Math.floor((days % 365) / 30);
+  if (remainingMonths === 0) return years === 1 ? '1 year' : `${years} years`;
+  return `${years === 1 ? '1 year' : `${years} years`} and ${remainingMonths === 1 ? '1 month' : `${remainingMonths} months`}`;
+}
 
 function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = 'auto';
@@ -363,6 +442,7 @@ function autoResize(textarea: HTMLTextAreaElement) {
 
 export default function JournalDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   // Journal metadata
@@ -392,6 +472,10 @@ export default function JournalDetailPage() {
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
 
   const [error, setError] = useState('');
+
+  // Delete
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   usePageTitle(journal?.title || 'Journal');
 
@@ -520,6 +604,20 @@ export default function JournalDetailPage() {
     });
   };
 
+  const handleDeleteJournal = async () => {
+    if (!id) return;
+    try {
+      setDeleting(true);
+      await api.deleteJournal(id);
+      navigate('/journals');
+    } catch {
+      setError('Failed to delete journal.');
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const hasMore = entries.length < totalEntries;
 
   if (loadingJournal) {
@@ -567,12 +665,24 @@ export default function JournalDetailPage() {
                 <p style={s.description}>{journal.description}</p>
               )}
             </div>
-            <Link to={`/journals/${id}/insights`} style={s.insightsLink}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-              Insights
-            </Link>
+            <div style={s.headerActions}>
+              <Link to={`/journals/${id}/insights`} style={s.insightsLink}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                Insights
+              </Link>
+              <button
+                style={s.deleteButton}
+                onClick={() => setShowDeleteModal(true)}
+                title="Delete journal"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -826,6 +936,52 @@ export default function JournalDetailPage() {
             )}
           </>
         )}
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Delete Journal"
+          maxWidth="440px"
+        >
+          {journal && (
+            <>
+              <p style={s.modalText}>
+                {totalEntries > 0 ? (
+                  <>
+                    You will lose{' '}
+                    <span style={s.modalWarning}>
+                      {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'}
+                    </span>
+                    {' '}that {totalEntries === 1 ? 'has' : 'have'} been written over{' '}
+                    <span style={s.modalWarning}>{formatDuration(journal.created_at)}</span>.
+                    This cannot be undone.
+                  </>
+                ) : (
+                  <>Are you sure you want to delete <span style={s.modalWarning}>{journal.title}</span>? This cannot be undone.</>
+                )}
+              </p>
+              <div style={s.modalActions}>
+                <button
+                  style={s.modalCancel}
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={{
+                    ...s.modalDelete,
+                    ...(deleting ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                  }}
+                  onClick={handleDeleteJournal}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : 'Delete Journal'}
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
       </div>
     </div>
   );
