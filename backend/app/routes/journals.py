@@ -608,6 +608,24 @@ def _get_period_start(frequency: str, now: datetime) -> datetime | None:
     return None  # unlimited — no enforcement
 
 
+def _require_journals_flag(current_user: User, db: Session) -> str:
+    """Check journals feature flag, return tier. Raises 403 if disabled."""
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+
+    tier = subscription_service.get_tier(db, user_id=current_user.id)
+    if not feature_flag_service.is_enabled(
+        db, "journals",
+        tier=tier,
+        user_id=current_user.id,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Journals are not available for your account",
+        )
+    return tier
+
+
 def _build_journal_response(journal: JournalModel, questions: list[Question], db: Session) -> Journal:
     """Build a Journal schema response from a JournalModel."""
     conv = journal.conversation
@@ -680,6 +698,27 @@ async def create_journal(
 
     Creates a backing Conversation with forced defaults, then a Journal record.
     """
+    from app.services.feature_flag_service import feature_flag_service
+
+    tier = _require_journals_flag(current_user, db)
+
+    # Check max_journals limit
+    max_journals = feature_flag_service.get_config_value(
+        db, "journals", "max_journals",
+        tier=tier,
+        user_id=current_user.id,
+    )
+    if max_journals is not None and max_journals != -1:
+        current_count = db.query(func.count(JournalModel.id)).join(Conversation).filter(
+            JournalModel.owner_id == current_user.id,
+            Conversation.state != "deleted",
+        ).scalar() or 0
+        if current_count >= max_journals:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Journal limit reached ({max_journals}). Upgrade your plan for more.",
+            )
+
     now = datetime.utcnow()
 
     conversation = Conversation(
@@ -760,6 +799,8 @@ async def list_journals(
     db: Session = Depends(get_db),
 ):
     """List the current user's journals."""
+    _require_journals_flag(current_user, db)
+
     journals = db.query(JournalModel).join(Conversation).filter(
         JournalModel.owner_id == current_user.id,
         Conversation.state != "deleted",
@@ -814,6 +855,7 @@ async def get_journal(
     db: Session = Depends(get_db),
 ):
     """Get a journal's full details."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db, load_questions=True)
     conv = journal.conversation
 
@@ -831,6 +873,7 @@ async def update_journal(
     db: Session = Depends(get_db),
 ):
     """Update journal settings."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db, load_questions=True)
     conv = journal.conversation
 
@@ -906,6 +949,7 @@ async def delete_journal(
     db: Session = Depends(get_db),
 ):
     """Soft-delete a journal."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     journal.conversation.state = "deleted"
     db.commit()
@@ -927,6 +971,7 @@ async def list_journal_entries(
     db: Session = Depends(get_db),
 ):
     """List journal entries with streak information."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
 
@@ -978,8 +1023,26 @@ async def create_journal_entry(
     db: Session = Depends(get_db),
 ):
     """Add a new journal entry with per-prompt responses."""
+    from app.services.feature_flag_service import feature_flag_service
+
+    tier = _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
+
+    # Check max_entries_per_journal limit
+    max_entries = feature_flag_service.get_config_value(
+        db, "journals", "max_entries_per_journal",
+        tier=tier,
+        user_id=current_user.id,
+    )
+    if max_entries is not None and max_entries != -1:
+        current_entries = _get_entry_count(conv.id, db)
+        if current_entries >= max_entries:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Entry limit reached ({max_entries} per journal). Upgrade your plan for more.",
+            )
+
     question_map = _build_question_map(conv, db)
 
     if not question_map:
@@ -1056,6 +1119,7 @@ async def get_journal_entry(
     db: Session = Depends(get_db),
 ):
     """Get a single journal entry."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
 
@@ -1100,6 +1164,7 @@ async def update_journal_entry(
     db: Session = Depends(get_db),
 ):
     """Edit a journal entry."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
     question_map = _build_question_map(conv, db)
@@ -1153,6 +1218,7 @@ async def delete_journal_entry(
     db: Session = Depends(get_db),
 ):
     """Delete a journal entry."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
 
@@ -1187,6 +1253,7 @@ async def get_journal_analysis(
     db: Session = Depends(get_db),
 ):
     """Get the latest journal analysis, or status if not yet available."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
 
@@ -1245,9 +1312,35 @@ async def trigger_journal_analysis(
 ):
     """Trigger journal analysis on-demand. Returns 202 Accepted."""
     from app.core.config import settings
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.usage_service import usage_service
 
+    tier = _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
+
+    # Check journal_analyses_per_month limit
+    limit = feature_flag_service.get_config_value(
+        db, "journals", "journal_analyses_per_month",
+        tier=tier,
+        user_id=current_user.id,
+    )
+    if limit is not None and limit != -1:
+        is_allowed, current_usage = usage_service.check_limit(
+            db, "journal_analyses", limit,
+            user_id=current_user.id,
+        )
+        if not is_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "LIMIT_REACHED",
+                    "feature": "journal_analyses",
+                    "limit": limit,
+                    "usage": current_usage,
+                    "message": f"Monthly analysis limit reached ({current_usage}/{limit}). Upgrade your plan for more.",
+                },
+            )
 
     total_entries = _get_entry_count(conv.id, db)
 
@@ -1261,6 +1354,12 @@ async def trigger_journal_analysis(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Need at least {MIN_ENTRIES_FOR_ANALYSIS} entries to run analysis. Currently have {total_entries}."
         )
+
+    # Increment usage before queuing work
+    usage_service.increment_usage(
+        db, "journal_analyses",
+        user_id=current_user.id,
+    )
 
     background_tasks.add_task(
         run_journal_analysis_task,
@@ -1287,6 +1386,7 @@ async def list_journal_analyses(
     db: Session = Depends(get_db),
 ):
     """List all analyses for a journal."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     conv = journal.conversation
 
@@ -1326,5 +1426,6 @@ async def get_journal_streak(
     db: Session = Depends(get_db),
 ):
     """Get streak information for a journal."""
+    _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     return _get_streak(journal, db)
