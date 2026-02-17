@@ -69,6 +69,7 @@ import JournalsPage from './pages/JournalsPage';
 import JournalCreatePage from './pages/JournalCreatePage';
 import JournalDetailPage from './pages/JournalDetailPage';
 import JournalInsightsPage from './pages/JournalInsightsPage';
+import JournalSettingsPage from './pages/JournalSettingsPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ProfilePage from './pages/ProfilePage';
@@ -413,6 +414,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <JournalDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/:id/settings"
+              element={
+                <ProtectedRoute>
+                  <JournalSettingsPage />
                 </ProtectedRoute>
               }
             />
