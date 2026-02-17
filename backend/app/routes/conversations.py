@@ -335,7 +335,7 @@ async def create_conversation(
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
         # Continuous conversation fields - journals are always continuous
-        is_continuous=True if is_journal else (conversation_data.is_continuous or False),
+        is_continuous=conversation_data.is_continuous or False,
         analysis_interval=conversation_data.analysis_interval.value if conversation_data.analysis_interval else None,
         analysis_timezone=conversation_data.analysis_timezone,
         # Context for AI analysis
