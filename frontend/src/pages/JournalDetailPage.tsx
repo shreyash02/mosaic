@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Journal, JournalEntry, JournalStreak, JournalPrompt, PromptResponse } from '../types';
+import type { Journal, JournalEntry, JournalStreak, JournalPrompt, PromptResponse, EntryFrequency } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useJournalDraft } from '../hooks/useJournalDraft';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
 import Modal from '../components/Modal';
 
@@ -189,12 +190,59 @@ const s = {
     borderColor: 'var(--color-primary-900)',
     zIndex: 1,
   },
+  periodSelector: {
+    display: 'flex',
+    gap: spacing[2],
+    marginBottom: spacing[4],
+    flexWrap: 'wrap' as const,
+  },
+  periodPill: {
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-50)',
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.full,
+    cursor: 'pointer',
+    transition: 'background-color 150ms, color 150ms',
+    outline: 'none',
+  },
+  periodPillSelected: {
+    backgroundColor: 'var(--color-primary-900)',
+    color: 'var(--color-primary-50)',
+    borderColor: 'var(--color-primary-900)',
+  },
+  periodPillDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  },
+  periodPillHasEntry: {
+    backgroundColor: 'var(--color-primary-200)',
+    borderColor: 'var(--color-primary-400)',
+  },
   writeFooter: {
     display: 'flex',
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: spacing[3],
     marginTop: spacing[3],
+  },
+  draftStatus: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    marginRight: 'auto',
+  },
+  saveDraftButton: {
+    padding: `${spacing[2]} ${spacing[4]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-600)',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    border: '1px solid var(--color-primary-300)',
+    borderRadius: borders.radius.md,
+    cursor: 'pointer',
+    transition: transitions.duration.normal,
   },
   resetButton: {
     padding: `${spacing[2]} ${spacing[4]}`,
@@ -563,6 +611,27 @@ function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
+function formatDateForAPI(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatDraftAge(isoString: string): string {
+  const saved = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - saved.getTime();
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export default function JournalDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -608,6 +677,19 @@ export default function JournalDetailPage() {
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
   const [entryDeleting, setEntryDeleting] = useState(false);
 
+  // Period selector for retroactive entries
+  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
+
+  // Draft auto-save
+  const {
+    draftStatus,
+    lastSavedAt: draftLastSavedAt,
+    loadDraft,
+    updateDraft,
+    saveDraftNow,
+    clearDraft,
+  } = useJournalDraft({ journalId: id });
+
   usePageTitle(journal?.title || 'Journal');
 
   const loadJournal = useCallback(async () => {
@@ -647,6 +729,143 @@ export default function JournalDetailPage() {
     loadEntries();
   }, [loadJournal, loadEntries]);
 
+  // Load draft when journal loads
+  const draftLoaded = useRef(false);
+  useEffect(() => {
+    if (!journal || draftLoaded.current) return;
+    draftLoaded.current = true;
+    loadDraft().then(draft => {
+      if (draft) {
+        setResponses(draft.responses);
+        setRatingResponses(draft.ratingResponses);
+        setChoiceResponses(draft.choiceResponses);
+        // Auto-resize textareas after restoring draft
+        requestAnimationFrame(() => {
+          Object.entries(textareaRefs.current).forEach(([, ta]) => {
+            if (ta) autoResize(ta);
+          });
+        });
+      }
+    });
+  }, [journal, loadDraft]);
+
+  // Propagate form changes to draft hook
+  const prevFormData = useRef<string>('');
+  useEffect(() => {
+    const key = JSON.stringify({ responses, ratingResponses, choiceResponses });
+    if (key === prevFormData.current) return;
+    prevFormData.current = key;
+
+    // Only save if there's actually content
+    const hasAny =
+      Object.values(responses).some(v => v.trim().length > 0) ||
+      Object.keys(ratingResponses).length > 0 ||
+      Object.values(choiceResponses).some(v => v.length > 0);
+    if (hasAny) {
+      updateDraft(responses, ratingResponses, choiceResponses);
+    }
+  }, [responses, ratingResponses, choiceResponses, updateDraft]);
+
+  // Compute available periods for retroactive entry filling
+  const availablePeriods = useMemo(() => {
+    if (!journal || !journal.entry_frequency || journal.entry_frequency === 'unlimited') return [];
+
+    const freq = journal.entry_frequency as EntryFrequency;
+    const now = new Date();
+    const periods: Array<{
+      label: string;
+      date: string | null; // null = current period
+      hasEntry: boolean;
+      disabled: boolean;
+    }> = [];
+
+    const getPeriodBounds = (frequency: string, dt: Date): { start: Date; end: Date } | null => {
+      const d = new Date(dt);
+      if (frequency === 'daily') {
+        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+      } else if (frequency === 'weekly') {
+        const day = d.getDay();
+        const diff = day === 0 ? 6 : day - 1; // Monday-based weeks
+        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
+        return { start, end };
+      } else if (frequency === 'biweekly') {
+        const weekNum = Math.ceil((Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / (24 * 60 * 60 * 1000)) + 1) / 7);
+        const day = d.getDay();
+        const diff = day === 0 ? 6 : day - 1;
+        const extraDays = weekNum % 2 === 0 ? 7 : 0;
+        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff - extraDays);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 14);
+        return { start, end };
+      } else if (frequency === 'monthly') {
+        const start = new Date(d.getFullYear(), d.getMonth(), 1);
+        const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        return { start, end };
+      }
+      return null;
+    };
+
+    const formatPeriodLabel = (frequency: string, start: Date, isCurrent: boolean): string => {
+      if (isCurrent) {
+        if (frequency === 'daily') return 'Today';
+        if (frequency === 'weekly') return 'This week';
+        if (frequency === 'monthly') return 'This month';
+        if (frequency === 'biweekly') return 'This period';
+      }
+      if (frequency === 'daily') {
+        return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } else if (frequency === 'weekly' || frequency === 'biweekly') {
+        const end = new Date(start);
+        end.setDate(end.getDate() + (frequency === 'weekly' ? 6 : 13));
+        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      } else if (frequency === 'monthly') {
+        return start.toLocaleDateString('en-US', { month: 'long' });
+      }
+      return '';
+    };
+
+    // Get current period + 2 previous
+    const currentBounds = getPeriodBounds(freq, now);
+    if (!currentBounds) return [];
+
+    const allPeriods: Array<{ start: Date; end: Date; isCurrent: boolean }> = [];
+    allPeriods.push({ ...currentBounds, isCurrent: true });
+
+    // Walk back 2 periods
+    let prevDate = new Date(currentBounds.start.getTime() - 1);
+    for (let i = 0; i < 2; i++) {
+      const bounds = getPeriodBounds(freq, prevDate);
+      if (bounds) {
+        allPeriods.unshift({ ...bounds, isCurrent: false });
+        prevDate = new Date(bounds.start.getTime() - 1);
+      }
+    }
+
+    // Check which periods have entries
+    for (const period of allPeriods) {
+      const hasEntry = entries.some(e => {
+        const entryDate = new Date(e.created_at);
+        return entryDate >= period.start && entryDate < period.end;
+      });
+
+      const dateStr = period.isCurrent ? null : formatDateForAPI(period.start);
+
+      periods.push({
+        label: formatPeriodLabel(freq, period.start, period.isCurrent),
+        date: dateStr,
+        hasEntry,
+        disabled: journal.strict_frequency && hasEntry,
+      });
+    }
+
+    return periods;
+  }, [journal, entries]);
+
   const buildResponses = (prompts: JournalPrompt[], textMap: Record<string, string>, ratingMap: Record<string, number>, choiceMap: Record<string, string>): PromptResponse[] => {
     return prompts.map(p => {
       const resp: PromptResponse = { prompt_id: p.id };
@@ -678,12 +897,19 @@ export default function JournalDetailPage() {
     try {
       setSaving(true);
       setSaveError('');
-      await api.createJournalEntry(id, {
+      const createData: { responses: PromptResponse[]; entry_date?: string } = {
         responses: buildResponses(journal.prompts, responses, ratingResponses, choiceResponses),
-      });
+      };
+      if (selectedPeriod) {
+        createData.entry_date = selectedPeriod;
+      }
+      await api.createJournalEntry(id, createData);
       setResponses({});
       setRatingResponses({});
       setChoiceResponses({});
+      setSelectedPeriod(null);
+      // Clear draft from both sources
+      await clearDraft();
       // Reset textarea heights
       Object.values(textareaRefs.current).forEach(ta => {
         if (ta) ta.style.height = 'auto';
@@ -922,6 +1148,35 @@ export default function JournalDetailPage() {
         {journal && journal.prompts.length > 0 && (
           <div style={s.writeArea}>
             <div style={s.writeTitle}>New Entry</div>
+            {/* Period selector for retroactive entries */}
+            {availablePeriods.length > 0 && (
+              <div style={s.periodSelector}>
+                {availablePeriods.map((period) => {
+                  const isSelected = selectedPeriod === period.date;
+                  return (
+                    <button
+                      key={period.date ?? 'current'}
+                      type="button"
+                      style={{
+                        ...s.periodPill,
+                        ...(isSelected ? s.periodPillSelected : {}),
+                        ...(!isSelected && period.hasEntry && !period.disabled ? s.periodPillHasEntry : {}),
+                        ...(period.disabled ? s.periodPillDisabled : {}),
+                      }}
+                      onClick={() => {
+                        if (period.disabled) return;
+                        setSelectedPeriod(isSelected ? null : period.date);
+                      }}
+                      disabled={period.disabled}
+                      title={period.hasEntry ? 'Entry already exists for this period' : undefined}
+                    >
+                      {period.label}
+                      {period.hasEntry && !period.disabled ? ' \u2713' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {journal.prompts.map(prompt => (
               <div key={prompt.id} style={s.promptGroup}>
                 <label style={s.promptLabel}>{prompt.text}</label>
@@ -994,6 +1249,21 @@ export default function JournalDetailPage() {
               </div>
             )}
             <div style={s.writeFooter}>
+              {/* Draft status */}
+              <span style={s.draftStatus}>
+                {draftStatus === 'saving' && 'Saving draft...'}
+                {draftStatus === 'saved' && draftLastSavedAt && `Draft saved ${formatDraftAge(draftLastSavedAt)}`}
+                {draftStatus === 'unsaved' && hasContent() && 'Unsaved changes'}
+              </span>
+              {draftStatus === 'unsaved' && hasContent() && (
+                <button
+                  type="button"
+                  style={s.saveDraftButton}
+                  onClick={saveDraftNow}
+                >
+                  Save Draft
+                </button>
+              )}
               <button
                 type="button"
                 style={s.resetButton}
@@ -1001,6 +1271,7 @@ export default function JournalDetailPage() {
                   setResponses({});
                   setRatingResponses({});
                   setChoiceResponses({});
+                  clearDraft();
                   Object.values(textareaRefs.current).forEach(ta => {
                     if (ta) ta.style.height = 'auto';
                   });

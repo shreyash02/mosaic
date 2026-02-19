@@ -4,8 +4,8 @@ Journals are user-facing entities backed by the Conversation model internally.
 The API uses /journals/ and these schemas — never exposing conversation internals.
 """
 
-from datetime import datetime
-from typing import Optional, List
+from datetime import datetime, date
+from typing import Optional, List, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 from enum import Enum
@@ -169,6 +169,7 @@ class JournalEntryCreate(BaseModel):
     """Create a journal entry with per-prompt responses."""
 
     responses: List[PromptResponse] = Field(..., min_length=1)
+    entry_date: Optional[date] = None
 
 
 class JournalEntryUpdate(BaseModel):
@@ -372,3 +373,31 @@ class JournalTemplateUpdate(BaseModel):
         if self.entry_frequency is not None and self.analysis_interval is not None:
             _validate_frequency_pair(self.entry_frequency, self.analysis_interval)
         return self
+
+
+# --- Draft schemas ---
+
+class JournalDraftSave(BaseModel):
+    """Save a journal entry draft."""
+
+    responses: Dict[str, str] = Field(default_factory=dict)
+    rating_responses: Dict[str, int] = Field(default_factory=dict)
+    choice_responses: Dict[str, str] = Field(default_factory=dict)
+
+
+class JournalDraftLoad(BaseModel):
+    """Loaded journal draft data."""
+
+    has_draft: bool = False
+    last_saved_at: Optional[datetime] = None
+    responses: Dict[str, str] = Field(default_factory=dict)
+    rating_responses: Dict[str, int] = Field(default_factory=dict)
+    choice_responses: Dict[str, str] = Field(default_factory=dict)
+
+
+class JournalDraftSaveResponse(BaseModel):
+    """Response after saving a draft."""
+
+    success: bool = True
+    last_saved_at: datetime
+    message: str = "Draft saved"

@@ -1323,6 +1323,7 @@ export interface JournalEntry {
 
 export interface JournalEntryCreate {
   responses: PromptResponse[];
+  entry_date?: string;
 }
 
 export interface JournalStreak {
@@ -1413,4 +1414,33 @@ export interface JournalTemplate {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// Journal draft types
+export interface JournalDraftData {
+  responses: Record<string, string>;
+  rating_responses: Record<string, number>;
+  choice_responses: Record<string, string>;
+}
+
+export interface JournalDraftSaveResponse {
+  success: boolean;
+  last_saved_at: string;
+  message: string;
+}
+
+export interface JournalDraftLoadResponse {
+  has_draft: boolean;
+  last_saved_at?: string;
+  responses: Record<string, string>;
+  rating_responses: Record<string, number>;
+  choice_responses: Record<string, string>;
+}
+
+export interface JournalLocalDraft {
+  journalId: string;
+  responses: Record<string, string>;
+  ratingResponses: Record<string, number>;
+  choiceResponses: Record<string, string>;
+  lastSavedAt: string;
 }

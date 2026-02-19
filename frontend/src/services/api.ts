@@ -86,6 +86,9 @@ import type {
   JournalEntryCreate,
   JournalAnalysisStatus,
   JournalTemplate,
+  JournalDraftData,
+  JournalDraftSaveResponse,
+  JournalDraftLoadResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1098,6 +1101,22 @@ class ApiService {
 
   async deleteJournalEntry(journalId: string, entryId: string): Promise<void> {
     await this.client.delete(`/journals/${journalId}/entries/${entryId}`);
+  }
+
+  // --- Journal drafts ---
+
+  async saveJournalDraft(journalId: string, data: JournalDraftData): Promise<JournalDraftSaveResponse> {
+    const response = await this.client.post<JournalDraftSaveResponse>(`/journals/${journalId}/draft`, data);
+    return response.data;
+  }
+
+  async loadJournalDraft(journalId: string): Promise<JournalDraftLoadResponse> {
+    const response = await this.client.get<JournalDraftLoadResponse>(`/journals/${journalId}/draft`);
+    return response.data;
+  }
+
+  async deleteJournalDraft(journalId: string): Promise<void> {
+    await this.client.delete(`/journals/${journalId}/draft`);
   }
 
   // --- Journal analysis ---

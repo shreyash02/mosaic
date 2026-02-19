@@ -44,6 +44,9 @@ from app.schemas.journal import (
     JournalAnalysisStatus,
     JournalTemplateResponse,
     JournalTemplatePrompt,
+    JournalDraftSave,
+    JournalDraftLoad,
+    JournalDraftSaveResponse,
     _validate_frequency_pair,
 )
 from app.services.scheduler_service import calculate_next_analysis_time
@@ -595,17 +598,36 @@ def _get_streak(journal: JournalModel, db: Session) -> JournalStreak:
 
 def _get_period_start(frequency: str, now: datetime) -> datetime | None:
     """Compute the start of the current period for frequency enforcement."""
+    bounds = _get_period_bounds(frequency, now)
+    return bounds[0] if bounds else None
+
+
+def _get_period_bounds(frequency: str, dt: datetime) -> tuple[datetime, datetime] | None:
+    """Return (start, end_exclusive) for the period containing dt.
+
+    Returns None for unlimited frequency (no enforcement).
+    """
     if frequency == "daily":
-        return now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
     elif frequency == "weekly":
-        return (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        start = (dt - timedelta(days=dt.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=7)
     elif frequency == "biweekly":
-        week_num = now.isocalendar()[1]
-        days_back = now.weekday() + (7 if week_num % 2 == 0 else 0)
-        return (now - timedelta(days=days_back)).replace(hour=0, minute=0, second=0, microsecond=0)
+        week_num = dt.isocalendar()[1]
+        days_back = dt.weekday() + (7 if week_num % 2 == 0 else 0)
+        start = (dt - timedelta(days=days_back)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=14)
     elif frequency == "monthly":
-        return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    return None  # unlimited — no enforcement
+        start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # First day of next month
+        if start.month == 12:
+            end = start.replace(year=start.year + 1, month=1)
+        else:
+            end = start.replace(month=start.month + 1)
+    else:
+        return None  # unlimited — no enforcement
+    return (start, end)
 
 
 def _require_journals_flag(current_user: User, db: Session) -> str:
@@ -1061,14 +1083,51 @@ async def create_journal_entry(
 
     now = datetime.utcnow()
 
-    # Strict frequency enforcement
+    # Determine target datetime (for retroactive entries)
+    if entry.entry_date is not None:
+        target_date = entry.entry_date
+        # Target noon UTC on the specified date
+        target_dt = datetime(target_date.year, target_date.month, target_date.day, 12, 0, 0)
+
+        # Validate: entry_date must be within current period + 2 previous periods
+        if journal.entry_frequency and journal.entry_frequency != "unlimited":
+            current_bounds = _get_period_bounds(journal.entry_frequency, now)
+            if current_bounds:
+                # Walk back 2 periods to find the oldest allowed start
+                oldest_start = current_bounds[0]
+                for _ in range(2):
+                    prev_bounds = _get_period_bounds(journal.entry_frequency, oldest_start - timedelta(seconds=1))
+                    if prev_bounds:
+                        oldest_start = prev_bounds[0]
+                    else:
+                        break
+
+                if target_dt < oldest_start or target_dt >= current_bounds[1]:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Entry date is outside the allowed range (current period + 2 previous periods)"
+                    )
+        elif not journal.entry_frequency:
+            # No frequency set — still don't allow future dates
+            tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            if target_dt >= tomorrow:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot create entries for future dates"
+                )
+    else:
+        target_dt = now
+
+    # Strict frequency enforcement using bounded period
     if journal.strict_frequency and journal.entry_frequency:
-        period_start = _get_period_start(journal.entry_frequency, now)
-        if period_start is not None:
+        bounds = _get_period_bounds(journal.entry_frequency, target_dt)
+        if bounds is not None:
+            period_start, period_end = bounds
             existing = db.query(Response.id).filter(
                 Response.conversation_id == conv.id,
                 Response.status == "submitted",
                 Response.submitted_at >= period_start,
+                Response.submitted_at < period_end,
             ).first()
             if existing:
                 freq_label = journal.entry_frequency.replace("_", " ")
@@ -1087,9 +1146,17 @@ async def create_journal_entry(
         participant_id=current_user.id,
         anonymity_level="platform_tracked",
         status="submitted",
-        submitted_at=now,
+        submitted_at=target_dt,
     )
     db.add(response)
+
+    # Clear any existing draft for this user/journal
+    db.query(Response).filter(
+        Response.conversation_id == conv.id,
+        Response.participant_id == current_user.id,
+        Response.status == "draft",
+    ).delete()
+
     db.commit()
     db.refresh(response)
 
@@ -1236,6 +1303,121 @@ async def delete_journal_entry(
 
     # Soft delete by changing status
     response.status = "deleted"
+    db.commit()
+
+
+# ============================================================
+# Draft endpoints
+# ============================================================
+
+@router.post(
+    "/{journal_id}/draft",
+    response_model=JournalDraftSaveResponse,
+)
+async def save_journal_draft(
+    journal_id: UUID,
+    data: JournalDraftSave,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save or update a journal entry draft."""
+    _require_journals_flag(current_user, db)
+    journal = _get_journal_or_404(journal_id, current_user, db)
+    conv = journal.conversation
+    question_map = _build_question_map(conv, db)
+
+    if not question_map:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Journal has no prompts configured"
+        )
+
+    now = datetime.utcnow()
+    first_question = next(iter(question_map.values()))
+
+    # Upsert: delete existing draft, create new one
+    db.query(Response).filter(
+        Response.conversation_id == conv.id,
+        Response.participant_id == current_user.id,
+        Response.status == "draft",
+    ).delete()
+
+    draft_data = {
+        "responses": data.responses,
+        "rating_responses": data.rating_responses,
+        "choice_responses": data.choice_responses,
+    }
+
+    draft = Response(
+        conversation_id=conv.id,
+        question_id=first_question.id,
+        response_data=draft_data,
+        participant_id=current_user.id,
+        anonymity_level="platform_tracked",
+        status="draft",
+        submitted_at=now,
+    )
+    db.add(draft)
+    db.commit()
+
+    return JournalDraftSaveResponse(
+        success=True,
+        last_saved_at=now,
+        message="Draft saved",
+    )
+
+
+@router.get(
+    "/{journal_id}/draft",
+    response_model=JournalDraftLoad,
+)
+async def load_journal_draft(
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Load the current draft for a journal."""
+    _require_journals_flag(current_user, db)
+    journal = _get_journal_or_404(journal_id, current_user, db)
+    conv = journal.conversation
+
+    draft = db.query(Response).filter(
+        Response.conversation_id == conv.id,
+        Response.participant_id == current_user.id,
+        Response.status == "draft",
+    ).first()
+
+    if not draft or not draft.response_data:
+        return JournalDraftLoad(has_draft=False)
+
+    return JournalDraftLoad(
+        has_draft=True,
+        last_saved_at=draft.submitted_at,
+        responses=draft.response_data.get("responses", {}),
+        rating_responses=draft.response_data.get("rating_responses", {}),
+        choice_responses=draft.response_data.get("choice_responses", {}),
+    )
+
+
+@router.delete(
+    "/{journal_id}/draft",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_journal_draft(
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete the current draft for a journal."""
+    _require_journals_flag(current_user, db)
+    journal = _get_journal_or_404(journal_id, current_user, db)
+    conv = journal.conversation
+
+    db.query(Response).filter(
+        Response.conversation_id == conv.id,
+        Response.participant_id == current_user.id,
+        Response.status == "draft",
+    ).delete()
     db.commit()
 
 
