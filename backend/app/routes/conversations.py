@@ -2352,13 +2352,57 @@ async def suggest_questions(
     """
     from app.services.question_suggestion_service import question_suggestion_service
     from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+    from app.services.usage_service import usage_service
+
+    # Get user's tier (personal context — no org)
+    tier = subscription_service.get_tier(db, user_id=current_user.id)
 
     # Check if AI question suggestions are enabled for this user
-    if not feature_flag_service.is_enabled(db, "ai_question_suggestions", user_id=current_user.id):
+    if not feature_flag_service.is_enabled(
+        db, "ai_question_suggestions",
+        tier=tier,
+        user_id=current_user.id,
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="AI question suggestions are not available for your account"
         )
+
+    # Check usage limit (-1 means unlimited)
+    limit = feature_flag_service.get_config_value(
+        db, "ai_question_suggestions", "suggestions_per_month",
+        tier=tier,
+        user_id=current_user.id,
+    )
+    if limit is not None and limit < 0:
+        limit = None
+
+    is_allowed, current_usage = usage_service.check_limit(
+        db, "ai_question_suggestions", limit,
+        user_id=current_user.id,
+    )
+
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "LIMIT_REACHED",
+                "feature": "ai_question_suggestions",
+                "limit": limit,
+                "usage": current_usage,
+                "message": f"Monthly question suggestion limit reached ({current_usage}/{limit})"
+            }
+        )
+
+    # Clamp request count to max_per_request config
+    max_per_request = feature_flag_service.get_config_value(
+        db, "ai_question_suggestions", "max_per_request",
+        tier=tier,
+        user_id=current_user.id,
+    )
+    if max_per_request and request.count > max_per_request:
+        request.count = max_per_request
 
     result = question_suggestion_service.suggest_questions(
         title=request.title,
@@ -2366,6 +2410,12 @@ async def suggest_questions(
         existing_questions=request.existing_questions,
         rejected_questions=request.rejected_questions,
         count=request.count,
+    )
+
+    # Increment usage after successful generation
+    usage_service.increment_usage(
+        db, "ai_question_suggestions",
+        user_id=current_user.id,
     )
 
     return QuestionSuggestionResponse(
