@@ -163,6 +163,33 @@ export default function AdminPlanTiersPage() {
           enabled,
           config_override: hasConfigOverride ? configOverride : null,
         });
+
+        // Auto-enable higher tiers: if we're enabling a feature, also enable it
+        // on all higher tiers that are currently disabled
+        if (enabled === true && data) {
+          const tierIndex = data.tiers.indexOf(editingCell.tier);
+          const higherTiers = data.tiers.slice(tierIndex + 1);
+          const flag = data.flags.find(f => f.slug === editingCell.flagSlug);
+
+          if (flag) {
+            const enablePromises = higherTiers
+              .filter(t => {
+                const tierInfo = flag.per_tier[t];
+                return tierInfo && !tierInfo.enabled;
+              })
+              .map(t =>
+                client.post(`/admin/feature-flags/${editingCell.flagSlug}/overrides`, {
+                  tier: t,
+                  enabled: true,
+                  config_override: null,
+                })
+              );
+
+            if (enablePromises.length > 0) {
+              await Promise.all(enablePromises);
+            }
+          }
+        }
       }
 
       closeEditModal();

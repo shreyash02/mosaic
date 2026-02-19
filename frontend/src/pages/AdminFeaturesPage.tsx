@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useToast } from '../contexts/NotificationContext';
 import type {
   FeatureFlag,
   FeatureFlagOverride,
@@ -12,11 +13,10 @@ import './AdminFeaturesPage.css';
 export default function AdminFeaturesPage() {
   usePageTitle('Features - Admin');
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   // Feature flags data
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -38,6 +38,7 @@ export default function AdminFeaturesPage() {
   const [previewId, setPreviewId] = useState('');
   const [previewResult, setPreviewResult] = useState<EffectiveFeatureFlag | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -76,14 +77,13 @@ export default function AdminFeaturesPage() {
       const client = await getAdminClient();
       const response = await client.get<{ flags: FeatureFlag[] }>('/admin/feature-flags');
       setFlags(response.data.flags);
-      setError('');
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { detail?: string } } };
       if (error.response?.status === 401) {
         localStorage.removeItem('admin_token');
         navigate('/adminportal');
       } else {
-        setError(error.response?.data?.detail || 'Failed to load feature flags');
+        addToast({ type: 'error', title: 'Load failed', message: error.response?.data?.detail || 'Failed to load feature flags' });
       }
     } finally {
       setLoading(false);
@@ -119,8 +119,6 @@ export default function AdminFeaturesPage() {
   // Create new flag
   const handleCreateFlag = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccessMessage('');
 
     try {
       const config = JSON.parse(formData.config);
@@ -131,18 +129,18 @@ export default function AdminFeaturesPage() {
         enabled: formData.enabled,
         config,
       });
-      setSuccessMessage('Feature flag created successfully');
+      addToast({ type: 'success', title: 'Flag created', message: `"${formData.name}" created successfully` });
       setShowCreateForm(false);
       setFormData({ name: '', description: '', enabled: false, config: '{}' });
       loadFlags();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
+        addToast({ type: 'error', title: 'Create failed', message: error.response.data.detail });
       } else if (err instanceof SyntaxError) {
-        setError('Invalid JSON in config field');
+        addToast({ type: 'error', title: 'Invalid JSON', message: 'Config field contains invalid JSON' });
       } else {
-        setError('Failed to create feature flag');
+        addToast({ type: 'error', title: 'Create failed', message: 'Failed to create feature flag' });
       }
     }
   };
@@ -151,8 +149,6 @@ export default function AdminFeaturesPage() {
   const handleUpdateFlag = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFlag) return;
-    setError('');
-    setSuccessMessage('');
 
     try {
       const config = JSON.parse(formData.config);
@@ -163,7 +159,7 @@ export default function AdminFeaturesPage() {
         enabled: formData.enabled,
         config,
       });
-      setSuccessMessage('Feature flag updated successfully');
+      addToast({ type: 'success', title: 'Flag updated', message: `"${formData.name}" updated successfully` });
       setEditMode(false);
       loadFlags();
       // Refresh selected flag
@@ -172,11 +168,11 @@ export default function AdminFeaturesPage() {
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
+        addToast({ type: 'error', title: 'Update failed', message: error.response.data.detail });
       } else if (err instanceof SyntaxError) {
-        setError('Invalid JSON in config field');
+        addToast({ type: 'error', title: 'Invalid JSON', message: 'Config field contains invalid JSON' });
       } else {
-        setError('Failed to update feature flag');
+        addToast({ type: 'error', title: 'Update failed', message: 'Failed to update feature flag' });
       }
     }
   };
@@ -190,13 +186,14 @@ export default function AdminFeaturesPage() {
 
     try {
       const client = await getAdminClient();
+      const flagName = selectedFlag.name;
       await client.delete(`/admin/feature-flags/${selectedFlag.slug}`);
-      setSuccessMessage('Feature flag deleted successfully');
+      addToast({ type: 'success', title: 'Flag deleted', message: `"${flagName}" deleted successfully` });
       setSelectedFlag(null);
       loadFlags();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Failed to delete feature flag');
+      addToast({ type: 'error', title: 'Delete failed', message: error.response?.data?.detail || 'Failed to delete feature flag' });
     }
   };
 
@@ -220,9 +217,31 @@ export default function AdminFeaturesPage() {
       setPreviewResult(response.data);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Failed to preview flag value');
+      addToast({ type: 'error', title: 'Preview failed', message: error.response?.data?.detail || 'Failed to preview flag value' });
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  // Quick toggle enabled state
+  const handleToggleEnabled = async () => {
+    if (!selectedFlag || toggling) return;
+    setToggling(true);
+
+    try {
+      const client = await getAdminClient();
+      const newEnabled = !selectedFlag.enabled;
+      await client.patch(`/admin/feature-flags/${selectedFlag.slug}`, {
+        enabled: newEnabled,
+      });
+      const updated = await client.get<FeatureFlag>(`/admin/feature-flags/${selectedFlag.slug}`);
+      setSelectedFlag(updated.data);
+      loadFlags();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      addToast({ type: 'error', title: 'Toggle failed', message: error.response?.data?.detail || 'Failed to toggle flag' });
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -252,9 +271,6 @@ export default function AdminFeaturesPage() {
           </Link>
         </div>
       </div>
-
-      {error && <div className="error-message">{error}</div>}
-      {successMessage && <div className="result-message success">{successMessage}</div>}
 
       <div className="features-layout">
         {/* Left panel - List of flags */}
@@ -293,7 +309,7 @@ export default function AdminFeaturesPage() {
                   <div className="flag-item-header">
                     <span className="flag-name">{flag.name}</span>
                     <span className={`flag-status ${flag.enabled ? 'enabled' : 'disabled'}`}>
-                      {flag.enabled ? 'ON' : 'OFF'}
+                      {flag.enabled ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
                   <div className="flag-slug">{flag.slug}</div>
@@ -444,8 +460,38 @@ export default function AdminFeaturesPage() {
                     </div>
                     <div className="detail-row">
                       <strong>Status:</strong>
-                      <span className={`flag-status-inline ${selectedFlag.enabled ? 'enabled' : 'disabled'}`}>
-                        {selectedFlag.enabled ? 'Enabled' : 'Disabled'}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          onClick={handleToggleEnabled}
+                          disabled={toggling}
+                          style={{
+                            position: 'relative',
+                            width: '40px',
+                            height: '22px',
+                            borderRadius: '11px',
+                            border: 'none',
+                            cursor: toggling ? 'wait' : 'pointer',
+                            backgroundColor: selectedFlag.enabled ? 'var(--color-success)' : 'var(--color-primary-400)',
+                            transition: 'background-color 0.2s',
+                            padding: 0,
+                            opacity: toggling ? 0.6 : 1,
+                          }}
+                        >
+                          <span style={{
+                            position: 'absolute',
+                            top: '2px',
+                            left: selectedFlag.enabled ? '20px' : '2px',
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            transition: 'left 0.2s',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                          }} />
+                        </button>
+                        <span className={`flag-status-inline ${selectedFlag.enabled ? 'enabled' : 'disabled'}`}>
+                          {selectedFlag.enabled ? 'Enabled' : 'Disabled'}
+                        </span>
                       </span>
                     </div>
                     <div className="detail-row">
@@ -557,7 +603,7 @@ export default function AdminFeaturesPage() {
                         <div className="detail-row">
                           <strong>Enabled:</strong>
                           <span className={`flag-status-inline ${previewResult.enabled ? 'enabled' : 'disabled'}`}>
-                            {previewResult.enabled ? 'ON' : 'OFF'}
+                            {previewResult.enabled ? 'Enabled' : 'Disabled'}
                           </span>
                         </div>
                         <div className="detail-row">
