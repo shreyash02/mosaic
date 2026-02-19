@@ -1556,6 +1556,28 @@ export interface SharedJournalListItem {
   expires_at?: string;
 }
 
+// Plan Tier Comparison types
+export interface TierFlagInfo {
+  enabled: boolean;
+  config: Record<string, unknown>;
+  has_override: boolean;
+  config_override?: Record<string, unknown> | null;
+}
+
+export interface PlanTierFlag {
+  slug: string;
+  name: string;
+  description?: string;
+  global_enabled: boolean;
+  global_config: Record<string, unknown>;
+  per_tier: Record<string, TierFlagInfo>;
+}
+
+export interface PlanTiersResponse {
+  tiers: string[];
+  flags: PlanTierFlag[];
+}
+
 export interface PresetCreate {
   name: string;
   description?: string;

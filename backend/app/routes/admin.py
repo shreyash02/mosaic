@@ -864,7 +864,7 @@ async def set_subscription_tier(
     """
     from datetime import timedelta
     from app.services.subscription_service import subscription_service
-    from app.schemas.subscription import VALID_TIERS
+    from app.core.tiers import VALID_TIERS
 
     if not request.user_id and not request.organization_id:
         raise HTTPException(

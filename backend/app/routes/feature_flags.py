@@ -17,6 +17,7 @@ from app.schemas.feature_flag import (
     FeatureFlagOverrideCreate,
     EffectiveFeatureFlag,
     FeatureFlagList,
+    PlanTiersResponse,
 )
 from app.services.feature_flag_service import feature_flag_service
 
@@ -49,6 +50,15 @@ async def create_flag(
         enabled=flag_data.enabled,
         config=flag_data.config
     )
+
+
+@router.get("/plan-tiers", response_model=PlanTiersResponse)
+async def get_plan_tiers(
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all feature flags resolved per plan tier for comparison."""
+    return feature_flag_service.get_plan_tiers(db)
 
 
 @router.get("/{flag_slug}", response_model=FeatureFlag)
@@ -116,6 +126,7 @@ async def create_override(
     return feature_flag_service.set_override(
         db,
         flag_slug=flag_slug,
+        tier=override_data.tier,
         org_id=override_data.organization_id,
         user_id=override_data.user_id,
         enabled=override_data.enabled,
@@ -126,6 +137,7 @@ async def create_override(
 @router.delete("/{flag_slug}/overrides", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_override(
     flag_slug: str,
+    tier: Optional[str] = Query(None),
     organization_id: Optional[UUID] = Query(None),
     user_id: Optional[UUID] = Query(None),
     admin: Admin = Depends(get_admin),
@@ -133,12 +145,12 @@ async def delete_override(
 ):
     """Remove an override for a feature flag."""
     from fastapi import HTTPException
-    if organization_id is None and user_id is None:
+    if tier is None and organization_id is None and user_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must provide organization_id or user_id"
+            detail="Must provide tier, organization_id, or user_id"
         )
-    feature_flag_service.remove_override(db, flag_slug, organization_id, user_id)
+    feature_flag_service.remove_override(db, flag_slug, tier=tier, org_id=organization_id, user_id=user_id)
 
 
 # --- Preview (Admin only) ---

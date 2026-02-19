@@ -51,6 +51,7 @@ import AdminSchedulerPage from './pages/AdminSchedulerPage';
 import AdminFeaturesPage from './pages/AdminFeaturesPage';
 import AdminJournalTemplatesPage from './pages/AdminJournalTemplatesPage';
 import AdminSubscriptionsPage from './pages/AdminSubscriptionsPage';
+import AdminPlanTiersPage from './pages/AdminPlanTiersPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -487,6 +488,7 @@ function App() {
             <Route path="/adminportal/features" element={<AdminFeaturesPage />} />
             <Route path="/adminportal/journal-templates" element={<AdminJournalTemplatesPage />} />
             <Route path="/adminportal/subscriptions" element={<AdminSubscriptionsPage />} />
+            <Route path="/adminportal/plan-tiers" element={<AdminPlanTiersPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />

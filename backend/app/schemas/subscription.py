@@ -6,8 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
-# Valid tier values
-VALID_TIERS = {'free', 'basic', 'pro', 'enterprise'}
+from app.core.tiers import VALID_TIERS
 
 
 class SubscriptionBase(BaseModel):

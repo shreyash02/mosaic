@@ -280,6 +280,63 @@ class FeatureFlagService:
         except HTTPException:
             return default
 
+    def get_plan_tiers(self, db: Session) -> dict:
+        """
+        Get all feature flags with their resolved state per tier.
+
+        Returns a dict with 'tiers' (list of tier names) and 'flags' (list of per-flag data).
+        """
+        from app.core.tiers import TIER_ORDER
+
+        tiers = TIER_ORDER
+
+        # Get all flags
+        flags = db.query(FeatureFlag).order_by(FeatureFlag.name).all()
+
+        # Get all tier-level overrides (no org, no user)
+        tier_overrides = db.query(FeatureFlagOverride).filter(
+            FeatureFlagOverride.tier.isnot(None),
+            FeatureFlagOverride.organization_id.is_(None),
+            FeatureFlagOverride.user_id.is_(None),
+        ).all()
+
+        # Index overrides by (flag_id, tier)
+        override_map: Dict[tuple, FeatureFlagOverride] = {}
+        for ov in tier_overrides:
+            override_map[(str(ov.flag_id), ov.tier)] = ov
+
+        result_flags = []
+        for flag in flags:
+            per_tier = {}
+            for tier in tiers:
+                effective_enabled = flag.enabled
+                effective_config = copy.deepcopy(flag.config or {})
+
+                ov = override_map.get((str(flag.id), tier))
+                if ov:
+                    if ov.enabled is not None:
+                        effective_enabled = ov.enabled
+                    if ov.config_override:
+                        effective_config = self._deep_merge(effective_config, ov.config_override)
+
+                per_tier[tier] = {
+                    'enabled': effective_enabled,
+                    'config': effective_config,
+                    'has_override': ov is not None,
+                    'config_override': ov.config_override if ov else None,
+                }
+
+            result_flags.append({
+                'slug': flag.slug,
+                'name': flag.name,
+                'description': flag.description,
+                'global_enabled': flag.enabled,
+                'global_config': flag.config or {},
+                'per_tier': per_tier,
+            })
+
+        return {'tiers': tiers, 'flags': result_flags}
+
     def list_all_flags(self, db: Session) -> List[FeatureFlag]:
         """
         List all feature flags (admin).

@@ -45,8 +45,7 @@ class FeatureFlag(FeatureFlagBase):
 
 # --- Feature Flag Override Schemas ---
 
-# Valid tier values for overrides
-VALID_TIERS = {'free', 'basic', 'pro', 'enterprise'}
+from app.core.tiers import VALID_TIERS
 
 
 class FeatureFlagOverrideBase(BaseModel):
@@ -149,3 +148,32 @@ class UserFeaturesResponse(BaseModel):
 
     features: Dict[str, Dict[str, Any]]  # slug -> {enabled, config, usage}
     tier: str
+
+
+# --- Plan Tier Comparison Schemas ---
+
+class TierFlagInfo(BaseModel):
+    """Resolved flag info for a specific tier."""
+
+    enabled: bool
+    config: Dict[str, Any]
+    has_override: bool = False
+    config_override: Optional[Dict[str, Any]] = None
+
+
+class PlanTierFlag(BaseModel):
+    """A feature flag with its resolved state across all tiers."""
+
+    slug: str
+    name: str
+    description: Optional[str] = None
+    global_enabled: bool
+    global_config: Dict[str, Any]
+    per_tier: Dict[str, TierFlagInfo]  # tier name -> resolved info
+
+
+class PlanTiersResponse(BaseModel):
+    """Response for the plan tiers comparison view."""
+
+    tiers: List[str]
+    flags: List[PlanTierFlag]
