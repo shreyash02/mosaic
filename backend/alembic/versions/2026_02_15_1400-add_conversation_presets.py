@@ -1,7 +1,7 @@
 """Add conversation presets table
 
 Revision ID: add_conversation_presets
-Revises: seed_tier_limits
+Revises: add_analysis_schedule_fields
 Create Date: 2026-02-15 14:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 # revision identifiers, used by Alembic.
 revision: str = 'add_conversation_presets'
-down_revision: Union[str, None] = 'seed_tier_limits'
+down_revision: Union[str, None] = 'add_analysis_schedule_fields'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
