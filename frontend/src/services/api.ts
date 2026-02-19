@@ -141,6 +141,9 @@ class ApiService {
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
+          // Skip redirect for admin pages — they manage their own auth
+          const isAdminPage = window.location.pathname.startsWith('/adminportal');
+
           const refreshToken = localStorage.getItem('refresh_token');
           if (refreshToken) {
             try {
@@ -158,17 +161,21 @@ class ApiService {
               originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
               return this.client(originalRequest);
             } catch (refreshError) {
-              // Refresh failed, clear tokens and redirect to login
+              // Refresh failed, clear tokens
               localStorage.removeItem('access_token');
               localStorage.removeItem('refresh_token');
-              window.location.href = '/login';
+              if (!isAdminPage) {
+                window.location.href = '/login';
+              }
               return Promise.reject(refreshError);
             }
           } else {
-            // No refresh token, redirect to login
+            // No refresh token, clear tokens
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            window.location.href = '/login';
+            if (!isAdminPage) {
+              window.location.href = '/login';
+            }
           }
         }
         // Network errors (no response) — show as toast, not inline
