@@ -10,6 +10,7 @@ const PROMPT_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'rating', label: 'Rating' },
   { value: 'single_choice', label: 'Choice' },
+  { value: 'checkbox', label: 'Checklist' },
 ];
 
 const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
@@ -346,7 +347,7 @@ export default function JournalCreatePage() {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' | 'single_choice'; choices?: string[] }[]>([
+  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' | 'single_choice' | 'checkbox'; choices?: string[] }[]>([
     { text: '', type: 'text' },
   ]);
   const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
@@ -452,7 +453,10 @@ export default function JournalCreatePage() {
       navigate(`/journals/${journal.id}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create journal';
-      setError(message);
+      // Network errors are shown as toasts by the API interceptor
+      if (message !== '__network_error__') {
+        setError(message);
+      }
       setCreating(false);
     }
   };
@@ -575,11 +579,11 @@ export default function JournalCreatePage() {
                         value={prompt.type}
                         options={PROMPT_TYPES}
                         onChange={v => {
-                          const newType = v as 'text' | 'rating' | 'single_choice';
+                          const newType = v as 'text' | 'rating' | 'single_choice' | 'checkbox';
                           setPrompts(prev => prev.map((p, i) => i === index ? {
                             ...p,
                             type: newType,
-                            choices: newType === 'single_choice' ? (p.choices || ['Yes', 'No']) : undefined,
+                            choices: (newType === 'single_choice' || newType === 'checkbox') ? (p.choices || ['Item 1', 'Item 2']) : undefined,
                           } : p));
                         }}
                         minWidth="100px"
@@ -598,7 +602,7 @@ export default function JournalCreatePage() {
                         </button>
                       )}
                     </div>
-                    {prompt.type === 'single_choice' && (
+                    {(prompt.type === 'single_choice' || prompt.type === 'checkbox') && (
                       <input
                         style={{
                           ...s.promptInput,

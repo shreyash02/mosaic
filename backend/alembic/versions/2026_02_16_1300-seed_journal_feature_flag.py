@@ -33,9 +33,9 @@ JOURNAL_FLAG = {
         "journal_analyses_per_month": -1,
     },
     "tier_overrides": {
-        "free": {"max_journals": 1, "max_entries_per_journal": 50, "journal_analyses_per_month": 2},
-        "basic": {"max_journals": 3, "max_entries_per_journal": 200, "journal_analyses_per_month": 5},
-        "pro": {"max_journals": 10, "max_entries_per_journal": -1, "journal_analyses_per_month": 20},
+        "free": {"max_journals": 3, "max_entries_per_journal": 100, "journal_analyses_per_month": 4},
+        "basic": {"max_journals": 10, "max_entries_per_journal": 500, "journal_analyses_per_month": 15},
+        "pro": {"max_journals": 50, "max_entries_per_journal": -1, "journal_analyses_per_month": -1},
         "enterprise": {"max_journals": -1, "max_entries_per_journal": -1, "journal_analyses_per_month": -1},
     },
 }

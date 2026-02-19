@@ -91,11 +91,19 @@ import type {
   JournalDraftLoadResponse,
   JournalEntryDate,
   JournalAnalysisSummary,
+  JournalShareCreate,
+  JournalShare,
+  JournalShareListResponse,
+  SharedJournalListItem,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
 const API_BASE_URL = import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+
+// Event target for network-level errors that should show as toasts, not inline errors.
+// NotificationContext listens for these and shows auto-dismissing toasts.
+export const apiEvents = new EventTarget();
 
 class ApiService {
   private client: AxiosInstance;
@@ -158,6 +166,20 @@ class ApiService {
             localStorage.removeItem('refresh_token');
             window.location.href = '/login';
           }
+        }
+        // Network errors (no response) — show as toast, not inline
+        if (!error.response) {
+          apiEvents.dispatchEvent(new CustomEvent('network-error', {
+            detail: { message: 'Unable to connect. Please check your connection and try again.' },
+          }));
+          return Promise.reject(new Error('__network_error__'));
+        }
+
+        // Replace axios message with backend detail so err.message is human-readable.
+        // Keeps err.response intact for callers that access err.response.data.detail.
+        const detail = (error.response?.data as Record<string, unknown>)?.detail;
+        if (typeof detail === 'string') {
+          error.message = detail;
         }
         return Promise.reject(error);
       }
@@ -1140,6 +1162,58 @@ class ApiService {
 
   async listJournalAnalyses(journalId: string): Promise<JournalAnalysisSummary[]> {
     const response = await this.client.get<JournalAnalysisSummary[]>(`/journals/${journalId}/analyses`);
+    return response.data;
+  }
+
+  // --- Journal sharing ---
+
+  async createJournalShare(journalId: string, data: JournalShareCreate): Promise<JournalShare> {
+    const response = await this.client.post<JournalShare>(`/journals/${journalId}/shares`, data);
+    return response.data;
+  }
+
+  async listJournalShares(journalId: string): Promise<JournalShareListResponse> {
+    const response = await this.client.get<JournalShareListResponse>(`/journals/${journalId}/shares`);
+    return response.data;
+  }
+
+  async revokeJournalShare(journalId: string, shareId: string): Promise<void> {
+    await this.client.delete(`/journals/${journalId}/shares/${shareId}`);
+  }
+
+  async acceptJournalShare(token: string): Promise<{ status: string; journal_id: string; share_type: string }> {
+    const response = await this.client.post<{ status: string; journal_id: string; share_type: string }>(
+      `/journals/accept-share/${token}`,
+      {}
+    );
+    return response.data;
+  }
+
+  async getSharedJournals(): Promise<SharedJournalListItem[]> {
+    const response = await this.client.get<SharedJournalListItem[]>('/journals/shared-with-me');
+    return response.data;
+  }
+
+  async getSharedJournal(journalId: string): Promise<Journal> {
+    const response = await this.client.get<Journal>(`/journals/shared/${journalId}`);
+    return response.data;
+  }
+
+  async getSharedJournalEntries(
+    journalId: string,
+    options?: { skip?: number; limit?: number }
+  ): Promise<JournalEntryList> {
+    const params = new URLSearchParams();
+    if (options?.skip !== undefined) params.append('skip', String(options.skip));
+    if (options?.limit !== undefined) params.append('limit', String(options.limit));
+    const queryString = params.toString();
+    const url = `/journals/shared/${journalId}/entries${queryString ? `?${queryString}` : ''}`;
+    const response = await this.client.get<JournalEntryList>(url);
+    return response.data;
+  }
+
+  async getSharedJournalAnalysis(journalId: string): Promise<JournalAnalysisStatus> {
+    const response = await this.client.get<JournalAnalysisStatus>(`/journals/shared/${journalId}/analysis`);
     return response.data;
   }
 }

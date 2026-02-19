@@ -16,11 +16,13 @@ interface UseJournalDraftReturn {
     responses: Record<string, string>;
     ratingResponses: Record<string, number>;
     choiceResponses: Record<string, string>;
+    checkboxResponses: Record<string, string[]>;
   } | null>;
   updateDraft: (
     responses: Record<string, string>,
     ratingResponses: Record<string, number>,
     choiceResponses: Record<string, string>,
+    checkboxResponses: Record<string, string[]>,
   ) => void;
   saveDraftNow: () => Promise<void>;
   clearDraft: () => Promise<void>;
@@ -42,6 +44,7 @@ export function useJournalDraft({
     responses: Record<string, string>;
     ratingResponses: Record<string, number>;
     choiceResponses: Record<string, string>;
+    checkboxResponses: Record<string, string[]>;
   } | null>(null);
   const hasUnsavedServerChanges = useRef(false);
   const localDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +56,7 @@ export function useJournalDraft({
     responses: Record<string, string>,
     ratingResponses: Record<string, number>,
     choiceResponses: Record<string, string>,
+    checkboxResponses: Record<string, string[]>,
   ) => {
     if (!journalId) return;
     const draft: JournalLocalDraft = {
@@ -60,6 +64,7 @@ export function useJournalDraft({
       responses,
       ratingResponses,
       choiceResponses,
+      checkboxResponses,
       lastSavedAt: new Date().toISOString(),
     };
     try {
@@ -74,13 +79,14 @@ export function useJournalDraft({
     if (!journalId || !currentData.current || !hasUnsavedServerChanges.current) return;
     if (!isMounted.current) return;
 
-    const { responses, ratingResponses, choiceResponses } = currentData.current;
+    const { responses, ratingResponses, choiceResponses, checkboxResponses } = currentData.current;
 
     // Check if draft has any content
     const hasContent =
       Object.values(responses).some(v => v.trim().length > 0) ||
       Object.keys(ratingResponses).length > 0 ||
-      Object.values(choiceResponses).some(v => v.length > 0);
+      Object.values(choiceResponses).some(v => v.length > 0) ||
+      Object.values(checkboxResponses).some(v => v.length > 0);
 
     if (!hasContent) return;
 
@@ -90,6 +96,7 @@ export function useJournalDraft({
         responses,
         rating_responses: ratingResponses,
         choice_responses: choiceResponses,
+        checkbox_responses: checkboxResponses,
       });
       if (isMounted.current) {
         hasUnsavedServerChanges.current = false;
@@ -124,6 +131,7 @@ export function useJournalDraft({
       responses: Record<string, string>;
       ratingResponses: Record<string, number>;
       choiceResponses: Record<string, string>;
+      checkboxResponses: Record<string, string[]>;
       lastSavedAt: string;
     } | null = null;
 
@@ -134,6 +142,7 @@ export function useJournalDraft({
           responses: result.responses,
           ratingResponses: result.rating_responses,
           choiceResponses: result.choice_responses,
+          checkboxResponses: result.checkbox_responses || {},
           lastSavedAt: result.last_saved_at,
         };
       }
@@ -148,6 +157,7 @@ export function useJournalDraft({
       responses: Record<string, string>;
       ratingResponses: Record<string, number>;
       choiceResponses: Record<string, string>;
+      checkboxResponses: Record<string, string[]>;
     };
 
     if (localDraft && serverDraft) {
@@ -158,6 +168,7 @@ export function useJournalDraft({
           responses: localDraft.responses,
           ratingResponses: localDraft.ratingResponses,
           choiceResponses: localDraft.choiceResponses,
+          checkboxResponses: localDraft.checkboxResponses || {},
         };
         setLastSavedAt(localDraft.lastSavedAt);
       } else {
@@ -165,6 +176,7 @@ export function useJournalDraft({
           responses: serverDraft.responses,
           ratingResponses: serverDraft.ratingResponses,
           choiceResponses: serverDraft.choiceResponses,
+          checkboxResponses: serverDraft.checkboxResponses,
         };
         setLastSavedAt(serverDraft.lastSavedAt);
       }
@@ -173,6 +185,7 @@ export function useJournalDraft({
         responses: localDraft.responses,
         ratingResponses: localDraft.ratingResponses,
         choiceResponses: localDraft.choiceResponses,
+        checkboxResponses: localDraft.checkboxResponses || {},
       };
       setLastSavedAt(localDraft.lastSavedAt);
     } else {
@@ -180,6 +193,7 @@ export function useJournalDraft({
         responses: serverDraft!.responses,
         ratingResponses: serverDraft!.ratingResponses,
         choiceResponses: serverDraft!.choiceResponses,
+        checkboxResponses: serverDraft!.checkboxResponses,
       };
       setLastSavedAt(serverDraft!.lastSavedAt);
     }
@@ -188,7 +202,8 @@ export function useJournalDraft({
     const hasContent =
       Object.values(chosen.responses).some(v => v.trim().length > 0) ||
       Object.keys(chosen.ratingResponses).length > 0 ||
-      Object.values(chosen.choiceResponses).some(v => v.length > 0);
+      Object.values(chosen.choiceResponses).some(v => v.length > 0) ||
+      Object.values(chosen.checkboxResponses).some(v => v.length > 0);
 
     if (!hasContent) return null;
 
@@ -202,10 +217,11 @@ export function useJournalDraft({
     responses: Record<string, string>,
     ratingResponses: Record<string, number>,
     choiceResponses: Record<string, string>,
+    checkboxResponses: Record<string, string[]>,
   ) => {
     if (!journalId || !enabled) return;
 
-    currentData.current = { responses, ratingResponses, choiceResponses };
+    currentData.current = { responses, ratingResponses, choiceResponses, checkboxResponses };
     hasUnsavedServerChanges.current = true;
     setDraftStatus('unsaved');
 
@@ -214,7 +230,7 @@ export function useJournalDraft({
       clearTimeout(localDebounceTimer.current);
     }
     localDebounceTimer.current = setTimeout(() => {
-      saveToLocal(responses, ratingResponses, choiceResponses);
+      saveToLocal(responses, ratingResponses, choiceResponses, checkboxResponses);
     }, LOCAL_DEBOUNCE_MS);
   }, [journalId, enabled, saveToLocal]);
 
@@ -222,8 +238,8 @@ export function useJournalDraft({
   const saveDraftNow = useCallback(async () => {
     if (!journalId || !currentData.current) return;
     // Save to localStorage immediately
-    const { responses, ratingResponses, choiceResponses } = currentData.current;
-    saveToLocal(responses, ratingResponses, choiceResponses);
+    const { responses, ratingResponses, choiceResponses, checkboxResponses } = currentData.current;
+    saveToLocal(responses, ratingResponses, choiceResponses, checkboxResponses);
     hasUnsavedServerChanges.current = true;
     await saveToServer();
   }, [journalId, saveToLocal, saveToServer]);
@@ -273,8 +289,8 @@ export function useJournalDraft({
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (currentData.current && hasUnsavedServerChanges.current) {
         // Save to localStorage synchronously
-        const { responses, ratingResponses, choiceResponses } = currentData.current;
-        saveToLocal(responses, ratingResponses, choiceResponses);
+        const { responses, ratingResponses, choiceResponses, checkboxResponses } = currentData.current;
+        saveToLocal(responses, ratingResponses, choiceResponses, checkboxResponses);
         e.preventDefault();
       }
     };

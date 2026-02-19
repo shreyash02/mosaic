@@ -13,6 +13,7 @@ const PROMPT_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'rating', label: 'Rating' },
   { value: 'single_choice', label: 'Choice' },
+  { value: 'checkbox', label: 'Checklist' },
 ];
 
 const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
@@ -319,7 +320,7 @@ export default function JournalSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' | 'single_choice'; choices?: string[] }[]>([]);
+  const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' | 'single_choice' | 'checkbox'; choices?: string[] }[]>([]);
   const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
   const [entryFrequency, setEntryFrequency] = useState<EntryFrequency>('daily');
   const [analysisTimeOfDay, setAnalysisTimeOfDay] = useState('09:00');
@@ -453,7 +454,9 @@ export default function JournalSettingsPage() {
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save settings';
-      setError(message);
+      if (message !== '__network_error__') {
+        setError(message);
+      }
     } finally {
       setSaving(false);
     }
@@ -598,11 +601,11 @@ export default function JournalSettingsPage() {
                         value={prompt.type}
                         options={PROMPT_TYPES}
                         onChange={v => {
-                          const newType = v as 'text' | 'rating' | 'single_choice';
+                          const newType = v as 'text' | 'rating' | 'single_choice' | 'checkbox';
                           setPrompts(prev => prev.map((p, i) => i === index ? {
                             ...p,
                             type: newType,
-                            choices: newType === 'single_choice' ? (p.choices || ['Yes', 'No']) : undefined,
+                            choices: (newType === 'single_choice' || newType === 'checkbox') ? (p.choices || ['Item 1', 'Item 2']) : undefined,
                           } : p));
                         }}
                         minWidth="100px"
@@ -621,7 +624,7 @@ export default function JournalSettingsPage() {
                         </button>
                       )}
                     </div>
-                    {prompt.type === 'single_choice' && (
+                    {(prompt.type === 'single_choice' || prompt.type === 'checkbox') && (
                       <input
                         style={{
                           ...s.promptInput,

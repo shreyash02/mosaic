@@ -141,6 +141,7 @@ def run_journal_analysis_task(journal_id: UUID, db_url: str):
                         "text": r.get("text"),
                         "rating_value": r.get("rating_value"),
                         "choice_value": r.get("choice_value"),
+                        "choice_values": r.get("choice_values"),
                     })
             else:
                 # Legacy single-text entry
@@ -260,6 +261,7 @@ def run_entry_analysis_task(response_id: UUID, journal_id: UUID, db_url: str):
                     "text": r.get("text"),
                     "rating_value": r.get("rating_value"),
                     "choice_value": r.get("choice_value"),
+                    "choice_values": r.get("choice_values"),
                 })
 
         entry_date = response.submitted_at or response.last_saved_at
@@ -295,6 +297,7 @@ def run_entry_analysis_task(response_id: UUID, journal_id: UUID, db_url: str):
                         "text": r.get("text"),
                         "rating_value": r.get("rating_value"),
                         "choice_value": r.get("choice_value"),
+                        "choice_values": r.get("choice_values"),
                     })
             rd = resp.submitted_at or resp.last_saved_at
             recent_entries.append({
@@ -442,6 +445,7 @@ def _response_to_entry(
                 text=r.get("text"),
                 rating_value=r.get("rating_value"),
                 choice_value=r.get("choice_value"),
+                choice_values=r.get("choice_values"),
             ))
     else:
         # Legacy: single-text entry without structured data
@@ -495,6 +499,9 @@ def _build_response_text(responses: list, question_map: dict[str, Question]) -> 
             parts.append(f"**{prompt_text}**\n{r.rating_value}")
         elif r.choice_value is not None:
             parts.append(f"**{prompt_text}**\n{r.choice_value}")
+        elif r.choice_values is not None:
+            checked = ", ".join(r.choice_values) if r.choice_values else "(none checked)"
+            parts.append(f"**{prompt_text}**\n{checked}")
     return "\n\n".join(parts)
 
 
@@ -509,6 +516,7 @@ def _build_response_data(responses: list, question_map: dict[str, Question]) -> 
                 "text": r.text,
                 "rating_value": r.rating_value,
                 "choice_value": r.choice_value,
+                "choice_values": r.choice_values,
             }
             for r in responses
         ]
@@ -820,7 +828,7 @@ async def create_journal(
                 "rating_min": prompt.rating_min or 1,
                 "rating_max": prompt.rating_max or 10,
             }
-        elif prompt.type == "single_choice" and prompt.choices:
+        elif prompt.type in ("single_choice", "checkbox") and prompt.choices:
             options = {"choices": prompt.choices}
         question = Question(
             conversation_id=conversation.id,
@@ -1002,7 +1010,7 @@ async def update_journal(
                     "rating_min": prompt.rating_min or 1,
                     "rating_max": prompt.rating_max or 10,
                 }
-            elif prompt.type == "single_choice" and prompt.choices:
+            elif prompt.type in ("single_choice", "checkbox") and prompt.choices:
                 options = {"choices": prompt.choices}
             question = Question(
                 conversation_id=conv.id,
@@ -1409,6 +1417,7 @@ async def save_journal_draft(
         "responses": data.responses,
         "rating_responses": data.rating_responses,
         "choice_responses": data.choice_responses,
+        "checkbox_responses": data.checkbox_responses,
     }
 
     draft = Response(
@@ -1459,6 +1468,7 @@ async def load_journal_draft(
         responses=draft.response_data.get("responses", {}),
         rating_responses=draft.response_data.get("rating_responses", {}),
         choice_responses=draft.response_data.get("choice_responses", {}),
+        checkbox_responses=draft.response_data.get("checkbox_responses", {}),
     )
 
 

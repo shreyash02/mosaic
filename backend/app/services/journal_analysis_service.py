@@ -281,6 +281,9 @@ Guidelines:
                     response_lines.append(f"  {prompt_text}: {r['rating_value']}")
                 elif r.get("type") == "single_choice" and r.get("choice_value"):
                     response_lines.append(f"  {prompt_text}: {r['choice_value']}")
+                elif r.get("type") == "checkbox" and r.get("choice_values"):
+                    checked = ", ".join(r["choice_values"])
+                    response_lines.append(f"  {prompt_text}: [{checked}]")
                 elif r.get("text"):
                     response_lines.append(f"  {prompt_text}:\n  {r['text']}")
             parts.append(header + "\n" + "\n".join(response_lines))
@@ -296,6 +299,9 @@ Guidelines:
             elif ptype == "single_choice":
                 choices = p.get("choices", [])
                 parts.append(f"- {p['text']} (choices: {', '.join(choices)})")
+            elif ptype == "checkbox":
+                choices = p.get("choices", [])
+                parts.append(f"- {p['text']} (checklist: {', '.join(choices)})")
             else:
                 parts.append(f"- {p['text']} (free text)")
         return "\n".join(parts)

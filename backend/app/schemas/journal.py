@@ -63,7 +63,7 @@ class JournalPromptCreate(BaseModel):
     """A prompt in a journal creation request."""
 
     text: str = Field(..., min_length=1, max_length=2000)
-    type: str = Field("text", pattern="^(text|rating|single_choice)$")
+    type: str = Field("text", pattern="^(text|rating|single_choice|checkbox)$")
     order_index: int = Field(..., ge=0)
     rating_min: Optional[int] = None
     rating_max: Optional[int] = None
@@ -196,6 +196,7 @@ class PromptResponse(BaseModel):
     text: Optional[str] = Field(None, max_length=50000)
     rating_value: Optional[int] = None
     choice_value: Optional[str] = None
+    choice_values: Optional[List[str]] = None
 
 
 class JournalEntryCreate(BaseModel):
@@ -220,6 +221,7 @@ class EntryPromptResponse(BaseModel):
     text: Optional[str] = None
     rating_value: Optional[int] = None
     choice_value: Optional[str] = None
+    choice_values: Optional[List[str]] = None
 
 
 class JournalEntryAnalysisResponse(BaseModel):
@@ -346,7 +348,7 @@ class JournalTemplatePrompt(BaseModel):
     """A prompt definition within a journal template."""
 
     text: str
-    type: str  # text, rating, single_choice
+    type: str  # text, rating, single_choice, checkbox
     choices: Optional[List[str]] = None
 
 
@@ -416,6 +418,7 @@ class JournalDraftSave(BaseModel):
     responses: Dict[str, str] = Field(default_factory=dict)
     rating_responses: Dict[str, int] = Field(default_factory=dict)
     choice_responses: Dict[str, str] = Field(default_factory=dict)
+    checkbox_responses: Dict[str, List[str]] = Field(default_factory=dict)
 
 
 class JournalDraftLoad(BaseModel):
@@ -426,6 +429,7 @@ class JournalDraftLoad(BaseModel):
     responses: Dict[str, str] = Field(default_factory=dict)
     rating_responses: Dict[str, int] = Field(default_factory=dict)
     choice_responses: Dict[str, str] = Field(default_factory=dict)
+    checkbox_responses: Dict[str, List[str]] = Field(default_factory=dict)
 
 
 class JournalDraftSaveResponse(BaseModel):

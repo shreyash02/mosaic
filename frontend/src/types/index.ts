@@ -1219,7 +1219,7 @@ export type EntryFrequency = 'every_minute' | 'daily' | 'weekly' | 'biweekly' | 
 export interface JournalPrompt {
   id: string;
   text: string;
-  type: 'text' | 'rating' | 'single_choice';
+  type: 'text' | 'rating' | 'single_choice' | 'checkbox';
   order_index: number;
   rating_min?: number;
   rating_max?: number;
@@ -1228,7 +1228,7 @@ export interface JournalPrompt {
 
 export interface JournalPromptCreate {
   text: string;
-  type: 'text' | 'rating' | 'single_choice';
+  type: 'text' | 'rating' | 'single_choice' | 'checkbox';
   order_index: number;
   rating_min?: number;
   rating_max?: number;
@@ -1302,15 +1302,17 @@ export interface PromptResponse {
   text?: string;
   rating_value?: number;
   choice_value?: string;
+  choice_values?: string[];
 }
 
 export interface EntryPromptResponse {
   prompt_id: string;
   prompt_text: string;
-  type: 'text' | 'rating' | 'single_choice';
+  type: 'text' | 'rating' | 'single_choice' | 'checkbox';
   text?: string;
   rating_value?: number;
   choice_value?: string;
+  choice_values?: string[];
 }
 
 export interface JournalEntryAnalysis {
@@ -1411,7 +1413,7 @@ export interface JournalAnalysisStatus {
 // Journal templates (admin-managed)
 export interface JournalTemplatePrompt {
   text: string;
-  type: 'text' | 'rating' | 'single_choice';
+  type: 'text' | 'rating' | 'single_choice' | 'checkbox';
   choices?: string[];
 }
 
@@ -1435,6 +1437,7 @@ export interface JournalDraftData {
   responses: Record<string, string>;
   rating_responses: Record<string, number>;
   choice_responses: Record<string, string>;
+  checkbox_responses: Record<string, string[]>;
 }
 
 export interface JournalDraftSaveResponse {
@@ -1449,6 +1452,7 @@ export interface JournalDraftLoadResponse {
   responses: Record<string, string>;
   rating_responses: Record<string, number>;
   choice_responses: Record<string, string>;
+  checkbox_responses: Record<string, string[]>;
 }
 
 export interface JournalLocalDraft {
@@ -1456,6 +1460,7 @@ export interface JournalLocalDraft {
   responses: Record<string, string>;
   ratingResponses: Record<string, number>;
   choiceResponses: Record<string, string>;
+  checkboxResponses: Record<string, string[]>;
   lastSavedAt: string;
 }
 

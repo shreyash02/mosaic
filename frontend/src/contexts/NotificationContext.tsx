@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo, useRef } from 'react';
-import { api } from '../services/api';
+import { api, apiEvents } from '../services/api';
 import { useAuth } from './AuthContext';
 import type { Notification } from '../types';
 
@@ -104,6 +104,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Keep ref updated
   addToastRef.current = addToast;
+
+  // Listen for network errors from the API interceptor
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const message = (e as CustomEvent).detail?.message || 'Connection lost. Please try again.';
+      addToastRef.current?.({ type: 'error', title: 'Connection issue', message });
+    };
+    apiEvents.addEventListener('network-error', handler);
+    return () => apiEvents.removeEventListener('network-error', handler);
+  }, []);
 
   // Setup SSE connection
   const setupEventSource = useCallback(() => {

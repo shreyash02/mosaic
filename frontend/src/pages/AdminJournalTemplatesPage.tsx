@@ -87,7 +87,7 @@ export default function AdminJournalTemplatesPage() {
       setError('');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load templates';
-      setError(message);
+      if (message !== '__network_error__') setError(message);
     } finally {
       setLoading(false);
     }
@@ -167,7 +167,7 @@ export default function AdminJournalTemplatesPage() {
       await loadTemplates();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save template';
-      setError(message);
+      if (message !== '__network_error__') setError(message);
     } finally {
       setSaving(false);
     }
@@ -182,7 +182,7 @@ export default function AdminJournalTemplatesPage() {
       await loadTemplates();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to delete template';
-      setError(message);
+      if (message !== '__network_error__') setError(message);
     }
   };
 

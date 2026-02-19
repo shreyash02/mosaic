@@ -653,6 +653,7 @@ export default function JournalDetailPage() {
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [ratingResponses, setRatingResponses] = useState<Record<string, number>>({});
   const [choiceResponses, setChoiceResponses] = useState<Record<string, string>>({});
+  const [checkboxResponses, setCheckboxResponses] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -661,6 +662,7 @@ export default function JournalDetailPage() {
   const [editResponses, setEditResponses] = useState<Record<string, string>>({});
   const [editRatingResponses, setEditRatingResponses] = useState<Record<string, number>>({});
   const [editChoiceResponses, setEditChoiceResponses] = useState<Record<string, string>>({});
+  const [editCheckboxResponses, setEditCheckboxResponses] = useState<Record<string, string[]>>({});
   const [editSaving, setEditSaving] = useState(false);
 
   // Expanded entries
@@ -759,6 +761,7 @@ export default function JournalDetailPage() {
         setResponses(draft.responses);
         setRatingResponses(draft.ratingResponses);
         setChoiceResponses(draft.choiceResponses);
+        setCheckboxResponses(draft.checkboxResponses || {});
         // Auto-resize textareas after restoring draft
         requestAnimationFrame(() => {
           Object.entries(textareaRefs.current).forEach(([, ta]) => {
@@ -772,7 +775,7 @@ export default function JournalDetailPage() {
   // Propagate form changes to draft hook
   const prevFormData = useRef<string>('');
   useEffect(() => {
-    const key = JSON.stringify({ responses, ratingResponses, choiceResponses });
+    const key = JSON.stringify({ responses, ratingResponses, choiceResponses, checkboxResponses });
     if (key === prevFormData.current) return;
     prevFormData.current = key;
 
@@ -780,11 +783,12 @@ export default function JournalDetailPage() {
     const hasAny =
       Object.values(responses).some(v => v.trim().length > 0) ||
       Object.keys(ratingResponses).length > 0 ||
-      Object.values(choiceResponses).some(v => v.length > 0);
+      Object.values(choiceResponses).some(v => v.length > 0) ||
+      Object.values(checkboxResponses).some(v => v.length > 0);
     if (hasAny) {
-      updateDraft(responses, ratingResponses, choiceResponses);
+      updateDraft(responses, ratingResponses, choiceResponses, checkboxResponses);
     }
-  }, [responses, ratingResponses, choiceResponses, updateDraft]);
+  }, [responses, ratingResponses, choiceResponses, checkboxResponses, updateDraft]);
 
   // Compute available periods for retroactive entry filling
   const availablePeriods = useMemo(() => {
@@ -893,7 +897,7 @@ export default function JournalDetailPage() {
     return periods;
   }, [journal, entries]);
 
-  const buildResponses = (prompts: JournalPrompt[], textMap: Record<string, string>, ratingMap: Record<string, number>, choiceMap: Record<string, string>): PromptResponse[] => {
+  const buildResponses = (prompts: JournalPrompt[], textMap: Record<string, string>, ratingMap: Record<string, number>, choiceMap: Record<string, string>, checkboxMap: Record<string, string[]>): PromptResponse[] => {
     return prompts.map(p => {
       const resp: PromptResponse = { prompt_id: p.id };
       if (p.type === 'rating') {
@@ -905,6 +909,9 @@ export default function JournalDetailPage() {
       if (p.type === 'single_choice') {
         resp.choice_value = choiceMap[p.id] || undefined;
       }
+      if (p.type === 'checkbox') {
+        resp.choice_values = checkboxMap[p.id] || [];
+      }
       return resp;
     });
   };
@@ -915,6 +922,7 @@ export default function JournalDetailPage() {
       if (p.type === 'text') return (responses[p.id] || '').trim().length > 0;
       if (p.type === 'rating') return ratingResponses[p.id] !== undefined;
       if (p.type === 'single_choice') return !!choiceResponses[p.id];
+      if (p.type === 'checkbox') return (checkboxResponses[p.id] || []).length > 0;
       return false;
     });
   };
@@ -925,7 +933,7 @@ export default function JournalDetailPage() {
       setSaving(true);
       setSaveError('');
       const createData: { responses: PromptResponse[]; entry_date?: string } = {
-        responses: buildResponses(journal.prompts, responses, ratingResponses, choiceResponses),
+        responses: buildResponses(journal.prompts, responses, ratingResponses, choiceResponses, checkboxResponses),
       };
       if (selectedPeriod) {
         createData.entry_date = selectedPeriod;
@@ -934,6 +942,7 @@ export default function JournalDetailPage() {
       setResponses({});
       setRatingResponses({});
       setChoiceResponses({});
+      setCheckboxResponses({});
       setSelectedPeriod(null);
       // Clear draft from both sources
       await clearDraft();
@@ -959,15 +968,18 @@ export default function JournalDetailPage() {
     const textMap: Record<string, string> = {};
     const ratingMap: Record<string, number> = {};
     const choiceMap: Record<string, string> = {};
+    const checkboxMap: Record<string, string[]> = {};
     for (const r of entry.responses) {
       if (r.type === 'text' && r.text) textMap[r.prompt_id] = r.text;
       if (r.type === 'rating' && r.rating_value !== undefined) ratingMap[r.prompt_id] = r.rating_value;
       if (r.type === 'single_choice' && r.choice_value) choiceMap[r.prompt_id] = r.choice_value;
+      if (r.type === 'checkbox' && r.choice_values) checkboxMap[r.prompt_id] = [...r.choice_values];
     }
     setEditingId(entry.id);
     setEditResponses(textMap);
     setEditRatingResponses(ratingMap);
     setEditChoiceResponses(choiceMap);
+    setEditCheckboxResponses(checkboxMap);
   };
 
   const handleEditSave = async (entryId: string) => {
@@ -975,13 +987,14 @@ export default function JournalDetailPage() {
     try {
       setEditSaving(true);
       const updated = await api.updateJournalEntry(id, entryId, {
-        responses: buildResponses(journal.prompts, editResponses, editRatingResponses, editChoiceResponses),
+        responses: buildResponses(journal.prompts, editResponses, editRatingResponses, editChoiceResponses, editCheckboxResponses),
       });
       setEntries(prev => prev.map(e => e.id === entryId ? updated : e));
       setEditingId(null);
       setEditResponses({});
       setEditRatingResponses({});
       setEditChoiceResponses({});
+      setEditCheckboxResponses({});
     } catch {
       // Keep edit mode open on error
     } finally {
@@ -1237,8 +1250,65 @@ export default function JournalDetailPage() {
                 })}
               </div>
             )}
-            {journal.prompts.map(prompt => (
+            {journal.prompts.map(prompt => {
+              const isSingleCheckbox = prompt.type === 'checkbox' && (!prompt.choices || prompt.choices.length === 0);
+              return (
               <div key={prompt.id} style={s.promptGroup}>
+                {isSingleCheckbox ? (
+                  /* Single checkbox: prompt text is the label, shown inline with checkbox */
+                  (() => {
+                    const checked = (checkboxResponses[prompt.id] || []).includes('checked');
+                    return (
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: spacing[3],
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => {
+                          setCheckboxResponses(prev => {
+                            const current = prev[prompt.id] || [];
+                            const next = checked
+                              ? current.filter(v => v !== 'checked')
+                              : [...current, 'checked'];
+                            return { ...prev, [prompt.id]: next };
+                          });
+                        }}
+                      >
+                        <span style={{
+                          width: '20px',
+                          height: '20px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: borders.radius.sm,
+                          border: `2px solid ${checked ? 'var(--color-primary-900)' : 'var(--color-primary-300)'}`,
+                          backgroundColor: checked ? 'var(--color-primary-900)' : 'transparent',
+                          flexShrink: 0,
+                          transition: 'all 150ms',
+                          cursor: 'pointer',
+                        }}>
+                          {checked && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          )}
+                        </span>
+                        <span style={{
+                          fontSize: typography.fontSize.sm,
+                          fontWeight: typography.fontWeight.medium,
+                          color: checked ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                          textDecoration: checked ? 'line-through' : 'none',
+                          transition: 'all 150ms',
+                        }}>
+                          {prompt.text}
+                        </span>
+                      </label>
+                    );
+                  })()
+                ) : (
+                  <>
                 <label style={s.promptLabel}>{prompt.text}</label>
                 {prompt.type === 'text' ? (
                   <textarea
@@ -1300,9 +1370,66 @@ export default function JournalDetailPage() {
                       );
                     })}
                   </div>
+                ) : prompt.type === 'checkbox' && prompt.choices && prompt.choices.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                    {prompt.choices.map((choice) => {
+                      const checked = (checkboxResponses[prompt.id] || []).includes(choice);
+                      return (
+                        <label
+                          key={choice}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: spacing[3],
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => {
+                            setCheckboxResponses(prev => {
+                              const current = prev[prompt.id] || [];
+                              const next = checked
+                                ? current.filter(v => v !== choice)
+                                : [...current, choice];
+                              return { ...prev, [prompt.id]: next };
+                            });
+                          }}
+                        >
+                          <span style={{
+                            width: '20px',
+                            height: '20px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: borders.radius.sm,
+                            border: `2px solid ${checked ? 'var(--color-primary-900)' : 'var(--color-primary-300)'}`,
+                            backgroundColor: checked ? 'var(--color-primary-900)' : 'transparent',
+                            flexShrink: 0,
+                            transition: 'all 150ms',
+                            cursor: 'pointer',
+                          }}>
+                            {checked && (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            )}
+                          </span>
+                          <span style={{
+                            fontSize: typography.fontSize.sm,
+                            textDecoration: checked ? 'line-through' : 'none',
+                            color: checked ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                            transition: 'all 150ms',
+                          }}>
+                            {choice}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 ) : null}
+                </>
+                )}
               </div>
-            ))}
+            );
+            })}
             {saveError && (
               <div style={{ ...s.error, marginTop: spacing[2], marginBottom: 0 }}>
                 {saveError}
@@ -1331,6 +1458,7 @@ export default function JournalDetailPage() {
                   setResponses({});
                   setRatingResponses({});
                   setChoiceResponses({});
+                  setCheckboxResponses({});
                   clearDraft();
                   Object.values(textareaRefs.current).forEach(ta => {
                     if (ta) ta.style.height = 'auto';
@@ -1420,8 +1548,63 @@ export default function JournalDetailPage() {
                     <>
                       {entry.responses.map(r => {
                         const promptDef = journal?.prompts.find(p => p.id === r.prompt_id);
+                        const isSingleCheckbox = r.type === 'checkbox' && (!promptDef?.choices || promptDef.choices.length === 0);
                         return (
                           <div key={r.prompt_id} style={s.promptGroup}>
+                            {isSingleCheckbox ? (
+                              (() => {
+                                const checked = (editCheckboxResponses[r.prompt_id] || []).includes('checked');
+                                return (
+                                  <label
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: spacing[3],
+                                      cursor: 'pointer',
+                                    }}
+                                    onClick={() => {
+                                      setEditCheckboxResponses(prev => {
+                                        const current = prev[r.prompt_id] || [];
+                                        const next = checked
+                                          ? current.filter(v => v !== 'checked')
+                                          : [...current, 'checked'];
+                                        return { ...prev, [r.prompt_id]: next };
+                                      });
+                                    }}
+                                  >
+                                    <span style={{
+                                      width: '20px',
+                                      height: '20px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: borders.radius.sm,
+                                      border: `2px solid ${checked ? 'var(--color-primary-900)' : 'var(--color-primary-300)'}`,
+                                      backgroundColor: checked ? 'var(--color-primary-900)' : 'transparent',
+                                      flexShrink: 0,
+                                      transition: 'all 150ms',
+                                      cursor: 'pointer',
+                                    }}>
+                                      {checked && (
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M20 6L9 17l-5-5" />
+                                        </svg>
+                                      )}
+                                    </span>
+                                    <span style={{
+                                      fontSize: typography.fontSize.sm,
+                                      fontWeight: typography.fontWeight.medium,
+                                      color: checked ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                                      textDecoration: checked ? 'line-through' : 'none',
+                                      transition: 'all 150ms',
+                                    }}>
+                                      {r.prompt_text}
+                                    </span>
+                                  </label>
+                                );
+                              })()
+                            ) : (
+                              <>
                             <label style={s.promptLabel}>{r.prompt_text}</label>
                             {r.type === 'text' ? (
                               <textarea
@@ -1474,7 +1657,63 @@ export default function JournalDetailPage() {
                                   );
                                 })}
                               </div>
+                            ) : r.type === 'checkbox' && promptDef?.choices && promptDef.choices.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                                {promptDef.choices.map((choice) => {
+                                  const checked = (editCheckboxResponses[r.prompt_id] || []).includes(choice);
+                                  return (
+                                    <label
+                                      key={choice}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: spacing[3],
+                                        cursor: 'pointer',
+                                      }}
+                                      onClick={() => {
+                                        setEditCheckboxResponses(prev => {
+                                          const current = prev[r.prompt_id] || [];
+                                          const next = checked
+                                            ? current.filter(v => v !== choice)
+                                            : [...current, choice];
+                                          return { ...prev, [r.prompt_id]: next };
+                                        });
+                                      }}
+                                    >
+                                      <span style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: borders.radius.sm,
+                                        border: `2px solid ${checked ? 'var(--color-primary-900)' : 'var(--color-primary-300)'}`,
+                                        backgroundColor: checked ? 'var(--color-primary-900)' : 'transparent',
+                                        flexShrink: 0,
+                                        transition: 'all 150ms',
+                                        cursor: 'pointer',
+                                      }}>
+                                        {checked && (
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20 6L9 17l-5-5" />
+                                          </svg>
+                                        )}
+                                      </span>
+                                      <span style={{
+                                        fontSize: typography.fontSize.sm,
+                                        textDecoration: checked ? 'line-through' : 'none',
+                                        color: checked ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                                        transition: 'all 150ms',
+                                      }}>
+                                        {choice}
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
                             ) : null}
+                              </>
+                            )}
                           </div>
                         );
                       })}
@@ -1496,6 +1735,7 @@ export default function JournalDetailPage() {
                             setEditResponses({});
                             setEditRatingResponses({});
                             setEditChoiceResponses({});
+                            setEditCheckboxResponses({});
                           }}
                         >
                           Cancel
@@ -1512,11 +1752,53 @@ export default function JournalDetailPage() {
                           ? fullText.slice(0, TRUNCATE_LENGTH) + '...'
                           : fullText;
 
+                        const entryPromptDef = journal?.prompts.find(p => p.id === r.prompt_id);
+                        const isEntrySingleCheckbox = r.type === 'checkbox' && (!entryPromptDef?.choices || entryPromptDef.choices.length === 0);
+
                         return (
                           <div key={r.prompt_id} style={{
                             ...s.entryResponse,
                             ...(i === entry.responses.length - 1 && !entry.analysis ? { marginBottom: 0 } : {}),
                           }}>
+                            {isEntrySingleCheckbox ? (
+                              (() => {
+                                const isChecked = (r.choice_values || []).includes('checked');
+                                return (
+                                  <span style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: spacing[2],
+                                  }}>
+                                    <span style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: borders.radius.sm,
+                                      border: `1.5px solid ${isChecked ? 'var(--color-primary-900)' : 'var(--color-primary-300)'}`,
+                                      backgroundColor: isChecked ? 'var(--color-primary-900)' : 'transparent',
+                                      flexShrink: 0,
+                                    }}>
+                                      {isChecked && (
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M20 6L9 17l-5-5" />
+                                        </svg>
+                                      )}
+                                    </span>
+                                    <span style={{
+                                      fontSize: typography.fontSize.sm,
+                                      fontWeight: typography.fontWeight.medium,
+                                      color: isChecked ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                                      textDecoration: isChecked ? 'line-through' : 'none',
+                                    }}>
+                                      {r.prompt_text}
+                                    </span>
+                                  </span>
+                                );
+                              })()
+                            ) : (
+                              <>
                             {showLabel && (
                               <div style={s.entryPromptText}>{r.prompt_text}</div>
                             )}
@@ -1524,8 +1806,49 @@ export default function JournalDetailPage() {
                               <div style={s.entryRating}>{r.rating_value}</div>
                             ) : r.type === 'single_choice' ? (
                               <div style={s.entryChoice}>{r.choice_value}</div>
+                            ) : r.type === 'checkbox' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+                                {(() => {
+                                  const allChoices = entryPromptDef?.choices || r.choice_values || [];
+                                  return allChoices.map((choice) => {
+                                    const isChecked = (r.choice_values || []).includes(choice);
+                                    return (
+                                      <span key={choice} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: spacing[2],
+                                        fontSize: typography.fontSize.sm,
+                                        color: isChecked ? 'var(--color-primary-700)' : 'var(--color-primary-400)',
+                                      }}>
+                                        <span style={{
+                                          width: '16px',
+                                          height: '16px',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          borderRadius: borders.radius.sm,
+                                          border: `1.5px solid ${isChecked ? 'var(--color-primary-900)' : 'var(--color-primary-300)'}`,
+                                          backgroundColor: isChecked ? 'var(--color-primary-900)' : 'transparent',
+                                          flexShrink: 0,
+                                        }}>
+                                          {isChecked && (
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                              <path d="M20 6L9 17l-5-5" />
+                                            </svg>
+                                          )}
+                                        </span>
+                                        <span style={{ textDecoration: isChecked ? 'line-through' : 'none' }}>
+                                          {choice}
+                                        </span>
+                                      </span>
+                                    );
+                                  });
+                                })()}
+                              </div>
                             ) : (
                               <div style={s.entryText}>{displayText}</div>
+                            )}
+                              </>
                             )}
                             {needsTruncation && (
                               <button
