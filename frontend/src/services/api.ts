@@ -89,6 +89,8 @@ import type {
   JournalDraftData,
   JournalDraftSaveResponse,
   JournalDraftLoadResponse,
+  JournalEntryDate,
+  JournalAnalysisSummary,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1128,6 +1130,16 @@ class ApiService {
 
   async triggerJournalAnalysis(journalId: string): Promise<{ status: string; message: string; total_entries: number }> {
     const response = await this.client.post<{ status: string; message: string; total_entries: number }>(`/journals/${journalId}/analyze`, {});
+    return response.data;
+  }
+
+  async getJournalEntryDates(journalId: string): Promise<JournalEntryDate[]> {
+    const response = await this.client.get<JournalEntryDate[]>(`/journals/${journalId}/entry-dates`);
+    return response.data;
+  }
+
+  async listJournalAnalyses(journalId: string): Promise<JournalAnalysisSummary[]> {
+    const response = await this.client.get<JournalAnalysisSummary[]>(`/journals/${journalId}/analyses`);
     return response.data;
   }
 }

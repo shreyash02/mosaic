@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Journal, JournalEntry, JournalStreak, JournalPrompt, PromptResponse, EntryFrequency } from '../types';
+import type { Journal, JournalEntry, JournalStreak, JournalPrompt, PromptResponse, EntryFrequency, JournalEntryDate, JournalAnalysisSummary } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useJournalDraft } from '../hooks/useJournalDraft';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
 import Modal from '../components/Modal';
+import JournalCalendar from '../components/JournalCalendar';
 
 const ENTRIES_PER_PAGE = 20;
 const TRUNCATE_LENGTH = 400;
@@ -680,6 +681,10 @@ export default function JournalDetailPage() {
   // Period selector for retroactive entries
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
 
+  // Calendar data
+  const [entryDatesData, setEntryDatesData] = useState<JournalEntryDate[]>([]);
+  const [analysesData, setAnalysesData] = useState<JournalAnalysisSummary[]>([]);
+
   // Draft auto-save
   const {
     draftStatus,
@@ -724,10 +729,25 @@ export default function JournalDetailPage() {
     }
   }, [id]);
 
+  const loadCalendarData = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [dates, analyses] = await Promise.all([
+        api.getJournalEntryDates(id),
+        api.listJournalAnalyses(id),
+      ]);
+      setEntryDatesData(dates);
+      setAnalysesData(analyses);
+    } catch {
+      // Calendar data is supplemental; don't block the page
+    }
+  }, [id]);
+
   useEffect(() => {
     loadJournal();
     loadEntries();
-  }, [loadJournal, loadEntries]);
+    loadCalendarData();
+  }, [loadJournal, loadEntries, loadCalendarData]);
 
   // Load draft when journal loads
   const draftLoaded = useRef(false);
@@ -914,7 +934,7 @@ export default function JournalDetailPage() {
       Object.values(textareaRefs.current).forEach(ta => {
         if (ta) ta.style.height = 'auto';
       });
-      await loadEntries();
+      await Promise.all([loadEntries(), loadCalendarData()]);
     } catch (err: unknown) {
       // Check for 429 (strict frequency enforcement)
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
@@ -1013,6 +1033,26 @@ export default function JournalDetailPage() {
       setEntryDeleting(false);
     }
   };
+
+  // Calendar props
+  const calendarEntryDates = useMemo(() =>
+    entryDatesData.map(d => ({ date: d.date, entryId: d.entry_id })),
+    [entryDatesData],
+  );
+
+  const calendarAnalysisDates = useMemo(() =>
+    analysesData.map(a => ({ date: a.created_at.slice(0, 10) })),
+    [analysesData],
+  );
+
+  const handleCalendarDateClick = useCallback((_date: string, entryId?: string) => {
+    if (!entryId) return;
+    // Find the entry card in the DOM and scroll to it
+    const entryEl = document.querySelector(`[data-entry-id="${entryId}"]`);
+    if (entryEl) {
+      entryEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
 
   const hasMore = entries.length < totalEntries;
 
@@ -1142,6 +1182,19 @@ export default function JournalDetailPage() {
               <span style={s.streakLabel}>Total</span>
             </div>
           </div>
+        )}
+
+        {/* Calendar View */}
+        {journal && (
+          <JournalCalendar
+            journalId={journal.id}
+            entryFrequency={journal.entry_frequency}
+            strictFrequency={journal.strict_frequency}
+            journalCreatedAt={journal.created_at}
+            entryDates={calendarEntryDates}
+            analysisDates={calendarAnalysisDates}
+            onDateClick={handleCalendarDateClick}
+          />
         )}
 
         {/* Write Area - Multi-prompt */}
@@ -1316,7 +1369,7 @@ export default function JournalDetailPage() {
               const isEditing = editingId === entry.id;
 
               return (
-                <div key={entry.id} style={s.entryCard}>
+                <div key={entry.id} data-entry-id={entry.id} style={s.entryCard}>
                   <div style={s.entryHeader}>
                     <span style={s.entryDate}>
                       {formatDate(entry.created_at)}

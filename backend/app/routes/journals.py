@@ -1599,6 +1599,34 @@ async def list_journal_analyses(
 # ============================================================
 
 @router.get(
+    "/{journal_id}/entry-dates",
+)
+async def get_journal_entry_dates(
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get all entry dates for a journal (lightweight, no pagination)."""
+    _require_journals_flag(current_user, db)
+    journal = _get_journal_or_404(journal_id, current_user, db)
+    conv = journal.conversation
+
+    rows = db.query(Response.id, Response.submitted_at).filter(
+        Response.conversation_id == conv.id,
+        Response.status == "submitted",
+        Response.submitted_at.isnot(None),
+    ).order_by(Response.submitted_at.asc()).all()
+
+    return [
+        {
+            "date": row.submitted_at.strftime("%Y-%m-%d"),
+            "entry_id": str(row.id),
+        }
+        for row in rows
+    ]
+
+
+@router.get(
     "/{journal_id}/streak",
     response_model=JournalStreak,
 )

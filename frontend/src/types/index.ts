@@ -1444,3 +1444,16 @@ export interface JournalLocalDraft {
   choiceResponses: Record<string, string>;
   lastSavedAt: string;
 }
+
+export interface JournalEntryDate {
+  date: string;
+  entry_id: string;
+}
+
+export interface JournalAnalysisSummary {
+  id: string;
+  created_at: string;
+  total_entries_analyzed: number;
+  date_range_start?: string;
+  date_range_end?: string;
+}
