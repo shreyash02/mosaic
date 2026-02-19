@@ -19,17 +19,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Rename emoji to icon
-    op.alter_column('conversation_presets', 'emoji', new_column_name='icon')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = {c['name'] for c in inspector.get_columns('conversation_presets')}
 
-    # Update default value
-    op.alter_column('conversation_presets', 'icon',
-                    server_default='clipboard',
-                    existing_type=sa.String(50),
-                    existing_nullable=False)
+    # Rename emoji to icon (skip if table was already created with 'icon')
+    if 'emoji' in columns and 'icon' not in columns:
+        op.alter_column('conversation_presets', 'emoji', new_column_name='icon')
+
+    # Update default value (only if icon column exists)
+    if 'icon' in columns or 'emoji' in columns:
+        op.alter_column('conversation_presets', 'icon',
+                        server_default='clipboard',
+                        existing_type=sa.String(50),
+                        existing_nullable=False)
 
     # Drop default_questions column if it exists
-    op.drop_column('conversation_presets', 'default_questions')
+    if 'default_questions' in columns:
+        op.drop_column('conversation_presets', 'default_questions')
 
 
 def downgrade() -> None:
