@@ -17,17 +17,11 @@
 
 .panel-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: var(--spacing-4);
   padding-bottom: var(--spacing-3);
   border-bottom: 1px solid var(--color-primary-300);
-}
-
-.panel-header h2 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  color: var(--color-primary-900);
 }
 
 .flags-list {
@@ -238,6 +232,43 @@
 
 .preview-result .detail-card {
   margin-bottom: var(--spacing-4);
+}
+
+/* Reorder mode */
+
+.flag-item.reorder-mode {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: grab;
+}
+
+.flag-item.reorder-mode:active {
+  cursor: grabbing;
+}
+
+.flag-item.drag-over {
+  border-color: var(--color-primary-600);
+  background: var(--color-primary-200);
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  color: var(--color-primary-500);
+  cursor: grab;
+  transition: color var(--transition-fast);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.flag-item.reorder-mode:hover .drag-handle {
+  color: var(--color-primary-800);
 }
 
 @media (max-width: 900px) {

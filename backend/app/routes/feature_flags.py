@@ -2,7 +2,8 @@
 
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -20,6 +21,11 @@ from app.schemas.feature_flag import (
     PlanTiersResponse,
 )
 from app.services.feature_flag_service import feature_flag_service
+
+
+class ReorderRequest(BaseModel):
+    """Request body for reordering feature flags."""
+    slugs: List[str]
 
 router = APIRouter()
 
@@ -52,6 +58,38 @@ async def create_flag(
     )
 
 
+@router.put("/reorder", response_model=FeatureFlagList)
+async def reorder_flags(
+    body: ReorderRequest,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """Reorder feature flags by providing an ordered list of slugs."""
+    # Look up all flags by slug
+    flags_by_slug = {}
+    for slug in body.slugs:
+        flag = db.query(FeatureFlagModel).filter(FeatureFlagModel.slug == slug).first()
+        if not flag:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Feature flag '{slug}' not found"
+            )
+        flags_by_slug[slug] = flag
+
+    # Assign display_order based on position in the list
+    for idx, slug in enumerate(body.slugs):
+        flags_by_slug[slug].display_order = idx
+
+    db.commit()
+
+    # Invalidate cache since ordering metadata changed
+    feature_flag_service.invalidate_cache()
+
+    # Return updated list
+    flags = feature_flag_service.list_all_flags(db)
+    return FeatureFlagList(flags=flags)
+
+
 @router.get("/plan-tiers", response_model=PlanTiersResponse)
 async def get_plan_tiers(
     admin: Admin = Depends(get_admin),
@@ -70,7 +108,6 @@ async def get_flag(
     """Get a specific feature flag by slug."""
     flag = feature_flag_service.get_flag_by_slug(db, flag_slug)
     if not flag:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail=f"Feature flag '{flag_slug}' not found")
     return flag
 
@@ -144,7 +181,6 @@ async def delete_override(
     db: Session = Depends(get_db)
 ):
     """Remove an override for a feature flag."""
-    from fastapi import HTTPException
     if tier is None and organization_id is None and user_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

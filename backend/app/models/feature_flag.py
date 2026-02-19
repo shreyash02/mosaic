@@ -36,6 +36,9 @@ class FeatureFlag(Base):
     # Default configuration (JSONB for flexible key-value pairs)
     config = Column(JSONB, nullable=False, default=dict)
 
+    # Display ordering for admin UI
+    display_order = Column(Integer, nullable=False, default=0)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

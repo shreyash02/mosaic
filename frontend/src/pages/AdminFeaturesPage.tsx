@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../contexts/NotificationContext';
@@ -39,6 +39,11 @@ export default function AdminFeaturesPage() {
   const [previewResult, setPreviewResult] = useState<EffectiveFeatureFlag | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [toggling, setToggling] = useState(false);
+
+  // Reorder mode
+  const [reorderMode, setReorderMode] = useState(false);
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -257,6 +262,46 @@ export default function AdminFeaturesPage() {
     setEditMode(true);
   };
 
+  // Drag-and-drop reorder
+  const handleDragStart = (index: number) => {
+    dragIndexRef.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (dropIndex: number) => {
+    const fromIndex = dragIndexRef.current;
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+
+    if (fromIndex === null || fromIndex === dropIndex) return;
+
+    const newFlags = [...flags];
+    const [moved] = newFlags.splice(fromIndex, 1);
+    newFlags.splice(dropIndex, 0, moved);
+    setFlags(newFlags);
+
+    try {
+      const client = await getAdminClient();
+      const response = await client.put<{ flags: FeatureFlag[] }>('/admin/feature-flags/reorder', {
+        slugs: newFlags.map((f) => f.slug),
+      });
+      setFlags(response.data.flags);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      addToast({ type: 'error', title: 'Reorder failed', message: error.response?.data?.detail || 'Failed to reorder flags' });
+      loadFlags();
+    }
+  };
+
   if (!isAuthenticated) {
     return null;
   }
@@ -276,17 +321,41 @@ export default function AdminFeaturesPage() {
         {/* Left panel - List of flags */}
         <div className="features-list-panel">
           <div className="panel-header">
-            <h2>All Flags</h2>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                setShowCreateForm(true);
-                setSelectedFlag(null);
-                setFormData({ name: '', description: '', enabled: false, config: '{}' });
-              }}
-            >
-              + New Flag
-            </button>
+            <div style={{ display: 'flex', gap: 'var(--spacing-3)' }}>
+              {reorderMode ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setReorderMode(false)}
+                >
+                  Done
+                </button>
+              ) : (
+                <>
+                  {flags.length > 1 && (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setReorderMode(true);
+                        setSelectedFlag(null);
+                        setShowCreateForm(false);
+                      }}
+                    >
+                      Reorder
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setShowCreateForm(true);
+                      setSelectedFlag(null);
+                      setFormData({ name: '', description: '', enabled: false, config: '{}' });
+                    }}
+                  >
+                    + New Flag
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -295,24 +364,44 @@ export default function AdminFeaturesPage() {
             <p className="no-data">No feature flags defined</p>
           ) : (
             <div className="flags-list">
-              {flags.map((flag) => (
+              {flags.map((flag, index) => (
                 <div
                   key={flag.id}
-                  className={`flag-item ${selectedFlag?.id === flag.id ? 'selected' : ''}`}
+                  className={`flag-item ${selectedFlag?.id === flag.id ? 'selected' : ''} ${reorderMode ? 'reorder-mode' : ''} ${dragOverIndex === index ? 'drag-over' : ''}`}
+                  draggable={reorderMode}
+                  onDragStart={reorderMode ? () => handleDragStart(index) : undefined}
+                  onDragOver={reorderMode ? (e) => handleDragOver(e, index) : undefined}
+                  onDragEnd={reorderMode ? handleDragEnd : undefined}
+                  onDrop={reorderMode ? () => handleDrop(index) : undefined}
                   onClick={() => {
+                    if (reorderMode) return;
                     setSelectedFlag(flag);
                     setShowCreateForm(false);
                     setEditMode(false);
                     setPreviewResult(null);
                   }}
                 >
-                  <div className="flag-item-header">
-                    <span className="flag-name">{flag.name}</span>
-                    <span className={`flag-status ${flag.enabled ? 'enabled' : 'disabled'}`}>
-                      {flag.enabled ? 'Enabled' : 'Disabled'}
-                    </span>
+                  {reorderMode && (
+                    <div className="drag-handle" title="Drag to reorder">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <circle cx="5.5" cy="3.5" r="1.5"/>
+                        <circle cx="10.5" cy="3.5" r="1.5"/>
+                        <circle cx="5.5" cy="8" r="1.5"/>
+                        <circle cx="10.5" cy="8" r="1.5"/>
+                        <circle cx="5.5" cy="12.5" r="1.5"/>
+                        <circle cx="10.5" cy="12.5" r="1.5"/>
+                      </svg>
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flag-item-header">
+                      <span className="flag-name">{flag.name}</span>
+                      <span className={`flag-status ${flag.enabled ? 'enabled' : 'disabled'}`}>
+                        {flag.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                    <div className="flag-slug">{flag.slug}</div>
                   </div>
-                  <div className="flag-slug">{flag.slug}</div>
                 </div>
               ))}
             </div>

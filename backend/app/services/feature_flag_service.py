@@ -291,7 +291,7 @@ class FeatureFlagService:
         tiers = TIER_ORDER
 
         # Get all flags
-        flags = db.query(FeatureFlag).order_by(FeatureFlag.name).all()
+        flags = db.query(FeatureFlag).order_by(FeatureFlag.display_order, FeatureFlag.name).all()
 
         # Get all tier-level overrides (no org, no user)
         tier_overrides = db.query(FeatureFlagOverride).filter(
@@ -347,7 +347,7 @@ class FeatureFlagService:
         Returns:
             List of all feature flags
         """
-        return db.query(FeatureFlag).order_by(FeatureFlag.name).all()
+        return db.query(FeatureFlag).order_by(FeatureFlag.display_order, FeatureFlag.name).all()
 
     def get_flag_by_slug(self, db: Session, slug: str) -> Optional[FeatureFlag]:
         """

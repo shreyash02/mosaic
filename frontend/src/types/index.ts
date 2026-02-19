@@ -1142,6 +1142,7 @@ export interface FeatureFlag {
   description?: string;
   enabled: boolean;
   config: Record<string, unknown>;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }

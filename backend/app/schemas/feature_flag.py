@@ -30,6 +30,7 @@ class FeatureFlagUpdate(BaseModel):
     description: Optional[str] = None
     enabled: Optional[bool] = None
     config: Optional[Dict[str, Any]] = None
+    display_order: Optional[int] = None
 
 
 class FeatureFlag(FeatureFlagBase):
@@ -37,6 +38,7 @@ class FeatureFlag(FeatureFlagBase):
 
     id: UUID
     slug: str
+    display_order: int = 0
     created_at: datetime
     updated_at: datetime
 
