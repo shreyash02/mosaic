@@ -45,6 +45,7 @@ class Journal(Base):
     # Relationships
     conversation = relationship("Conversation", back_populates="journal", uselist=False)
     owner = relationship("User", foreign_keys=[owner_id])
+    shares = relationship("JournalShare", back_populates="journal", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_journals_owner", "owner_id"),

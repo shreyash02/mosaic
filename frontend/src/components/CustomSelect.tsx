@@ -216,8 +216,8 @@ export default function CustomSelect({
     }
   };
 
-  // Calculate dropdown width - use trigger width but enforce minimum for readability (32 chars ~= 320px)
-  const dropdownWidth = Math.max(dropdownPosition.width, 320);
+  // Calculate dropdown width - use trigger width but enforce a small minimum
+  const dropdownWidth = Math.max(dropdownPosition.width, 120);
 
   const dropdownContent = isOpen && (
     <div

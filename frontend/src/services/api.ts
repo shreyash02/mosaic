@@ -95,6 +95,7 @@ import type {
   JournalShare,
   JournalShareListResponse,
   SharedJournalListItem,
+  SharedJournalDetail,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1194,8 +1195,8 @@ class ApiService {
     return response.data;
   }
 
-  async getSharedJournal(journalId: string): Promise<Journal> {
-    const response = await this.client.get<Journal>(`/journals/shared/${journalId}`);
+  async getSharedJournal(journalId: string): Promise<SharedJournalDetail> {
+    const response = await this.client.get<SharedJournalDetail>(`/journals/shared/${journalId}`);
     return response.data;
   }
 

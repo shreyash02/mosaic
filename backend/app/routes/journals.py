@@ -52,6 +52,7 @@ from app.schemas.journal import (
     JournalShareResponse,
     JournalShareListResponse,
     SharedJournalListItem,
+    SharedJournalDetail,
     _validate_frequency_pair,
 )
 from app.services.scheduler_service import calculate_next_analysis_time, calculate_next_analysis_time_scheduled
@@ -1907,6 +1908,23 @@ async def create_journal_share(
     except Exception as e:
         logger.warning(f"Failed to send journal share email: {e}")
 
+    # Send in-app notification if recipient is a registered user
+    recipient = db.query(User).filter(
+        User.email == data.email.lower().strip()
+    ).first()
+    if recipient:
+        from app.services.in_app_notification_service import in_app_notification_service
+        try:
+            await in_app_notification_service.notify_journal_shared(
+                db=db,
+                user_id=recipient.id,
+                journal_title=conv.title,
+                inviter_name=current_user.full_name,
+                invitation_token=token,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send journal share notification: {e}")
+
     return _share_to_response(share, db)
 
 
@@ -2063,7 +2081,7 @@ async def list_shared_journals(
             title=conv.title,
             description=conv.description,
             share_type=share.share_type,
-            owner_name=owner.full_name if owner else "Unknown",
+            owner_name=(owner.full_name or owner.email or "Unknown") if owner else "Unknown",
             total_entries=_get_entry_count(conv.id, db),
             has_analysis=_has_analysis(conv.id, db),
             shared_at=share.accepted_at or share.created_at,
@@ -2079,14 +2097,14 @@ async def list_shared_journals(
 
 @router.get(
     "/shared/{journal_id}",
-    response_model=Journal,
+    response_model=SharedJournalDetail,
 )
 async def get_shared_journal(
     journal_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get a shared journal's detail (metadata + prompts)."""
+    """Get a shared journal's detail (metadata + prompts + share info)."""
     journal, share = _get_journal_for_shared_user(journal_id, current_user, db)
     conv = journal.conversation
 
@@ -2094,7 +2112,16 @@ async def get_shared_journal(
         Question.conversation_id == conv.id,
     ).order_by(Question.question_order).all()
 
-    return _build_journal_response(journal, questions, db)
+    base = _build_journal_response(journal, questions, db)
+
+    # Add share metadata
+    owner = db.query(User).filter(User.id == journal.owner_id).first()
+    return SharedJournalDetail(
+        **base.model_dump(),
+        share_type=share.share_type,
+        owner_name=(owner.full_name or owner.email or "Unknown") if owner else "Unknown",
+        expires_at=share.expires_at,
+    )
 
 
 @router.get(

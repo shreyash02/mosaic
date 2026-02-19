@@ -1272,5 +1272,117 @@ If you did not expect this invitation, you can safely ignore this email.
             return False
 
 
+    async def send_journal_share_email(
+        self,
+        to_email: str,
+        journal_title: str,
+        share_type: str,
+        invitation_token: str,
+        inviter_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Send journal share invitation email.
+
+        Args:
+            to_email: Recipient email address
+            journal_title: Title of the journal
+            share_type: 'analysis_only' or 'full'
+            invitation_token: Token for accepting the share
+            inviter_name: Name of the person sharing
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping journal share email to {to_email}")
+            return False
+
+        try:
+            accept_url = f"{settings.FRONTEND_URL}/journals/accept-share/{invitation_token}"
+
+            subject = "You've been invited to view a journal on Mosaic"
+
+            inviter_text = f" by {inviter_name}" if inviter_name else ""
+
+            if share_type == "full":
+                access_description = "full access to the journal, including all entries and AI-generated insights"
+            else:
+                access_description = "access to AI-generated insights from the journal"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">Journal Shared With You</h2>
+                        <p style="color: #6b7280; font-size: 16px;">You've been invited{inviter_text} to view a journal on Mosaic:</p>
+                        <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                            <h3 style="margin-top: 0; color: #1a1a2e; font-size: 20px;">{journal_title}</h3>
+                            <p style="color: #6b7280; margin-bottom: 0; font-size: 14px;">
+                                You'll have {access_description}.
+                            </p>
+                        </div>
+                        <p style="color: #6b7280; font-size: 16px;">Click the button below to accept the invitation:</p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{accept_url}"
+                               style="background-color: #1a1a2e; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Accept Invitation
+                            </a>
+                        </div>
+                        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">
+                                {accept_url}
+                            </p>
+                        </div>
+                        <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">
+                            If you did not expect this invitation, you can safely ignore this email.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Journal share email sent successfully to {to_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send journal share email to {to_email}: {str(e)}", exc_info=True)
+            return False
+
+
 # Singleton instance
 email_service = EmailService()

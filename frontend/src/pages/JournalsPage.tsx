@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { JournalListItem } from '../types';
+import type { JournalListItem, SharedJournalListItem } from '../types';
 import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -177,6 +177,7 @@ export default function JournalsPage() {
   usePageTitle('Journals');
 
   const [journals, setJournals] = useState<JournalListItem[]>([]);
+  const [sharedJournals, setSharedJournals] = useState<SharedJournalListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<JournalListItem | null>(null);
@@ -191,8 +192,12 @@ export default function JournalsPage() {
     const loadJournals = async () => {
       try {
         setLoading(true);
-        const data = await api.getJournals();
-        setJournals(data);
+        const [ownJournals, shared] = await Promise.all([
+          api.getJournals(),
+          api.getSharedJournals().catch(() => [] as SharedJournalListItem[]),
+        ]);
+        setJournals(ownJournals);
+        setSharedJournals(shared);
       } catch (err) {
         console.error('Failed to load journals:', err);
         setError('Failed to load journals. Please try again.');
@@ -319,6 +324,68 @@ export default function JournalsPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+
+        {/* Shared with me */}
+        {sharedJournals.length > 0 && (
+          <div style={{ marginTop: spacing[8] }}>
+            <h2 style={{
+              fontSize: typography.fontSize.xl,
+              fontWeight: typography.fontWeight.semibold,
+              color: 'var(--color-primary-900)',
+              marginBottom: spacing[4],
+            }}>
+              Shared with me
+            </h2>
+            <div style={s.grid}>
+              {sharedJournals.map(sj => (
+                <Link
+                  key={sj.journal_id}
+                  to={`/journals/shared/${sj.journal_id}`}
+                  style={{
+                    ...s.card,
+                    borderColor: 'var(--color-primary-300)',
+                    borderStyle: 'dashed',
+                  }}
+                >
+                  <div style={s.cardTitle}>{sj.title}</div>
+                  <div style={s.cardStats}>
+                    <span style={s.cardStat}>
+                      Shared by {sj.owner_name}
+                    </span>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: `${spacing[1]} ${spacing[2]}`,
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.medium,
+                      borderRadius: borders.radius.sm,
+                      backgroundColor: sj.share_type === 'full'
+                        ? 'var(--color-info-light)'
+                        : 'var(--color-primary-200)',
+                      color: sj.share_type === 'full'
+                        ? 'var(--color-info-text)'
+                        : 'var(--color-primary-700)',
+                    }}>
+                      {sj.share_type === 'full' ? 'Full access' : 'Insights only'}
+                    </span>
+                    {sj.share_type === 'full' && (
+                      <span style={s.cardStat}>
+                        {sj.total_entries} {sj.total_entries === 1 ? 'entry' : 'entries'}
+                      </span>
+                    )}
+                    {sj.has_analysis && (
+                      <span style={s.cardStat}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                        Insights
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
 

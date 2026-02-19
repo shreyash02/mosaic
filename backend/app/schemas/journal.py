@@ -170,6 +170,14 @@ class Journal(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SharedJournalDetail(Journal):
+    """Journal detail with share metadata for the shared-with-me view."""
+
+    share_type: str = "analysis_only"
+    owner_name: str = "Unknown"
+    expires_at: Optional[datetime] = None
+
+
 class JournalListItem(BaseModel):
     """Journal summary for list views."""
 

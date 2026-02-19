@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useFeatureConfig, useCurrentTier } from '../contexts/FeaturesContext';
 import { formatRelativeTime } from '../utils/formatting';
 import CustomSelect from '../components/CustomSelect';
+import DateOnlyPicker from '../components/DateOnlyPicker';
 import Modal from '../components/Modal';
 
 const PROMPT_TYPES = [
@@ -806,41 +807,43 @@ export default function JournalSettingsPage() {
 
               {/* Invite form */}
               {!atLimit && (
-                <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[4], flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: spacing[3], marginBottom: spacing[4] }}>
                   <input
-                    style={{ ...s.input, flex: '1 1 200px' }}
+                    style={s.input}
                     type="email"
                     value={shareEmail}
                     onChange={e => setShareEmail(e.target.value)}
                     placeholder="Email address"
                   />
-                  <CustomSelect
-                    value={shareType}
-                    options={shareTypeOptions}
-                    onChange={v => setShareType(v as JournalShareType)}
-                    minWidth="140px"
-                  />
-                  {expirationEnabled && (
-                    <input
-                      style={{ ...s.input, flex: '0 0 180px' }}
-                      type="date"
-                      value={shareExpiry}
-                      onChange={e => setShareExpiry(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                      title="Expiration date (optional)"
+                  <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+                    <CustomSelect
+                      value={shareType}
+                      options={shareTypeOptions}
+                      onChange={v => setShareType(v as JournalShareType)}
+                      minWidth="180px"
                     />
-                  )}
-                  <button
-                    type="button"
-                    style={{
-                      ...s.buttonPrimary,
-                      ...(!shareEmail.trim() || shareSending ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-                    }}
-                    disabled={!shareEmail.trim() || shareSending}
-                    onClick={handleSendShare}
-                  >
-                    {shareSending ? 'Sending...' : 'Send Invite'}
-                  </button>
+                    {expirationEnabled && (
+                      <DateOnlyPicker
+                        value={shareExpiry}
+                        onChange={v => setShareExpiry(v)}
+                        min={new Date().toISOString().split('T')[0]}
+                        placeholder="Expires (optional)"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      style={{
+                        ...s.buttonPrimary,
+                        ...(!shareEmail.trim() || shareSending ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                      }}
+                      disabled={!shareEmail.trim() || shareSending}
+                      onClick={handleSendShare}
+                    >
+                      {shareSending ? 'Sending...' : 'Send Invite'}
+                    </button>
+                  </div>
                 </div>
               )}
 

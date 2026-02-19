@@ -190,6 +190,31 @@ class InAppNotificationService:
             data={"action_url": action_url},
         )
 
+    async def notify_journal_shared(
+        self,
+        db: Session,
+        user_id: UUID,
+        journal_title: str,
+        inviter_name: Optional[str] = None,
+        invitation_token: Optional[str] = None,
+    ) -> Optional[Notification]:
+        """Notify user when a journal is shared with them."""
+        action_url = f"/journals/accept-share/{invitation_token}" if invitation_token else "/journals"
+
+        if inviter_name:
+            message = f"{inviter_name} shared the journal \"{journal_title}\" with you"
+        else:
+            message = f"Someone shared the journal \"{journal_title}\" with you"
+
+        return await self.create_notification(
+            db=db,
+            user_id=user_id,
+            notification_type="invitation",
+            title="Journal Shared",
+            message=message,
+            data={"action_url": action_url},
+        )
+
     async def delete_by_entity(
         self,
         db: Session,

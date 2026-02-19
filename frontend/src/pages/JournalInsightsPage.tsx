@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import type { Journal, JournalAnalysisStatus } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { formatAnalysisDateRange } from '../utils/formatting';
 
 const MIN_ENTRIES_FOR_ANALYSIS = 3;
 
@@ -351,9 +352,8 @@ export default function JournalInsightsPage() {
             {/* Date range */}
             {analysis.date_range_start && analysis.date_range_end && (
               <p style={s.dateRange}>
-                Analyzing {analysis.total_entries_analyzed} entries from{' '}
-                {new Date(analysis.date_range_start).toLocaleDateString()} to{' '}
-                {new Date(analysis.date_range_end).toLocaleDateString()}
+                Analyzing {analysis.total_entries_analyzed} {analysis.total_entries_analyzed === 1 ? 'entry' : 'entries'}{' '}
+                {formatAnalysisDateRange(analysis.date_range_start, analysis.date_range_end)}
               </p>
             )}
 

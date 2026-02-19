@@ -25,6 +25,7 @@ from app.models.journal import Journal
 from app.models.journal_analysis import JournalAnalysis
 from app.models.journal_entry_analysis import JournalEntryAnalysis
 from app.models.journal_template import JournalTemplate
+from app.models.journal_share import JournalShare
 
 __all__ = [
     "User",
@@ -55,4 +56,5 @@ __all__ = [
     "JournalAnalysis",
     "JournalEntryAnalysis",
     "JournalTemplate",
+    "JournalShare",
 ]

@@ -203,6 +203,36 @@ export function formatDateShort(dateString: string, _backendTimezone?: string): 
 }
 
 /**
+ * Format an analysis date range smartly:
+ * - Same day: "from 2:30 PM to 4:15 PM on Today" / "on Feb 19"
+ * - Different days: "from Feb 18 to Feb 19" / "from Yesterday to Today"
+ */
+export function formatAnalysisDateRange(startStr: string, endStr: string): string {
+  const parseUtc = (s: string) => {
+    if (!s.endsWith('Z') && !s.match(/[+-]\d{2}:\d{2}$/)) return new Date(s + 'Z');
+    return new Date(s);
+  };
+
+  const start = parseUtc(startStr);
+  const end = parseUtc(endStr);
+
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+  if (startDay.getTime() === endDay.getTime()) {
+    // Same calendar day — show times + the date label
+    const locale = getUserLocale();
+    const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+    const startTime = start.toLocaleTimeString(locale, timeOpts);
+    const endTime = end.toLocaleTimeString(locale, timeOpts);
+    const dayLabel = formatDateShort(startStr);
+    return `from ${startTime} to ${endTime} on ${dayLabel}`;
+  }
+
+  return `from ${formatDateShort(startStr)} to ${formatDateShort(endStr)}`;
+}
+
+/**
  * Format a Date object to the format required by datetime-local input (YYYY-MM-DDTHH:mm)
  * This converts the date to local time, not UTC
  *
