@@ -351,6 +351,9 @@ export default function JournalCreatePage() {
   ]);
   const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
   const [entryFrequency, setEntryFrequency] = useState<EntryFrequency>('daily');
+  const [analysisTimeOfDay, setAnalysisTimeOfDay] = useState('09:00');
+  const [analysisDayOfWeek, setAnalysisDayOfWeek] = useState<number>(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+  const [analysisDayOfMonth, setAnalysisDayOfMonth] = useState<number>(1);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -430,6 +433,7 @@ export default function JournalCreatePage() {
         ...(p.type === 'single_choice' && p.choices ? { choices: p.choices } : {}),
       }));
 
+      const isDevInterval = analysisInterval === 'every_10_minutes';
       const journal = await api.createJournal({
         title: title.trim(),
         description: description.trim() || undefined,
@@ -437,6 +441,12 @@ export default function JournalCreatePage() {
         analysis_interval: analysisInterval,
         entry_frequency: entryFrequency !== 'unlimited' ? entryFrequency : undefined,
         strict_frequency: true,
+        ...(!isDevInterval ? {
+          analysis_time_of_day: analysisTimeOfDay,
+          ...((['weekly', 'biweekly'].includes(analysisInterval)) ? { analysis_day_of_week: analysisDayOfWeek } : {}),
+          ...(analysisInterval === 'monthly' ? { analysis_day_of_month: analysisDayOfMonth } : {}),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        } : {}),
       });
 
       navigate(`/journals/${journal.id}`);
@@ -645,6 +655,84 @@ export default function JournalCreatePage() {
                 {` (first analysis: ${nextDateLabel(analysisInterval)})`}
               </span>
             </div>
+
+            {/* Analysis Schedule */}
+            {analysisInterval !== 'every_10_minutes' && (
+              <div style={s.formGroup}>
+                <label style={s.label}>Analysis Schedule</label>
+
+                {/* Time of day */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Run at</span>
+                  <input
+                    type="time"
+                    value={analysisTimeOfDay}
+                    onChange={e => setAnalysisTimeOfDay(e.target.value)}
+                    style={{
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      fontSize: typography.fontSize.sm,
+                      border: '1px solid var(--color-primary-300)',
+                      borderRadius: borders.radius.md,
+                      backgroundColor: 'var(--color-primary-50)',
+                      color: 'var(--color-primary-900)',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                {/* Day of week selector for weekly/biweekly */}
+                {(['weekly', 'biweekly'] as string[]).includes(analysisInterval) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' as const }}>
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>on</span>
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setAnalysisDayOfWeek(i)}
+                        style={{
+                          padding: `${spacing[2]} ${spacing[3]}`,
+                          fontSize: typography.fontSize.xs,
+                          fontWeight: analysisDayOfWeek === i ? typography.fontWeight.semibold : typography.fontWeight.medium,
+                          border: analysisDayOfWeek === i ? '1px solid var(--color-primary-900)' : '1px solid var(--color-primary-300)',
+                          borderRadius: borders.radius.md,
+                          backgroundColor: analysisDayOfWeek === i ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                          color: analysisDayOfWeek === i ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                          cursor: 'pointer',
+                          transition: transitions.duration.normal,
+                        }}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Day of month for monthly */}
+                {analysisInterval === 'monthly' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>on day</span>
+                    <CustomSelect
+                      value={String(analysisDayOfMonth)}
+                      options={Array.from({ length: 28 }, (_, i) => ({
+                        value: String(i + 1),
+                        label: String(i + 1),
+                      }))}
+                      onChange={v => setAnalysisDayOfMonth(Number(v))}
+                      minWidth="80px"
+                    />
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>of each month</span>
+                  </div>
+                )}
+
+                {/* Schedule summary */}
+                <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', fontStyle: 'italic' as const }}>
+                  {analysisInterval === 'daily' && `Analysis will run daily at ${analysisTimeOfDay}`}
+                  {analysisInterval === 'weekly' && `Analysis will run every ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][analysisDayOfWeek]} at ${analysisTimeOfDay}`}
+                  {analysisInterval === 'biweekly' && `Analysis will run every other ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][analysisDayOfWeek]} at ${analysisTimeOfDay}`}
+                  {analysisInterval === 'monthly' && `Analysis will run on the ${analysisDayOfMonth}${analysisDayOfMonth === 1 ? 'st' : analysisDayOfMonth === 2 ? 'nd' : analysisDayOfMonth === 3 ? 'rd' : 'th'} of each month at ${analysisTimeOfDay}`}
+                </span>
+              </div>
+            )}
 
             <div style={s.actions}>
               <button

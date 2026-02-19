@@ -100,6 +100,15 @@ class Conversation(Base):
     next_analysis_at = Column(DateTime, nullable=True)
     # When to run the next periodic analysis (stored in UTC)
 
+    analysis_time_of_day = Column(String(5), nullable=True)
+    # "HH:MM" 24h format. Null = default 09:00. When within each interval the analysis runs.
+
+    analysis_day_of_week = Column(Integer, nullable=True)
+    # 0=Mon..6=Sun. Used for weekly/biweekly intervals.
+
+    analysis_day_of_month = Column(Integer, nullable=True)
+    # 1-28. Used for monthly interval.
+
     analysis_timezone = Column(String(100), nullable=True)
     # Timezone for analysis window boundaries (e.g., "America/New_York")
     # If not set, falls back to conversation.timezone

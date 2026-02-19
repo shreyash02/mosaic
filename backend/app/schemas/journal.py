@@ -4,10 +4,11 @@ Journals are user-facing entities backed by the Conversation model internally.
 The API uses /journals/ and these schemas — never exposing conversation internals.
 """
 
+import re
 from datetime import datetime, date
 from typing import Optional, List, Dict
 from uuid import UUID
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
 
 
@@ -94,6 +95,18 @@ class JournalCreate(BaseModel):
     analysis_interval: AnalysisInterval = Field(AnalysisInterval.WEEKLY)
     entry_frequency: Optional[EntryFrequency] = None
     strict_frequency: bool = False
+    # Schedule fields
+    analysis_time_of_day: Optional[str] = Field(None, description="HH:MM 24h format")
+    analysis_day_of_week: Optional[int] = Field(None, ge=0, le=6, description="0=Mon..6=Sun")
+    analysis_day_of_month: Optional[int] = Field(None, ge=1, le=28)
+    timezone: Optional[str] = None
+
+    @field_validator("analysis_time_of_day")
+    @classmethod
+    def validate_time_of_day(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", v):
+            raise ValueError("analysis_time_of_day must be HH:MM in 24h format")
+        return v
 
     @model_validator(mode="after")
     def validate_frequency(self):
@@ -111,6 +124,18 @@ class JournalUpdate(BaseModel):
     analysis_interval: Optional[AnalysisInterval] = None
     entry_frequency: Optional[EntryFrequency] = None
     strict_frequency: Optional[bool] = None
+    # Schedule fields
+    analysis_time_of_day: Optional[str] = Field(None, description="HH:MM 24h format")
+    analysis_day_of_week: Optional[int] = Field(None, ge=0, le=6, description="0=Mon..6=Sun")
+    analysis_day_of_month: Optional[int] = Field(None, ge=1, le=28)
+    timezone: Optional[str] = None
+
+    @field_validator("analysis_time_of_day")
+    @classmethod
+    def validate_time_of_day(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", v):
+            raise ValueError("analysis_time_of_day must be HH:MM in 24h format")
+        return v
 
     @model_validator(mode="after")
     def validate_frequency(self):
@@ -133,6 +158,12 @@ class Journal(BaseModel):
     total_entries: int = 0
     streak: "JournalStreak"
     has_analysis: bool = False
+    # Schedule fields
+    analysis_time_of_day: Optional[str] = None
+    analysis_day_of_week: Optional[int] = None
+    analysis_day_of_month: Optional[int] = None
+    next_analysis_at: Optional[datetime] = None
+    timezone: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -403,3 +434,57 @@ class JournalDraftSaveResponse(BaseModel):
     success: bool = True
     last_saved_at: datetime
     message: str = "Draft saved"
+
+
+# --- Sharing schemas ---
+
+class JournalShareCreate(BaseModel):
+    """Create a journal share invitation."""
+
+    email: str = Field(..., min_length=1, max_length=255)
+    share_type: str = Field("analysis_only", pattern="^(analysis_only|full)$")
+    expires_at: Optional[datetime] = None
+
+
+class JournalShareResponse(BaseModel):
+    """A single journal share."""
+
+    id: UUID
+    journal_id: UUID
+    email: str
+    shared_by_id: UUID
+    shared_user_id: Optional[UUID] = None
+    shared_user_name: Optional[str] = None
+    share_type: str
+    invitation_token: str
+    is_accepted: bool = False
+    accepted_at: Optional[datetime] = None
+    is_revoked: bool = False
+    revoked_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class JournalShareListResponse(BaseModel):
+    """List of shares for a journal."""
+
+    journal_id: UUID
+    total_shares: int = 0
+    active_shares: int = 0
+    shares: List[JournalShareResponse] = []
+
+
+class SharedJournalListItem(BaseModel):
+    """A journal shared with the current user."""
+
+    journal_id: UUID
+    title: str
+    description: Optional[str] = None
+    share_type: str
+    owner_name: str
+    total_entries: int = 0
+    has_analysis: bool = False
+    shared_at: datetime
+    expires_at: Optional[datetime] = None

@@ -21,6 +21,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.conversation import Conversation
 from app.models.journal import Journal as JournalModel
+from app.models.journal_share import JournalShare
 from app.models.journal_template import JournalTemplate
 from app.models.response import Response
 from app.models.question import Question
@@ -47,9 +48,13 @@ from app.schemas.journal import (
     JournalDraftSave,
     JournalDraftLoad,
     JournalDraftSaveResponse,
+    JournalShareCreate,
+    JournalShareResponse,
+    JournalShareListResponse,
+    SharedJournalListItem,
     _validate_frequency_pair,
 )
-from app.services.scheduler_service import calculate_next_analysis_time
+from app.services.scheduler_service import calculate_next_analysis_time, calculate_next_analysis_time_scheduled
 
 logger = logging.getLogger(__name__)
 
@@ -665,6 +670,11 @@ def _build_journal_response(journal: JournalModel, questions: list[Question], db
         total_entries=_get_entry_count(conv.id, db),
         streak=_get_streak(journal, db),
         has_analysis=_has_analysis(conv.id, db),
+        analysis_time_of_day=conv.analysis_time_of_day,
+        analysis_day_of_week=conv.analysis_day_of_week,
+        analysis_day_of_month=conv.analysis_day_of_month,
+        next_analysis_at=conv.next_analysis_at,
+        timezone=conv.timezone,
         created_at=conv.created_at,
         updated_at=conv.updated_at,
     )
@@ -745,6 +755,21 @@ async def create_journal(
             )
 
     now = datetime.utcnow()
+    tz = data.timezone or "UTC"
+
+    # Use calendar-aware scheduling if any schedule field is set
+    has_schedule = data.analysis_time_of_day is not None or data.analysis_day_of_week is not None or data.analysis_day_of_month is not None
+    if has_schedule:
+        next_analysis = calculate_next_analysis_time_scheduled(
+            current_utc=now,
+            interval=data.analysis_interval.value,
+            timezone_name=tz,
+            time_of_day=data.analysis_time_of_day,
+            day_of_week=data.analysis_day_of_week,
+            day_of_month=data.analysis_day_of_month,
+        )
+    else:
+        next_analysis = calculate_next_analysis_time(now, data.analysis_interval.value)
 
     conversation = Conversation(
         creator_id=current_user.id,
@@ -766,8 +791,12 @@ async def create_journal(
         activated_at=now,
         # Periodic analysis
         analysis_interval=data.analysis_interval.value,
-        next_analysis_at=calculate_next_analysis_time(now, data.analysis_interval.value),
-        timezone="UTC",
+        next_analysis_at=next_analysis,
+        timezone=tz,
+        # Schedule fields
+        analysis_time_of_day=data.analysis_time_of_day,
+        analysis_day_of_week=data.analysis_day_of_week,
+        analysis_day_of_month=data.analysis_day_of_month,
     )
 
     db.add(conversation)
@@ -907,11 +936,42 @@ async def update_journal(
     if data.description is not None:
         conv.description = data.description
         conv.context_notes = data.description
+    if data.timezone is not None:
+        conv.timezone = data.timezone
+
+    # Track whether schedule changed (requires recomputing next_analysis_at)
+    schedule_changed = False
+
     if data.analysis_interval is not None:
         conv.analysis_interval = data.analysis_interval.value
-        conv.next_analysis_at = calculate_next_analysis_time(
-            datetime.utcnow(), data.analysis_interval.value
-        )
+        schedule_changed = True
+
+    # Update schedule fields on conversation
+    if data.analysis_time_of_day is not None:
+        conv.analysis_time_of_day = data.analysis_time_of_day
+        schedule_changed = True
+    if data.analysis_day_of_week is not None:
+        conv.analysis_day_of_week = data.analysis_day_of_week
+        schedule_changed = True
+    if data.analysis_day_of_month is not None:
+        conv.analysis_day_of_month = data.analysis_day_of_month
+        schedule_changed = True
+
+    # Recompute next_analysis_at if any schedule field changed
+    if schedule_changed:
+        now = datetime.utcnow()
+        has_schedule = conv.analysis_time_of_day is not None or conv.analysis_day_of_week is not None or conv.analysis_day_of_month is not None
+        if has_schedule:
+            conv.next_analysis_at = calculate_next_analysis_time_scheduled(
+                current_utc=now,
+                interval=conv.analysis_interval,
+                timezone_name=conv.timezone,
+                time_of_day=conv.analysis_time_of_day,
+                day_of_week=conv.analysis_day_of_week,
+                day_of_month=conv.analysis_day_of_month,
+            )
+        else:
+            conv.next_analysis_at = calculate_next_analysis_time(now, conv.analysis_interval)
 
     # Journal-specific fields
     if data.entry_frequency is not None:
@@ -1642,3 +1702,544 @@ async def get_journal_streak(
     _require_journals_flag(current_user, db)
     journal = _get_journal_or_404(journal_id, current_user, db)
     return _get_streak(journal, db)
+
+
+# ============================================================
+# Sharing endpoints
+# ============================================================
+
+def _get_journal_for_shared_user(
+    journal_id: UUID,
+    current_user: User,
+    db: Session,
+) -> tuple[JournalModel, JournalShare]:
+    """Get a journal that has been shared with the current user.
+
+    Returns (journal, share) tuple. Raises 404 if no valid share exists.
+    """
+    share = db.query(JournalShare).filter(
+        JournalShare.journal_id == journal_id,
+        JournalShare.shared_user_id == current_user.id,
+        JournalShare.is_accepted == True,
+        JournalShare.is_revoked == False,
+    ).first()
+
+    if not share:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Journal not found or access revoked"
+        )
+
+    # Check expiration
+    if share.expires_at and share.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your access to this journal has expired"
+        )
+
+    journal = db.query(JournalModel).options(
+        joinedload(JournalModel.conversation)
+    ).filter(
+        JournalModel.id == journal_id,
+    ).first()
+
+    if not journal or journal.conversation.state == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Journal not found"
+        )
+
+    return (journal, share)
+
+
+def _share_to_response(share: JournalShare, db: Session) -> JournalShareResponse:
+    """Convert a JournalShare model to a JournalShareResponse schema."""
+    shared_user_name = None
+    if share.shared_user_id:
+        user = db.query(User).filter(User.id == share.shared_user_id).first()
+        if user:
+            shared_user_name = user.full_name
+
+    return JournalShareResponse(
+        id=share.id,
+        journal_id=share.journal_id,
+        email=share.email,
+        shared_by_id=share.shared_by_id,
+        shared_user_id=share.shared_user_id,
+        shared_user_name=shared_user_name,
+        share_type=share.share_type,
+        invitation_token=share.invitation_token,
+        is_accepted=share.is_accepted,
+        accepted_at=share.accepted_at,
+        is_revoked=share.is_revoked,
+        revoked_at=share.revoked_at,
+        expires_at=share.expires_at,
+        created_at=share.created_at,
+    )
+
+
+@router.post(
+    "/{journal_id}/shares",
+    response_model=JournalShareResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_journal_share(
+    journal_id: UUID,
+    data: JournalShareCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a journal share invitation."""
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.email_service import email_service
+
+    tier = _require_journals_flag(current_user, db)
+    journal = _get_journal_or_404(journal_id, current_user, db)
+
+    # Check max_shares_per_journal
+    max_shares = feature_flag_service.get_config_value(
+        db, "journals", "max_shares_per_journal",
+        tier=tier,
+        user_id=current_user.id,
+    )
+    if max_shares is not None and max_shares == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Journal sharing is not available on your plan. Upgrade to share journals.",
+        )
+
+    # Count active shares
+    active_count = db.query(func.count(JournalShare.id)).filter(
+        JournalShare.journal_id == journal_id,
+        JournalShare.is_revoked == False,
+    ).scalar() or 0
+
+    if max_shares is not None and max_shares != -1 and active_count >= max_shares:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Share limit reached ({max_shares} per journal). Upgrade your plan for more.",
+        )
+
+    # Validate share_type against tier
+    allowed_types = feature_flag_service.get_config_value(
+        db, "journals", "allowed_share_types",
+        tier=tier,
+        user_id=current_user.id,
+    ) or []
+    if data.share_type not in allowed_types:
+        if data.share_type == "full" and "analysis_only" in allowed_types:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Full access sharing is not available on your plan. Upgrade to Pro for full access sharing.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Share type '{data.share_type}' is not available on your plan.",
+        )
+
+    # Validate expiration against tier
+    if data.expires_at is not None:
+        expiration_enabled = feature_flag_service.get_config_value(
+            db, "journals", "share_expiration_enabled",
+            tier=tier,
+            user_id=current_user.id,
+        )
+        if not expiration_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Expiration dates for shares are not available on your plan. Upgrade to Pro.",
+            )
+
+    # Check no existing active share for same email
+    existing = db.query(JournalShare).filter(
+        JournalShare.journal_id == journal_id,
+        JournalShare.email == data.email.lower().strip(),
+        JournalShare.is_revoked == False,
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A share already exists for this email address.",
+        )
+
+    # Prevent sharing with yourself
+    if data.email.lower().strip() == current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot share a journal with yourself.",
+        )
+
+    # Generate token and create share
+    token = secrets.token_urlsafe(32)
+
+    share = JournalShare(
+        journal_id=journal_id,
+        email=data.email.lower().strip(),
+        shared_by_id=current_user.id,
+        share_type=data.share_type,
+        invitation_token=token,
+        expires_at=data.expires_at,
+    )
+    db.add(share)
+    db.commit()
+    db.refresh(share)
+
+    # Send email (fire and forget)
+    conv = journal.conversation
+    try:
+        await email_service.send_journal_share_email(
+            to_email=data.email.lower().strip(),
+            journal_title=conv.title,
+            share_type=data.share_type,
+            invitation_token=token,
+            inviter_name=current_user.full_name,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send journal share email: {e}")
+
+    return _share_to_response(share, db)
+
+
+@router.get(
+    "/{journal_id}/shares",
+    response_model=JournalShareListResponse,
+)
+async def list_journal_shares(
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all shares for a journal (owner only)."""
+    _require_journals_flag(current_user, db)
+    journal = _get_journal_or_404(journal_id, current_user, db)
+
+    shares = db.query(JournalShare).filter(
+        JournalShare.journal_id == journal_id,
+    ).order_by(JournalShare.created_at.desc()).all()
+
+    active_count = sum(1 for s in shares if not s.is_revoked)
+
+    return JournalShareListResponse(
+        journal_id=journal.id,
+        total_shares=len(shares),
+        active_shares=active_count,
+        shares=[_share_to_response(s, db) for s in shares],
+    )
+
+
+@router.delete(
+    "/{journal_id}/shares/{share_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def revoke_journal_share(
+    journal_id: UUID,
+    share_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke a journal share (soft delete)."""
+    _require_journals_flag(current_user, db)
+    _get_journal_or_404(journal_id, current_user, db)
+
+    share = db.query(JournalShare).filter(
+        JournalShare.id == share_id,
+        JournalShare.journal_id == journal_id,
+    ).first()
+
+    if not share:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Share not found"
+        )
+
+    share.is_revoked = True
+    share.revoked_at = datetime.utcnow()
+    db.commit()
+
+
+@router.post(
+    "/accept-share/{invitation_token}",
+)
+async def accept_journal_share(
+    invitation_token: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Accept a journal share invitation."""
+    share = db.query(JournalShare).filter(
+        JournalShare.invitation_token == invitation_token,
+    ).first()
+
+    if not share:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+
+    if share.is_revoked:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation has been revoked"
+        )
+
+    if share.is_accepted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation has already been accepted"
+        )
+
+    if share.expires_at and share.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation has expired"
+        )
+
+    # Verify email matches
+    if share.email.lower() != current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This invitation was sent to a different email address"
+        )
+
+    share.is_accepted = True
+    share.accepted_at = datetime.utcnow()
+    share.shared_user_id = current_user.id
+    db.commit()
+
+    return {
+        "status": "accepted",
+        "journal_id": str(share.journal_id),
+        "share_type": share.share_type,
+    }
+
+
+@router.get(
+    "/shared-with-me",
+    response_model=list[SharedJournalListItem],
+)
+async def list_shared_journals(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List journals shared with the current user."""
+    now = datetime.utcnow()
+
+    shares = db.query(JournalShare).filter(
+        JournalShare.shared_user_id == current_user.id,
+        JournalShare.is_accepted == True,
+        JournalShare.is_revoked == False,
+    ).all()
+
+    results = []
+    for share in shares:
+        # Skip expired shares
+        if share.expires_at and share.expires_at < now:
+            continue
+
+        journal = db.query(JournalModel).options(
+            joinedload(JournalModel.conversation)
+        ).filter(
+            JournalModel.id == share.journal_id,
+        ).first()
+
+        if not journal or journal.conversation.state == "deleted":
+            continue
+
+        conv = journal.conversation
+        owner = db.query(User).filter(User.id == journal.owner_id).first()
+
+        results.append(SharedJournalListItem(
+            journal_id=journal.id,
+            title=conv.title,
+            description=conv.description,
+            share_type=share.share_type,
+            owner_name=owner.full_name if owner else "Unknown",
+            total_entries=_get_entry_count(conv.id, db),
+            has_analysis=_has_analysis(conv.id, db),
+            shared_at=share.accepted_at or share.created_at,
+            expires_at=share.expires_at,
+        ))
+
+    return results
+
+
+# ============================================================
+# Shared journal view endpoints (read-only)
+# ============================================================
+
+@router.get(
+    "/shared/{journal_id}",
+    response_model=Journal,
+)
+async def get_shared_journal(
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a shared journal's detail (metadata + prompts)."""
+    journal, share = _get_journal_for_shared_user(journal_id, current_user, db)
+    conv = journal.conversation
+
+    questions = db.query(Question).filter(
+        Question.conversation_id == conv.id,
+    ).order_by(Question.question_order).all()
+
+    return _build_journal_response(journal, questions, db)
+
+
+@router.get(
+    "/shared/{journal_id}/entries",
+    response_model=JournalEntryList,
+)
+async def get_shared_journal_entries(
+    journal_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get entries for a shared journal (full access only)."""
+    journal, share = _get_journal_for_shared_user(journal_id, current_user, db)
+
+    if share.share_type != "full":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your access level does not include journal entries. Only insights are available.",
+        )
+
+    conv = journal.conversation
+    total_entries = _get_entry_count(conv.id, db)
+
+    responses = db.query(Response).filter(
+        Response.conversation_id == conv.id,
+        Response.status == "submitted",
+    ).order_by(Response.submitted_at.desc()).offset(skip).limit(limit).all()
+
+    question_map = _build_question_map(conv, db)
+    streak = _get_streak(journal, db)
+
+    # Batch-load entry analyses
+    response_ids = [r.id for r in responses]
+    entry_analyses = {}
+    if response_ids:
+        analyses = db.query(JournalEntryAnalysis).filter(
+            JournalEntryAnalysis.response_id.in_(response_ids),
+        ).all()
+        entry_analyses = {a.response_id: a for a in analyses}
+
+    entries = []
+    for i, resp in enumerate(responses):
+        entry_number = total_entries - skip - i
+        entries.append(_response_to_entry(resp, entry_number, question_map, entry_analyses.get(resp.id)))
+
+    return JournalEntryList(
+        journal_id=journal.id,
+        total_entries=total_entries,
+        has_more=(skip + limit) < total_entries,
+        entries=entries,
+        streak=streak,
+    )
+
+
+@router.get(
+    "/shared/{journal_id}/entries/{entry_id}",
+    response_model=JournalEntry,
+)
+async def get_shared_journal_entry(
+    journal_id: UUID,
+    entry_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a single entry from a shared journal (full access only)."""
+    journal, share = _get_journal_for_shared_user(journal_id, current_user, db)
+
+    if share.share_type != "full":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your access level does not include journal entries.",
+        )
+
+    conv = journal.conversation
+
+    response = db.query(Response).filter(
+        Response.id == entry_id,
+        Response.conversation_id == conv.id,
+        Response.status == "submitted",
+    ).first()
+
+    if not response:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entry not found"
+        )
+
+    question_map = _build_question_map(conv, db)
+
+    entry_analysis = db.query(JournalEntryAnalysis).filter(
+        JournalEntryAnalysis.response_id == entry_id,
+    ).first()
+
+    entries_before = db.query(func.count(Response.id)).filter(
+        Response.conversation_id == conv.id,
+        Response.status == "submitted",
+        Response.submitted_at <= response.submitted_at,
+    ).scalar() or 0
+
+    return _response_to_entry(response, entries_before, question_map, entry_analysis)
+
+
+@router.get(
+    "/shared/{journal_id}/analysis",
+    response_model=JournalAnalysisStatus,
+)
+async def get_shared_journal_analysis(
+    journal_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get analysis for a shared journal (both share types)."""
+    journal, share = _get_journal_for_shared_user(journal_id, current_user, db)
+    conv = journal.conversation
+
+    total_entries = _get_entry_count(conv.id, db)
+
+    latest = db.query(JournalAnalysis).filter(
+        JournalAnalysis.conversation_id == conv.id,
+    ).order_by(JournalAnalysis.created_at.desc()).first()
+
+    if not latest and total_entries < MIN_ENTRIES_FOR_ANALYSIS:
+        return JournalAnalysisStatus(
+            available=False,
+            needs_more_entries=True,
+            entries_until_analysis=MIN_ENTRIES_FOR_ANALYSIS - total_entries,
+            total_entries=total_entries,
+        )
+
+    if not latest:
+        return JournalAnalysisStatus(
+            available=False,
+            needs_more_entries=False,
+            entries_until_analysis=0,
+            total_entries=total_entries,
+        )
+
+    return JournalAnalysisStatus(
+        available=True,
+        needs_more_entries=False,
+        entries_until_analysis=0,
+        total_entries=total_entries,
+        latest_analysis=JournalAnalysisResponse(
+            id=latest.id,
+            journal_id=journal.id,
+            overall_summary=latest.overall_summary,
+            theme_timeline=latest.theme_timeline,
+            mood_trajectory=latest.mood_trajectory,
+            patterns=latest.patterns,
+            total_entries_analyzed=latest.total_entries_analyzed,
+            date_range_start=latest.date_range_start,
+            date_range_end=latest.date_range_end,
+            created_at=latest.created_at,
+            updated_at=latest.updated_at,
+        ),
+    )

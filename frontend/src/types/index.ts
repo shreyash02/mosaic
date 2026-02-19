@@ -1246,6 +1246,12 @@ export interface Journal {
   total_entries: number;
   streak: JournalStreak;
   has_analysis: boolean;
+  // Schedule fields
+  analysis_time_of_day?: string;
+  analysis_day_of_week?: number;
+  analysis_day_of_month?: number;
+  next_analysis_at?: string;
+  timezone?: string;
   created_at: string;
   updated_at: string;
 }
@@ -1272,6 +1278,10 @@ export interface JournalCreate {
   analysis_interval: AnalysisInterval;
   entry_frequency?: EntryFrequency;
   strict_frequency?: boolean;
+  analysis_time_of_day?: string;
+  analysis_day_of_week?: number;
+  analysis_day_of_month?: number;
+  timezone?: string;
 }
 
 export interface JournalUpdate {
@@ -1281,6 +1291,10 @@ export interface JournalUpdate {
   analysis_interval?: AnalysisInterval;
   entry_frequency?: EntryFrequency;
   strict_frequency?: boolean;
+  analysis_time_of_day?: string;
+  analysis_day_of_week?: number;
+  analysis_day_of_month?: number;
+  timezone?: string;
 }
 
 export interface PromptResponse {
@@ -1456,4 +1470,49 @@ export interface JournalAnalysisSummary {
   total_entries_analyzed: number;
   date_range_start?: string;
   date_range_end?: string;
+}
+
+// Journal sharing types
+export type JournalShareType = 'analysis_only' | 'full';
+
+export interface JournalShare {
+  id: string;
+  journal_id: string;
+  email: string;
+  shared_by_id: string;
+  shared_user_id?: string;
+  shared_user_name?: string;
+  share_type: JournalShareType;
+  invitation_token: string;
+  is_accepted: boolean;
+  accepted_at?: string;
+  is_revoked: boolean;
+  revoked_at?: string;
+  expires_at?: string;
+  created_at: string;
+}
+
+export interface JournalShareCreate {
+  email: string;
+  share_type: JournalShareType;
+  expires_at?: string;
+}
+
+export interface JournalShareListResponse {
+  journal_id: string;
+  total_shares: number;
+  active_shares: number;
+  shares: JournalShare[];
+}
+
+export interface SharedJournalListItem {
+  journal_id: string;
+  title: string;
+  description?: string;
+  share_type: JournalShareType;
+  owner_name: string;
+  total_entries: number;
+  has_analysis: boolean;
+  shared_at: string;
+  expires_at?: string;
 }

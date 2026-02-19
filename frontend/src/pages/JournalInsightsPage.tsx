@@ -207,21 +207,6 @@ const s = {
     color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
-  // Buttons
-  analyzeButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: spacing[2],
-    padding: `${spacing[3]} ${spacing[6]}`,
-    backgroundColor: 'var(--color-primary-900)',
-    color: 'var(--color-primary-50)',
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    borderRadius: borders.radius.md,
-    border: 'none',
-    cursor: 'pointer',
-    transition: transitions.duration.normal,
-  },
   // States
   loading: {
     textAlign: 'center' as const,
@@ -233,15 +218,6 @@ const s = {
     backgroundColor: 'var(--color-error-light)',
     border: '1px solid var(--color-error)',
     color: 'var(--color-error)',
-    padding: spacing[4],
-    borderRadius: borders.radius.md,
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing[4],
-  },
-  success: {
-    backgroundColor: 'var(--color-success-light)',
-    border: '1px solid var(--color-success)',
-    color: 'var(--color-success-text)',
     padding: spacing[4],
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
@@ -274,8 +250,6 @@ export default function JournalInsightsPage() {
   const [analysisStatus, setAnalysisStatus] = useState<JournalAnalysisStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [triggering, setTriggering] = useState(false);
-  const [triggerSuccess, setTriggerSuccess] = useState('');
 
   usePageTitle(journal ? `Insights - ${journal.title}` : 'Insights');
 
@@ -299,20 +273,6 @@ export default function JournalInsightsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const handleTriggerAnalysis = async () => {
-    if (!id) return;
-    try {
-      setTriggering(true);
-      setTriggerSuccess('');
-      const result = await api.triggerJournalAnalysis(id);
-      setTriggerSuccess(result.message || 'Analysis has been queued. Check back shortly.');
-    } catch {
-      setError('Failed to start analysis');
-    } finally {
-      setTriggering(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -347,7 +307,6 @@ export default function JournalInsightsPage() {
         </div>
 
         {error && <div style={s.error}>{error}</div>}
-        {triggerSuccess && <div style={s.success}>{triggerSuccess}</div>}
 
         {/* Need more entries */}
         {analysisStatus?.needs_more_entries && (
@@ -366,27 +325,23 @@ export default function JournalInsightsPage() {
           </div>
         )}
 
-        {/* Enough entries but no analysis yet */}
+        {/* Enough entries but no analysis yet — analysis will run on schedule */}
         {!analysisStatus?.needs_more_entries && !analysis && (
           <div style={s.progressCard}>
-            <div style={s.progressTitle}>Ready for Analysis</div>
+            <div style={s.progressTitle}>Analysis Pending</div>
             <p style={s.progressText}>
-              You have {analysisStatus?.total_entries || 0} entries. Run analysis to discover
-              patterns, themes, and trends in your writing.
+              You have {analysisStatus?.total_entries || 0} entries. Your first analysis will
+              run automatically at the end of the current period.
             </p>
-            <button
-              style={{
-                ...s.analyzeButton,
-                ...(triggering ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-              }}
-              onClick={handleTriggerAnalysis}
-              disabled={triggering}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-              {triggering ? 'Starting...' : 'Run Analysis'}
-            </button>
+            {journal?.next_analysis_at && (
+              <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+                Next analysis scheduled for{' '}
+                {new Date(journal.next_analysis_at).toLocaleString(undefined, {
+                  weekday: 'short', month: 'short', day: 'numeric',
+                  hour: 'numeric', minute: '2-digit',
+                })}
+              </p>
+            )}
           </div>
         )}
 
@@ -575,26 +530,21 @@ export default function JournalInsightsPage() {
               </div>
             )}
 
-            {/* Refresh Analysis */}
-            <div style={{ textAlign: 'center' as const, marginTop: spacing[6] }}>
-              <button
-                style={{
-                  ...s.analyzeButton,
-                  backgroundColor: 'var(--color-primary-100)',
-                  color: 'var(--color-primary-700)',
-                  border: '1px solid var(--color-primary-300)',
-                  ...(triggering ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
-                }}
-                onClick={handleTriggerAnalysis}
-                disabled={triggering}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10" />
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-                {triggering ? 'Starting...' : 'Refresh Analysis'}
-              </button>
-            </div>
+            {/* Next analysis time */}
+            {journal?.next_analysis_at && (
+              <p style={{
+                fontSize: typography.fontSize.sm,
+                color: 'var(--color-primary-500)',
+                textAlign: 'center' as const,
+                marginTop: spacing[2],
+              }}>
+                Next analysis scheduled for{' '}
+                {new Date(journal.next_analysis_at).toLocaleString(undefined, {
+                  weekday: 'short', month: 'short', day: 'numeric',
+                  hour: 'numeric', minute: '2-digit',
+                })}
+              </p>
+            )}
           </>
         )}
       </div>

@@ -821,6 +821,101 @@ def calculate_next_analysis_time(current: datetime, interval: str) -> datetime:
         return current + timedelta(weeks=1)
 
 
+def calculate_next_analysis_time_scheduled(
+    current_utc: datetime,
+    interval: str,
+    timezone_name: Optional[str] = None,
+    time_of_day: Optional[str] = None,
+    day_of_week: Optional[int] = None,
+    day_of_month: Optional[int] = None,
+) -> datetime:
+    """
+    Calendar-aware version of calculate_next_analysis_time.
+
+    Computes the next analysis time based on user-chosen schedule preferences
+    (target time, day of week, day of month) in the user's timezone, then
+    converts back to UTC for storage.
+
+    For dev intervals (every_10_minutes), falls back to the simple version.
+
+    Args:
+        current_utc: Current time in UTC (e.g. now or last analysis time)
+        interval: Analysis interval (daily, weekly, biweekly, monthly)
+        timezone_name: IANA timezone (e.g. "America/New_York"). Falls back to UTC.
+        time_of_day: "HH:MM" 24h format. Defaults to "09:00".
+        day_of_week: 0=Mon..6=Sun. Used for weekly/biweekly.
+        day_of_month: 1-28. Used for monthly.
+
+    Returns:
+        Next analysis datetime in UTC.
+    """
+    from zoneinfo import ZoneInfo
+
+    # Dev intervals: use simple offset
+    if interval == "every_10_minutes":
+        return current_utc + timedelta(minutes=10)
+
+    # Parse timezone
+    try:
+        tz = ZoneInfo(timezone_name) if timezone_name else ZoneInfo("UTC")
+    except Exception:
+        tz = ZoneInfo("UTC")
+
+    # Parse target time
+    target_hour, target_minute = 9, 0
+    if time_of_day:
+        try:
+            parts = time_of_day.split(":")
+            target_hour, target_minute = int(parts[0]), int(parts[1])
+        except (ValueError, IndexError):
+            pass
+
+    # Convert current UTC to local
+    local_now = current_utc.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
+
+    if interval == "daily":
+        # Next occurrence of target_hour:target_minute in local tz
+        candidate = local_now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        if candidate <= local_now:
+            candidate += timedelta(days=1)
+
+    elif interval in ("weekly", "biweekly"):
+        target_dow = day_of_week if day_of_week is not None else local_now.weekday()
+        candidate = local_now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        # Find next occurrence of target_dow
+        days_ahead = (target_dow - candidate.weekday()) % 7
+        if days_ahead == 0 and candidate <= local_now:
+            days_ahead = 7
+        candidate += timedelta(days=days_ahead)
+        # For biweekly, ensure at least 7 days out
+        if interval == "biweekly":
+            min_date = local_now + timedelta(days=7)
+            if candidate < min_date:
+                candidate += timedelta(weeks=1)
+
+    elif interval == "monthly":
+        target_day = day_of_month if day_of_month is not None else 1
+        target_day = max(1, min(28, target_day))
+        candidate = local_now.replace(
+            day=target_day, hour=target_hour, minute=target_minute,
+            second=0, microsecond=0,
+        )
+        if candidate <= local_now:
+            # Move to next month
+            if candidate.month == 12:
+                candidate = candidate.replace(year=candidate.year + 1, month=1)
+            else:
+                candidate = candidate.replace(month=candidate.month + 1)
+
+    else:
+        # Fallback
+        return current_utc + timedelta(weeks=1)
+
+    # Convert back to UTC (naive)
+    candidate_utc = candidate.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+    return candidate_utc
+
+
 def generate_period_label(period_start: datetime, period_end: datetime, interval: str) -> str:
     """
     Generate a human-readable label for the analysis period.
@@ -1283,8 +1378,18 @@ async def check_periodic_analyses():
                         else:
                             logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
 
-                    # Update next_analysis_at regardless (even if no responses, move to next period)
-                    conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
+                    # Update next_analysis_at using calendar-aware scheduling if fields are set
+                    if conv.analysis_time_of_day is not None or conv.analysis_day_of_week is not None or conv.analysis_day_of_month is not None:
+                        conv.next_analysis_at = calculate_next_analysis_time_scheduled(
+                            current_utc=period_end,
+                            interval=conv.analysis_interval,
+                            timezone_name=conv.analysis_timezone or conv.timezone,
+                            time_of_day=conv.analysis_time_of_day,
+                            day_of_week=conv.analysis_day_of_week,
+                            day_of_month=conv.analysis_day_of_month,
+                        )
+                    else:
+                        conv.next_analysis_at = calculate_next_analysis_time(period_end, conv.analysis_interval)
                     ctx.add_processed()
 
                 except Exception as e:

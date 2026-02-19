@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Journal, JournalPromptCreate, AnalysisInterval, EntryFrequency } from '../types';
+import type { Journal, JournalPromptCreate, AnalysisInterval, EntryFrequency, JournalShare, JournalShareType } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useFeatureConfig, useCurrentTier } from '../contexts/FeaturesContext';
+import { formatRelativeTime } from '../utils/formatting';
 import CustomSelect from '../components/CustomSelect';
+import Modal from '../components/Modal';
 
 const PROMPT_TYPES = [
   { value: 'text', label: 'Text' },
@@ -222,11 +225,95 @@ const s = {
     color: 'var(--color-primary-500)',
     fontSize: typography.fontSize.sm,
   },
+  sectionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-900)',
+    marginBottom: spacing[1],
+  },
+  sectionDesc: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-500)',
+    marginBottom: spacing[5],
+  },
+  badge: {
+    display: 'inline-block',
+    padding: `${spacing[1]} ${spacing[2]}`,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.sm,
+  },
+  shareRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: `${spacing[3]} 0`,
+    borderBottom: '1px solid var(--color-primary-200)',
+  },
+  shareInfo: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing[1],
+  },
+  shareEmail: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: 'var(--color-primary-900)',
+  },
+  shareMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+  },
+  revokeButton: {
+    padding: `${spacing[1]} ${spacing[3]}`,
+    backgroundColor: 'transparent',
+    color: 'var(--color-error)',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    borderRadius: borders.radius.sm,
+    border: '1px solid var(--color-error)',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  usageBar: {
+    height: '4px',
+    backgroundColor: 'var(--color-primary-200)',
+    borderRadius: '2px',
+    overflow: 'hidden' as const,
+    marginTop: spacing[2],
+  },
+  disabledOverlay: {
+    opacity: 0.5,
+    pointerEvents: 'none' as const,
+  },
+  upgradePrompt: {
+    fontSize: typography.fontSize.sm,
+    color: 'var(--color-primary-600)',
+    padding: `${spacing[3]} ${spacing[4]}`,
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.md,
+    border: '1px solid var(--color-primary-200)',
+  },
 };
+
+function getShareStatus(share: JournalShare): { label: string; color: string } {
+  if (share.is_revoked) return { label: 'Revoked', color: 'var(--color-primary-400)' };
+  if (share.expires_at && new Date(share.expires_at) < new Date()) return { label: 'Expired', color: 'var(--color-warning)' };
+  if (share.is_accepted) return { label: 'Accepted', color: 'var(--color-success)' };
+  return { label: 'Pending', color: 'var(--color-info)' };
+}
 
 export default function JournalSettingsPage() {
   const { id } = useParams<{ id: string }>();
   usePageTitle('Journal Settings');
+
+  const tier = useCurrentTier();
+  const maxShares = useFeatureConfig<number>('journals', 'max_shares_per_journal', 0);
+  const allowedShareTypes = useFeatureConfig<string[]>('journals', 'allowed_share_types', []);
+  const expirationEnabled = useFeatureConfig<boolean>('journals', 'share_expiration_enabled', false);
 
   const [journal, setJournal] = useState<Journal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -235,9 +322,33 @@ export default function JournalSettingsPage() {
   const [prompts, setPrompts] = useState<{ text: string; type: 'text' | 'rating' | 'single_choice'; choices?: string[] }[]>([]);
   const [analysisInterval, setAnalysisInterval] = useState<AnalysisInterval>('weekly');
   const [entryFrequency, setEntryFrequency] = useState<EntryFrequency>('daily');
+  const [analysisTimeOfDay, setAnalysisTimeOfDay] = useState('09:00');
+  const [analysisDayOfWeek, setAnalysisDayOfWeek] = useState<number>(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+  const [analysisDayOfMonth, setAnalysisDayOfMonth] = useState<number>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Sharing state
+  const [shares, setShares] = useState<JournalShare[]>([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
+  const [shareType, setShareType] = useState<JournalShareType>('analysis_only');
+  const [shareExpiry, setShareExpiry] = useState('');
+  const [shareSending, setShareSending] = useState(false);
+  const [shareError, setShareError] = useState('');
+  const [shareSuccess, setShareSuccess] = useState('');
+  const [revokeTarget, setRevokeTarget] = useState<JournalShare | null>(null);
+  const [revoking, setRevoking] = useState(false);
+
+  const sharingDisabled = maxShares === 0;
+  const activeShares = shares.filter(s => !s.is_revoked);
+  const atLimit = maxShares !== -1 && activeShares.length >= maxShares;
+
+  const shareTypeOptions = [
+    { value: 'analysis_only', label: 'Insights only' },
+    ...(allowedShareTypes.includes('full') ? [{ value: 'full', label: 'Full access' }] : []),
+  ];
 
   // Filter analysis intervals based on entry frequency
   const filteredIntervals = ANALYSIS_INTERVALS.filter(opt => {
@@ -271,10 +382,23 @@ export default function JournalSettingsPage() {
         })));
         setAnalysisInterval(data.analysis_interval || 'weekly');
         setEntryFrequency(data.entry_frequency || 'unlimited');
+        if (data.analysis_time_of_day) setAnalysisTimeOfDay(data.analysis_time_of_day);
+        if (data.analysis_day_of_week !== undefined && data.analysis_day_of_week !== null) setAnalysisDayOfWeek(data.analysis_day_of_week);
+        if (data.analysis_day_of_month !== undefined && data.analysis_day_of_month !== null) setAnalysisDayOfMonth(data.analysis_day_of_month);
       })
       .catch(() => setError('Failed to load journal'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Load shares
+  useEffect(() => {
+    if (!id || sharingDisabled) return;
+    setSharesLoading(true);
+    api.listJournalShares(id)
+      .then(data => setShares(data.shares))
+      .catch(() => {})
+      .finally(() => setSharesLoading(false));
+  }, [id, sharingDisabled]);
 
   const handlePromptChange = (index: number, value: string) => {
     setPrompts(prev => prev.map((p, i) => i === index ? { ...p, text: value } : p));
@@ -309,12 +433,19 @@ export default function JournalSettingsPage() {
         ...(p.type === 'single_choice' && p.choices ? { choices: p.choices } : {}),
       }));
 
+      const isDevInterval = analysisInterval === 'every_10_minutes';
       const updated = await api.updateJournal(id, {
         title: title.trim(),
         description: description.trim() || undefined,
         prompts: promptsData,
         analysis_interval: analysisInterval,
         entry_frequency: entryFrequency !== 'unlimited' ? entryFrequency : undefined,
+        ...(!isDevInterval ? {
+          analysis_time_of_day: analysisTimeOfDay,
+          ...((['weekly', 'biweekly'].includes(analysisInterval)) ? { analysis_day_of_week: analysisDayOfWeek } : {}),
+          ...(analysisInterval === 'monthly' ? { analysis_day_of_month: analysisDayOfMonth } : {}),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        } : {}),
       });
 
       setJournal(updated);
@@ -325,6 +456,46 @@ export default function JournalSettingsPage() {
       setError(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendShare = async () => {
+    if (!id || !shareEmail.trim()) return;
+    setShareSending(true);
+    setShareError('');
+    setShareSuccess('');
+    try {
+      const newShare = await api.createJournalShare(id, {
+        email: shareEmail.trim(),
+        share_type: shareType,
+        ...(shareExpiry ? { expires_at: new Date(shareExpiry).toISOString() } : {}),
+      });
+      setShares(prev => [newShare, ...prev]);
+      setShareEmail('');
+      setShareExpiry('');
+      setShareSuccess('Invitation sent');
+      setTimeout(() => setShareSuccess(''), 3000);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Failed to send invitation';
+      setShareError(typeof detail === 'string' ? detail : detail.message || 'Failed to send invitation');
+    } finally {
+      setShareSending(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!id || !revokeTarget) return;
+    setRevoking(true);
+    try {
+      await api.revokeJournalShare(id, revokeTarget.id);
+      setShares(prev => prev.map(s =>
+        s.id === revokeTarget.id ? { ...s, is_revoked: true, revoked_at: new Date().toISOString() } : s
+      ));
+      setRevokeTarget(null);
+    } catch {
+      setShareError('Failed to revoke share');
+    } finally {
+      setRevoking(false);
     }
   };
 
@@ -502,6 +673,84 @@ export default function JournalSettingsPage() {
               <span style={s.hint}>How often AI analyzes your entries for patterns and themes</span>
             </div>
 
+            {/* Analysis Schedule */}
+            {analysisInterval !== 'every_10_minutes' && (
+              <div style={s.formGroup}>
+                <label style={s.label}>Analysis Schedule</label>
+
+                {/* Time of day */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Run at</span>
+                  <input
+                    type="time"
+                    value={analysisTimeOfDay}
+                    onChange={e => setAnalysisTimeOfDay(e.target.value)}
+                    style={{
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      fontSize: typography.fontSize.sm,
+                      border: '1px solid var(--color-primary-300)',
+                      borderRadius: borders.radius.md,
+                      backgroundColor: 'var(--color-primary-50)',
+                      color: 'var(--color-primary-900)',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                {/* Day of week selector for weekly/biweekly */}
+                {(['weekly', 'biweekly'] as string[]).includes(analysisInterval) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' as const }}>
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>on</span>
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setAnalysisDayOfWeek(i)}
+                        style={{
+                          padding: `${spacing[2]} ${spacing[3]}`,
+                          fontSize: typography.fontSize.xs,
+                          fontWeight: analysisDayOfWeek === i ? typography.fontWeight.semibold : typography.fontWeight.medium,
+                          border: analysisDayOfWeek === i ? '1px solid var(--color-primary-900)' : '1px solid var(--color-primary-300)',
+                          borderRadius: borders.radius.md,
+                          backgroundColor: analysisDayOfWeek === i ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                          color: analysisDayOfWeek === i ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                          cursor: 'pointer',
+                          transition: transitions.duration.normal,
+                        }}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Day of month for monthly */}
+                {analysisInterval === 'monthly' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>on day</span>
+                    <CustomSelect
+                      value={String(analysisDayOfMonth)}
+                      options={Array.from({ length: 28 }, (_, i) => ({
+                        value: String(i + 1),
+                        label: String(i + 1),
+                      }))}
+                      onChange={v => setAnalysisDayOfMonth(Number(v))}
+                      minWidth="80px"
+                    />
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>of each month</span>
+                  </div>
+                )}
+
+                {/* Schedule summary */}
+                <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', fontStyle: 'italic' as const }}>
+                  {analysisInterval === 'daily' && `Analysis will run daily at ${analysisTimeOfDay}`}
+                  {analysisInterval === 'weekly' && `Analysis will run every ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][analysisDayOfWeek]} at ${analysisTimeOfDay}`}
+                  {analysisInterval === 'biweekly' && `Analysis will run every other ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][analysisDayOfWeek]} at ${analysisTimeOfDay}`}
+                  {analysisInterval === 'monthly' && `Analysis will run on the ${analysisDayOfMonth}${analysisDayOfMonth === 1 ? 'st' : analysisDayOfMonth === 2 ? 'nd' : analysisDayOfMonth === 3 ? 'rd' : 'th'} of each month at ${analysisTimeOfDay}`}
+                </span>
+              </div>
+            )}
+
             <div style={s.actions}>
               <button
                 type="submit"
@@ -519,6 +768,176 @@ export default function JournalSettingsPage() {
             </div>
           </form>
         </div>
+
+        {/* Sharing Section */}
+        <div style={{ ...s.card, marginTop: spacing[6] }}>
+          <h2 style={s.sectionTitle}>Sharing</h2>
+          <p style={s.sectionDesc}>Invite someone to view your journal</p>
+
+          {sharingDisabled ? (
+            <div style={s.upgradePrompt}>
+              Journal sharing is not available on the {tier} plan. Upgrade to Basic or higher to share journals with others.
+            </div>
+          ) : (
+            <>
+              {shareError && <div style={s.error}>{shareError}</div>}
+              {shareSuccess && <div style={s.success}>{shareSuccess}</div>}
+
+              {/* Usage indicator */}
+              {maxShares !== -1 && (
+                <div style={{ marginBottom: spacing[4] }}>
+                  <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>
+                    {activeShares.length} / {maxShares} shares used
+                  </span>
+                  <div style={s.usageBar}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, (activeShares.length / maxShares) * 100)}%`,
+                      backgroundColor: atLimit ? 'var(--color-warning)' : 'var(--color-primary-600)',
+                      borderRadius: '2px',
+                      transition: transitions.duration.normal,
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Invite form */}
+              {!atLimit && (
+                <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[4], flexWrap: 'wrap' as const }}>
+                  <input
+                    style={{ ...s.input, flex: '1 1 200px' }}
+                    type="email"
+                    value={shareEmail}
+                    onChange={e => setShareEmail(e.target.value)}
+                    placeholder="Email address"
+                  />
+                  <CustomSelect
+                    value={shareType}
+                    options={shareTypeOptions}
+                    onChange={v => setShareType(v as JournalShareType)}
+                    minWidth="140px"
+                  />
+                  {expirationEnabled && (
+                    <input
+                      style={{ ...s.input, flex: '0 0 180px' }}
+                      type="date"
+                      value={shareExpiry}
+                      onChange={e => setShareExpiry(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      title="Expiration date (optional)"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    style={{
+                      ...s.buttonPrimary,
+                      ...(!shareEmail.trim() || shareSending ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                    }}
+                    disabled={!shareEmail.trim() || shareSending}
+                    onClick={handleSendShare}
+                  >
+                    {shareSending ? 'Sending...' : 'Send Invite'}
+                  </button>
+                </div>
+              )}
+
+              {/* Shares list */}
+              {sharesLoading ? (
+                <div style={{ ...s.hint, padding: spacing[4], textAlign: 'center' as const }}>Loading shares...</div>
+              ) : shares.length > 0 ? (
+                <div>
+                  {shares.map(share => {
+                    const status = getShareStatus(share);
+                    return (
+                      <div key={share.id} style={s.shareRow}>
+                        <div style={s.shareInfo}>
+                          <span style={s.shareEmail}>
+                            {share.shared_user_name || share.email}
+                          </span>
+                          <div style={s.shareMeta}>
+                            <span style={{
+                              ...s.badge,
+                              backgroundColor: share.share_type === 'full'
+                                ? 'var(--color-info-light)'
+                                : 'var(--color-primary-200)',
+                              color: share.share_type === 'full'
+                                ? 'var(--color-info-text)'
+                                : 'var(--color-primary-700)',
+                            }}>
+                              {share.share_type === 'full' ? 'Full access' : 'Insights only'}
+                            </span>
+                            <span style={{
+                              ...s.badge,
+                              backgroundColor: 'transparent',
+                              color: status.color,
+                            }}>
+                              {status.label}
+                            </span>
+                            {share.expires_at && (
+                              <span>Expires {formatRelativeTime(share.expires_at)}</span>
+                            )}
+                            <span>Invited {formatRelativeTime(share.created_at)}</span>
+                          </div>
+                        </div>
+                        {!share.is_revoked && (
+                          <button
+                            type="button"
+                            style={s.revokeButton}
+                            onClick={() => setRevokeTarget(share)}
+                          >
+                            Revoke
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ ...s.hint, textAlign: 'center' as const, padding: spacing[4] }}>
+                  No shares yet. Invite someone above.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Revoke Confirmation Modal */}
+        <Modal
+          isOpen={!!revokeTarget}
+          onClose={() => setRevokeTarget(null)}
+          title="Revoke Share"
+          maxWidth="440px"
+        >
+          {revokeTarget && (
+            <>
+              <p style={{ fontSize: typography.fontSize.base, color: 'var(--color-primary-700)', lineHeight: typography.lineHeight.relaxed, marginBottom: spacing[6] }}>
+                Are you sure you want to revoke access for{' '}
+                <strong>{revokeTarget.shared_user_name || revokeTarget.email}</strong>?
+                They will immediately lose access to this journal.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[3] }}>
+                <button
+                  style={s.buttonSecondary}
+                  onClick={() => setRevokeTarget(null)}
+                  disabled={revoking}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={{
+                    ...s.buttonPrimary,
+                    backgroundColor: 'var(--color-error)',
+                    ...(revoking ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                  }}
+                  onClick={handleRevoke}
+                  disabled={revoking}
+                >
+                  {revoking ? 'Revoking...' : 'Revoke Access'}
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
       </div>
     </div>
   );
