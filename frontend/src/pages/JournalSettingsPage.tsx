@@ -13,7 +13,7 @@ const PROMPT_TYPES = [
 ];
 
 const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
-  ...(import.meta.env.DEV ? [{ value: 'every_10_minutes' as AnalysisInterval, label: 'Every 10 min (dev)' }] : []),
+  { value: 'every_10_minutes', label: 'Every 10 min (dev)' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Every two weeks' },
   { value: 'monthly', label: 'Monthly' },
@@ -21,7 +21,7 @@ const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
 ];
 
 const ENTRY_FREQUENCIES: { value: EntryFrequency; label: string }[] = [
-  ...(import.meta.env.DEV ? [{ value: 'every_minute' as EntryFrequency, label: 'Every minute (dev)' }] : []),
+  { value: 'every_minute', label: 'Every minute (dev)' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Every two weeks' },
@@ -29,7 +29,7 @@ const ENTRY_FREQUENCIES: { value: EntryFrequency; label: string }[] = [
   { value: 'unlimited', label: 'Unlimited' },
 ];
 
-const FREQ_DAYS: Record<string, number> = { every_minute: 0.0007, daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
+const FREQ_DAYS: Record<string, number> = { every_minute: 0.0007, every_10_minutes: 0.007, daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
 
 const s = {
   page: {

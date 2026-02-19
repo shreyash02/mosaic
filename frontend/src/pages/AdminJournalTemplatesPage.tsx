@@ -26,10 +26,10 @@ const EMPTY_FORM: TemplateFormData = {
   is_active: true,
 };
 
-const FREQ_DAYS: Record<string, number> = { every_minute: 0.0007, daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
+const FREQ_DAYS: Record<string, number> = { every_minute: 0.0007, every_10_minutes: 0.007, daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
 
 const ALL_ANALYSIS_OPTIONS = [
-  ...(import.meta.env.DEV ? [{ value: 'every_10_minutes', label: 'Every 10 min (dev)' }] : []),
+  { value: 'every_10_minutes', label: 'Every 10 min (dev)' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Biweekly' },

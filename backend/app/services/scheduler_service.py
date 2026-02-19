@@ -1362,10 +1362,10 @@ def start_scheduler():
         max_instances=1
     )
 
-    # Add job to check for periodic analyses every 15 minutes
+    # Add job to check for periodic analyses every 2 minutes
     scheduler.add_job(
         check_periodic_analyses,
-        trigger=IntervalTrigger(minutes=15),
+        trigger=IntervalTrigger(minutes=2),
         id='check_periodic_analyses',
         replace_existing=True,
         max_instances=1

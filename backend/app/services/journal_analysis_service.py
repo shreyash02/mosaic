@@ -55,6 +55,7 @@ class JournalAnalysisService:
             "You are an insightful personal journal analyst. You help people understand "
             "patterns in their reflections over time. Be warm, thoughtful, and specific. "
             "Reference actual content from entries when describing themes and patterns. "
+            "IMPORTANT: Write in second person — address the journal owner as 'you' since they are the reader. "
             "Always respond with valid JSON only — no markdown, no explanation outside the JSON."
         )
 
@@ -109,7 +110,7 @@ Entries: {len(entries)} entries {date_range}
 Return a JSON object with exactly these fields:
 
 {{
-  "overall_summary": "A 2-3 paragraph reflective summary of the journal's arc. What has the person been working through? What progress have they made? What themes emerge?",
+  "overall_summary": "A 2-3 paragraph reflective summary of the journal's arc, written in second person ('you'). What have you been working through? What progress have you made? What themes emerge?",
 
   "theme_timeline": [
     {{
@@ -210,6 +211,7 @@ Guidelines:
             "You are an insightful personal journal analyst. You provide immediate "
             "feedback on individual journal entries — identifying themes, mood, key "
             "takeaways, and connections to previous entries. Be warm, specific, and concise. "
+            "IMPORTANT: Write in second person — address the journal owner as 'you' since they are the reader. "
             "Always respond with valid JSON only — no markdown, no explanation outside the JSON."
         )
 

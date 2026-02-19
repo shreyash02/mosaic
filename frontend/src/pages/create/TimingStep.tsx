@@ -8,7 +8,7 @@ import CustomSelect from '../../components/CustomSelect';
 import DateTimePicker from '../../components/DateTimePicker';
 
 const INTERVAL_OPTIONS = [
-  ...(import.meta.env.DEV ? [{ value: 'every_10_minutes', label: 'Every 10 min (dev)' }] : []),
+  { value: 'every_10_minutes', label: 'Every 10 min (dev)' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Every 2 weeks' },
