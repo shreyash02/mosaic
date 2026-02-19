@@ -64,9 +64,9 @@ export default function AdminPlanTiersPage() {
     });
   }, []);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (initial = false) => {
     try {
-      setLoading(true);
+      if (initial) setLoading(true);
       const client = await getAdminClient();
       const response = await client.get<PlanTiersResponse>('/admin/feature-flags/plan-tiers');
       setData(response.data);
@@ -80,7 +80,7 @@ export default function AdminPlanTiersPage() {
         setError(axiosErr.response?.data?.detail || 'Failed to load plan tier data.');
       }
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   }, [navigate, getAdminClient]);
 
@@ -90,7 +90,7 @@ export default function AdminPlanTiersPage() {
       navigate('/adminportal');
       return;
     }
-    loadData();
+    loadData(true);
   }, [navigate, loadData]);
 
   const openEditModal = (flag: PlanTierFlag, tier: string, info: TierFlagInfo) => {
