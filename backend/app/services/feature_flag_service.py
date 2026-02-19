@@ -1,7 +1,7 @@
 """Feature flag service with hierarchical override resolution."""
 
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 import threading
@@ -647,6 +647,135 @@ class FeatureFlagService:
             return True
 
         return False
+
+    def export_flags(self, db: Session) -> dict:
+        """
+        Export all feature flags with their tier-level overrides.
+
+        Returns a dict matching FlagExportData schema.
+        """
+        flags = db.query(FeatureFlag).order_by(FeatureFlag.display_order, FeatureFlag.name).all()
+
+        # Get all tier-level overrides (no org, no user)
+        tier_overrides = db.query(FeatureFlagOverride).filter(
+            FeatureFlagOverride.tier.isnot(None),
+            FeatureFlagOverride.organization_id.is_(None),
+            FeatureFlagOverride.user_id.is_(None),
+        ).all()
+
+        # Index overrides by (flag_id, tier)
+        override_map: Dict[tuple, FeatureFlagOverride] = {}
+        for ov in tier_overrides:
+            override_map[(str(ov.flag_id), ov.tier)] = ov
+
+        export_flags = []
+        for flag in flags:
+            tier_ov_dict = {}
+            for key, ov in override_map.items():
+                if key[0] == str(flag.id):
+                    tier_ov_dict[ov.tier] = {
+                        "enabled": ov.enabled,
+                        "config_override": ov.config_override,
+                    }
+
+            export_flags.append({
+                "slug": flag.slug,
+                "name": flag.name,
+                "description": flag.description,
+                "enabled": flag.enabled,
+                "config": flag.config or {},
+                "display_order": flag.display_order,
+                "tier_overrides": tier_ov_dict,
+            })
+
+        return {
+            "version": 1,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "flags": export_flags,
+        }
+
+    def import_flags(self, db: Session, flags_data: List[dict], full_sync: bool = False) -> dict:
+        """
+        Import feature flags with tier-level overrides.
+
+        Args:
+            db: Database session
+            flags_data: List of flag entries matching FlagExportEntry schema
+            full_sync: If True, delete flags not present in the import
+
+        Returns:
+            Dict with created, updated, deleted counts
+        """
+        created = 0
+        updated = 0
+        deleted = 0
+
+        import_slugs = set()
+
+        for entry in flags_data:
+            slug = entry["slug"]
+            import_slugs.add(slug)
+
+            existing = db.query(FeatureFlag).filter(FeatureFlag.slug == slug).first()
+
+            if existing:
+                # Update existing flag
+                existing.name = entry["name"]
+                existing.description = entry.get("description")
+                existing.enabled = entry["enabled"]
+                existing.config = entry.get("config", {})
+                existing.display_order = entry.get("display_order", 0)
+                updated += 1
+                flag = existing
+            else:
+                # Create new flag
+                flag = FeatureFlag(
+                    name=entry["name"],
+                    slug=slug,
+                    description=entry.get("description"),
+                    enabled=entry["enabled"],
+                    config=entry.get("config", {}),
+                    display_order=entry.get("display_order", 0),
+                )
+                db.add(flag)
+                db.flush()  # Get the flag ID
+                created += 1
+
+            # Replace tier overrides for this flag:
+            # Delete existing tier-level overrides
+            db.query(FeatureFlagOverride).filter(
+                FeatureFlagOverride.flag_id == flag.id,
+                FeatureFlagOverride.tier.isnot(None),
+                FeatureFlagOverride.organization_id.is_(None),
+                FeatureFlagOverride.user_id.is_(None),
+            ).delete(synchronize_session="fetch")
+
+            # Create tier overrides from import data
+            tier_overrides = entry.get("tier_overrides", {})
+            for tier, ov_data in tier_overrides.items():
+                override = FeatureFlagOverride(
+                    flag_id=flag.id,
+                    tier=tier,
+                    enabled=ov_data.get("enabled"),
+                    config_override=ov_data.get("config_override"),
+                )
+                db.add(override)
+
+        # Full sync: delete flags not in the import list
+        if full_sync:
+            flags_to_delete = db.query(FeatureFlag).filter(
+                FeatureFlag.slug.notin_(import_slugs)
+            ).all()
+            for flag in flags_to_delete:
+                db.delete(flag)
+                deleted += 1
+
+        db.commit()
+
+        # Invalidate all cache
+        self.invalidate_cache()
+
+        return {"created": created, "updated": updated, "deleted": deleted}
 
 
 # Singleton instance

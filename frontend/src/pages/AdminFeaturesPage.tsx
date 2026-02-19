@@ -40,6 +40,13 @@ export default function AdminFeaturesPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [toggling, setToggling] = useState(false);
 
+  // Import modal
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importData, setImportData] = useState<any>(null);
+  const [importFullSync, setImportFullSync] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Reorder mode
   const [reorderMode, setReorderMode] = useState(false);
   const dragIndexRef = useRef<number | null>(null);
@@ -302,6 +309,82 @@ export default function AdminFeaturesPage() {
     }
   };
 
+  // Export flags
+  const handleExport = async () => {
+    try {
+      const client = await getAdminClient();
+      const response = await client.get('/admin/feature-flags/export');
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `feature-flags-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      addToast({ type: 'success', title: 'Exported', message: `Exported ${response.data.flags.length} feature flags` });
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      addToast({ type: 'error', title: 'Export failed', message: error.response?.data?.detail || 'Failed to export feature flags' });
+    }
+  };
+
+  // Handle file selection for import
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (!data.flags || !Array.isArray(data.flags)) {
+          addToast({ type: 'error', title: 'Invalid file', message: 'File does not contain a valid flags array' });
+          return;
+        }
+        setImportData(data);
+        setImportFullSync(false);
+        setShowImportModal(true);
+      } catch {
+        addToast({ type: 'error', title: 'Invalid JSON', message: 'File does not contain valid JSON' });
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  // Confirm and execute import
+  const handleImportConfirm = async () => {
+    if (!importData) return;
+    setImporting(true);
+
+    try {
+      const client = await getAdminClient();
+      const response = await client.post('/admin/feature-flags/import', {
+        flags: importData.flags,
+        full_sync: importFullSync,
+      });
+      const { created, updated, deleted } = response.data;
+      const parts = [];
+      if (created > 0) parts.push(`${created} created`);
+      if (updated > 0) parts.push(`${updated} updated`);
+      if (deleted > 0) parts.push(`${deleted} deleted`);
+      addToast({ type: 'success', title: 'Import complete', message: parts.join(', ') || 'No changes' });
+      setShowImportModal(false);
+      setImportData(null);
+      setSelectedFlag(null);
+      loadFlags();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      addToast({ type: 'error', title: 'Import failed', message: error.response?.data?.detail || 'Failed to import feature flags' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return null;
   }
@@ -311,6 +394,19 @@ export default function AdminFeaturesPage() {
       <div className="admin-header">
         <h1>Feature Flags</h1>
         <div style={{ display: 'flex', gap: 'var(--spacing-4)' }}>
+          <button className="btn btn-secondary" onClick={handleExport}>
+            Export
+          </button>
+          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+            Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
           <Link to="/adminportal" className="btn btn-secondary">
             Back to Admin
           </Link>
@@ -716,6 +812,89 @@ export default function AdminFeaturesPage() {
           )}
         </div>
       </div>
+
+      {/* Import confirmation modal */}
+      {showImportModal && importData && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => !importing && setShowImportModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--spacing-6)',
+              maxWidth: '480px',
+              width: '90%',
+              boxShadow: 'var(--shadow-xl)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 var(--spacing-4) 0' }}>Import Feature Flags</h3>
+            <p style={{ margin: '0 0 var(--spacing-3) 0', color: 'var(--color-text-secondary)' }}>
+              This will import <strong>{importData.flags.length}</strong> feature flag{importData.flags.length !== 1 ? 's' : ''} from the selected file.
+            </p>
+            <p style={{ margin: '0 0 var(--spacing-4) 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+              Existing flags with matching slugs will be updated. New slugs will be created.
+            </p>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+                marginBottom: 'var(--spacing-5)',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={importFullSync}
+                onChange={(e) => setImportFullSync(e.target.checked)}
+              />
+              <span>Delete flags not in file (full sync)</span>
+            </label>
+            {importFullSync && (
+              <p style={{
+                margin: '0 0 var(--spacing-4) 0',
+                padding: 'var(--spacing-3)',
+                backgroundColor: 'var(--color-warning-bg, #fff3cd)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-warning-text, #856404)',
+              }}>
+                Flags not present in the imported file will be permanently deleted along with all their overrides.
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 'var(--spacing-3)', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowImportModal(false)}
+                disabled={importing}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleImportConfirm}
+                disabled={importing}
+              >
+                {importing ? 'Importing...' : 'Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

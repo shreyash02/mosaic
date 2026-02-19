@@ -19,6 +19,9 @@ from app.schemas.feature_flag import (
     EffectiveFeatureFlag,
     FeatureFlagList,
     PlanTiersResponse,
+    FlagExportData,
+    FlagImportRequest,
+    FlagImportResult,
 )
 from app.services.feature_flag_service import feature_flag_service
 
@@ -88,6 +91,26 @@ async def reorder_flags(
     # Return updated list
     flags = feature_flag_service.list_all_flags(db)
     return FeatureFlagList(flags=flags)
+
+
+@router.get("/export", response_model=FlagExportData)
+async def export_flags(
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """Export all feature flags with tier-level overrides as JSON."""
+    return feature_flag_service.export_flags(db)
+
+
+@router.post("/import", response_model=FlagImportResult)
+async def import_flags(
+    body: FlagImportRequest,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """Import feature flags with tier-level overrides."""
+    flags_data = [entry.model_dump() for entry in body.flags]
+    return feature_flag_service.import_flags(db, flags_data, full_sync=body.full_sync)
 
 
 @router.get("/plan-tiers", response_model=PlanTiersResponse)

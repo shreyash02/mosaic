@@ -179,3 +179,47 @@ class PlanTiersResponse(BaseModel):
 
     tiers: List[str]
     flags: List[PlanTierFlag]
+
+
+# --- Export/Import Schemas ---
+
+class FlagExportTierOverride(BaseModel):
+    """Tier override entry within an exported flag."""
+
+    enabled: Optional[bool] = None
+    config_override: Optional[Dict[str, Any]] = None
+
+
+class FlagExportEntry(BaseModel):
+    """A single feature flag in an export payload."""
+
+    slug: str
+    name: str
+    description: Optional[str] = None
+    enabled: bool = False
+    config: Dict[str, Any] = Field(default_factory=dict)
+    display_order: int = 0
+    tier_overrides: Dict[str, FlagExportTierOverride] = Field(default_factory=dict)
+
+
+class FlagExportData(BaseModel):
+    """Full export payload for feature flags."""
+
+    version: int = 1
+    exported_at: str
+    flags: List[FlagExportEntry]
+
+
+class FlagImportRequest(BaseModel):
+    """Request body for importing feature flags."""
+
+    flags: List[FlagExportEntry]
+    full_sync: bool = False
+
+
+class FlagImportResult(BaseModel):
+    """Summary of an import operation."""
+
+    created: int = 0
+    updated: int = 0
+    deleted: int = 0
