@@ -348,7 +348,7 @@ export default function JournalCalendar({
     const start = new Date(journalCreatedDate);
     const end = new Date(today);
 
-    if (entryFrequency === 'daily') {
+    if (entryFrequency === 'every_minute' || entryFrequency === 'daily') {
       const d = new Date(start);
       while (d < end) {
         const key = toDateStr(d);
@@ -531,7 +531,7 @@ export default function JournalCalendar({
       isFuture: boolean;
     }> = [];
 
-    if (freq === 'daily' || freq === 'unlimited') {
+    if (freq === 'every_minute' || freq === 'daily' || freq === 'unlimited') {
       // Show ~60 days (30 before today, today, 7 after)
       const start = new Date(today);
       start.setDate(start.getDate() - 30);

@@ -1213,8 +1213,8 @@ export interface UnreadCountResponse {
 // Journal types (individual mode)
 // ==========================================
 
-export type AnalysisInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
-export type EntryFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'unlimited';
+export type AnalysisInterval = 'every_10_minutes' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type EntryFrequency = 'every_minute' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'unlimited';
 
 export interface JournalPrompt {
   id: string;

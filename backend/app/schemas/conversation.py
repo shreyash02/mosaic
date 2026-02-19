@@ -48,6 +48,7 @@ class RecurrencePattern(str, Enum):
 class AnalysisInterval(str, Enum):
     """Analysis interval options for continuous conversations."""
 
+    EVERY_10_MINUTES = "every_10_minutes"  # dev/testing only
     DAILY = "daily"
     WEEKLY = "weekly"
     BIWEEKLY = "biweekly"

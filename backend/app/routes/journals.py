@@ -607,7 +607,10 @@ def _get_period_bounds(frequency: str, dt: datetime) -> tuple[datetime, datetime
 
     Returns None for unlimited frequency (no enforcement).
     """
-    if frequency == "daily":
+    if frequency == "every_minute":
+        start = dt.replace(second=0, microsecond=0)
+        end = start + timedelta(minutes=1)
+    elif frequency == "daily":
         start = dt.replace(hour=0, minute=0, second=0, microsecond=0)
         end = start + timedelta(days=1)
     elif frequency == "weekly":

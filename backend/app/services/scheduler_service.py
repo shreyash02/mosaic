@@ -782,7 +782,9 @@ def calculate_period_start(period_end: datetime, interval: str) -> datetime:
     Returns:
         Start datetime of the period
     """
-    if interval == "daily":
+    if interval == "every_10_minutes":
+        return period_end - timedelta(minutes=10)
+    elif interval == "daily":
         return period_end - timedelta(days=1)
     elif interval == "weekly":
         return period_end - timedelta(weeks=1)
@@ -805,7 +807,9 @@ def calculate_next_analysis_time(current: datetime, interval: str) -> datetime:
     Returns:
         Next analysis datetime
     """
-    if interval == "daily":
+    if interval == "every_10_minutes":
+        return current + timedelta(minutes=10)
+    elif interval == "daily":
         return current + timedelta(days=1)
     elif interval == "weekly":
         return current + timedelta(weeks=1)
@@ -829,7 +833,9 @@ def generate_period_label(period_start: datetime, period_end: datetime, interval
     Returns:
         Period label string (e.g., "2024-W01", "2024-01", "2024-01-15")
     """
-    if interval == "daily":
+    if interval == "every_10_minutes":
+        return period_start.strftime("%Y-%m-%d %H:%M")
+    elif interval == "daily":
         return period_start.strftime("%Y-%m-%d")
     elif interval in ["weekly", "biweekly"]:
         year, week, _ = period_start.isocalendar()

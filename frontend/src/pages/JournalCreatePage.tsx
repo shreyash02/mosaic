@@ -13,6 +13,7 @@ const PROMPT_TYPES = [
 ];
 
 const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
+  ...(import.meta.env.DEV ? [{ value: 'every_10_minutes' as AnalysisInterval, label: 'Every 10 min (dev)' }] : []),
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Every two weeks' },
   { value: 'monthly', label: 'Monthly' },
@@ -20,6 +21,7 @@ const ANALYSIS_INTERVALS: { value: AnalysisInterval; label: string }[] = [
 ];
 
 const ENTRY_FREQUENCIES: { value: EntryFrequency; label: string }[] = [
+  ...(import.meta.env.DEV ? [{ value: 'every_minute' as EntryFrequency, label: 'Every minute (dev)' }] : []),
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Every two weeks' },
@@ -27,7 +29,7 @@ const ENTRY_FREQUENCIES: { value: EntryFrequency; label: string }[] = [
   { value: 'unlimited', label: 'Unlimited' },
 ];
 
-const FREQ_DAYS: Record<string, number> = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
+const FREQ_DAYS: Record<string, number> = { every_minute: 0.0007, daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
 
 const s = {
   page: {
@@ -291,6 +293,8 @@ const s = {
 // Map frequency/interval to a display label
 function frequencyLabel(freq?: string): string {
   switch (freq) {
+    case 'every_minute': return 'Every minute';
+    case 'every_10_minutes': return 'Every 10 min';
     case 'daily': return 'Daily';
     case 'weekly': return 'Weekly';
     case 'biweekly': return 'Biweekly';
@@ -304,6 +308,12 @@ function nextDateLabel(freq?: string): string {
   const now = new Date();
   let next: Date;
   switch (freq) {
+    case 'every_minute':
+      next = new Date(now.getTime() + 60 * 1000);
+      break;
+    case 'every_10_minutes':
+      next = new Date(now.getTime() + 10 * 60 * 1000);
+      break;
     case 'daily':
       next = new Date(now);
       next.setDate(next.getDate() + 1);

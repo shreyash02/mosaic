@@ -801,7 +801,11 @@ export default function JournalDetailPage() {
 
     const getPeriodBounds = (frequency: string, dt: Date): { start: Date; end: Date } | null => {
       const d = new Date(dt);
-      if (frequency === 'daily') {
+      if (frequency === 'every_minute') {
+        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes());
+        const end = new Date(start.getTime() + 60 * 1000);
+        return { start, end };
+      } else if (frequency === 'daily') {
         const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
         const end = new Date(start);
         end.setDate(end.getDate() + 1);
@@ -832,12 +836,15 @@ export default function JournalDetailPage() {
 
     const formatPeriodLabel = (frequency: string, start: Date, isCurrent: boolean): string => {
       if (isCurrent) {
+        if (frequency === 'every_minute') return 'Now';
         if (frequency === 'daily') return 'Today';
         if (frequency === 'weekly') return 'This week';
         if (frequency === 'monthly') return 'This month';
         if (frequency === 'biweekly') return 'This period';
       }
-      if (frequency === 'daily') {
+      if (frequency === 'every_minute') {
+        return start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } else if (frequency === 'daily') {
         return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       } else if (frequency === 'weekly' || frequency === 'biweekly') {
         const end = new Date(start);
@@ -1125,7 +1132,7 @@ export default function JournalDetailPage() {
                   backgroundColor: 'var(--color-primary-200)',
                   borderRadius: borders.radius.full,
                 }}>
-                  {journal.entry_frequency.charAt(0).toUpperCase() + journal.entry_frequency.slice(1)}
+                  {journal.entry_frequency === 'every_minute' ? 'Every minute' : journal.entry_frequency.charAt(0).toUpperCase() + journal.entry_frequency.slice(1)}
                   {journal.strict_frequency ? ' \u00b7 Strict' : ''}
                 </span>
               )}

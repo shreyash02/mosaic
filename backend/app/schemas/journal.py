@@ -13,7 +13,7 @@ from enum import Enum
 
 # --- Frequency validation ---
 
-FREQUENCY_ORDER = {"daily": 1, "weekly": 7, "biweekly": 14, "monthly": 30}
+FREQUENCY_ORDER = {"every_minute": 0.0007, "daily": 1, "weekly": 7, "biweekly": 14, "monthly": 30}
 
 
 def _validate_frequency_pair(entry_freq: str | None, analysis_interval: str | None):
@@ -38,6 +38,7 @@ def _validate_frequency_pair(entry_freq: str | None, analysis_interval: str | No
 class AnalysisInterval(str, Enum):
     """How often to run periodic analysis."""
 
+    EVERY_10_MINUTES = "every_10_minutes"  # dev/testing only
     DAILY = "daily"
     WEEKLY = "weekly"
     BIWEEKLY = "biweekly"
@@ -47,6 +48,7 @@ class AnalysisInterval(str, Enum):
 class EntryFrequency(str, Enum):
     """How often the user should write entries."""
 
+    EVERY_MINUTE = "every_minute"  # dev/testing only
     DAILY = "daily"
     WEEKLY = "weekly"
     BIWEEKLY = "biweekly"

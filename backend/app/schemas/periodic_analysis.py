@@ -118,5 +118,5 @@ class ContinuousTrends(BaseModel):
 class EnableContinuousRequest(BaseModel):
     """Request to enable continuous mode for a conversation."""
 
-    analysis_interval: str = Field(..., pattern="^(daily|weekly|biweekly|monthly)$", description="How often to run periodic analysis")
+    analysis_interval: str = Field(..., pattern="^(every_10_minutes|daily|weekly|biweekly|monthly)$", description="How often to run periodic analysis")
     start_analysis_at: Optional[datetime] = Field(None, description="When to run the first analysis. If not provided, will be calculated based on activation time.")
