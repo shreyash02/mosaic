@@ -147,3 +147,24 @@ class SchedulerLogsCleanupResponse(BaseModel):
     deleted_count: int
     message: str
 
+
+# Subscription management schemas
+
+class AdminSetTierRequest(BaseModel):
+    """Request to set subscription tier for a user or organization."""
+
+    user_id: Optional[UUID] = None
+    organization_id: Optional[UUID] = None
+    tier: str
+    duration_days: Optional[int] = Field(None, ge=1, description="Duration in days; null means no expiration")
+
+
+class AdminSubscriptionInfo(BaseModel):
+    """Subscription info returned by admin lookup."""
+
+    tier: str
+    status: str
+    expires_at: Optional[datetime] = None
+    user_id: Optional[UUID] = None
+    organization_id: Optional[UUID] = None
+

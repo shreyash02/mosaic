@@ -36,6 +36,8 @@ from app.schemas.admin import (
     SchedulerStatusResponse,
     SchedulerLogsResponse,
     SchedulerLogsCleanupResponse,
+    AdminSetTierRequest,
+    AdminSubscriptionInfo,
 )
 from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
@@ -804,6 +806,101 @@ async def cleanup_test_data(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to cleanup test data: {str(e)}"
         )
+
+
+# ============================================================
+# Subscription management endpoints
+# ============================================================
+
+@router.get("/subscriptions/lookup", response_model=AdminSubscriptionInfo)
+async def lookup_subscription(
+    user_id: Optional[UUID] = None,
+    organization_id: Optional[UUID] = None,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Look up the current subscription tier for a user or organization.
+
+    Provide exactly one of user_id or organization_id.
+    Returns the effective tier (defaults to 'free' if no subscription exists).
+    """
+    if not user_id and not organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either user_id or organization_id",
+        )
+    if user_id and organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide only one of user_id or organization_id",
+        )
+
+    from app.services.subscription_service import subscription_service
+
+    tier = subscription_service.get_tier(db, user_id=user_id, org_id=organization_id)
+    sub = subscription_service.get_subscription(db, user_id=user_id, org_id=organization_id)
+
+    return AdminSubscriptionInfo(
+        tier=tier,
+        status=sub.status if sub else "none",
+        expires_at=sub.expires_at if sub else None,
+        user_id=user_id,
+        organization_id=organization_id,
+    )
+
+
+@router.post("/subscriptions/set-tier", response_model=AdminSubscriptionInfo)
+async def set_subscription_tier(
+    request: AdminSetTierRequest,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Set the subscription tier for a user or organization.
+
+    Provide exactly one of user_id or organization_id.
+    duration_days is optional — null means no expiration.
+    """
+    from datetime import timedelta
+    from app.services.subscription_service import subscription_service
+    from app.schemas.subscription import VALID_TIERS
+
+    if not request.user_id and not request.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either user_id or organization_id",
+        )
+    if request.user_id and request.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide only one of user_id or organization_id",
+        )
+    if request.tier not in VALID_TIERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier. Must be one of: {', '.join(sorted(VALID_TIERS))}",
+        )
+
+    expires_at = None
+    if request.duration_days is not None:
+        expires_at = datetime.utcnow() + timedelta(days=request.duration_days)
+
+    sub = subscription_service.set_tier(
+        db,
+        tier=request.tier,
+        user_id=request.user_id,
+        org_id=request.organization_id,
+        expires_at=expires_at,
+    )
+
+    return AdminSubscriptionInfo(
+        tier=sub.tier,
+        status=sub.status,
+        expires_at=sub.expires_at,
+        user_id=request.user_id,
+        organization_id=request.organization_id,
+    )
 
 
 # Email template types with their required fields

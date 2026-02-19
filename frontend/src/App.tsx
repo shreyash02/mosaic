@@ -50,6 +50,7 @@ import AdminTestGenerationPage from './pages/AdminTestGenerationPage';
 import AdminSchedulerPage from './pages/AdminSchedulerPage';
 import AdminFeaturesPage from './pages/AdminFeaturesPage';
 import AdminJournalTemplatesPage from './pages/AdminJournalTemplatesPage';
+import AdminSubscriptionsPage from './pages/AdminSubscriptionsPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -70,6 +71,8 @@ import JournalCreatePage from './pages/JournalCreatePage';
 import JournalDetailPage from './pages/JournalDetailPage';
 import JournalInsightsPage from './pages/JournalInsightsPage';
 import JournalSettingsPage from './pages/JournalSettingsPage';
+import SharedJournalDetailPage from './pages/SharedJournalDetailPage';
+import AcceptJournalSharePage from './pages/AcceptJournalSharePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ProfilePage from './pages/ProfilePage';
@@ -410,6 +413,22 @@ function App() {
               }
             />
             <Route
+              path="/journals/accept-share/:token"
+              element={
+                <ProtectedRoute>
+                  <AcceptJournalSharePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/shared/:id"
+              element={
+                <ProtectedRoute>
+                  <SharedJournalDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/journals/:id"
               element={
                 <ProtectedRoute>
@@ -467,6 +486,7 @@ function App() {
             <Route path="/adminportal/test-generation" element={<AdminTestGenerationPage />} />
             <Route path="/adminportal/features" element={<AdminFeaturesPage />} />
             <Route path="/adminportal/journal-templates" element={<AdminJournalTemplatesPage />} />
+            <Route path="/adminportal/subscriptions" element={<AdminSubscriptionsPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />

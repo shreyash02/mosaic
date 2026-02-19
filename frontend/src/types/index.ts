@@ -721,6 +721,14 @@ export interface AdminOrganizationInfo {
   created_at: string;
 }
 
+export interface AdminSubscriptionInfo {
+  tier: string;
+  status: string;
+  expires_at: string | null;
+  user_id: string | null;
+  organization_id: string | null;
+}
+
 export interface GenerateTestDataRequest {
   conversation_id: string;
   num_respondents: number;
@@ -1254,6 +1262,12 @@ export interface Journal {
   timezone?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SharedJournalDetail extends Journal {
+  share_type: JournalShareType;
+  owner_name: string;
+  expires_at?: string;
 }
 
 export interface JournalListItem {
