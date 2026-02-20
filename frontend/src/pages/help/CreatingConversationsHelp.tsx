@@ -164,6 +164,48 @@ export default function CreatingConversationsHelp() {
         </section>
 
         <section style={{ marginBottom: '2.5rem' }}>
+          <h2>Presets</h2>
+          <p>
+            Presets let you save and reuse conversation settings so you don't have to configure
+            the same options every time. A preset captures your privacy and access settings but
+            not your questions.
+          </p>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <h3>What a Preset Saves</h3>
+            <ul>
+              <li>Identity tracking (anonymity level)</li>
+              <li>Who can see results</li>
+              <li>Whether to show verbatim responses</li>
+              <li>Whether responses are invite-only</li>
+              <li>A name, description, and icon for identification</li>
+            </ul>
+
+            <h3>Using a Preset</h3>
+            <p>
+              When creating a conversation, your saved presets appear as cards. Click a preset
+              to apply its settings — your questions remain unchanged. Click again to deselect
+              and reset to defaults.
+            </p>
+
+            <h3>Creating a Preset</h3>
+            <ol>
+              <li>Click <strong>"Save as Preset"</strong> during conversation creation</li>
+              <li>Give it a name and optional description</li>
+              <li>Choose an icon for easy visual identification</li>
+              <li>Configure the privacy and access settings</li>
+              <li>Click <strong>"Create Preset"</strong></li>
+            </ol>
+
+            <h3>Managing Presets</h3>
+            <p>
+              You can edit or delete presets from the presets management area. Editing a preset
+              does not affect conversations that were already created using it.
+            </p>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '2.5rem' }}>
           <h2>Questions</h2>
           <p>Add questions to your conversation. You can use multiple question types:</p>
 
@@ -190,6 +232,41 @@ export default function CreatingConversationsHelp() {
             <p>
               Participants can select multiple options. You can optionally limit
               the maximum number of selections.
+            </p>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '2.5rem' }}>
+          <h2>AI Question Suggestions</h2>
+          <p>
+            When you enter a title for your conversation, Mosaic can suggest relevant questions
+            using AI. This helps you get started quickly and ensures you're asking the right
+            questions for your topic.
+          </p>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <h3>How It Works</h3>
+            <p>
+              Suggestions appear automatically after you enter a title. The AI analyzes your
+              title and description to propose questions tailored to your conversation's purpose.
+              Each suggestion includes the question text, question type, and a brief explanation
+              of why it's relevant.
+            </p>
+
+            <h3>Using Suggestions</h3>
+            <ul>
+              <li><strong>Add:</strong> Click "Add" on any suggestion to add it as a question in your conversation</li>
+              <li><strong>Dismiss:</strong> Click the X to remove a suggestion — dismissed questions won't reappear when you refresh</li>
+              <li><strong>Why:</strong> Click "why" to see the reasoning behind each suggestion</li>
+              <li><strong>Refresh:</strong> Click "Refresh" to get new suggestions (previously dismissed ones are excluded)</li>
+              <li><strong>Hide/Show:</strong> Toggle the suggestions panel on or off as needed</li>
+            </ul>
+
+            <h3>Tips for Better Suggestions</h3>
+            <p>
+              The more context you provide in your title and description, the more targeted the
+              suggestions will be. If the AI detects that additional context would help, it will
+              show a hint suggesting what details to add.
             </p>
           </div>
         </section>

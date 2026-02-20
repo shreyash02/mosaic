@@ -189,6 +189,12 @@ export default function HelpPage() {
           <path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5v12h-2V2h2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-2zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3z"/>
         </svg>
       ),
+      'journal': (
+        <svg width="40" height="40" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M5 0h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2 2 2 0 0 1-2 2H3a2 2 0 0 1-2-2h1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1H1a2 2 0 0 1 2-2h2V0z"/>
+          <path d="M1 6v-.5a.5.5 0 0 1 1 0V6h1V5.5a.5.5 0 0 1 1 0V6h1V5.5a.5.5 0 0 1 1 0V6h1V5.5a.5.5 0 0 1 1 0V6h1V5.5a.5.5 0 0 1 1 0V6h.5a.5.5 0 0 1 0 1H10v1h.5a.5.5 0 0 1 0 1H10v1h.5a.5.5 0 0 1 0 1H10v1.5a.5.5 0 0 1-1 0V11H8v.5a.5.5 0 0 1-1 0V11H6v.5a.5.5 0 0 1-1 0V11H4v.5a.5.5 0 0 1-1 0V11H2v.5a.5.5 0 0 1-1 0V11h-.5a.5.5 0 0 1 0-1H1V9h-.5a.5.5 0 0 1 0-1H1V7h-.5a.5.5 0 0 1 0-1H1z"/>
+        </svg>
+      ),
       'followup': (
         <svg width="40" height="40" viewBox="0 0 16 16" fill="currentColor">
           <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
@@ -254,6 +260,12 @@ export default function HelpPage() {
       link: '/help/analysis'
     },
     {
+      title: 'Journals',
+      description: 'Track reflections over time with recurring prompts, calendar views, streak tracking, and scheduled AI analysis.',
+      icon: 'journal',
+      link: '/help/journals'
+    },
+    {
       title: 'Follow-up Conversations',
       description: 'Create follow-up conversations to dive deeper into topics, carry forward settings, and maintain context.',
       icon: 'followup',
@@ -311,6 +323,11 @@ export default function HelpPage() {
               <li><strong>Flexible Anonymity:</strong> Choose from fully anonymous, platform-tracked, or revealable responses</li>
               <li><strong>Multiple Question Types:</strong> Text responses, ratings, single choice, and multiple choice</li>
               <li><strong>AI-Powered Analysis:</strong> Automatically discover themes and insights from text responses</li>
+              <li><strong>Suggested Actions:</strong> Get AI-generated next steps from your analysis results</li>
+              <li><strong>Journals:</strong> Track reflections over time with recurring prompts and scheduled analysis</li>
+              <li><strong>Insight Annotations:</strong> Star and add private notes to analysis findings</li>
+              <li><strong>Presets:</strong> Save and reuse conversation settings for quick setup</li>
+              <li><strong>AI Question Suggestions:</strong> Get smart question recommendations based on your topic</li>
               <li><strong>Follow-up Conversations:</strong> Build on previous discussions to dive deeper</li>
               <li><strong>Recurring Conversations:</strong> Set up templates for regular check-ins</li>
               <li><strong>Collections:</strong> Group related conversations to track trends over time</li>

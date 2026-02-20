@@ -91,6 +91,7 @@ import RecurringConversationsHelp from './pages/help/RecurringConversationsHelp'
 import OrganizationsHelp from './pages/help/OrganizationsHelp';
 import CollectionsHelp from './pages/help/CollectionsHelp';
 import SlackIntegrationHelp from './pages/help/SlackIntegrationHelp';
+import JournalsHelp from './pages/help/JournalsHelp';
 import { SlackCallbackPage } from './pages/SlackCallbackPage';
 import { AnalysisViewPage } from './pages/AnalysisViewPage';
 
@@ -502,6 +503,7 @@ function App() {
             <Route path="/help/organizations" element={<OrganizationsHelp />} />
             <Route path="/help/collections" element={<CollectionsHelp />} />
             <Route path="/help/slack-integration" element={<SlackIntegrationHelp />} />
+            <Route path="/help/journals" element={<JournalsHelp />} />
               </Routes>
               </main>
               <ToastContainer />

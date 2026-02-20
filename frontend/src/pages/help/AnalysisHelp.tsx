@@ -79,6 +79,34 @@ export default function AnalysisHelp() {
         </section>
 
         <section style={{ marginBottom: '3rem' }}>
+          <h2 style={{ marginBottom: '1.5rem' }}>Context Notes</h2>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Before running analysis, creators can add <strong>context notes</strong> to help the AI
+              produce more relevant insights. Context notes provide background information about the
+              conversation — for example, the size of the group, recent changes, or specific goals.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adding Context</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              On the conversation detail page, look for the <strong>"Context for AI"</strong> section.
+              Click <strong>"Add Context"</strong> to open a text area where you can describe relevant
+              background. For example: "Remote team of 12 engineers. New manager joined in January.
+              Team recently switched to weekly sprints."
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>How It Works</h3>
+            <ul style={{ marginBottom: '1.5rem', marginLeft: '2rem' }}>
+              <li>Context notes are visible to everyone who can see the conversation results</li>
+              <li>When analysis runs, the current context is captured as a snapshot</li>
+              <li>You can update context notes at any time — future analyses will use the updated version</li>
+              <li>Maximum 5,000 characters</li>
+            </ul>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '3rem' }}>
           <h2 style={{ marginBottom: '1.5rem' }}>Understanding Results</h2>
 
           <div style={{ marginLeft: '1rem' }}>
@@ -194,6 +222,111 @@ export default function AnalysisHelp() {
             </p>
             <p style={{ marginBottom: '1.5rem' }}>
               Use the findings to inform decisions and demonstrate that feedback is being heard. For ongoing topics, track how themes evolve over time using <Link to="/help/recurring-conversations" style={{ color: '#4299e1' }}>recurring conversations</Link>.
+            </p>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '3rem' }}>
+          <h2 style={{ marginBottom: '1.5rem' }}>Insight Annotations</h2>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <p style={{ marginBottom: '1.5rem' }}>
+              As a creator, you can annotate analysis elements with <strong>stars</strong> and
+              <strong> private notes</strong> to highlight important findings and record your own
+              observations. Annotations are visible only to you — participants and shared link
+              viewers cannot see them.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Starring Insights</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Click the star icon next to any theme, surprising insight, or question analysis
+              to mark it as important. Starred items display a filled star so you can quickly
+              identify the findings that matter most.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adding Notes</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Click the note icon next to any analysis element to add a private text note.
+              Use notes to record your interpretation, flag follow-up items, or capture context
+              that the AI might not know. Notes appear as italicized text below the analysis
+              element. You can edit or remove notes at any time.
+            </p>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '3rem' }}>
+          <h2 style={{ marginBottom: '1.5rem' }}>Suggested Actions</h2>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <p style={{ marginBottom: '1.5rem' }}>
+              After analysis completes, you can generate AI-suggested next steps based on the
+              findings. These actions help you move from insights to concrete follow-through.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Generating Actions</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              On the analysis page, click <strong>"Get Suggested Actions"</strong> to have the AI
+              propose 3-5 targeted actions derived from the analysis themes. Each action includes
+              a title, description, priority level (high, medium, low), and action type.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Action Types</h3>
+            <ul style={{ marginBottom: '1.5rem', marginLeft: '2rem' }}>
+              <li><strong>Investigate:</strong> Dig deeper into a finding</li>
+              <li><strong>Communicate:</strong> Share information with stakeholders</li>
+              <li><strong>Change:</strong> Make a concrete change based on feedback</li>
+              <li><strong>Celebrate:</strong> Acknowledge something positive</li>
+              <li><strong>Monitor:</strong> Keep an eye on an emerging trend</li>
+            </ul>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Managing Actions</h3>
+            <p style={{ marginBottom: '1rem' }}>
+              Each action moves through a workflow:
+            </p>
+            <ul style={{ marginBottom: '1.5rem', marginLeft: '2rem' }}>
+              <li><strong>Suggested:</strong> Newly generated — accept, defer, or dismiss</li>
+              <li><strong>Accepted:</strong> You've committed to this action — mark complete when done</li>
+              <li><strong>Deferred:</strong> Saved for later — accept or dismiss when ready</li>
+              <li><strong>Completed:</strong> Action taken — can undo if needed</li>
+              <li><strong>Dismissed:</strong> Not relevant — hidden but can be undone</li>
+            </ul>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Creating Manual Actions</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              You can also add your own actions using the <strong>"Add Action"</strong> button.
+              Specify a title, description, type, and priority. Manual actions follow the same
+              workflow as AI-generated ones.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Editing & Regenerating</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Edit any action's title or description via the edit button. To get a fresh set of
+              suggestions, use the <strong>"Regenerate"</strong> button at the bottom of the
+              actions section.
+            </p>
+          </div>
+        </section>
+
+        <section style={{ marginBottom: '3rem' }}>
+          <h2 style={{ marginBottom: '1.5rem' }}>Sharing Analysis</h2>
+
+          <div style={{ marginLeft: '1rem' }}>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Creators can share analysis results with anyone via a link, even if the viewer
+              doesn't have a Mosaic account.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>How to Share</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              On the analysis page, click <strong>"Copy Link"</strong> in the header. The link
+              is copied to your clipboard and can be shared with anyone.
+            </p>
+
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>What Viewers See</h3>
+            <p style={{ marginBottom: '1.5rem' }}>
+              Shared analysis views are read-only. Viewers can see the overall summary, themes,
+              question breakdowns, and context notes. They cannot see your private annotations,
+              suggested actions, or edit any settings.
             </p>
           </div>
         </section>
