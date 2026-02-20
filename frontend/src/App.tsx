@@ -96,6 +96,7 @@ import SlackIntegrationHelp from './pages/help/SlackIntegrationHelp';
 import JournalsHelp from './pages/help/JournalsHelp';
 import { SlackCallbackPage } from './pages/SlackCallbackPage';
 import { AnalysisViewPage } from './pages/AnalysisViewPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 import './App.css';
 
@@ -510,6 +511,9 @@ function App() {
             {/* Explore / Sandbox (public, no auth required) */}
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/explore/:scenarioId" element={<ExploreScenarioPage />} />
+
+            {/* 404 catch-all */}
+            <Route path="*" element={<NotFoundPage />} />
               </Routes>
               </main>
               <ToastContainer />

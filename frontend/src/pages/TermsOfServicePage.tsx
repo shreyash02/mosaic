@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
         
         <div className="legal-content">
           <h1>Terms of Service</h1>
-          <p className="last-updated">Last updated: {new Date().toLocaleDateString()}</p>
+          <p className="last-updated">Last updated: February 20, 2026</p>
 
           <section>
             <h2>1. Acceptance of Terms</h2>
