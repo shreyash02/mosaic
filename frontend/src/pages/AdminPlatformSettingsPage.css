@@ -1,0 +1,302 @@
+.platform-settings-page .settings-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-6);
+}
+
+.platform-settings-page .settings-description {
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.platform-settings-page .btn-primary {
+  padding: var(--spacing-2) var(--spacing-5);
+  background: var(--color-primary-900);
+  color: var(--color-primary-50);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.platform-settings-page .btn-primary:hover {
+  background: var(--color-primary-800);
+}
+
+.platform-settings-page .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.platform-settings-page .btn-secondary {
+  padding: var(--spacing-2) var(--spacing-5);
+  background: var(--color-primary-50);
+  color: var(--color-primary-800);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.platform-settings-page .btn-secondary:hover {
+  background: var(--color-primary-200);
+}
+
+.platform-settings-page .btn-edit {
+  padding: 6px var(--spacing-4);
+  background: var(--color-primary-50);
+  color: var(--color-primary-800);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.platform-settings-page .btn-edit:hover {
+  background: var(--color-primary-200);
+  border-color: var(--color-primary-500);
+}
+
+.platform-settings-page .add-form {
+  background: var(--color-primary-100);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-6);
+}
+
+.platform-settings-page .add-form-row {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: flex-end;
+}
+
+.platform-settings-page .add-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  flex: 1;
+}
+
+.platform-settings-page .add-form-group label {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-primary-600);
+}
+
+.platform-settings-page .add-form-group input {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  outline: none;
+  background: var(--color-primary-50);
+  color: var(--color-primary-900);
+}
+
+.platform-settings-page .add-form-group input:focus {
+  border-color: var(--color-primary-900);
+}
+
+.platform-settings-page .add-form-group input::placeholder {
+  color: var(--color-primary-500);
+}
+
+.platform-settings-page .settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--color-primary-300);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.platform-settings-page .setting-row {
+  background: var(--color-primary-50);
+}
+
+.platform-settings-page .setting-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-5);
+  gap: var(--spacing-4);
+}
+
+.platform-settings-page .setting-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.platform-settings-page .setting-key-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-1);
+}
+
+.platform-settings-page .setting-key {
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  background: var(--color-primary-200);
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-sm);
+}
+
+.platform-settings-page .setting-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-800);
+  word-break: break-all;
+}
+
+.platform-settings-page .setting-bool {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.platform-settings-page .bool-true {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.platform-settings-page .bool-false {
+  background: var(--color-primary-200);
+  color: var(--color-primary-600);
+}
+
+.platform-settings-page .setting-desc {
+  font-size: 13px;
+  color: var(--color-primary-600);
+  margin: 2px 0 0 0;
+  line-height: 1.4;
+}
+
+.platform-settings-page .setting-meta {
+  font-size: 11px;
+  color: var(--color-primary-500);
+}
+
+.platform-settings-page .setting-edit {
+  padding: var(--spacing-4) var(--spacing-5);
+  background: var(--color-primary-100);
+}
+
+.platform-settings-page .setting-edit-header {
+  margin-bottom: var(--spacing-3);
+}
+
+.platform-settings-page .setting-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.platform-settings-page .setting-edit-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.platform-settings-page .setting-edit-toggle label,
+.platform-settings-page .setting-edit-input label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary-800);
+  min-width: 80px;
+}
+
+.platform-settings-page .setting-edit-input {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.platform-settings-page .setting-edit-input input {
+  flex: 1;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  outline: none;
+  max-width: 500px;
+  background: var(--color-primary-50);
+  color: var(--color-primary-900);
+}
+
+.platform-settings-page .setting-edit-input input:focus {
+  border-color: var(--color-primary-900);
+}
+
+.platform-settings-page .setting-edit-input input::placeholder {
+  color: var(--color-primary-500);
+}
+
+.platform-settings-page .setting-edit-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.platform-settings-page .toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--color-primary-400);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.platform-settings-page .toggle-switch.active {
+  background: var(--color-success);
+}
+
+.platform-settings-page .toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-primary-50);
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.platform-settings-page .toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+.platform-settings-page .toggle-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-800);
+  font-family: 'Courier New', monospace;
+}
+
+.platform-settings-page .empty-state {
+  text-align: center;
+  padding: var(--spacing-10) var(--spacing-5);
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+}

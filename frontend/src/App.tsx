@@ -56,6 +56,10 @@ import AdminCostEstimatorPage from './pages/AdminCostEstimatorPage';
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
 import AdminLLMUsagePage from './pages/AdminLLMUsagePage';
 import AdminEmailLogsPage from './pages/AdminEmailLogsPage';
+import AdminInviteCodesPage from './pages/AdminInviteCodesPage';
+import AdminPlatformSettingsPage from './pages/AdminPlatformSettingsPage';
+import AdminAuditLogPage from './pages/AdminAuditLogPage';
+import RequestAccessPage from './pages/RequestAccessPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -87,6 +91,7 @@ import SettingsLayout from './pages/settings/SettingsLayout';
 import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage';
 import SettingsSecurityPage from './pages/settings/SettingsSecurityPage';
 import SettingsUsagePage from './pages/settings/SettingsUsagePage';
+import SettingsReferralPage from './pages/settings/SettingsReferralPage';
 import CreatingConversationsHelp from './pages/help/CreatingConversationsHelp';
 import InvitingParticipantsHelp from './pages/help/InvitingParticipantsHelp';
 import RespondingHelp from './pages/help/RespondingHelp';
@@ -166,6 +171,7 @@ function App() {
               <Route path="notifications" element={<SettingsNotificationsPage />} />
               <Route path="security" element={<SettingsSecurityPage />} />
               <Route path="usage" element={<SettingsUsagePage />} />
+              <Route path="referral" element={<SettingsReferralPage />} />
               <Route index element={<Navigate to="notifications" replace />} />
             </Route>
 
@@ -501,6 +507,12 @@ function App() {
             <Route path="/adminportal/analytics" element={<AdminAnalyticsPage />} />
             <Route path="/adminportal/llm-usage" element={<AdminLLMUsagePage />} />
             <Route path="/adminportal/email-logs" element={<AdminEmailLogsPage />} />
+            <Route path="/adminportal/invite-codes" element={<AdminInviteCodesPage />} />
+            <Route path="/adminportal/platform-settings" element={<AdminPlatformSettingsPage />} />
+            <Route path="/adminportal/audit-log" element={<AdminAuditLogPage />} />
+
+            {/* Request Access (public waitlist) */}
+            <Route path="/request-access" element={<RequestAccessPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />

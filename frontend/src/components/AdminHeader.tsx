@@ -1,0 +1,156 @@
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import '../pages/AdminPortalPage.css';
+
+const MAIN_TABS = [
+  { key: 'users', label: 'Users', path: '/adminportal/users' },
+  { key: 'conversations', label: 'Conversations', path: '/adminportal/conversations' },
+  { key: 'responses', label: 'Responses', path: '/adminportal/responses' },
+  { key: 'analyses', label: 'Analyses', path: '/adminportal/analyses' },
+  { key: 'organizations', label: 'Organizations', path: '/adminportal/organizations' },
+  { key: 'scheduler', label: 'Scheduler', path: '/adminportal/scheduler' },
+] as const;
+
+const TEST_TOOLS_ITEMS = [
+  { label: 'Test Response Generation', path: '/adminportal/test-generation' },
+  { label: 'Email Template Preview', path: '/adminportal/email-preview' },
+];
+
+const PLATFORM_ITEMS = [
+  { label: 'Features', path: '/adminportal/features' },
+  { label: 'Journal Templates', path: '/adminportal/journal-templates' },
+  { label: 'Subscriptions', path: '/adminportal/subscriptions' },
+  { label: 'Plan Tiers', path: '/adminportal/plan-tiers' },
+  { label: 'Cost Estimator', path: '/adminportal/cost-estimator' },
+  { label: 'Analytics', path: '/adminportal/analytics' },
+  { label: 'LLM Usage', path: '/adminportal/llm-usage' },
+  { label: 'Email Logs', path: '/adminportal/email-logs' },
+  { label: 'Invite Codes', path: '/adminportal/invite-codes' },
+  { label: 'Platform Settings', path: '/adminportal/platform-settings' },
+  { label: 'Audit Log', path: '/adminportal/audit-log' },
+];
+
+function getActiveTab(pathname: string): string | null {
+  // Detail pages map to parent tabs
+  if (pathname.startsWith('/adminportal/user/')) return 'users';
+  if (pathname.startsWith('/adminportal/conversation/')) return 'conversations';
+
+  // Main tabs
+  for (const tab of MAIN_TABS) {
+    if (pathname === tab.path || pathname.startsWith(tab.path + '/')) return tab.key;
+  }
+
+  return null;
+}
+
+function isTestToolsActive(pathname: string): boolean {
+  return TEST_TOOLS_ITEMS.some((item) => pathname === item.path || pathname.startsWith(item.path + '/'));
+}
+
+function isPlatformActive(pathname: string): boolean {
+  return PLATFORM_ITEMS.some((item) => pathname === item.path || pathname.startsWith(item.path + '/'));
+}
+
+export default function AdminHeader() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [showTestToolsDropdown, setShowTestToolsDropdown] = useState(false);
+  const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  const testToolsRef = useRef<HTMLDivElement>(null);
+  const platformRef = useRef<HTMLDivElement>(null);
+
+  const adminToken = localStorage.getItem('admin_token');
+  if (!adminToken) return null;
+
+  const activeTab = getActiveTab(location.pathname);
+  const testToolsHighlighted = isTestToolsActive(location.pathname);
+  const platformHighlighted = isPlatformActive(location.pathname);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (testToolsRef.current && !testToolsRef.current.contains(e.target as Node)) {
+        setShowTestToolsDropdown(false);
+      }
+      if (platformRef.current && !platformRef.current.contains(e.target as Node)) {
+        setShowPlatformDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    navigate('/adminportal');
+  };
+
+  return (
+    <>
+      <div className="admin-header">
+        <h1>Admin Portal</h1>
+        <button onClick={handleLogout} className="btn btn-secondary">
+          Logout
+        </button>
+      </div>
+
+      <div className="admin-tabs">
+        {MAIN_TABS.map((tab) => (
+          <Link
+            key={tab.key}
+            to={tab.path}
+            className={`tab ${activeTab === tab.key ? 'active' : ''}`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+        <div className="tab-dropdown-container" ref={testToolsRef}>
+          <button
+            className={`tab ${testToolsHighlighted ? 'active' : ''}`}
+            onClick={() => setShowTestToolsDropdown(!showTestToolsDropdown)}
+          >
+            Test Tools
+            <span style={{ marginLeft: '4px', fontSize: '10px' }}>{showTestToolsDropdown ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {showTestToolsDropdown && (
+            <div className="tab-dropdown-menu">
+              {TEST_TOOLS_ITEMS.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="tab-dropdown-item"
+                  onClick={() => setShowTestToolsDropdown(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="tab-dropdown-container" ref={platformRef}>
+          <button
+            className={`tab ${platformHighlighted ? 'active' : ''}`}
+            onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
+          >
+            Platform
+            <span style={{ marginLeft: '4px', fontSize: '10px' }}>{showPlatformDropdown ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {showPlatformDropdown && (
+            <div className="tab-dropdown-menu">
+              {PLATFORM_ITEMS.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="tab-dropdown-item"
+                  onClick={() => setShowPlatformDropdown(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

@@ -220,13 +220,14 @@ class ApiService {
     return response.data;
   }
 
-  getGoogleLoginUrl(redirect?: string): string {
+  getGoogleLoginUrl(redirect?: string, inviteCode?: string): string {
     const baseUrl = API_BASE_URL.replace('/api', '');
     const url = `${baseUrl}/api/auth/google/login`;
-    if (redirect) {
-      return `${url}?redirect=${encodeURIComponent(redirect)}`;
-    }
-    return url;
+    const params = new URLSearchParams();
+    if (redirect) params.set('redirect', redirect);
+    if (inviteCode) params.set('invite_code', inviteCode);
+    const qs = params.toString();
+    return qs ? `${url}?${qs}` : url;
   }
 
   // Email verification endpoints
@@ -1256,6 +1257,77 @@ class ApiService {
 
   async deletePreset(id: string): Promise<void> {
     await this.client.delete(`/presets/${id}`);
+  }
+
+  // Invite code endpoints
+  async checkInviteCodeRequired(): Promise<{ required: boolean }> {
+    const response = await this.client.get<{ required: boolean }>('/invite-codes/check-required');
+    return response.data;
+  }
+
+  async validateInviteCode(code: string): Promise<{ valid: boolean; message: string }> {
+    const response = await this.client.post<{ valid: boolean; message: string }>('/invite-codes/validate', { code });
+    return response.data;
+  }
+
+  async submitWaitlistRequest(data: { email: string; full_name?: string; message?: string }): Promise<any> {
+    const response = await this.client.post('/waitlist/request', data);
+    return response.data;
+  }
+
+  async generateReferralCode(): Promise<any> {
+    const response = await this.client.post('/invite-codes/referral');
+    return response.data;
+  }
+
+  async getMyReferralCodes(): Promise<any[]> {
+    const response = await this.client.get('/invite-codes/my-referrals');
+    return response.data;
+  }
+
+  // Admin invite code endpoints
+  async adminGetInviteCodeStats(): Promise<any> {
+    const response = await this.client.get('/admin/invite-codes/stats');
+    return response.data;
+  }
+
+  async adminGenerateInviteCodes(data: { count: number; label?: string; expires_in_days?: number }): Promise<any[]> {
+    const response = await this.client.post('/admin/invite-codes/generate', data);
+    return response.data;
+  }
+
+  async adminListInviteCodes(params?: { status?: string; code_type?: string; search?: string; limit?: number; offset?: number }): Promise<any[]> {
+    const response = await this.client.get('/admin/invite-codes', { params });
+    return response.data;
+  }
+
+  async adminRevokeInviteCode(id: string): Promise<void> {
+    await this.client.delete(`/admin/invite-codes/${id}`);
+  }
+
+  async adminListWaitlist(params?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<any[]> {
+    const response = await this.client.get('/admin/waitlist', { params });
+    return response.data;
+  }
+
+  async adminApproveWaitlist(id: string, note?: string): Promise<any> {
+    const response = await this.client.post(`/admin/waitlist/${id}/approve`, { note });
+    return response.data;
+  }
+
+  async adminRejectWaitlist(id: string, note?: string): Promise<any> {
+    const response = await this.client.post(`/admin/waitlist/${id}/reject`, { note });
+    return response.data;
+  }
+
+  async adminGetPlatformSettings(): Promise<any[]> {
+    const response = await this.client.get('/admin/platform-settings');
+    return response.data;
+  }
+
+  async adminUpdatePlatformSetting(key: string, data: { value: string; description?: string }): Promise<any> {
+    const response = await this.client.put(`/admin/platform-settings/${key}`, data);
+    return response.data;
   }
 }
 

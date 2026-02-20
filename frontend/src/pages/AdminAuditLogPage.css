@@ -1,0 +1,152 @@
+/* Admin Audit Log Page Styles */
+
+.admin-audit-log-page {
+  min-height: calc(100vh - var(--header-height));
+}
+
+.admin-audit-log-page .loading {
+  text-align: center;
+  padding: var(--spacing-16);
+  color: var(--color-primary-500);
+  font-size: var(--font-size-lg);
+}
+
+.admin-audit-log-page .error-message {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-6);
+  font-size: var(--font-size-sm);
+}
+
+/* Filters row */
+.admin-audit-log-page .filters-row {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-6);
+  align-items: center;
+}
+
+.admin-audit-log-page .filters-row select {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--color-primary-900);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+/* Table card */
+.admin-audit-log-page .table-card {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-6);
+  margin-bottom: var(--spacing-8);
+}
+
+/* Table styles */
+.admin-audit-log-page .audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.admin-audit-log-page .audit-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-primary-500);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--color-primary-200);
+}
+
+.admin-audit-log-page .audit-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--color-primary-100);
+  color: var(--color-primary-900);
+}
+
+.admin-audit-log-page .audit-table td.action-cell {
+  font-weight: 500;
+}
+
+.admin-audit-log-page .audit-table td.details-cell {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-600);
+}
+
+.admin-audit-log-page .audit-table td.entity-id-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+}
+
+/* Pagination */
+.admin-audit-log-page .pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-4);
+}
+
+.admin-audit-log-page .pagination button {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-audit-log-page .pagination button:hover:not(:disabled) {
+  background: var(--color-primary-100);
+  color: var(--color-primary-900);
+}
+
+.admin-audit-log-page .pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.admin-audit-log-page .pagination .page-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-500);
+}
+
+.admin-audit-log-page .no-data {
+  text-align: center;
+  color: var(--color-primary-400);
+  padding: var(--spacing-8);
+  font-size: var(--font-size-sm);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-audit-log-page {
+    padding: var(--spacing-4);
+  }
+
+  .admin-audit-log-page .filters-row {
+    flex-wrap: wrap;
+  }
+}

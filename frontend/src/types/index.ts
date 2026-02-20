@@ -18,6 +18,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   full_name: string;
+  invite_code?: string;
 }
 
 export interface AuthResponse {
@@ -1770,4 +1771,24 @@ export interface AdminEmailLogsResponse {
   page_size: number;
   total_pages: number;
   recent_failures: EmailRecentFailure[];
+}
+
+// Audit Log types
+export interface AuditLogEntry {
+  id: string;
+  admin_id: string;
+  admin_username: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AdminAuditLogResponse {
+  logs: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
