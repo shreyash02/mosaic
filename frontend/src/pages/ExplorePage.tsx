@@ -162,7 +162,9 @@ export default function ExplorePage() {
                 <p style={styles.cardDescription}>{scenario.description}</p>
                 <div style={styles.cardFooter}>
                   <span style={styles.responseInfo}>
-                    {scenario.conversation.responseCount} responses &middot; {scenario.conversation.questionCount} questions
+                    {scenario.type === 'conversation'
+                      ? `${scenario.conversation.responseCount} responses \u00B7 ${scenario.conversation.questionCount} questions`
+                      : `${scenario.journal.entryCount} entries \u00B7 ${scenario.journal.duration}`}
                   </span>
                   <span style={styles.arrowIcon} className="explore-arrow">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">

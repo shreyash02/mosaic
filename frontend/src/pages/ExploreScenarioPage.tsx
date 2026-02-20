@@ -4,6 +4,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { typography, spacing, borders, shadows } from '../styles/tokens';
 import { EXPLORE_SCENARIOS } from '../data/exploreScenarios';
 import DemoAnalysisView from '../components/DemoAnalysisView';
+import DemoJournalInsightsView from '../components/DemoJournalInsightsView';
 import type { DemoSuggestedAction } from '../data/exploreScenarios';
 
 const styles = {
@@ -270,28 +271,46 @@ export default function ExploreScenarioPage() {
           <p style={styles.roleDetail}>{scenario.roleContext.detail}</p>
         </div>
 
-        {/* Conversation metadata */}
-        <div style={styles.convMeta}>
-          <h3 style={styles.convTitle}>{scenario.conversation.title}</h3>
-          <span style={styles.convStat}>
-            {scenario.conversation.responseCount} responses
-          </span>
-          <span style={styles.convStat}>
-            {scenario.conversation.questionCount} questions
-          </span>
-        </div>
+        {/* Content — differs by scenario type */}
+        {scenario.type === 'conversation' && (
+          <>
+            <div style={styles.convMeta}>
+              <h3 style={styles.convTitle}>{scenario.conversation.title}</h3>
+              <span style={styles.convStat}>
+                {scenario.conversation.responseCount} responses
+              </span>
+              <span style={styles.convStat}>
+                {scenario.conversation.questionCount} questions
+              </span>
+            </div>
 
-        {/* Analysis */}
-        <DemoAnalysisView analysis={scenario.analysis} />
+            <DemoAnalysisView analysis={scenario.analysis} />
 
-        {/* Suggested Actions */}
-        {scenario.suggestedActions.length > 0 && (
-          <div style={styles.actionsCard}>
-            <h3 style={styles.actionsTitle}>Suggested Actions</h3>
-            {scenario.suggestedActions.map((action, i) => (
-              <ActionItemView key={i} action={action} />
-            ))}
-          </div>
+            {scenario.suggestedActions.length > 0 && (
+              <div style={styles.actionsCard}>
+                <h3 style={styles.actionsTitle}>Suggested Actions</h3>
+                {scenario.suggestedActions.map((action, i) => (
+                  <ActionItemView key={i} action={action} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {scenario.type === 'journal' && (
+          <>
+            <div style={styles.convMeta}>
+              <h3 style={styles.convTitle}>{scenario.journal.title}</h3>
+              <span style={styles.convStat}>
+                {scenario.journal.entryCount} entries
+              </span>
+              <span style={styles.convStat}>
+                {scenario.journal.duration}
+              </span>
+            </div>
+
+            <DemoJournalInsightsView analysis={scenario.journalAnalysis} />
+          </>
         )}
 
         {/* Bottom CTA */}

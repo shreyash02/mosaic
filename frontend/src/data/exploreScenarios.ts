@@ -72,16 +72,59 @@ export interface DemoSuggestedAction {
   priority: ActionPriority;
 }
 
-export interface ExploreScenario {
+// ─── Journal-specific types ──────────────────────────────────────────────────
+
+export interface DemoThemeTimeline {
+  theme: string;
+  entry_count: number;
+  trajectory: 'growing' | 'stable' | 'declining' | 'resolved';
+  summary: string;
+}
+
+export interface DemoMoodDataPoint {
+  date: string;
+  sentiment_score: number;
+  dominant_mood: string;
+}
+
+export interface DemoMoodTrajectory {
+  data_points: DemoMoodDataPoint[];
+  overall_trend: 'improving' | 'stable' | 'declining';
+  summary: string;
+}
+
+export interface DemoPatternInsight {
+  pattern_type: 'recurring_concern' | 'positive_shift' | 'correlation' | 'cyclical';
+  title: string;
+  description: string;
+}
+
+export interface DemoJournalAnalysis {
+  overall_summary: string;
+  theme_timeline: DemoThemeTimeline[];
+  mood_trajectory: DemoMoodTrajectory;
+  patterns: DemoPatternInsight[];
+  total_entries_analyzed: number;
+  date_range_start: string;
+  date_range_end: string;
+}
+
+// ─── Scenario types (discriminated union) ────────────────────────────────────
+
+interface BaseScenario {
   id: string;
   title: string;
   description: string;
-  category: 'Workplace' | 'Events' | 'Education' | 'Social';
+  category: 'Workplace' | 'Events' | 'Education' | 'Social' | 'Personal';
   roleContext: {
     role: string;
     situation: string;
     detail: string;
   };
+}
+
+export interface ConversationScenario extends BaseScenario {
+  type: 'conversation';
   conversation: {
     title: string;
     responseCount: number;
@@ -91,9 +134,22 @@ export interface ExploreScenario {
   suggestedActions: DemoSuggestedAction[];
 }
 
+export interface JournalScenario extends BaseScenario {
+  type: 'journal';
+  journal: {
+    title: string;
+    entryCount: number;
+    duration: string;
+  };
+  journalAnalysis: DemoJournalAnalysis;
+}
+
+export type ExploreScenario = ConversationScenario | JournalScenario;
+
 export const EXPLORE_SCENARIOS: ExploreScenario[] = [
   // ─── 1. Team Sprint Retrospective ─────────────────────────────────────
   {
+    type: 'conversation',
     id: 'team-retro',
     title: 'Team Sprint Retrospective',
     description: 'See how AI surfaces themes from anonymous team feedback after a sprint.',
@@ -246,6 +302,7 @@ export const EXPLORE_SCENARIOS: ExploreScenario[] = [
 
   // ─── 2. Workshop Feedback ─────────────────────────────────────────────
   {
+    type: 'conversation',
     id: 'workshop-feedback',
     title: 'Workshop Feedback',
     description: 'Explore how ratings, polls, and open text combine for rich event insights.',
@@ -396,6 +453,7 @@ export const EXPLORE_SCENARIOS: ExploreScenario[] = [
 
   // ─── 3. End-of-Course Feedback ────────────────────────────────────────
   {
+    type: 'conversation',
     id: 'course-feedback',
     title: 'End-of-Course Feedback',
     description: 'See how analysis handles large response sets with mixed question types.',
@@ -578,6 +636,7 @@ export const EXPLORE_SCENARIOS: ExploreScenario[] = [
 
   // ─── 4. Friend Group Trip Planning ────────────────────────────────────
   {
+    type: 'conversation',
     id: 'trip-planning',
     title: 'Friend Group Trip Planning',
     description: 'See polls, ratings, and text combined for group decision-making.',
@@ -729,5 +788,105 @@ export const EXPLORE_SCENARIOS: ExploreScenario[] = [
         priority: 'medium',
       },
     ],
+  },
+
+  // ─── 5. Personal Reflection Journal ───────────────────────────────────
+  {
+    type: 'journal',
+    id: 'gratitude-journal',
+    title: 'Personal Reflection Journal',
+    description: 'See how journaling over time reveals mood trends, recurring themes, and personal patterns.',
+    category: 'Personal',
+    roleContext: {
+      role: 'someone building a daily reflection habit',
+      situation: 'You\'ve been using Mosaic\'s journal feature to write short daily reflections for the past 4 weeks. Each entry captures what happened, how you felt, and what you\'re grateful for.',
+      detail: 'After 24 entries, the AI analyzed your writing for themes, mood trajectory, and patterns. Here\'s what it found.',
+    },
+    journal: {
+      title: 'Daily Reflections',
+      entryCount: 24,
+      duration: '4 weeks',
+    },
+    journalAnalysis: {
+      overall_summary: 'Over the past 4 weeks, your entries show a clear upward trend in mood and energy. Early entries reflect stress around a work deadline, but this resolved around week 2. A recurring theme is the positive impact of morning walks — entries written after walks consistently have higher sentiment. Social interactions are your strongest mood booster, while screen-heavy evenings correlate with lower next-day energy.',
+      total_entries_analyzed: 24,
+      date_range_start: '2026-01-20',
+      date_range_end: '2026-02-16',
+      theme_timeline: [
+        {
+          theme: 'Work deadline stress',
+          entry_count: 8,
+          trajectory: 'resolved',
+          summary: 'The first two weeks were dominated by anxiety around a project deadline. Once the project shipped, stress levels dropped significantly and entries shifted to relief and momentum.',
+        },
+        {
+          theme: 'Morning walks and outdoor time',
+          entry_count: 14,
+          trajectory: 'growing',
+          summary: 'References to morning walks increased from occasional to nearly daily. Entries written after walks are noticeably more positive and focused. This is becoming a core part of your routine.',
+        },
+        {
+          theme: 'Social connection and energy',
+          entry_count: 10,
+          trajectory: 'stable',
+          summary: 'Entries after social time — dinners with friends, phone calls, weekend hangouts — consistently express higher energy and optimism. Social connection is a reliable mood booster.',
+        },
+        {
+          theme: 'Screen fatigue and evening habits',
+          entry_count: 6,
+          trajectory: 'declining',
+          summary: 'Several entries note feeling drained after long screen-heavy evenings. This pattern has been decreasing as you\'ve started replacing some screen time with reading.',
+        },
+        {
+          theme: 'Gratitude for small things',
+          entry_count: 16,
+          trajectory: 'growing',
+          summary: 'Gratitude mentions have expanded from generic ("grateful for my health") to specific, detailed observations ("the way the light hit the trees on my walk today"). The practice is deepening.',
+        },
+      ],
+      mood_trajectory: {
+        overall_trend: 'improving',
+        summary: 'Your mood has trended upward over the 4-week period. The first 10 days show more negative sentiment tied to work stress, followed by a sharp improvement after the deadline. The final two weeks are consistently positive, with minor dips on screen-heavy days.',
+        data_points: [
+          { date: '2026-01-20', sentiment_score: -0.2, dominant_mood: 'anxious' },
+          { date: '2026-01-22', sentiment_score: -0.3, dominant_mood: 'stressed' },
+          { date: '2026-01-24', sentiment_score: -0.1, dominant_mood: 'tired' },
+          { date: '2026-01-26', sentiment_score: 0.1, dominant_mood: 'hopeful' },
+          { date: '2026-01-28', sentiment_score: -0.2, dominant_mood: 'anxious' },
+          { date: '2026-01-30', sentiment_score: 0.3, dominant_mood: 'relieved' },
+          { date: '2026-02-01', sentiment_score: 0.5, dominant_mood: 'energized' },
+          { date: '2026-02-03', sentiment_score: 0.4, dominant_mood: 'content' },
+          { date: '2026-02-05', sentiment_score: 0.6, dominant_mood: 'grateful' },
+          { date: '2026-02-07', sentiment_score: 0.3, dominant_mood: 'tired' },
+          { date: '2026-02-09', sentiment_score: 0.7, dominant_mood: 'joyful' },
+          { date: '2026-02-11', sentiment_score: 0.5, dominant_mood: 'content' },
+          { date: '2026-02-13', sentiment_score: 0.6, dominant_mood: 'grateful' },
+          { date: '2026-02-15', sentiment_score: 0.8, dominant_mood: 'energized' },
+          { date: '2026-02-16', sentiment_score: 0.7, dominant_mood: 'content' },
+        ],
+      },
+      patterns: [
+        {
+          pattern_type: 'correlation',
+          title: 'Morning walks predict better days',
+          description: 'Entries that mention a morning walk have an average sentiment score 0.4 points higher than those that don\'t. The effect is consistent across all 4 weeks, suggesting outdoor movement in the morning is a reliable mood anchor.',
+        },
+        {
+          pattern_type: 'recurring_concern',
+          title: 'Screen-heavy evenings precede low-energy mornings',
+          description: 'On 5 of 6 occasions where you mentioned spending the evening on screens, the following day\'s entry reported lower energy or difficulty focusing. The pattern is strong enough to be worth addressing.',
+        },
+        {
+          pattern_type: 'positive_shift',
+          title: 'Gratitude practice is deepening',
+          description: 'Your gratitude entries have evolved from general statements to vivid, specific observations. This shift — from "I\'m grateful for friends" to "I loved how my friend remembered my favorite coffee order" — correlates with higher overall sentiment scores.',
+        },
+        {
+          pattern_type: 'cyclical',
+          title: 'Weekend energy boost',
+          description: 'Entries written on weekends or after social events consistently show higher energy and more positive language. Mid-week entries tend to be more neutral or task-focused.',
+        },
+      ],
+    },
   },
 ];
