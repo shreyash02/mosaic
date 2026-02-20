@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -150,6 +151,136 @@ const s = {
   },
 };
 
+function DurationInput({ id, value, min, max, onChange, onOverflow, label, padDigits }: {
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+  onOverflow?: (direction: 'up' | 'down') => void;
+  label: string;
+  padDigits?: number;
+}) {
+  const increment = () => {
+    if (value >= max && onOverflow) {
+      onOverflow('up');
+    } else {
+      onChange(Math.min(max, value + 1));
+    }
+  };
+  const decrement = () => {
+    if (value <= min && onOverflow) {
+      onOverflow('down');
+    } else {
+      onChange(Math.max(min, value - 1));
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+        <style>{`
+          .duration-number-input::-webkit-inner-spin-button,
+          .duration-number-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          .duration-number-input { -moz-appearance: textfield; }
+        `}</style>
+        <input
+          id={id}
+          type={padDigits ? 'text' : 'number'}
+          inputMode={padDigits ? 'numeric' : undefined}
+          className="duration-number-input"
+          value={padDigits ? String(value).padStart(padDigits, '0') : value}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/\D/g, '');
+            onChange(parseInt(raw) || 0);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              increment();
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              decrement();
+            }
+          }}
+          style={{
+            width: '72px',
+            padding: `${spacing[2]} ${spacing[3]}`,
+            paddingRight: '32px',
+            border: '1px solid var(--color-primary-300)',
+            borderRadius: borders.radius.md,
+            fontSize: typography.fontSize.base,
+            fontFamily: 'inherit',
+            textAlign: 'center',
+            backgroundColor: 'var(--color-primary-50)',
+            color: 'var(--color-primary-900)',
+          }}
+        />
+        <div style={{
+          position: 'absolute',
+          right: '4px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1px',
+        }}>
+          <button
+            type="button"
+            onClick={increment}
+            disabled={value >= max && !onOverflow}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '22px',
+              height: '14px',
+              padding: 0,
+              border: 'none',
+              borderRadius: '3px',
+              background: 'var(--color-primary-200)',
+              color: 'var(--color-primary-600)',
+              cursor: value >= max && !onOverflow ? 'default' : 'pointer',
+              opacity: value >= max && !onOverflow ? 0.4 : 1,
+            }}
+          >
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 4.5L5 1.5L9 4.5" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={decrement}
+            disabled={value <= min && !onOverflow}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '22px',
+              height: '14px',
+              padding: 0,
+              border: 'none',
+              borderRadius: '3px',
+              background: 'var(--color-primary-200)',
+              color: 'var(--color-primary-600)',
+              cursor: value <= min && !onOverflow ? 'default' : 'pointer',
+              opacity: value <= min && !onOverflow ? 0.4 : 1,
+            }}
+          >
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1.5L5 4.5L9 1.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <label htmlFor={id} className="duration-label">{label}</label>
+    </div>
+  );
+}
+
 export default function TimingStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
@@ -158,8 +289,11 @@ export default function TimingStep() {
   const recurringEnabled = useFeature('recurring_conversations');
   const continuousEnabled = useFeature('continuous_conversations');
   const showNotificationsStep = slackEnabled && !!currentOrgId;
+  const [showMinutesInput, setShowMinutesInput] = useState(formState.durationMinutes > 0);
 
   const isTemplate = formState.createTemplate;
+
+  const isZeroDuration = !formState.isLongRunning && formState.durationHours === 0 && formState.durationMinutes === 0;
 
   const handleNext = () => {
     // Validate scheduled activation
@@ -250,41 +384,68 @@ export default function TimingStep() {
               <p className="form-help-text" style={{ marginBottom: spacing[3] }}>
                 The conversation will automatically close after this duration
               </p>
-              <div className="duration-inputs">
-                <div className="duration-input-group">
-                  <input
-                    id="durationHours"
-                    type="number"
-                    min="1"
-                    max="168"
-                    value={formState.durationHours}
-                    onChange={(e) => {
-                      const value = Math.max(1, Math.min(168, parseInt(e.target.value) || 1));
-                      updateFormState({ durationHours: value });
-                    }}
-                    placeholder="48"
-                  />
-                  <label htmlFor="durationHours" className="duration-label">Hours</label>
-                </div>
-                <div className="duration-input-group">
-                  <input
+              <div style={{ display: 'flex', gap: spacing[3], alignItems: 'flex-start' }}>
+                <DurationInput
+                  id="durationHours"
+                  value={formState.durationHours}
+                  min={showMinutesInput ? 0 : 1}
+                  max={168}
+                  onChange={(v) => updateFormState({ durationHours: Math.max(showMinutesInput ? 0 : 1, Math.min(168, v)) })}
+                  label="Hours"
+                />
+                {showMinutesInput ? (
+                  <DurationInput
                     id="durationMinutes"
-                    type="number"
-                    min="0"
-                    max="59"
                     value={formState.durationMinutes}
-                    onChange={(e) => {
-                      const value = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
-                      updateFormState({ durationMinutes: value });
+                    min={0}
+                    max={59}
+                    padDigits={2}
+                    onChange={(raw) => {
+                      if (raw >= 60) {
+                        const extraHours = Math.floor(raw / 60);
+                        const remainingMinutes = raw % 60;
+                        updateFormState({
+                          durationHours: Math.min(168, formState.durationHours + extraHours),
+                          durationMinutes: remainingMinutes,
+                        });
+                      } else {
+                        updateFormState({ durationMinutes: Math.max(0, raw) });
+                      }
                     }}
-                    placeholder="0"
+                    onOverflow={(dir) => {
+                      if (dir === 'up' && formState.durationHours < 168) {
+                        updateFormState({ durationHours: formState.durationHours + 1, durationMinutes: 0 });
+                      } else if (dir === 'down' && formState.durationHours > 0) {
+                        updateFormState({ durationHours: formState.durationHours - 1, durationMinutes: 59 });
+                      }
+                    }}
+                    label="Minutes"
                   />
-                  <label htmlFor="durationMinutes" className="duration-label">Minutes</label>
-                </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowMinutesInput(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: `${spacing[2]} 0`,
+                      fontSize: typography.fontSize.sm,
+                      color: 'var(--color-primary-500)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + Minutes
+                  </button>
+                )}
               </div>
               <p className="form-help-text" style={{ marginTop: spacing[2] }}>
                 Maximum: 168 hours (1 week)
               </p>
+              {isZeroDuration && (
+                <p style={{ marginTop: spacing[2], fontSize: typography.fontSize.sm, color: 'var(--color-error)' }}>
+                  Duration must be at least 1 minute
+                </p>
+              )}
             </div>
           )}
 
@@ -593,6 +754,7 @@ export default function TimingStep() {
         <button
           type="button"
           onClick={handleNext}
+          disabled={isZeroDuration}
           className="btn btn-primary btn-large"
         >
           Next: Notifications →

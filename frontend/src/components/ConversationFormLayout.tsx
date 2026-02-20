@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useConversationForm } from '../contexts/ConversationFormContext';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -45,6 +45,11 @@ export default function ConversationFormLayout() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
+
+  // Scroll to top on step change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   // Check if we're on the intent step
   const isIntentStep = location.pathname.includes('/intent');
