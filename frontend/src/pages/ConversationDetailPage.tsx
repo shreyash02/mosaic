@@ -679,6 +679,7 @@ export default function ConversationDetailPage() {
   const [copiedAllCodes, setCopiedAllCodes] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
   const [showAnalysisSuccess, setShowAnalysisSuccess] = useState(false);
   const [invitations, setInvitations] = useState<InvitationListResponse | null>(null);
   const [showActivateModal, setShowActivateModal] = useState(false);
@@ -941,13 +942,28 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const handleClose = async () => {
+  const handleClose = async (andAnalyze: boolean = false) => {
+    setShowCloseModal(false);
     setActionLoading(true);
     try {
       const updated = await api.closeConversation(id!);
       setConversation(updated);
+      if (andAnalyze) {
+        await api.triggerAnalysis(id!);
+        await loadConversation();
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to close conversation');
+      const limitError = isLimitReachedError(err);
+      if (andAnalyze && limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
+      } else {
+        setError(err.response?.data?.detail || 'Failed to close conversation');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -1512,7 +1528,7 @@ export default function ConversationDetailPage() {
                   View Analysis History
                 </Link>
                 <button
-                  onClick={handleClose}
+                  onClick={() => setShowCloseModal(true)}
                   style={merge(s.buttonSecondary, actionLoading && s.buttonDisabled)}
                   disabled={actionLoading}
                 >
@@ -1521,7 +1537,7 @@ export default function ConversationDetailPage() {
               </>
             ) : (
               <button
-                onClick={handleClose}
+                onClick={() => setShowCloseModal(true)}
                 style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
                 disabled={actionLoading}
               >
@@ -2232,6 +2248,43 @@ export default function ConversationDetailPage() {
           conversation={conversation}
           onClose={() => setShowPreview(false)}
         />
+      )}
+
+      {/* Close Modal */}
+      {showCloseModal && (
+        <FocusTrap isActive={showCloseModal} onEscape={() => setShowCloseModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowCloseModal(false)} role="dialog" aria-modal="true" aria-labelledby="close-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="close-modal-title">Close Conversation</h2>
+              <p style={s.modalText}>
+                {aiAnalysisEnabled && (stats?.unique_participants || 0) > 0
+                  ? 'Close this conversation to stop collecting responses. Would you like to run AI analysis on the responses collected so far?'
+                  : 'Close this conversation? No new responses will be accepted.'}
+              </p>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowCloseModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleClose(false)}
+                  style={aiAnalysisEnabled && (stats?.unique_participants || 0) > 0 ? s.buttonSecondary : s.buttonPrimary}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Closing...' : 'Close'}
+                </button>
+                {aiAnalysisEnabled && (stats?.unique_participants || 0) > 0 && (
+                  <button
+                    onClick={() => handleClose(true)}
+                    style={s.buttonPrimary}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? 'Closing...' : 'Close & Run Analysis'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </FocusTrap>
       )}
 
       {/* Archive Modal */}
