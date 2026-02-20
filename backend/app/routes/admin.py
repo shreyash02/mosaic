@@ -53,6 +53,7 @@ from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
 from app.schemas.conversation import ConversationState, ConversationUpdate, ConversationWithQuestions
 from app.services.audit_log_service import log_audit
+from app.services.platform_settings_service import get_llm_model
 
 router = APIRouter()
 security = HTTPBasic(auto_error=False)
@@ -823,7 +824,7 @@ async def generate_test_responses(
 
     # Generate test responses
     try:
-        service = TestDataService()
+        service = TestDataService(model=get_llm_model(db))
         responses_data = service.generate_test_responses(
             questions=questions,
             num_respondents=request.num_respondents,

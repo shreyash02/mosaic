@@ -22,9 +22,9 @@ class SuggestedActionService:
     LOW_RATING_THRESHOLD_10 = 4.0  # on a 1-10 scale
     LOW_RATING_THRESHOLD_5 = 2.0  # on a 1-5 scale
 
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.llm_model = "claude-sonnet-4-5-20250929"
+        self.llm_model = model
 
     @staticmethod
     def should_auto_suggest(

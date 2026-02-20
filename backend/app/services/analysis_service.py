@@ -17,12 +17,12 @@ from app.services.llm_usage_service import log_llm_usage
 class AnalysisService:
     """Service for analyzing conversation responses using LLMs."""
 
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         """Initialize the analysis service with API clients."""
         self.openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         self.embedding_model = "text-embedding-3-small"
-        self.llm_model = "claude-sonnet-4-5-20250929"
+        self.llm_model = model
 
     def analyze_conversation(
         self,

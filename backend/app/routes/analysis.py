@@ -28,6 +28,7 @@ from app.schemas.common import SuccessResponse
 from app.services.analysis_service import AnalysisService
 from app.services.notification_service import notification_service
 from app.services.email_service import email_service
+from app.services.platform_settings_service import get_llm_model
 from app.utils.email_preferences import should_send_email
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ def run_analysis_task(
 
         # Run analysis with context notes
         context_notes = conversation.context_notes
-        analysis_service = AnalysisService()
+        analysis_service = AnalysisService(model=get_llm_model(db))
         results = analysis_service.analyze_conversation(
             conversation.questions,
             responses,
@@ -167,7 +168,7 @@ def run_analysis_task(
                             )
 
                             if is_allowed:
-                                service = SuggestedActionService()
+                                service = SuggestedActionService(model=get_llm_model(db))
                                 action_dicts = service.generate_actions(
                                     conversation_title=conversation.title,
                                     conversation_description=conversation.description,

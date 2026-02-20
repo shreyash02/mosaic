@@ -190,8 +190,9 @@ async def generate_suggested_actions(
 
     # Generate via LLM
     from app.services.suggested_action_service import SuggestedActionService
+    from app.services.platform_settings_service import get_llm_model
 
-    service = SuggestedActionService()
+    service = SuggestedActionService(model=get_llm_model(db))
     action_dicts = service.generate_actions(
         conversation_title=conversation.title,
         conversation_description=conversation.description,

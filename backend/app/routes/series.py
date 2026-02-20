@@ -24,6 +24,7 @@ from app.schemas.conversation import ConversationListItem, ConversationState
 from app.schemas.collection_analysis import CollectionAnalysis as CollectionAnalysisSchema
 from app.services.organization_service import check_organization_membership
 from app.services.collection_analysis_service import CollectionAnalysisService
+from app.services.platform_settings_service import get_llm_model
 from datetime import datetime
 
 router = APIRouter()
@@ -457,7 +458,7 @@ async def compute_collection_analysis(
     ).all()
 
     # Generate analysis
-    service = CollectionAnalysisService()
+    service = CollectionAnalysisService(model=get_llm_model(db))
     analysis_data = service.generate_collection_analysis(conversations, analyses)
     
     # Save to database

@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
+import MaintenanceBanner from './components/MaintenanceBanner';
 import { ToastContainer } from './components/Toast';
 
 // Pages
@@ -121,6 +122,7 @@ function App() {
             <div className="App">
               <Header />
               <EmailVerificationBanner />
+              <MaintenanceBanner />
               <main className="main-content">
               <Routes>
             <Route path="/" element={<HomePage />} />

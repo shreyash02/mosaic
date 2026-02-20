@@ -13,11 +13,18 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from datetime import datetime
+import json
+import logging
 import os
+import time
 
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack, reminders, announcements, search, feature_flags, notifications, suggested_actions, insight_annotations, journals, presets, invite_codes
+from app.services.platform_settings_service import is_maintenance_mode
 from app.services.scheduler_service import start_scheduler, shutdown_scheduler
+
+logger = logging.getLogger(__name__)
 
 # Rate limiter setup (in-memory, use Redis for multi-instance deployments)
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
@@ -53,6 +60,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Maintenance mode middleware
+_maintenance_cache: dict = {"value": False, "checked_at": 0.0}
+_MAINTENANCE_CACHE_TTL = 30  # seconds
+
+_MAINTENANCE_EXEMPT_PREFIXES = (
+    "/health",
+    "/api/admin/",
+    "/api/auth/login",
+    "/api/auth/google",
+    "/api/platform/status",
+    "/assets/",
+    "/favicon",
+)
+
+
+class MaintenanceMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        now = time.time()
+        if now - _maintenance_cache["checked_at"] > _MAINTENANCE_CACHE_TTL:
+            try:
+                db = SessionLocal()
+                _maintenance_cache["value"] = is_maintenance_mode(db)
+                _maintenance_cache["checked_at"] = now
+            except Exception:
+                logger.warning("Failed to check maintenance mode, assuming off")
+                _maintenance_cache["value"] = False
+                _maintenance_cache["checked_at"] = now
+            finally:
+                db.close()
+
+        if _maintenance_cache["value"]:
+            path = request.url.path
+            if not any(path.startswith(p) for p in _MAINTENANCE_EXEMPT_PREFIXES):
+                return StarletteResponse(
+                    content=json.dumps({
+                        "detail": "Mosaic is temporarily down for maintenance. Please try again shortly."
+                    }),
+                    status_code=503,
+                    media_type="application/json",
+                )
+
+        return await call_next(request)
+
+
+app.add_middleware(MaintenanceMiddleware)
+
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(conversations.router, prefix="/api/conversations", tags=["conversations"])
@@ -80,6 +133,22 @@ app.include_router(invite_codes.router, prefix="/api", tags=["invite-codes"])
 async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/api/platform/status")
+async def platform_status():
+    """Public endpoint returning maintenance mode status."""
+    now = time.time()
+    if now - _maintenance_cache["checked_at"] > _MAINTENANCE_CACHE_TTL:
+        try:
+            db = SessionLocal()
+            _maintenance_cache["value"] = is_maintenance_mode(db)
+            _maintenance_cache["checked_at"] = now
+        except Exception:
+            pass
+        finally:
+            db.close()
+    return {"maintenance": _maintenance_cache["value"]}
 
 
 @app.get("/sitemap.xml")

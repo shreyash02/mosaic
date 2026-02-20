@@ -56,6 +56,7 @@ from app.schemas.journal import (
     _validate_frequency_pair,
 )
 from app.services.scheduler_service import calculate_next_analysis_time, calculate_next_analysis_time_scheduled
+from app.services.platform_settings_service import get_llm_model
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +171,7 @@ def run_journal_analysis_task(journal_id: UUID, db_url: str):
             prompts.append(p)
 
         # Run analysis
-        service = JournalAnalysisService()
+        service = JournalAnalysisService(model=get_llm_model(db))
         results = service.analyze_journal(
             entries=entries,
             journal_title=conv.title,
@@ -316,7 +317,7 @@ def run_entry_analysis_task(response_id: UUID, journal_id: UUID, db_url: str):
             prompts.append(p)
 
         # Run analysis
-        service = JournalAnalysisService()
+        service = JournalAnalysisService(model=get_llm_model(db))
         results = service.analyze_entry(
             entry=current_entry,
             journal_title=conv.title,

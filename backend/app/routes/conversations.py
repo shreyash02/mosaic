@@ -2354,7 +2354,8 @@ async def suggest_questions(
     returns 3-5 suggested questions with rationale.
     Also indicates if more context would improve suggestions.
     """
-    from app.services.question_suggestion_service import question_suggestion_service
+    from app.services.question_suggestion_service import QuestionSuggestionService
+    from app.services.platform_settings_service import get_llm_model
     from app.services.feature_flag_service import feature_flag_service
     from app.services.subscription_service import subscription_service
     from app.services.usage_service import usage_service
@@ -2408,6 +2409,7 @@ async def suggest_questions(
     if max_per_request and request.count > max_per_request:
         request.count = max_per_request
 
+    question_suggestion_service = QuestionSuggestionService(model=get_llm_model(db))
     result = question_suggestion_service.suggest_questions(
         title=request.title,
         description=request.description,

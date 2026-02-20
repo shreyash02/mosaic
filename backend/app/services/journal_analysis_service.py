@@ -18,9 +18,9 @@ MAX_ENTRIES_FOR_ANALYSIS = 50
 class JournalAnalysisService:
     """Analyzes journal entries over time to extract themes, mood, and patterns."""
 
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         self.client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.model = "claude-sonnet-4-5-20250929"
+        self.model = model
 
     def analyze_journal(
         self,

@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 class TestDataService:
     """Service for generating realistic test responses for conversations."""
 
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         """Initialize the test data service with Anthropic client."""
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.llm_model = "claude-sonnet-4-5-20250929"
+        self.llm_model = model
 
     def generate_test_responses(
         self,

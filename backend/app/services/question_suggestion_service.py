@@ -27,10 +27,10 @@ class QuestionSuggestionResult(BaseModel):
 class QuestionSuggestionService:
     """Service for generating AI-powered question suggestions."""
 
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         """Initialize the service with Anthropic client."""
         self.client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.model = "claude-sonnet-4-5-20250929"
+        self.model = model
 
     def suggest_questions(
         self,
@@ -181,7 +181,3 @@ Respond ONLY with the JSON object, no other text."""
             needs_more_context=needs_more_context,
             context_hint=context_hint
         )
-
-
-# Singleton instance
-question_suggestion_service = QuestionSuggestionService()

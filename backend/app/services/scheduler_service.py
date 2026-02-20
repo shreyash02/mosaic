@@ -20,6 +20,7 @@ from app.routes.analysis import run_analysis_task
 from app.utils.access_code import generate_access_code
 from app.services.email_service import email_service
 from app.services.notification_service import notification_service
+from app.services.platform_settings_service import get_llm_model
 from app.utils.email_preferences import should_send_email
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -1061,7 +1062,7 @@ def run_periodic_analysis_task(
         ).all()
 
         # Run windowed analysis with context notes
-        analysis_service = AnalysisService()
+        analysis_service = AnalysisService(model=get_llm_model(db))
         analysis_result = analysis_service.analyze_conversation_windowed(
             questions=questions,
             responses=responses,

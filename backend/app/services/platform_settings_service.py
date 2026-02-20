@@ -40,6 +40,16 @@ def set_setting(db: Session, key: str, value: str, admin_id: Optional[UUID] = No
     return setting
 
 
+def get_llm_model(db: Session) -> str:
+    """Get the configured LLM model name."""
+    return get_setting(db, "llm_model", "claude-sonnet-4-5-20250929")
+
+
+def is_maintenance_mode(db: Session) -> bool:
+    """Check if the platform is in maintenance mode."""
+    return get_setting(db, "maintenance_mode", "false").lower() == "true"
+
+
 def is_invite_code_required(db: Session) -> bool:
     """Check if invite codes are required for registration."""
     return get_setting(db, "invite_code_required", "false").lower() == "true"

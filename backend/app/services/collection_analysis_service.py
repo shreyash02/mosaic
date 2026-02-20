@@ -20,10 +20,9 @@ logger = logging.getLogger(__name__)
 class CollectionAnalysisService:
     """Service for generating collection-level insights and trends."""
 
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        # Use the same model as AnalysisService for consistency
-        self.llm_model = "claude-sonnet-4-5-20250929"
+        self.llm_model = model
 
     def generate_collection_analysis(
         self,
