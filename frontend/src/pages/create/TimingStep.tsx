@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { useFeature } from '../../contexts/FeaturesContext';
 import { RecurrencePattern, type AnalysisInterval } from '../../types';
 import { formatDateForDateTimeLocal } from '../../utils/formatting';
@@ -152,8 +153,11 @@ const s = {
 export default function TimingStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
+  const { currentOrgId } = useOrganization();
+  const slackEnabled = useFeature('slack_integration');
   const recurringEnabled = useFeature('recurring_conversations');
   const continuousEnabled = useFeature('continuous_conversations');
+  const showNotificationsStep = slackEnabled && !!currentOrgId;
 
   const isTemplate = formState.createTemplate;
 
@@ -168,7 +172,7 @@ export default function TimingStep() {
       alert('Please select when to create the first instance');
       return;
     }
-    navigate(getStepPath('notifications'));
+    navigate(getStepPath(showNotificationsStep ? 'notifications' : 'review'));
   };
 
   // When switching to long-running, disable recurring (mutually exclusive for templates)

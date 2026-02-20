@@ -575,7 +575,7 @@ function ContextNotesSection({ conversation, onUpdate }: { conversation: Convers
           placeholder="e.g., Remote team of 12 engineers. New manager joined in January."
           rows={12}
           maxLength={5000}
-          style={{ width: '100%', marginBottom: spacing[2], fontFamily: 'inherit' }}
+          style={{ width: '100%', padding: spacing[3], marginBottom: spacing[2], fontFamily: 'inherit', boxSizing: 'border-box' }}
           autoFocus
         />
         <small style={{ color: 'var(--color-primary-500)', display: 'block', marginBottom: spacing[3] }}>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useConversationForm } from '../contexts/ConversationFormContext';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import SetupModeToggle from './SetupModeToggle';
 import { api } from '../services/api';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
@@ -39,6 +40,8 @@ export default function ConversationFormLayout() {
   const location = useLocation();
   const { formState, toggleMode, updateFormState, getStepPath } = useConversationForm();
   const { currentOrgId } = useOrganization();
+  const slackEnabled = useFeature('slack_integration');
+  const showNotificationsStep = slackEnabled && !!currentOrgId;
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
@@ -153,6 +156,9 @@ export default function ConversationFormLayout() {
   const visibleSteps = allSteps.filter(step => {
     if (step.guidedOnly && !formState.isGuidedMode) return false;
     if (step.manualOnly && formState.isGuidedMode) return false;
+
+    // Hide notifications step when there's nothing to configure (no org or no Slack)
+    if (step.id === 'notifications' && !showNotificationsStep) return false;
 
     // Preset-specific step skipping (only in guided mode, not edit mode)
     // Uses presetSkipSteps which is set for both system presets and user presets

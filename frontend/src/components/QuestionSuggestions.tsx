@@ -350,8 +350,40 @@ export default function QuestionSuggestions({
       )}
 
       {loading && (
-        <div style={styles.loading}>
-          <span>Generating suggestions...</span>
+        <div style={styles.suggestionsList}>
+          <style>{`
+            @keyframes qs-shimmer {
+              0% { background-position: -400px 0; }
+              100% { background-position: 400px 0; }
+            }
+          `}</style>
+          {[0.85, 0.65, 0.75].map((widthFrac, i) => (
+            <div key={i} style={{
+              ...styles.suggestionCard,
+              opacity: 1 - i * 0.15,
+            }}>
+              <div style={{
+                height: 14,
+                width: `${widthFrac * 100}%`,
+                borderRadius: borders.radius.sm,
+                background: `linear-gradient(90deg, ${colors.primary[200]} 25%, ${colors.primary[100]} 50%, ${colors.primary[200]} 75%)`,
+                backgroundSize: '800px 100%',
+                animation: 'qs-shimmer 1.8s ease-in-out infinite',
+                animationDelay: `${i * 0.15}s`,
+                marginBottom: spacing[2],
+              }} />
+              <div style={{
+                height: 10,
+                width: `${widthFrac * 60}%`,
+                borderRadius: borders.radius.sm,
+                background: `linear-gradient(90deg, ${colors.primary[200]} 25%, ${colors.primary[100]} 50%, ${colors.primary[200]} 75%)`,
+                backgroundSize: '800px 100%',
+                animation: 'qs-shimmer 1.8s ease-in-out infinite',
+                animationDelay: `${i * 0.15 + 0.1}s`,
+              }} />
+            </div>
+          ))}
+          <p style={{ ...styles.loading, padding: spacing[2], margin: 0 }}>Generating suggestions...</p>
         </div>
       )}
 

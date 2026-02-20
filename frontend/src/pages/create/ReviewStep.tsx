@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
+import { useFeature } from '../../contexts/FeaturesContext';
 import ConversationPreview from '../../components/ConversationPreview';
 import { INTENT_PRESETS } from '../../types/intentPresets';
 import { api } from '../../services/api';
 import type { Series } from '../../types';
-import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../../styles';
+import { typography, spacing, borders, shadows, mediaQueries } from '../../styles';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern } from '../../types';
 
 // Card component for consistent styling
@@ -82,6 +83,8 @@ export default function ReviewStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, resetForm, getStepPath } = useConversationForm();
   const { currentOrgId } = useOrganization();
+  const slackEnabled = useFeature('slack_integration');
+  const showNotificationsStep = slackEnabled && !!currentOrgId;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -502,13 +505,7 @@ export default function ReviewStep() {
 
   // New design render
   const renderNewDesign = () => (
-    <div className="review-layout" style={{
-      display: 'flex',
-      gap: spacing[5],
-      alignItems: 'flex-start',
-    }}>
-      {/* Main content column */}
-      <div className="review-main" style={{ flex: 1, minWidth: 0 }}>
+    <div>
         {/* Summary Card */}
         <Card style={{ marginBottom: spacing[4] }}>
           <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>
@@ -987,8 +984,8 @@ export default function ReviewStep() {
           <CollectionDropdown />
         </Card>
 
-        {/* Invite Users (Manual Mode) */}
-        {!formState.isGuidedMode && formState.inviteOnly && (
+        {/* Invite Users */}
+        {formState.inviteOnly && (
           <Card style={{ marginBottom: spacing[4] }}>
             <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[3] }}>
               Invite Users
@@ -1009,53 +1006,6 @@ export default function ReviewStep() {
             </div>
           </Card>
         )}
-      </div>
-
-      {/* Sidebar - Respondent Preview */}
-      <div className="review-sidebar" style={{ width: '260px', flexShrink: 0 }}>
-        <Card>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[4] }}>
-            Respondent Preview
-          </h3>
-          <button
-            type="button"
-            onClick={() => setShowPreview(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: spacing[2],
-              width: '100%',
-              padding: spacing[3],
-              backgroundColor: 'var(--color-primary-50)',
-              border: '1px solid var(--color-primary-300)',
-              borderRadius: borders.radius.md,
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              color: 'var(--color-primary-700)',
-              cursor: 'pointer',
-              transition: `all ${transitions.duration.fast} ${transitions.timing.ease}`,
-              marginBottom: spacing[3],
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            Show Preview
-          </button>
-          <div style={{
-            backgroundColor: 'var(--color-info-50, #eff6ff)',
-            border: `1px solid var(--color-info-200, #bfdbfe)`,
-            borderRadius: borders.radius.md,
-            padding: spacing[3],
-            fontSize: typography.fontSize.xs,
-            color: 'var(--color-info-700, #1d4ed8)',
-          }}>
-            This is how respondents will see your conversation
-          </div>
-        </Card>
-      </div>
     </div>
   );
 
@@ -1064,17 +1014,6 @@ export default function ReviewStep() {
       {/* Mobile responsive styles */}
       <style>{`
         @media ${mediaQueries.mobile} {
-          .review-layout {
-            flex-direction: column !important;
-          }
-          .review-sidebar {
-            width: 100% !important;
-            order: -1;
-            margin-bottom: ${spacing[4]};
-          }
-          .review-main {
-            width: 100% !important;
-          }
           .review-privacy-grid {
             grid-template-columns: 1fr !important;
             gap: ${spacing[3]} !important;
@@ -1084,24 +1023,27 @@ export default function ReviewStep() {
             gap: ${spacing[3]} !important;
           }
         }
-        @media ${mediaQueries.tabletDown} {
-          .review-layout {
-            flex-direction: column !important;
-          }
-          .review-sidebar {
-            width: 100% !important;
-            order: -1;
-            margin-bottom: ${spacing[4]};
-          }
-          .review-main {
-            width: 100% !important;
-          }
-        }
       `}</style>
       {error && <div className="error-message">{error}</div>}
 
       <div className="section-header">
         <h2>{formState.createTemplate ? 'Review' : 'Review & Launch'}</h2>
+        <button
+          type="button"
+          onClick={() => setShowPreview(true)}
+          className="btn btn-secondary btn-small"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spacing[2],
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Respondent Preview
+        </button>
       </div>
       <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
         Review your {formState.createTemplate ? 'template' : 'conversation'} and configure final options
@@ -1123,9 +1065,9 @@ export default function ReviewStep() {
             if (formState.parentConversation?.is_template && formState.parentConversationId) {
               navigate(`/templates/${formState.parentConversationId}`);
             } else {
-              // Check if preset skips steps - navigate to the last visible step
-              if (formState.presetSkipSteps?.includes('notifications')) {
-                if (formState.presetSkipSteps.includes('timing')) {
+              // Check if notifications step should be shown
+              if (!showNotificationsStep || formState.presetSkipSteps?.includes('notifications')) {
+                if (formState.presetSkipSteps?.includes('timing')) {
                   navigate(getStepPath('questions'));
                 } else {
                   navigate(getStepPath('timing'));

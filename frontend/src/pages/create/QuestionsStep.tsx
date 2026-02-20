@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
+import { useOrganization } from '../../contexts/OrganizationContext';
 import { useFeature } from '../../contexts/FeaturesContext';
 import { api } from '../../services/api';
 import CustomFileInput from '../../components/CustomFileInput';
@@ -143,7 +144,10 @@ function SortableQuestion({ id, questionsCount, children }: SortableQuestionProp
 export default function QuestionsStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, getStepPath } = useConversationForm();
+  const { currentOrgId } = useOrganization();
   const aiSuggestionsEnabled = useFeature('ai_question_suggestions');
+  const slackEnabled = useFeature('slack_integration');
+  const showNotificationsStep = slackEnabled && !!currentOrgId;
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState<Record<number, boolean>>({});
   const [uploadResetKey, setUploadResetKey] = useState<Record<number, number>>({});
   const [showFileInput, setShowFileInput] = useState<Record<number, boolean>>({});
@@ -394,8 +398,11 @@ export default function QuestionsStep() {
       };
     }
 
-    const newQuestions = [...formState.questions, newQuestion];
-    const newExpanded = new Set([...formState.expandedQuestions, newIndex]);
+    // Remove any empty (untouched) questions before adding the suggested one
+    const filledQuestions = formState.questions.filter(q => q.question_text.trim() !== '');
+    newQuestion.question_order = filledQuestions.length;
+    const newQuestions = [...filledQuestions, newQuestion];
+    const newExpanded = new Set<number>([filledQuestions.length]);
     updateFormState({ questions: newQuestions, expandedQuestions: newExpanded });
   };
 
@@ -414,7 +421,7 @@ export default function QuestionsStep() {
 
     // Check if preset skips timing/notifications steps
     if (formState.presetSkipSteps?.includes('timing')) {
-      if (formState.presetSkipSteps.includes('notifications')) {
+      if (!showNotificationsStep || formState.presetSkipSteps.includes('notifications')) {
         navigate(getStepPath('review'));
       } else {
         navigate(getStepPath('notifications'));
