@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { QuestionSuggestionItem } from '../types';
-import { colors, typography, spacing, borders } from '../styles/tokens';
+import { typography, spacing, borders } from '../styles/tokens';
+import { Link } from 'react-router-dom';
+import { isLimitReachedError } from './LimitReachedModal';
 
 interface QuestionSuggestionsProps {
   title: string;
@@ -25,9 +27,9 @@ interface QuestionSuggestionsProps {
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     padding: spacing[4],
     marginBottom: spacing[6],
   },
@@ -43,17 +45,17 @@ const styles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
   },
   sparkleIcon: {
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
   },
   title: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary[800],
+    color: 'var(--color-primary-800)',
     margin: 0,
   },
   basedOn: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[3],
   },
   suggestionsList: {
@@ -62,14 +64,14 @@ const styles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
   },
   suggestionCard: {
-    backgroundColor: colors.primary[50],
+    backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.md,
-    border: `1px solid ${colors.primary[200]}`,
+    border: '1px solid var(--color-primary-200)',
     padding: spacing[3],
   },
   suggestionText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary[900],
+    color: 'var(--color-primary-900)',
     margin: 0,
     marginBottom: spacing[2],
     lineHeight: typography.lineHeight.relaxed,
@@ -85,7 +87,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     padding: 0,
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     cursor: 'pointer',
     textDecoration: 'underline',
     textUnderlineOffset: '2px',
@@ -97,8 +99,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: `${spacing[1]} ${spacing[2]}`,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[700],
-    backgroundColor: colors.primary[200],
+    color: 'var(--color-primary-700)',
+    backgroundColor: 'var(--color-primary-200)',
     border: 'none',
     borderRadius: borders.radius.md,
     cursor: 'pointer',
@@ -107,10 +109,10 @@ const styles: Record<string, React.CSSProperties> = {
   rationale: {
     marginTop: spacing[2],
     padding: spacing[2],
-    backgroundColor: colors.primary[100],
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.sm,
     fontSize: typography.fontSize.xs,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
   footer: {
@@ -119,7 +121,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     marginTop: spacing[4],
     paddingTop: spacing[3],
-    borderTop: `1px solid ${colors.primary[200]}`,
+    borderTop: '1px solid var(--color-primary-200)',
   },
   refreshButton: {
     display: 'inline-flex',
@@ -128,9 +130,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: `${spacing[1]} ${spacing[2]}`,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     backgroundColor: 'transparent',
-    border: `1px solid ${colors.primary[300]}`,
+    border: '1px solid var(--color-primary-300)',
     borderRadius: borders.radius.md,
     cursor: 'pointer',
   },
@@ -139,7 +141,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     padding: `${spacing[1]} ${spacing[2]}`,
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     cursor: 'pointer',
   },
   loading: {
@@ -147,20 +149,20 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing[6],
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     fontSize: typography.fontSize.sm,
   },
   error: {
     padding: spacing[3],
-    backgroundColor: colors.semantic.error.light,
-    color: colors.semantic.error.text,
+    backgroundColor: 'var(--color-error-light)',
+    color: 'var(--color-error-text)',
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
   },
   emptyState: {
     padding: spacing[4],
     textAlign: 'center' as const,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     fontSize: typography.fontSize.sm,
   },
   showSuggestionsLink: {
@@ -168,7 +170,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     padding: 0,
     fontSize: typography.fontSize.sm,
-    color: colors.primary[600],
+    color: 'var(--color-primary-600)',
     cursor: 'pointer',
     textDecoration: 'underline',
     textUnderlineOffset: '2px',
@@ -176,7 +178,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   typeTag: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[500],
+    color: 'var(--color-primary-500)',
     marginLeft: spacing[2],
   },
   contextHint: {
@@ -184,11 +186,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     gap: spacing[2],
     padding: spacing[3],
-    backgroundColor: colors.semantic.info.light,
+    backgroundColor: 'var(--color-info-light)',
     borderRadius: borders.radius.md,
     marginBottom: spacing[3],
     fontSize: typography.fontSize.sm,
-    color: colors.semantic.info.text,
+    color: 'var(--color-info-text)',
     lineHeight: typography.lineHeight.relaxed,
   },
   hintIcon: {
@@ -199,13 +201,67 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     padding: spacing[1],
-    color: colors.primary[400],
+    color: 'var(--color-primary-400)',
     cursor: 'pointer',
     borderRadius: borders.radius.sm,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     transition: 'color 0.15s, background-color 0.15s',
+  },
+  limitReached: {
+    padding: spacing[3],
+    backgroundColor: 'var(--color-primary-50)',
+    borderRadius: borders.radius.md,
+    border: '1px solid var(--color-primary-300)',
+  },
+  limitReachedHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  limitReachedTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: 'var(--color-primary-700)',
+  },
+  limitReachedText: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    margin: 0,
+    marginBottom: spacing[2],
+    lineHeight: typography.lineHeight.relaxed,
+  },
+  limitReachedBar: {
+    height: '4px',
+    backgroundColor: 'var(--color-primary-200)',
+    borderRadius: borders.radius.full,
+    overflow: 'hidden',
+    marginBottom: spacing[2],
+  },
+  limitReachedBarFill: {
+    height: '100%',
+    backgroundColor: 'var(--color-primary-500)',
+    borderRadius: borders.radius.full,
+    width: '100%',
+  },
+  limitReachedFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  limitReachedUsage: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-500)',
+    fontWeight: typography.fontWeight.medium,
+  },
+  limitReachedLink: {
+    fontSize: typography.fontSize.xs,
+    color: 'var(--color-primary-600)',
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
   },
 };
 
@@ -225,6 +281,10 @@ export default function QuestionSuggestions({
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
   const [dismissedQuestions, setDismissedQuestions] = useState<string[]>([]);
   const [contextHint, setContextHint] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState<{
+    limit: number;
+    usage: number;
+  } | null>(null);
 
   const canFetch = title.trim().length > 0;
 
@@ -252,8 +312,16 @@ export default function QuestionSuggestions({
         setContextHint(response.context_hint);
       }
     } catch (err) {
-      console.error('Failed to fetch suggestions:', err);
-      setError('Failed to load suggestions. Please try again.');
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
+      } else {
+        console.error('Failed to fetch suggestions:', err);
+        setError('Failed to load suggestions. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -345,7 +413,7 @@ export default function QuestionSuggestions({
         </div>
       </div>
 
-      {title && (
+      {title && !limitReached && (
         <p style={styles.basedOn}>
           Based on: "{title.length > 50 ? title.slice(0, 50) + '...' : title}"
         </p>
@@ -358,29 +426,28 @@ export default function QuestionSuggestions({
               0% { background-position: -400px 0; }
               100% { background-position: 400px 0; }
             }
+            .qs-shimmer-bar {
+              background: linear-gradient(90deg, var(--color-primary-200) 25%, var(--color-primary-100) 50%, var(--color-primary-200) 75%);
+              background-size: 800px 100%;
+              animation: qs-shimmer 1.8s ease-in-out infinite;
+            }
           `}</style>
           {[0.85, 0.65, 0.75].map((widthFrac, i) => (
             <div key={i} style={{
               ...styles.suggestionCard,
               opacity: 1 - i * 0.15,
             }}>
-              <div style={{
+              <div className="qs-shimmer-bar" style={{
                 height: 14,
                 width: `${widthFrac * 100}%`,
                 borderRadius: borders.radius.sm,
-                background: `linear-gradient(90deg, ${colors.primary[200]} 25%, ${colors.primary[100]} 50%, ${colors.primary[200]} 75%)`,
-                backgroundSize: '800px 100%',
-                animation: 'qs-shimmer 1.8s ease-in-out infinite',
                 animationDelay: `${i * 0.15}s`,
                 marginBottom: spacing[2],
               }} />
-              <div style={{
+              <div className="qs-shimmer-bar" style={{
                 height: 10,
                 width: `${widthFrac * 60}%`,
                 borderRadius: borders.radius.sm,
-                background: `linear-gradient(90deg, ${colors.primary[200]} 25%, ${colors.primary[100]} 50%, ${colors.primary[200]} 75%)`,
-                backgroundSize: '800px 100%',
-                animation: 'qs-shimmer 1.8s ease-in-out infinite',
                 animationDelay: `${i * 0.15 + 0.1}s`,
               }} />
             </div>
@@ -393,7 +460,26 @@ export default function QuestionSuggestions({
         <div style={styles.error}>{error}</div>
       )}
 
-      {!loading && !error && suggestions.length === 0 && (
+      {limitReached && (
+        <div style={styles.limitReached}>
+          <div style={styles.limitReachedHeader}>
+            <LimitIcon />
+            <span style={styles.limitReachedTitle}>Monthly limit reached</span>
+          </div>
+          <p style={styles.limitReachedText}>
+            You've used all {limitReached.limit} question suggestions for this month.
+          </p>
+          <div style={styles.limitReachedBar}>
+            <div style={styles.limitReachedBarFill} />
+          </div>
+          <div style={styles.limitReachedFooter}>
+            <span style={styles.limitReachedUsage}>{limitReached.usage} / {limitReached.limit} used</span>
+            <Link to="/settings/usage" style={styles.limitReachedLink}>View Usage</Link>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && !limitReached && suggestions.length === 0 && (
         <div style={styles.emptyState}>
           <button
             type="button"
@@ -560,6 +646,16 @@ function CloseIcon() {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="4" y1="4" x2="12" y2="12" />
       <line x1="12" y1="4" x2="4" y2="12" />
+    </svg>
+  );
+}
+
+function LimitIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary-500)' }}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   );
 }

@@ -5,7 +5,7 @@ import { typography, spacing, borders, shadows } from '../../styles';
 
 const s = {
   section: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.lg,
     boxShadow: shadows.sm,
     padding: spacing[6],
@@ -91,10 +91,10 @@ const s = {
     backgroundColor: 'var(--color-primary-500)',
   },
   progressWarning: {
-    backgroundColor: 'var(--color-warning-500)',
+    backgroundColor: 'var(--color-warning)',
   },
   progressDanger: {
-    backgroundColor: 'var(--color-error-500)',
+    backgroundColor: 'var(--color-error)',
   },
   statusText: {
     fontSize: typography.fontSize.sm,
@@ -104,15 +104,15 @@ const s = {
     color: 'var(--color-primary-500)',
   },
   statusWarning: {
-    color: 'var(--color-warning-600)',
+    color: 'var(--color-warning-text)',
   },
   statusDanger: {
-    color: 'var(--color-error-600)',
+    color: 'var(--color-error-text)',
   },
   unlimitedBadge: {
     fontSize: typography.fontSize.xs,
-    color: 'var(--color-success-700)',
-    backgroundColor: 'var(--color-success-100)',
+    color: 'var(--color-success-text)',
+    backgroundColor: 'var(--color-success-light)',
     padding: `${spacing[0.5]} ${spacing[2]}`,
     borderRadius: borders.radius.full,
     fontWeight: typography.fontWeight.medium,

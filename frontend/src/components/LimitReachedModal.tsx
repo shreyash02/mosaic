@@ -25,7 +25,7 @@ const s = {
     padding: spacing[4],
   },
   modal: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--color-primary-100)',
     borderRadius: borders.radius.xl,
     boxShadow: shadows.lg,
     maxWidth: '420px',
@@ -41,7 +41,7 @@ const s = {
     width: '48px',
     height: '48px',
     borderRadius: borders.radius.full,
-    backgroundColor: 'var(--color-warning-100)',
+    backgroundColor: 'var(--color-warning-light)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -49,7 +49,7 @@ const s = {
     marginBottom: spacing[4],
   },
   icon: {
-    color: 'var(--color-warning-600)',
+    color: 'var(--color-warning)',
   },
   title: {
     fontSize: typography.fontSize.xl,
@@ -91,7 +91,7 @@ const s = {
   },
   usageFill: {
     height: '100%',
-    backgroundColor: 'var(--color-error-500)',
+    backgroundColor: 'var(--color-error)',
     borderRadius: borders.radius.full,
     width: '100%',
   },
@@ -115,7 +115,7 @@ const s = {
     gap: spacing[2],
     padding: `${spacing[3]} ${spacing[4]}`,
     backgroundColor: 'var(--color-primary-600)',
-    color: 'white',
+    color: 'var(--color-primary-50)',
     border: 'none',
     borderRadius: borders.radius.lg,
     fontSize: typography.fontSize.base,
@@ -149,6 +149,9 @@ const s = {
 const FEATURE_LABELS: Record<string, string> = {
   ai_analysis: 'AI Analysis',
   series_analysis: 'Collection Analysis',
+  ai_question_suggestions: 'AI Question Suggestions',
+  ai_suggested_actions: 'AI Suggested Actions',
+  journal_analyses: 'Journal Analysis',
 };
 
 export default function LimitReachedModal({

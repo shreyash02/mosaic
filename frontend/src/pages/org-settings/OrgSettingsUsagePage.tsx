@@ -73,7 +73,7 @@ const styles = {
     backgroundColor: 'var(--color-primary-600)',
   },
   progressWarning: {
-    backgroundColor: 'var(--color-warning-500)',
+    backgroundColor: 'var(--color-warning)',
   },
   progressDanger: {
     backgroundColor: 'var(--color-error)',
@@ -86,15 +86,15 @@ const styles = {
     color: 'var(--color-primary-500)',
   },
   statusWarning: {
-    color: 'var(--color-warning-600)',
+    color: 'var(--color-warning-text)',
   },
   statusDanger: {
     color: 'var(--color-error)',
   },
   unlimitedBadge: {
     fontSize: typography.fontSize.xs,
-    color: 'var(--color-success-700)',
-    backgroundColor: 'var(--color-success-100)',
+    color: 'var(--color-success-text)',
+    backgroundColor: 'var(--color-success-light)',
     padding: `2px ${spacing[2]}`,
     borderRadius: borders.radius.full,
     fontWeight: typography.fontWeight.medium,

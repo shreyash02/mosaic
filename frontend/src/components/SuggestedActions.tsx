@@ -6,6 +6,7 @@ import { typography, spacing, borders, shadows, transitions } from '../styles/to
 import { SearchIcon, MegaphoneIcon, LightningIcon, SparklesIcon, TrendingIcon } from './icons';
 import Modal from './Modal';
 import CustomSelect from './CustomSelect';
+import LimitReachedModal, { isLimitReachedError } from './LimitReachedModal';
 
 interface SuggestedActionsProps {
   conversationId: string;
@@ -406,6 +407,12 @@ export default function SuggestedActions({
   // Modal state
   const [modalType, setModalType] = useState<ModalType>(null);
   const [modalAction, setModalAction] = useState<SuggestedAction | null>(null);
+  const [limitReached, setLimitReached] = useState<{
+    show: boolean;
+    feature: string;
+    limit: number;
+    usage: number;
+  }>({ show: false, feature: '', limit: 0, usage: 0 });
   const [modalSaving, setModalSaving] = useState(false);
 
   // Modal form fields
@@ -446,9 +453,14 @@ export default function SuggestedActions({
       const response = await api.generateSuggestedActions(conversationId, analysisId, regenerate);
       setActions([...response.actions].sort(prioritySort));
     } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (detail?.code === 'LIMIT_REACHED') {
-        setError(`Monthly limit reached (${detail.usage}/${detail.limit}). Upgrade for more.`);
+      const limitError = isLimitReachedError(err);
+      if (limitError.isLimitReached) {
+        setLimitReached({
+          show: true,
+          feature: limitError.feature,
+          limit: limitError.limit,
+          usage: limitError.usage,
+        });
       } else if (err.response?.status === 403) {
         setError('AI suggested actions is not available for your account.');
       } else {
@@ -871,6 +883,14 @@ export default function SuggestedActions({
           </button>
         </div>
       </Modal>
+
+      <LimitReachedModal
+        isOpen={limitReached.show}
+        onClose={() => setLimitReached({ ...limitReached, show: false })}
+        feature={limitReached.feature}
+        limit={limitReached.limit}
+        usage={limitReached.usage}
+      />
     </div>
   );
 }
