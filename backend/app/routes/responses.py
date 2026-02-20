@@ -1196,7 +1196,7 @@ async def get_responses(
             "edited_at": response.edited_at,
             "is_edited": response.is_edited,
             "participant_id": response.participant_id if response.reveal_consent else None,
-            "participant_code_used": response.participant_code_used,
+            "participant_code_used": response.participant_code_used if conversation.anonymity_level == AnonymityLevel.OPEN.value else None,
             "question_text": question_text
         }
         response_list.append(ResponseWithQuestion(**response_dict))
