@@ -20,6 +20,7 @@ interface QuestionSuggestionsProps {
   }) => void;
   dismissed: boolean;
   onDismiss: () => void;
+  autoFetch?: boolean;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -215,6 +216,7 @@ export default function QuestionSuggestions({
   onAddQuestion,
   dismissed,
   onDismiss,
+  autoFetch = true,
 }: QuestionSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<QuestionSuggestionItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -265,9 +267,9 @@ export default function QuestionSuggestions({
     setSuggestions(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Fetch on mount if we have a title and not dismissed
+  // Fetch on mount if we have a title, not dismissed, and auto-fetch is enabled
   useEffect(() => {
-    if (canFetch && !dismissed && suggestions.length === 0) {
+    if (autoFetch && canFetch && !dismissed && suggestions.length === 0) {
       fetchSuggestions();
     }
   }, []);

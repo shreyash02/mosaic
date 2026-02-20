@@ -456,6 +456,7 @@ export default function QuestionsStep() {
           onAddQuestion={handleAddSuggestedQuestion}
           dismissed={formState.suggestionsDismissed}
           onDismiss={toggleSuggestionsDismissed}
+          autoFetch={!formState.isEditMode || !formState.questions.some(q => q.question_text.trim())}
         />
       )}
 
