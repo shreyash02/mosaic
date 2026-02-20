@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { formatDuration } from '../utils/formatting';
 import { SkeletonAdminDetail } from '../components/Skeleton';
+import AdminHeader from '../components/AdminHeader';
 import { colors, spacing, typography } from '../styles/tokens';
 import './AdminPortalPage.css';
 
@@ -211,9 +212,10 @@ export default function AdminConversationDetailPage() {
   if (error || !conversation) {
     return (
       <div className="admin-portal">
+        <AdminHeader />
         <div className="admin-content">
           {error && <div className="error-message">{error}</div>}
-          <Link to="/adminportal/conversations" className="btn btn-secondary">Back to Admin Portal</Link>
+          <Link to="/adminportal/conversations" className="btn btn-secondary">Back to Conversations</Link>
         </div>
       </div>
     );
@@ -221,10 +223,7 @@ export default function AdminConversationDetailPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>Conversation Details</h1>
-        <Link to="/adminportal" className="btn btn-secondary">Back to Admin Portal</Link>
-      </div>
+      <AdminHeader />
 
       <div className="admin-content">
         {error && <div className="error-message">{error}</div>}

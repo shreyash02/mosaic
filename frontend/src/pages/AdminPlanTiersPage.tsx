@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
 import type { PlanTiersResponse, PlanTierFlag, TierFlagInfo } from '../types';
 import { colors, typography, spacing, borders, transitions } from '../styles/tokens';
 import './AdminPortalPage.css';
@@ -270,22 +271,7 @@ export default function AdminPlanTiersPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
-          <Link
-            to="/adminportal/users"
-            style={{
-              color: colors.primary[600],
-              textDecoration: 'none',
-              fontSize: typography.fontSize.sm,
-            }}
-          >
-            Admin Portal
-          </Link>
-          <span style={{ color: colors.primary[400] }}>/</span>
-          <h1 style={{ margin: 0 }}>Plan Tiers</h1>
-        </div>
-      </div>
+      <AdminHeader />
 
       {error && <div className="error-message">{error}</div>}
 

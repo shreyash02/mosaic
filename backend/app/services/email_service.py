@@ -1437,5 +1437,188 @@ If you did not expect this invitation, you can safely ignore this email.
             return False
 
 
+    async def send_invite_code_email(
+        self,
+        to_email: str,
+        code: str,
+    ) -> bool:
+        """
+        Send invite code email after waitlist approval.
+
+        Args:
+            to_email: Recipient email address
+            code: The invite code
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping invite code email to {to_email}")
+            return False
+
+        try:
+            register_url = f"{settings.FRONTEND_URL}/register?invite_code={code}"
+            subject = "You're in! Here's your Mosaic invite code"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">You're In!</h2>
+                        <p style="color: #6b7280; font-size: 16px;">Your request to join Mosaic has been approved. Use the invite code below to create your account:</p>
+                        <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; text-align: center;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">Your invite code:</p>
+                            <p style="font-size: 28px; font-weight: 700; color: #1a1a2e; margin: 0; letter-spacing: 0.1em; font-family: 'Courier New', monospace;">{code}</p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{register_url}"
+                               style="background-color: #1a1a2e; color: white; padding: 14px 32px;
+                                      text-decoration: none; border-radius: 6px; display: inline-block;
+                                      font-weight: 600; font-size: 16px;">
+                                Create Your Account
+                            </a>
+                        </div>
+                        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
+                                <strong>Or copy and paste this link into your browser:</strong>
+                            </p>
+                            <p style="color: #2563eb; font-size: 14px; margin: 0; word-break: break-all;">
+                                {register_url}
+                            </p>
+                        </div>
+                        <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">
+                            This invite code can only be used once. If you didn't request access to Mosaic, you can safely ignore this email.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Invite code email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="invite_code",
+                      status="sent", subject=subject)
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send invite code email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="invite_code",
+                      status="failed", subject=subject, error_message=str(e))
+            return False
+
+    async def send_waitlist_confirmation_email(
+        self,
+        to_email: str,
+        full_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Send confirmation email after waitlist request submission.
+
+        Args:
+            to_email: Recipient email address
+            full_name: Optional name of the requester
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.enabled or not self.fastmail:
+            logger.info(f"Email disabled or not configured, skipping waitlist confirmation to {to_email}")
+            return False
+
+        try:
+            subject = "We received your request to join Mosaic"
+            greeting = f"Hi {full_name}" if full_name else "Hi there"
+
+            body_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header Banner -->
+                    <div style="background-color: white; border-bottom: 1px solid #e5e7eb; padding: 16px 32px;">
+                        <a href="{settings.FRONTEND_URL}" style="text-decoration: none; color: inherit;">
+                            <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 28px; height: 28px; background-color: #1a1a2e; border-radius: 4px; text-align: center; line-height: 28px;">
+                                        <span style="color: white; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">M</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 24px; font-weight: 600; color: #1a1a2e; letter-spacing: -0.02em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mosaic</span>
+                                </td>
+                            </tr></table>
+                        </a>
+                    </div>
+                    <div style="padding: 30px 20px;">
+                        <h2 style="color: #1a1a2e; margin-top: 0;">Request Received</h2>
+                        <p style="color: #6b7280; font-size: 16px;">{greeting},</p>
+                        <p style="color: #6b7280; font-size: 16px;">Thanks for your interest in Mosaic! We've received your request to join and will review it shortly.</p>
+                        <div style="background-color: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                                Once approved, you'll receive an email with your invite code to create your account.
+                            </p>
+                        </div>
+                        <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">
+                            If you didn't request access to Mosaic, you can safely ignore this email.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=body_html,
+                subtype=MessageType.html,
+            )
+
+            await self.fastmail.send_message(message)
+            logger.info(f"Waitlist confirmation email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="waitlist_confirmation",
+                      status="sent", subject=subject)
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send waitlist confirmation email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="waitlist_confirmation",
+                      status="failed", subject=subject, error_message=str(e))
+            return False
+
+
 # Singleton instance
 email_service = EmailService()

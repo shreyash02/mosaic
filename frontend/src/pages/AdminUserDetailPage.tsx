@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { AdminUserInfo, AdminConversationInfo, AdminResponseInfo, AdminUserContext } from '../types';
 import { SkeletonAdminDetail } from '../components/Skeleton';
+import AdminHeader from '../components/AdminHeader';
 import { colors } from '../styles/tokens';
 import './AdminPortalPage.css';
 
@@ -96,9 +97,10 @@ export default function AdminUserDetailPage() {
   if (error || !user) {
     return (
       <div className="admin-portal">
+        <AdminHeader />
         <div className="admin-content">
           {error && <div className="error-message">{error}</div>}
-          <Link to="/adminportal/users" className="btn btn-secondary">Back to Admin Portal</Link>
+          <Link to="/adminportal/users" className="btn btn-secondary">Back to Users</Link>
         </div>
       </div>
     );
@@ -106,10 +108,7 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>User Details</h1>
-        <Link to="/adminportal" className="btn btn-secondary">Back to Admin Portal</Link>
-      </div>
+      <AdminHeader />
 
       <div className="admin-content">
         <div className="admin-section">

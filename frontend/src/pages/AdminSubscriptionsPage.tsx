@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../contexts/NotificationContext';
+import AdminHeader from '../components/AdminHeader';
 import type { AdminSubscriptionInfo, AdminUserInfo, AdminOrganizationInfo } from '../types';
 import './AdminPortalPage.css';
 
@@ -258,14 +259,7 @@ export default function AdminSubscriptionsPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>Subscription Management</h1>
-        <div style={{ display: 'flex', gap: 'var(--spacing-4)' }}>
-          <Link to="/adminportal" className="btn btn-secondary">
-            Back to Admin
-          </Link>
-        </div>
-      </div>
+      <AdminHeader />
 
       {error && <div className="error-message">{error}</div>}
 

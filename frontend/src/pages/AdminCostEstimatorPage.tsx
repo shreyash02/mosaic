@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
+import './AdminPortalPage.css';
 import './AdminCostEstimatorPage.css';
 
 // ---------------------------------------------------------------------------
@@ -286,17 +288,12 @@ export default function AdminCostEstimatorPage() {
   const openaiPct = results.totalCost > 0 ? (results.openaiCost / results.totalCost) * 100 : 0;
 
   return (
-    <div className="cost-estimator">
-      <div className="cost-estimator-header">
-        <div>
-          <Link to="/adminportal" className="cost-estimator-back">Admin Portal</Link>
-          <h1>LLM Cost Estimator</h1>
-        </div>
-        <div className="cost-estimator-header-actions">
-          <button className="btn btn-secondary" onClick={resetDefaults}>
-            Reset Defaults
-          </button>
-        </div>
+    <div className="admin-portal cost-estimator">
+      <AdminHeader />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--spacing-4)' }}>
+        <button className="btn btn-secondary" onClick={resetDefaults}>
+          Reset Defaults
+        </button>
       </div>
 
       <div className="cost-estimator-grid">

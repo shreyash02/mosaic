@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../contexts/NotificationContext';
+import AdminHeader from '../components/AdminHeader';
 import type {
   FeatureFlag,
   FeatureFlagOverride,
@@ -391,26 +392,21 @@ export default function AdminFeaturesPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>Feature Flags</h1>
-        <div style={{ display: 'flex', gap: 'var(--spacing-4)' }}>
-          <button className="btn btn-secondary" onClick={handleExport}>
-            Export
-          </button>
-          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
-            Import
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-          />
-          <Link to="/adminportal" className="btn btn-secondary">
-            Back to Admin
-          </Link>
-        </div>
+      <AdminHeader />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-4)', marginBottom: 'var(--spacing-4)' }}>
+        <button className="btn btn-secondary" onClick={handleExport}>
+          Export
+        </button>
+        <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+          Import
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleFileSelect}
+        />
       </div>
 
       <div className="features-layout">

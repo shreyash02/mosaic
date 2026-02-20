@@ -1,39 +1,7 @@
 /* Admin LLM Usage Page Styles */
 
 .admin-llm-usage-page {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: var(--spacing-8);
   min-height: calc(100vh - var(--header-height));
-}
-
-.admin-llm-usage-page .admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--spacing-8);
-  padding-bottom: var(--spacing-4);
-  border-bottom: 2px solid var(--color-primary-300);
-}
-
-.admin-llm-usage-page .admin-header h1 {
-  margin: 0;
-  font-size: var(--font-size-3xl);
-  color: var(--color-primary-900);
-  font-weight: 700;
-}
-
-.admin-llm-usage-page .back-link {
-  display: inline-block;
-  margin-bottom: var(--spacing-2);
-  color: var(--color-primary-600);
-  text-decoration: none;
-  font-size: var(--font-size-sm);
-  transition: color var(--transition-fast);
-}
-
-.admin-llm-usage-page .back-link:hover {
-  color: var(--color-primary-900);
 }
 
 .admin-llm-usage-page .loading {

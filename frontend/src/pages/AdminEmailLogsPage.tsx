@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
 import type {
   AdminEmailLogsResponse,
   AnalyticsPeriod,
   EmailDailyVolume,
   EmailTypeBreakdown,
 } from '../types';
+import './AdminPortalPage.css';
 import './AdminEmailLogsPage.css';
 
 // ---------------------------------------------------------------------------
@@ -155,15 +157,8 @@ export default function AdminEmailLogsPage() {
   const emailTypes = data?.by_type.map((t) => t.email_type) ?? [];
 
   return (
-    <div className="admin-email-logs-page">
-      <div className="admin-header">
-        <div>
-          <Link to="/adminportal" className="back-link">
-            &larr; Back to Admin Portal
-          </Link>
-          <h1>Email Logs</h1>
-        </div>
-      </div>
+    <div className="admin-portal admin-email-logs-page">
+      <AdminHeader />
 
       {/* Period selector */}
       <div className="period-selector">

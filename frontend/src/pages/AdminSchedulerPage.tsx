@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
 import type {
   SchedulerStatusResponse,
   SchedulerLogsResponse,
   SchedulerJobSummary,
   SchedulerJobLogInfo,
 } from '../types';
+import './AdminPortalPage.css';
 import './AdminSchedulerPage.css';
 
 export default function AdminSchedulerPage() {
@@ -231,25 +233,17 @@ export default function AdminSchedulerPage() {
 
   if (loading) {
     return (
-      <div className="admin-scheduler-page">
-        <div className="admin-header">
-          <div>
-            <Link to="/adminportal" className="back-link">&larr; Back to Admin</Link>
-            <h1>Scheduler Dashboard</h1>
-          </div>
-        </div>
+      <div className="admin-portal admin-scheduler-page">
+        <AdminHeader />
         <div className="loading">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="admin-scheduler-page">
-      <div className="admin-header">
-        <div>
-          <Link to="/adminportal" className="back-link">&larr; Back to Admin</Link>
-          <h1>Scheduler Dashboard</h1>
-        </div>
+    <div className="admin-portal admin-scheduler-page">
+      <AdminHeader />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--spacing-4)' }}>
         <button className="btn btn-secondary" onClick={handleRefresh}>
           Refresh
         </button>

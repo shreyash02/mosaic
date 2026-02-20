@@ -52,6 +52,7 @@ from app.schemas.admin import (
 from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
 from app.schemas.conversation import ConversationState, ConversationUpdate, ConversationWithQuestions
+from app.services.audit_log_service import log_audit
 
 router = APIRouter()
 security = HTTPBasic(auto_error=False)
@@ -496,6 +497,15 @@ async def update_conversation(
     db.commit()
     db.refresh(conversation)
 
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="update_conversation",
+        entity_type="conversation",
+        entity_id=str(conversation_id),
+        details={"changes": update_dict},
+    )
+
     return conversation
 
 
@@ -732,6 +742,14 @@ async def reanalyze_conversation(
             min_cluster_size=2
         )
 
+        log_audit(
+            admin_id=admin.id,
+            admin_username=admin.username,
+            action="reanalyze_conversation",
+            entity_type="conversation",
+            entity_id=str(conversation_id),
+        )
+
         return SuccessResponse(
             success=True,
             message="Analysis completed successfully"
@@ -834,6 +852,15 @@ async def generate_test_responses(
 
         db.commit()
 
+        log_audit(
+            admin_id=admin.id,
+            admin_username=admin.username,
+            action="generate_test_responses",
+            entity_type="conversation",
+            entity_id=str(request.conversation_id),
+            details={"num_respondents": request.num_respondents, "responses_created": len(responses_data)},
+        )
+
         return GenerateTestDataResponse(
             success=True,
             message=f"Successfully generated {len(responses_data)} test responses from {request.num_respondents} respondents",
@@ -886,6 +913,15 @@ async def cleanup_test_data(
         # Delete the test responses
         query.delete(synchronize_session=False)
         db.commit()
+
+        log_audit(
+            admin_id=admin.id,
+            admin_username=admin.username,
+            action="cleanup_test_data",
+            entity_type="test_data",
+            entity_id=str(conversation_id) if conversation_id else None,
+            details={"deleted_count": count},
+        )
 
         return SuccessResponse(
             success=True,
@@ -986,6 +1022,15 @@ async def set_subscription_tier(
         user_id=request.user_id,
         org_id=request.organization_id,
         expires_at=expires_at,
+    )
+
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="set_subscription_tier",
+        entity_type="subscription",
+        entity_id=str(request.user_id or request.organization_id),
+        details={"tier": request.tier, "duration_days": request.duration_days},
     )
 
     return AdminSubscriptionInfo(
@@ -1315,6 +1360,80 @@ async def get_email_logs(
         page_size=page_size,
         total_pages=total_pages,
         recent_failures=recent_failures,
+    )
+
+
+# ============================================================
+# Audit Log endpoint
+# ============================================================
+
+from app.schemas.audit_log import AdminAuditLogResponse, AuditLogEntry
+
+
+@router.get("/audit-log", response_model=AdminAuditLogResponse)
+async def get_audit_log(
+    action: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Get paginated admin audit log with optional filters.
+
+    Args:
+        action: Optional filter by action type.
+        entity_type: Optional filter by entity type.
+        page: Page number (default 1).
+        page_size: Results per page (default 50, max 100).
+        admin: Current authenticated admin.
+        db: Database session.
+
+    Returns:
+        Paginated audit log entries.
+    """
+    from app.models.audit_log import AuditLog
+
+    page_size = min(page_size, 100)
+
+    base = db.query(AuditLog)
+
+    if action:
+        base = base.filter(AuditLog.action == action)
+    if entity_type:
+        base = base.filter(AuditLog.entity_type == entity_type)
+
+    total = base.count()
+    total_pages = (total + page_size - 1) // page_size if page_size > 0 else 0
+
+    rows = (
+        base.order_by(AuditLog.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    logs = [
+        AuditLogEntry(
+            id=str(row.id),
+            admin_id=str(row.admin_id),
+            admin_username=row.admin_username,
+            action=row.action,
+            entity_type=row.entity_type,
+            entity_id=row.entity_id,
+            details=row.details,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+    return AdminAuditLogResponse(
+        logs=logs,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
     )
 
 
@@ -1766,6 +1885,14 @@ async def send_test_email(
             )
 
         if success:
+            log_audit(
+                admin_id=admin.id,
+                admin_username=admin.username,
+                action="send_test_email",
+                entity_type="email_template",
+                entity_id=template_id,
+                details={"to_email": to_email},
+            )
             return {"success": True, "message": f"Test email sent to {to_email}"}
         else:
             raise HTTPException(
@@ -1943,6 +2070,14 @@ async def cleanup_scheduler_logs(
         SchedulerJobLog.started_at < cutoff
     ).delete()
     db.commit()
+
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="cleanup_scheduler_logs",
+        entity_type="scheduler_log",
+        details={"days_to_keep": days_to_keep, "deleted_count": deleted},
+    )
 
     return SchedulerLogsCleanupResponse(
         success=True,
@@ -2410,6 +2545,15 @@ async def admin_create_journal_template(
     db.commit()
     db.refresh(t)
 
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="create_journal_template",
+        entity_type="journal_template",
+        entity_id=str(t.id),
+        details={"title": t.title},
+    )
+
     return JournalTemplateResponse(
         id=t.id,
         title=t.title,
@@ -2467,6 +2611,15 @@ async def admin_update_journal_template(
     db.commit()
     db.refresh(t)
 
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="update_journal_template",
+        entity_type="journal_template",
+        entity_id=str(template_id),
+        details={"changes": update_data},
+    )
+
     return JournalTemplateResponse(
         id=t.id,
         title=t.title,
@@ -2494,6 +2647,16 @@ async def admin_delete_journal_template(
     if not t:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
 
+    template_title = t.title
     db.delete(t)
     db.commit()
+
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="delete_journal_template",
+        entity_type="journal_template",
+        entity_id=str(template_id),
+        details={"title": template_title},
+    )
 

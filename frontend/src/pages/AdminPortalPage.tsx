@@ -9,6 +9,7 @@ import type {
   AdminOrganizationInfo,
 } from '../types';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
 import './AdminPortalPage.css';
 
 type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'scheduler';
@@ -29,10 +30,6 @@ export default function AdminPortalPage() {
     ? tab as TabType
     : 'users';
 
-  // Dropdown states
-  const [showTestToolsDropdown, setShowTestToolsDropdown] = useState(false);
-  const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
-  
   // Users state
   const [users, setUsers] = useState<AdminUserInfo[]>([]);
   const [userEmailFilter, setUserEmailFilter] = useState('');
@@ -229,107 +226,7 @@ export default function AdminPortalPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>Admin Portal</h1>
-        <button onClick={handleLogout} className="btn btn-secondary">
-          Logout
-        </button>
-      </div>
-
-      <div className="admin-tabs">
-        <Link
-          to="/adminportal/users"
-          className={`tab ${activeTab === 'users' ? 'active' : ''}`}
-        >
-          Users
-        </Link>
-        <Link
-          to="/adminportal/conversations"
-          className={`tab ${activeTab === 'conversations' ? 'active' : ''}`}
-        >
-          Conversations
-        </Link>
-        <Link
-          to="/adminportal/responses"
-          className={`tab ${activeTab === 'responses' ? 'active' : ''}`}
-        >
-          Responses
-        </Link>
-        <Link
-          to="/adminportal/analyses"
-          className={`tab ${activeTab === 'analyses' ? 'active' : ''}`}
-        >
-          Analyses
-        </Link>
-        <Link
-          to="/adminportal/organizations"
-          className={`tab ${activeTab === 'organizations' ? 'active' : ''}`}
-        >
-          Organizations
-        </Link>
-        <Link
-          to="/adminportal/scheduler"
-          className={`tab ${activeTab === 'scheduler' ? 'active' : ''}`}
-        >
-          Scheduler
-        </Link>
-        <div className="tab-dropdown-container">
-          <button
-            className="tab"
-            onClick={() => setShowTestToolsDropdown(!showTestToolsDropdown)}
-          >
-            Test Tools
-            <span style={{ marginLeft: '4px', fontSize: '10px' }}>{showTestToolsDropdown ? '▲' : '▼'}</span>
-          </button>
-          {showTestToolsDropdown && (
-            <div className="tab-dropdown-menu">
-              <Link to="/adminportal/test-generation" className="tab-dropdown-item" onClick={() => setShowTestToolsDropdown(false)}>
-                Test Response Generation
-              </Link>
-              <Link to="/adminportal/email-preview" className="tab-dropdown-item" onClick={() => setShowTestToolsDropdown(false)}>
-                Email Template Preview
-              </Link>
-            </div>
-          )}
-        </div>
-        <div className="tab-dropdown-container">
-          <button
-            className="tab"
-            onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-          >
-            Platform
-            <span style={{ marginLeft: '4px', fontSize: '10px' }}>{showPlatformDropdown ? '▲' : '▼'}</span>
-          </button>
-          {showPlatformDropdown && (
-            <div className="tab-dropdown-menu">
-              <Link to="/adminportal/features" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Features
-              </Link>
-              <Link to="/adminportal/journal-templates" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Journal Templates
-              </Link>
-              <Link to="/adminportal/subscriptions" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Subscriptions
-              </Link>
-              <Link to="/adminportal/plan-tiers" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Plan Tiers
-              </Link>
-              <Link to="/adminportal/cost-estimator" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Cost Estimator
-              </Link>
-              <Link to="/adminportal/analytics" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Analytics
-              </Link>
-              <Link to="/adminportal/llm-usage" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                LLM Usage
-              </Link>
-              <Link to="/adminportal/email-logs" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
-                Email Logs
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
+      <AdminHeader />
 
       {error && <div className="error-message">{error}</div>}
 

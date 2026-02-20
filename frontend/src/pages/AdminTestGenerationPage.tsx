@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
 import './AdminPortalPage.css';
 
 export default function AdminTestGenerationPage() {
@@ -129,12 +130,7 @@ export default function AdminTestGenerationPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>Test Response Generation</h1>
-        <Link to="/adminportal/users" className="btn btn-secondary">
-          Back to Admin Portal
-        </Link>
-      </div>
+      <AdminHeader />
 
       <div className="admin-content">
         <div className="admin-section">

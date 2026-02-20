@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import AdminHeader from '../components/AdminHeader';
 import './AdminPortalPage.css';
 
 interface EmailTemplate {
@@ -166,12 +167,7 @@ export default function AdminEmailPreviewPage() {
 
   return (
     <div className="admin-portal">
-      <div className="admin-header">
-        <h1>Email Template Preview</h1>
-        <Link to="/adminportal/test-tools" className="btn btn-secondary">
-          Back to Test Tools
-        </Link>
-      </div>
+      <AdminHeader />
 
       <div className="admin-content">
         <div className="admin-section">
