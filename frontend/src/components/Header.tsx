@@ -97,6 +97,9 @@ export default function Header() {
 
         {!isAuthenticated && (
           <div className="header-auth-buttons">
+            <Link to="/explore" className="btn-header-login">
+              Explore
+            </Link>
             <Link to="/login" className="btn-header-login">
               Log In
             </Link>
@@ -251,6 +254,9 @@ export default function Header() {
               )}
               <Link to="/help" className="nav-link">
                 Help
+              </Link>
+              <Link to="/explore" className="nav-link">
+                Explore
               </Link>
             </nav>
 
@@ -471,6 +477,17 @@ export default function Header() {
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
                   Help
+                </Link>
+                <Link
+                  to="/explore"
+                  className={`mobile-nav-link ${location.pathname.startsWith('/explore') ? 'active' : ''}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                  </svg>
+                  Explore
                 </Link>
               </nav>
             </div>

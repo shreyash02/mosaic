@@ -76,6 +76,8 @@ import SharedJournalDetailPage from './pages/SharedJournalDetailPage';
 import AcceptJournalSharePage from './pages/AcceptJournalSharePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
+import ExplorePage from './pages/ExplorePage';
+import ExploreScenarioPage from './pages/ExploreScenarioPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage';
@@ -504,6 +506,10 @@ function App() {
             <Route path="/help/collections" element={<CollectionsHelp />} />
             <Route path="/help/slack-integration" element={<SlackIntegrationHelp />} />
             <Route path="/help/journals" element={<JournalsHelp />} />
+
+            {/* Explore / Sandbox (public, no auth required) */}
+            <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/explore/:scenarioId" element={<ExploreScenarioPage />} />
               </Routes>
               </main>
               <ToastContainer />

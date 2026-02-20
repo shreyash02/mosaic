@@ -148,7 +148,7 @@ const styles = {
   },
   quickStartGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
     gap: spacing[4],
   },
   quickStartCard: {
@@ -312,6 +312,17 @@ export default function EmptyDashboard({ userName }: EmptyDashboardProps) {
               <div style={styles.quickStartHint}>Use a pre-built template</div>
             </Link>
           )}
+
+          <Link to="/explore" style={styles.quickStartCard} className="quick-start-card">
+            <div style={styles.quickStartIcon}>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="12" stroke="currentColor" strokeWidth="2" />
+                <polygon points="22 9 12.5 19.5 9 22 10 18.5 19.5 9 22 9" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div style={styles.quickStartLabel}>Explore Examples</div>
+            <div style={styles.quickStartHint}>See Mosaic in action</div>
+          </Link>
 
           <Link to="/help" style={styles.quickStartCard} className="quick-start-card">
             <div style={styles.quickStartIcon}>
