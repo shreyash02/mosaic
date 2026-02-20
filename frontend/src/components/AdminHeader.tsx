@@ -16,19 +16,41 @@ const TEST_TOOLS_ITEMS = [
   { label: 'Email Template Preview', path: '/adminportal/email-preview' },
 ];
 
-const PLATFORM_ITEMS = [
-  { label: 'Features', path: '/adminportal/features' },
-  { label: 'Journal Templates', path: '/adminportal/journal-templates' },
-  { label: 'Subscriptions', path: '/adminportal/subscriptions' },
-  { label: 'Plan Tiers', path: '/adminportal/plan-tiers' },
-  { label: 'Cost Estimator', path: '/adminportal/cost-estimator' },
-  { label: 'Analytics', path: '/adminportal/analytics' },
-  { label: 'LLM Usage', path: '/adminportal/llm-usage' },
-  { label: 'Email Logs', path: '/adminportal/email-logs' },
-  { label: 'Invite Codes', path: '/adminportal/invite-codes' },
-  { label: 'Platform Settings', path: '/adminportal/platform-settings' },
-  { label: 'Audit Log', path: '/adminportal/audit-log' },
+const PLATFORM_SECTIONS = [
+  {
+    heading: 'Configuration',
+    items: [
+      { label: 'Features', path: '/adminportal/features' },
+      { label: 'Journal Templates', path: '/adminportal/journal-templates' },
+      { label: 'Platform Settings', path: '/adminportal/platform-settings' },
+    ],
+  },
+  {
+    heading: 'Plans & Billing',
+    items: [
+      { label: 'Plan Tiers', path: '/adminportal/plan-tiers' },
+      { label: 'Subscriptions', path: '/adminportal/subscriptions' },
+      { label: 'Cost Estimator', path: '/adminportal/cost-estimator' },
+    ],
+  },
+  {
+    heading: 'Monitoring',
+    items: [
+      { label: 'Analytics', path: '/adminportal/analytics' },
+      { label: 'LLM Usage', path: '/adminportal/llm-usage' },
+      { label: 'Email Logs', path: '/adminportal/email-logs' },
+      { label: 'Audit Log', path: '/adminportal/audit-log' },
+    ],
+  },
+  {
+    heading: 'Access',
+    items: [
+      { label: 'Invite Codes', path: '/adminportal/invite-codes' },
+    ],
+  },
 ];
+
+const ALL_PLATFORM_ITEMS = PLATFORM_SECTIONS.flatMap((s) => s.items);
 
 function getActiveTab(pathname: string): string | null {
   // Detail pages map to parent tabs
@@ -48,7 +70,7 @@ function isTestToolsActive(pathname: string): boolean {
 }
 
 function isPlatformActive(pathname: string): boolean {
-  return PLATFORM_ITEMS.some((item) => pathname === item.path || pathname.startsWith(item.path + '/'));
+  return ALL_PLATFORM_ITEMS.some((item) => pathname === item.path || pathname.startsWith(item.path + '/'));
 }
 
 export default function AdminHeader() {
@@ -137,15 +159,21 @@ export default function AdminHeader() {
           </button>
           {showPlatformDropdown && (
             <div className="tab-dropdown-menu">
-              {PLATFORM_ITEMS.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className="tab-dropdown-item"
-                  onClick={() => setShowPlatformDropdown(false)}
-                >
-                  {item.label}
-                </Link>
+              {PLATFORM_SECTIONS.map((section, i) => (
+                <div key={section.heading}>
+                  {i > 0 && <div className="tab-dropdown-divider" />}
+                  <div className="tab-dropdown-heading">{section.heading}</div>
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className="tab-dropdown-item"
+                      onClick={() => setShowPlatformDropdown(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               ))}
             </div>
           )}
