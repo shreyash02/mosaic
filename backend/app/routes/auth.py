@@ -478,6 +478,10 @@ async def google_callback(
             user.google_id = google_id
             if not user.full_name and full_name:
                 user.full_name = full_name
+            # Google verified the email, so mark it verified
+            user.email_verified = True
+            user.email_verification_token = None
+            user.email_verification_expires = None
         else:
             # Create new user
             user = User(
@@ -485,11 +489,20 @@ async def google_callback(
                 google_id=google_id,
                 full_name=full_name,
                 password_hash=None,  # OAuth users don't have passwords
+                email_verified=True,  # Google verified the email
             )
             db.add(user)
 
         db.commit()
         db.refresh(user)
+    else:
+        # Existing Google user logging in — ensure verified
+        if not user.email_verified:
+            user.email_verified = True
+            user.email_verification_token = None
+            user.email_verification_expires = None
+            db.commit()
+            db.refresh(user)
 
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id)})

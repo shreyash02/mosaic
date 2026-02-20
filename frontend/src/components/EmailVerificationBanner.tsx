@@ -111,7 +111,7 @@ export default function EmailVerificationBanner() {
     <>
       <div style={s.banner}>
         <p style={s.message}>
-          Please verify your email to send invitations.
+          Please verify your email to activate conversations.
         </p>
         <button
           onClick={handleResend}
