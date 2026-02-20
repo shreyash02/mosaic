@@ -12,6 +12,7 @@ export default function DetailsStep() {
   const { currentOrgId, currentWorkspaceName } = useOrganization();
 
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showHeaderImageInput, setShowHeaderImageInput] = useState(!!formState.headerImageUrl);
   const [error, setError] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
   const fileInputRef = useRef<CustomFileInputRef>(null);
@@ -165,18 +166,60 @@ export default function DetailsStep() {
           </small>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="headerImage">Header Image (optional)</label>
-          <p className="form-help-text" style={{ marginBottom: '0.5rem' }}>
-            Upload an image that will be displayed at the top when users are responding.
-          </p>
+        {/* Header Image - collapsed by default */}
+        {!showHeaderImageInput && !formState.headerImageUrl ? (
+          <button
+            type="button"
+            onClick={() => setShowHeaderImageInput(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              fontSize: '0.875rem',
+              color: 'var(--color-primary-600)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[1],
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Add header image
+          </button>
+        ) : (
+          <div className="form-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label>Header Image (optional)</label>
+              {!formState.headerImageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setShowHeaderImageInput(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: '0.875rem',
+                    color: 'var(--color-primary-500)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Hide
+                </button>
+              )}
+            </div>
+            <p className="form-help-text" style={{ marginBottom: '0.5rem' }}>
+              Upload an image that will be displayed at the top when users are responding.
+            </p>
 
-          {formState.headerImageUrl ? (
-            <div style={{ marginTop: '0.5rem' }}>
+            {formState.headerImageUrl ? (
               <div style={{
                 position: 'relative',
                 display: 'inline-block',
-                marginBottom: '0.5rem'
+                marginTop: '0.5rem',
               }}>
                 <img
                   src={formState.headerImageUrl}
@@ -190,7 +233,7 @@ export default function DetailsStep() {
                 />
                 <button
                   type="button"
-                  onClick={() => updateFormState({ headerImageUrl: '' })}
+                  onClick={() => { updateFormState({ headerImageUrl: '' }); setShowHeaderImageInput(false); }}
                   className="btn btn-secondary btn-small"
                   style={{
                     position: 'absolute',
@@ -202,16 +245,7 @@ export default function DetailsStep() {
                   Remove
                 </button>
               </div>
-              <input
-                type="text"
-                value={formState.headerImageUrl}
-                onChange={(e) => updateFormState({ headerImageUrl: e.target.value })}
-                placeholder="Or paste an image URL"
-                style={{ width: '100%', marginTop: '0.5rem' }}
-              />
-            </div>
-          ) : (
-            <div>
+            ) : (
               <CustomFileInput
                 ref={fileInputRef}
                 id="headerImage"
@@ -220,19 +254,9 @@ export default function DetailsStep() {
                 disabled={uploadingImage}
                 label={uploadingImage ? 'Uploading...' : 'Upload Image'}
               />
-              <p className="form-help-text" style={{ marginTop: spacing[3] }}>
-                Or paste an image URL:
-              </p>
-              <input
-                type="url"
-                value={formState.headerImageUrl}
-                onChange={(e) => updateFormState({ headerImageUrl: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-                style={{ width: '100%', marginTop: '0.5rem' }}
-              />
-            </div>
-          )}
-                  </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
