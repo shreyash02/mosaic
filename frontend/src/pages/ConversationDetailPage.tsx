@@ -17,6 +17,7 @@ import ReminderManager from '../components/ReminderManager';
 import AnnouncementManager from '../components/AnnouncementManager';
 import CollapsibleSection from '../components/CollapsibleSection';
 import FocusTrap from '../components/FocusTrap';
+import DateTimePicker from '../components/DateTimePicker';
 import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 
 // Design tokens based styles
@@ -2420,13 +2421,14 @@ export default function ConversationDetailPage() {
                   <span>Schedule activation</span>
                 </label>
                 {scheduledActivateAt && (
-                  <input
-                    type="datetime-local"
-                    value={scheduledActivateAt}
-                    onChange={(e) => setScheduledActivateAt(e.target.value)}
-                    min={formatDateForDateTimeLocal(new Date())}
-                    style={{ ...s.input, marginLeft: spacing[6] }}
-                  />
+                  <div style={{ marginLeft: spacing[6] }}>
+                    <DateTimePicker
+                      value={scheduledActivateAt}
+                      onChange={(value) => setScheduledActivateAt(value)}
+                      min={formatDateForDateTimeLocal(new Date())}
+                      placeholder="Select activation date & time"
+                    />
+                  </div>
                 )}
               </div>
 
