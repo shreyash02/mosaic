@@ -55,7 +55,7 @@ export default function EditConversationLoader({ children }: { children: React.R
         alignItems: 'center',
         minHeight: '400px',
         fontSize: '1.125rem',
-        color: '#718096',
+        color: 'var(--color-primary-500)',
       }}>
         Loading conversation...
       </div>
@@ -72,10 +72,10 @@ export default function EditConversationLoader({ children }: { children: React.R
         minHeight: '400px',
         gap: '1rem',
       }}>
-        <div style={{ fontSize: '1.125rem', color: '#e53e3e' }}>
+        <div style={{ fontSize: '1.125rem', color: 'var(--color-error)' }}>
           {error}
         </div>
-        <div style={{ fontSize: '0.875rem', color: '#718096' }}>
+        <div style={{ fontSize: '0.875rem', color: 'var(--color-primary-500)' }}>
           Redirecting to dashboard...
         </div>
       </div>

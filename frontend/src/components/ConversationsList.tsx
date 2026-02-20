@@ -1225,7 +1225,7 @@ export default function ConversationsList({
         {enableBulkSelect && viewMode === 'tile' && !selectMode && (
           <span
             style={{
-              color: '#2563eb',
+              color: 'var(--color-primary-900)',
               fontSize: typography.fontSize.sm,
               cursor: 'pointer',
             }}
@@ -1239,7 +1239,7 @@ export default function ConversationsList({
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
             <span
               style={{
-                color: '#2563eb',
+                color: 'var(--color-primary-900)',
                 fontSize: typography.fontSize.sm,
                 cursor: 'pointer',
               }}
@@ -1257,7 +1257,7 @@ export default function ConversationsList({
             </span>
             <span
               style={{
-                color: '#2563eb',
+                color: 'var(--color-primary-900)',
                 fontSize: typography.fontSize.sm,
                 cursor: 'pointer',
               }}

@@ -1941,19 +1941,19 @@ export default function JoinPage() {
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   {isDraftSaving && (
                     <>
-                      <span style={{ ...styles.draftIndicator, backgroundColor: '#f6ad55' }} />
+                      <span style={{ ...styles.draftIndicator, backgroundColor: 'var(--color-warning)' }} />
                       <span>Saving draft...</span>
                     </>
                   )}
                   {!isDraftSaving && draftLastSavedAt && (
                     <>
-                      <span style={{ ...styles.draftIndicator, backgroundColor: '#48bb78' }} />
+                      <span style={{ ...styles.draftIndicator, backgroundColor: 'var(--color-success)' }} />
                       <span>Draft saved {formatRelativeTime(draftLastSavedAt.toISOString())}</span>
                     </>
                   )}
                   {!isDraftSaving && !draftLastSavedAt && hasUnsavedChanges && (
                     <>
-                      <span style={{ ...styles.draftIndicator, backgroundColor: '#ed8936' }} />
+                      <span style={{ ...styles.draftIndicator, backgroundColor: 'var(--color-warning)' }} />
                       <span>Unsaved changes</span>
                     </>
                   )}
@@ -1961,7 +1961,7 @@ export default function JoinPage() {
                     <span style={{ color: 'var(--color-primary-400)' }}>Your progress will be saved automatically</span>
                   )}
                 </div>
-                {draftSaveError && <span style={{ color: '#e53e3e', fontSize: typography.fontSize.xs }}>{draftSaveError}</span>}
+                {draftSaveError && <span style={{ color: 'var(--color-error)', fontSize: typography.fontSize.xs }}>{draftSaveError}</span>}
               </div>
             )}
 

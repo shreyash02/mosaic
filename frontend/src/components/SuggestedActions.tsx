@@ -5,6 +5,7 @@ import type { SuggestedAction, ActionType, ActionPriority, ActionStatus } from '
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { SearchIcon, MegaphoneIcon, LightningIcon, SparklesIcon, TrendingIcon } from './icons';
 import Modal from './Modal';
+import CustomSelect from './CustomSelect';
 
 interface SuggestedActionsProps {
   conversationId: string;
@@ -846,19 +847,21 @@ export default function SuggestedActions({
         <div style={{ display: 'flex', gap: spacing[3] }}>
           <div style={{ ...styles.formGroup, flex: 1 }}>
             <label style={styles.formLabel}>Type</label>
-            <select style={styles.formSelect} value={addActionType} onChange={e => setAddActionType(e.target.value as ActionType)}>
-              {Object.entries(ACTION_TYPE_CONFIG).map(([key, cfg]) => (
-                <option key={key} value={key}>{cfg.label}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={addActionType}
+              options={Object.entries(ACTION_TYPE_CONFIG).map(([key, cfg]) => ({ value: key, label: cfg.label }))}
+              onChange={(value) => setAddActionType(value as ActionType)}
+              minWidth="100%"
+            />
           </div>
           <div style={{ ...styles.formGroup, flex: 1 }}>
             <label style={styles.formLabel}>Priority</label>
-            <select style={styles.formSelect} value={addPriority} onChange={e => setAddPriority(e.target.value as ActionPriority)}>
-              {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
-                <option key={key} value={key}>{cfg.label}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={addPriority}
+              options={Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => ({ value: key, label: cfg.label }))}
+              onChange={(value) => setAddPriority(value as ActionPriority)}
+              minWidth="100%"
+            />
           </div>
         </div>
         <div style={styles.modalButtons}>

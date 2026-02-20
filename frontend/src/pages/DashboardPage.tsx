@@ -153,7 +153,7 @@ const s = {
     transition: 'all 150ms',
   },
   copyLinkButtonSuccess: {
-    color: '#059669',
+    color: 'var(--color-success)',
   },
   statusDot: {
     display: 'inline-block',

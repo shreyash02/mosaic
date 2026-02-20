@@ -84,7 +84,7 @@ export default function AcceptOrganizationInvitePage() {
           <div className="loading" style={{ minHeight: 'auto', marginBottom: '1rem' }}>
             Accepting invitation...
           </div>
-          <p style={{ color: '#718096', margin: 0 }}>
+          <p style={{ color: 'var(--color-primary-500)', margin: 0 }}>
             Please wait while we add you to the organization
           </p>
         </div>
@@ -98,11 +98,11 @@ export default function AcceptOrganizationInvitePage() {
       <div className="page-container">
         <div className="card" style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'center', padding: '3rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
-          <h1 style={{ marginBottom: '1rem', color: '#22543d' }}>Invitation Accepted!</h1>
-          <p style={{ color: '#718096', marginBottom: '2rem', fontSize: '1rem' }}>
+          <h1 style={{ marginBottom: '1rem', color: 'var(--color-success)' }}>Invitation Accepted!</h1>
+          <p style={{ color: 'var(--color-primary-500)', marginBottom: '2rem', fontSize: '1rem' }}>
             You have successfully joined the organization.
           </p>
-          <p style={{ color: '#718096', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--color-primary-500)', fontSize: '0.9rem' }}>
             Redirecting to organization page...
           </p>
           <Link to={`/organizations/${organizationId}`} className="btn btn-primary" style={{ marginTop: '1rem' }}>
@@ -118,8 +118,8 @@ export default function AcceptOrganizationInvitePage() {
     return (
       <div className="page-container">
         <div className="card" style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem', color: '#e53e3e' }}>✕</div>
-          <h1 style={{ marginBottom: '1rem', color: '#9b2c2c' }}>Invitation Error</h1>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', color: 'var(--color-error)' }}>✕</div>
+          <h1 style={{ marginBottom: '1rem', color: 'var(--color-error)' }}>Invitation Error</h1>
           <div className="error-message" style={{ textAlign: 'left' }}>
             {error}
           </div>
@@ -141,7 +141,7 @@ export default function AcceptOrganizationInvitePage() {
     <div className="page-container">
       <div className="card" style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'center', padding: '3rem' }}>
         <h1>Organization Invitation</h1>
-        <p style={{ color: '#718096' }}>Loading invitation...</p>
+        <p style={{ color: 'var(--color-primary-500)' }}>Loading invitation...</p>
       </div>
     </div>
   );

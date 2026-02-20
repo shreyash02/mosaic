@@ -229,6 +229,7 @@ function DurationInput({ id, value, min, max, onChange, onOverflow, label, padDi
         }}>
           <button
             type="button"
+            aria-label={`Increase ${label}`}
             onClick={increment}
             disabled={value >= max && !onOverflow}
             style={{
@@ -252,6 +253,7 @@ function DurationInput({ id, value, min, max, onChange, onOverflow, label, padDi
           </button>
           <button
             type="button"
+            aria-label={`Decrease ${label}`}
             onClick={decrement}
             disabled={value <= min && !onOverflow}
             style={{
@@ -358,7 +360,6 @@ export default function TimingStep() {
                 name="durationMode"
                 checked={!formState.isLongRunning}
                 onChange={() => handleDurationModeChange(false)}
-                style={{ width: '18px', height: '18px' }}
               />
               <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                 Limited time
@@ -371,7 +372,7 @@ export default function TimingStep() {
                   name="durationMode"
                   checked={formState.isLongRunning}
                   onChange={() => handleDurationModeChange(true)}
-                  style={{ width: '18px', height: '18px' }}
+  
                 />
                 <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                   Indefinitely
@@ -561,7 +562,7 @@ export default function TimingStep() {
                   onChange={() => {
                     updateFormState({ activationMode: 'immediate', scheduleActivation: false, scheduledActivateAt: '' });
                   }}
-                  style={{ width: '18px', height: '18px' }}
+  
                 />
                 <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                   Immediately
@@ -581,7 +582,7 @@ export default function TimingStep() {
                       scheduledActivateAt: formatDateForDateTimeLocal(defaultTime),
                     });
                   }}
-                  style={{ width: '18px', height: '18px' }}
+  
                 />
                 <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                   Scheduled
@@ -595,7 +596,7 @@ export default function TimingStep() {
                   onChange={() => {
                     updateFormState({ activationMode: 'manual', scheduleActivation: false, scheduledActivateAt: '' });
                   }}
-                  style={{ width: '18px', height: '18px' }}
+  
                 />
                 <span style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                   Manually
@@ -663,12 +664,11 @@ export default function TimingStep() {
         {/* Recurring Schedule - Only for templates and when NOT long-running */}
         {recurringEnabled && isTemplate && !formState.isLongRunning && (
           <div className="form-group" style={s.sectionDivider}>
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: '1rem' }}>
               <input
                 type="checkbox"
                 checked={formState.enableRecurring}
                 onChange={(e) => updateFormState({ enableRecurring: e.target.checked })}
-                style={{ marginRight: '0.5rem' }}
               />
               <span style={{ fontWeight: 600 }}>
                 Enable Recurring Schedule
@@ -761,7 +761,7 @@ export default function TimingStep() {
         justifyContent: 'space-between',
         marginTop: '2rem',
         paddingTop: '2rem',
-        borderTop: '1px solid #e2e8f0',
+        borderTop: '1px solid var(--color-primary-300)',
       }}>
         <button
           type="button"

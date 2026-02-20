@@ -111,7 +111,7 @@ export default function TemplateConversationLoader({ children }: { children: Rea
         alignItems: 'center',
         minHeight: '400px',
         fontSize: '1.125rem',
-        color: '#718096',
+        color: 'var(--color-primary-500)',
       }}>
         Loading template...
       </div>

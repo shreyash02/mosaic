@@ -174,7 +174,7 @@ const s = {
     width: '4px',
     height: '4px',
     borderRadius: '50%',
-    backgroundColor: '#22c55e',
+    backgroundColor: 'var(--color-success)',
   },
   analysisDot: {
     position: 'absolute' as const,
@@ -183,7 +183,7 @@ const s = {
     width: '3px',
     height: '3px',
     borderRadius: '50%',
-    backgroundColor: '#3b82f6',
+    backgroundColor: 'var(--color-info, #3b82f6)',
   },
   // Timeline strip
   timelineContainer: {
@@ -240,10 +240,10 @@ const s = {
     borderRadius: '50%',
   },
   timelineDotEntry: {
-    backgroundColor: '#22c55e',
+    backgroundColor: 'var(--color-success)',
   },
   timelineDotMissed: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: 'var(--color-warning)',
   },
   timelineDotEmpty: {
     backgroundColor: 'var(--color-primary-300)',
@@ -255,7 +255,7 @@ const s = {
     width: '4px',
     height: '4px',
     borderRadius: '50%',
-    backgroundColor: '#3b82f6',
+    backgroundColor: 'var(--color-info, #3b82f6)',
   },
   timelineTodayRing: {
     boxShadow: 'inset 0 0 0 2px var(--cal-today-ring)',
@@ -850,15 +850,15 @@ export default function JournalCalendar({
       {/* Legend */}
       <div style={s.legend}>
         <div style={s.legendItem}>
-          <div style={{ ...s.legendDot, backgroundColor: '#22c55e' }} />
+          <div style={{ ...s.legendDot, backgroundColor: 'var(--color-success)' }} />
           <span>Entry</span>
         </div>
         <div style={s.legendItem}>
-          <div style={{ ...s.legendDot, backgroundColor: '#f59e0b' }} />
+          <div style={{ ...s.legendDot, backgroundColor: 'var(--color-warning)' }} />
           <span>Missed</span>
         </div>
         <div style={s.legendItem}>
-          <div style={{ ...s.legendDot, backgroundColor: '#3b82f6' }} />
+          <div style={{ ...s.legendDot, backgroundColor: 'var(--color-info, #3b82f6)' }} />
           <span>Analysis</span>
         </div>
       </div>

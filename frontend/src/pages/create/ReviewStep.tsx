@@ -1079,7 +1079,7 @@ export default function ReviewStep() {
         justifyContent: 'space-between',
         marginTop: '2rem',
         paddingTop: '2rem',
-        borderTop: '1px solid #e2e8f0',
+        borderTop: '1px solid var(--color-primary-300)',
       }}>
         <button
           type="button"

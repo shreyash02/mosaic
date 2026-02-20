@@ -832,7 +832,7 @@ export default function PreviewPage() {
                               type="radio"
                               checked={isSelected}
                               onChange={() => updatePollResponse(question.id, choice.id)}
-                              style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
+                              style={{ cursor: 'pointer' }}
                             />
                             <span>{choice.label}</span>
                           </div>
@@ -870,7 +870,7 @@ export default function PreviewPage() {
                                   : [...selectedArray, choice.id];
                                 updatePollResponse(question.id, newSelected);
                               }}
-                              style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary-900)' }}
+                              style={{ cursor: 'pointer' }}
                             />
                             <span>{choice.label}</span>
                           </div>

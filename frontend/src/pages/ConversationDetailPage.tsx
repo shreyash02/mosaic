@@ -149,7 +149,7 @@ const s = {
     marginLeft: 'auto',
   },
   headerCopyButtonSuccess: {
-    color: '#059669',
+    color: 'var(--color-success)',
   },
   // Actions bar
   actionsBar: {
@@ -197,9 +197,9 @@ const s = {
     border: `1px solid ${'var(--color-error)'}`,
   },
   buttonSuccess: {
-    backgroundColor: '#f0fdf4',
-    color: '#059669',
-    border: '1px solid #a7f3d0',
+    backgroundColor: 'var(--color-success-light, #f0fdf4)',
+    color: 'var(--color-success)',
+    border: '1px solid var(--color-success)',
   },
   buttonWarning: {
     backgroundColor: 'var(--color-warning)',

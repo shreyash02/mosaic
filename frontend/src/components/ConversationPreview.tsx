@@ -57,7 +57,7 @@ export default function ConversationPreview({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: '#f7fafc'
+                  backgroundColor: 'var(--color-primary-100)'
                 }}>
                   <img 
                     src={headerImageUrl} 
@@ -94,7 +94,7 @@ export default function ConversationPreview({
                   <div key={questionId} className="form-group">
                     <label htmlFor={`preview-question-${questionId}`}>
                       {index + 1}. {question.question_text || 'Untitled Question'}
-                      {question.is_required && <span style={{ color: 'red', marginLeft: '4px' }}>*</span>}
+                      {question.is_required && <span style={{ color: 'var(--color-error)', marginLeft: '4px' }}>*</span>}
                     </label>
 
                     {question.question_image_url && (
@@ -107,7 +107,7 @@ export default function ConversationPreview({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: '#f7fafc'
+                        backgroundColor: 'var(--color-primary-100)'
                       }}>
                         <img
                           src={question.question_image_url}
