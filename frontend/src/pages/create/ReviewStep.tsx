@@ -206,12 +206,7 @@ export default function ReviewStep() {
         }
       }
 
-      // Validate long-running feedback
-      if (formState.isLongRunning && !formState.analysisInterval) {
-        setError('Analysis interval is required for long-running feedback');
-        setLoading(false);
-        return;
-      }
+      // (Analysis schedule is optional for long-running conversations)
 
       // Calculate total minutes (only for limited time)
       const totalMinutes = formState.durationHours * 60 + formState.durationMinutes;
@@ -266,8 +261,10 @@ export default function ReviewStep() {
         // Long-running feedback (continuous conversations)
         ...(formState.isLongRunning && {
           is_continuous: true,
-          analysis_interval: formState.analysisInterval,
-          analysis_timezone: userTimezone,
+          ...(formState.enableAnalysisSchedule && {
+            analysis_interval: formState.analysisInterval,
+            analysis_timezone: userTimezone,
+          }),
         }),
         // Slack channel notifications
         ...(formState.slackChannelId && {
@@ -567,7 +564,9 @@ export default function ReviewStep() {
               <div style={{ marginBottom: spacing[3] }}>
                 <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Mode</div>
                 <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
-                  Long-running feedback ({formState.analysisInterval} analysis)
+                  {formState.enableAnalysisSchedule
+                    ? `Long-running feedback (${formState.analysisInterval} analysis)`
+                    : 'Long-running feedback (manual analysis)'}
                 </div>
               </div>
             )}
@@ -986,12 +985,35 @@ export default function ReviewStep() {
 
         {/* Invite Users */}
         {formState.inviteOnly && (
-          <Card style={{ marginBottom: spacing[4] }}>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[3] }}>
-              Invite Users
-            </h3>
-            <div className="form-group">
-              <label htmlFor="invite-emails">Invite Users by Email (Optional)</label>
+          <Card style={{
+            marginBottom: spacing[4],
+            border: formState.inviteEmails.trim() ? undefined : '2px solid var(--color-primary-500)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[3] }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-600)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="23" y1="11" x2="17" y2="11" />
+              </svg>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)' }}>
+                Invite Participants
+              </h3>
+            </div>
+            {!formState.inviteEmails.trim() && (
+              <p style={{
+                fontSize: typography.fontSize.sm,
+                color: 'var(--color-primary-600)',
+                backgroundColor: 'var(--color-primary-100)',
+                padding: `${spacing[2]} ${spacing[3]}`,
+                borderRadius: borders.radius.md,
+                marginBottom: spacing[3],
+              }}>
+                This conversation is invite-only. Add emails now or invite people later from the conversation details page.
+              </p>
+            )}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="invite-emails">Email addresses</label>
               <textarea
                 id="invite-emails"
                 value={formState.inviteEmails}
@@ -1001,7 +1023,7 @@ export default function ReviewStep() {
                 style={{ fontFamily: 'inherit' }}
               />
               <p className="form-help-text">
-                Enter email addresses separated by commas. You can also add more invitations after creating the conversation.
+                Separate multiple emails with commas.
               </p>
             </div>
           </Card>

@@ -64,6 +64,7 @@ export interface ConversationFormState {
 
   // Long-running feedback (continuous conversations)
   isLongRunning: boolean;
+  enableAnalysisSchedule: boolean;
   analysisInterval: AnalysisInterval;
   analysisScheduleDay: number;  // 0-6 for weekly (0=Sunday), 1-28 for monthly
   analysisScheduleTime: string; // HH:MM format
@@ -147,6 +148,7 @@ const getDefaultFormState = (): ConversationFormState => ({
 
   // Long-running feedback
   isLongRunning: false,
+  enableAnalysisSchedule: true,
   analysisInterval: 'weekly',
   analysisScheduleDay: 1, // Monday for weekly, 1st for monthly
   analysisScheduleTime: '09:00',
@@ -297,6 +299,7 @@ export function ConversationFormProvider({
       nextInstanceDate: utcToLocalDatetimeString(conversation.next_instance_date),
       recurrenceEndDate: utcToLocalDatetimeString(conversation.recurrence_end_date),
       isLongRunning: !!conversation.is_continuous,
+      enableAnalysisSchedule: !!conversation.analysis_interval,
       analysisInterval: conversation.analysis_interval || 'weekly',
       // Parse next_analysis_at to extract day and time if available
       analysisScheduleDay: conversation.next_analysis_at

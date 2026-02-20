@@ -455,77 +455,94 @@ export default function TimingStep() {
           {formState.isLongRunning && (
             <div style={{ marginLeft: spacing[1] }}>
               <p className="form-help-text" style={{ marginBottom: spacing[3] }}>
-                The conversation stays open until you manually close it. Set up periodic analysis to summarize responses.
+                The conversation stays open until you manually close it.
               </p>
-              <div style={s.scheduleGrid}>
-                    <div style={s.scheduleField}>
-                      <label style={s.scheduleLabel}>
-                        Run analysis
-                      </label>
-                      <CustomSelect
-                        id="analysisInterval"
-                        value={formState.analysisInterval}
-                        options={INTERVAL_OPTIONS}
-                        onChange={(value) => {
-                          const interval = value as AnalysisInterval;
-                          updateFormState({
-                            analysisInterval: interval,
-                            // Reset day when changing interval
-                            analysisScheduleDay: interval === 'monthly' ? 1 : 1,
-                          });
-                        }}
-                        minWidth="160px"
-                      />
-                    </div>
-
-                    {/* Day selector - only for weekly/biweekly/monthly */}
-                    {formState.analysisInterval !== 'daily' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer', marginBottom: spacing[3] }}>
+                <input
+                  type="checkbox"
+                  checked={formState.enableAnalysisSchedule}
+                  onChange={(e) => updateFormState({ enableAnalysisSchedule: e.target.checked })}
+                />
+                <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-900)' }}>
+                  Schedule periodic analysis
+                </span>
+              </label>
+              {!formState.enableAnalysisSchedule && (
+                <p className="form-help-text" style={{ marginBottom: spacing[3] }}>
+                  You can trigger analysis manually from the conversation details page whenever you want.
+                </p>
+              )}
+              {formState.enableAnalysisSchedule && (
+                <div style={s.scheduleGrid}>
                       <div style={s.scheduleField}>
                         <label style={s.scheduleLabel}>
-                          {formState.analysisInterval === 'monthly' ? 'On day' : 'On'}
+                          Run analysis
                         </label>
                         <CustomSelect
-                          id="analysisScheduleDay"
-                          value={formState.analysisScheduleDay}
-                          options={formState.analysisInterval === 'monthly' ? DAYS_OF_MONTH : DAYS_OF_WEEK}
-                          onChange={(value) => updateFormState({ analysisScheduleDay: value as number })}
-                          minWidth="140px"
+                          id="analysisInterval"
+                          value={formState.analysisInterval}
+                          options={INTERVAL_OPTIONS}
+                          onChange={(value) => {
+                            const interval = value as AnalysisInterval;
+                            updateFormState({
+                              analysisInterval: interval,
+                              // Reset day when changing interval
+                              analysisScheduleDay: interval === 'monthly' ? 1 : 1,
+                            });
+                          }}
+                          minWidth="160px"
                         />
                       </div>
-                    )}
 
-                    {/* Time selector - hour */}
-                    <div style={s.scheduleField}>
-                      <label style={s.scheduleLabel}>
-                        At
-                      </label>
-                      <CustomSelect
-                        id="analysisScheduleHour"
-                        value={parse24HourTime(formState.analysisScheduleTime).hour}
-                        options={HOUR_OPTIONS}
-                        onChange={(value) => {
-                          const { period } = parse24HourTime(formState.analysisScheduleTime);
-                          updateFormState({ analysisScheduleTime: to24HourTime(value as number, period) });
-                        }}
-                        minWidth="100px"
-                      />
-                    </div>
+                      {/* Day selector - only for weekly/biweekly/monthly */}
+                      {formState.analysisInterval !== 'daily' && (
+                        <div style={s.scheduleField}>
+                          <label style={s.scheduleLabel}>
+                            {formState.analysisInterval === 'monthly' ? 'On day' : 'On'}
+                          </label>
+                          <CustomSelect
+                            id="analysisScheduleDay"
+                            value={formState.analysisScheduleDay}
+                            options={formState.analysisInterval === 'monthly' ? DAYS_OF_MONTH : DAYS_OF_WEEK}
+                            onChange={(value) => updateFormState({ analysisScheduleDay: value as number })}
+                            minWidth="140px"
+                          />
+                        </div>
+                      )}
 
-                    {/* Time selector - AM/PM */}
-                    <div style={s.scheduleField}>
-                      <label style={s.scheduleLabel}>&nbsp;</label>
-                      <CustomSelect
-                        id="analysisSchedulePeriod"
-                        value={parse24HourTime(formState.analysisScheduleTime).period}
-                        options={PERIOD_OPTIONS}
-                        onChange={(value) => {
-                          const { hour } = parse24HourTime(formState.analysisScheduleTime);
-                          updateFormState({ analysisScheduleTime: to24HourTime(hour, value as 'AM' | 'PM') });
-                        }}
-                        minWidth="80px"
-                      />
+                      {/* Time selector - hour */}
+                      <div style={s.scheduleField}>
+                        <label style={s.scheduleLabel}>
+                          At
+                        </label>
+                        <CustomSelect
+                          id="analysisScheduleHour"
+                          value={parse24HourTime(formState.analysisScheduleTime).hour}
+                          options={HOUR_OPTIONS}
+                          onChange={(value) => {
+                            const { period } = parse24HourTime(formState.analysisScheduleTime);
+                            updateFormState({ analysisScheduleTime: to24HourTime(value as number, period) });
+                          }}
+                          minWidth="100px"
+                        />
+                      </div>
+
+                      {/* Time selector - AM/PM */}
+                      <div style={s.scheduleField}>
+                        <label style={s.scheduleLabel}>&nbsp;</label>
+                        <CustomSelect
+                          id="analysisSchedulePeriod"
+                          value={parse24HourTime(formState.analysisScheduleTime).period}
+                          options={PERIOD_OPTIONS}
+                          onChange={(value) => {
+                            const { hour } = parse24HourTime(formState.analysisScheduleTime);
+                            updateFormState({ analysisScheduleTime: to24HourTime(hour, value as 'AM' | 'PM') });
+                          }}
+                          minWidth="80px"
+                        />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -622,22 +639,22 @@ export default function TimingStep() {
             alignItems: 'flex-start',
             gap: spacing[3],
             padding: spacing[4],
-            backgroundColor: 'var(--color-info-50, #eff6ff)',
-            border: `1px solid var(--color-info-200, #bfdbfe)`,
+            backgroundColor: 'var(--color-primary-100)',
+            border: '1px solid var(--color-primary-300)',
             borderRadius: borders.radius.lg,
             marginBottom: spacing[4],
           }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-500, #3b82f6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="16" x2="12" y2="12" />
               <line x1="12" y1="8" x2="12.01" y2="8" />
             </svg>
             <div>
-              <div style={{ fontWeight: typography.fontWeight.semibold, color: 'var(--color-info-700, #1d4ed8)', marginBottom: spacing[1] }}>
+              <div style={{ fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-900)', marginBottom: spacing[1] }}>
                 Flexible timing
               </div>
-              <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-info-600, #2563eb)' }}>
-                You can manually close the conversation early or extend it at any time from the dashboard, regardless of these settings.
+              <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+                You can manually close the conversation early or extend it at any time from the conversation details page, regardless of these settings.
               </div>
             </div>
           </div>
