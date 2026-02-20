@@ -655,6 +655,19 @@ h3 {
   text-decoration: underline;
 }
 
+/* Global keyboard focus ring
+   Uses box-shadow so it works even when inline outline: none is set.
+   More specific :focus / :focus-visible rules naturally override this. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary-50), 0 0 0 4px var(--color-info);
+}
+
 /* Forms */
 .form-group {
   margin-bottom: 1.5rem;
