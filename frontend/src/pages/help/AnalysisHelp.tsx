@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import CalloutBox from '../../components/CalloutBox';
 
 export default function AnalysisHelp() {
   return (
@@ -56,7 +57,7 @@ export default function AnalysisHelp() {
           <div style={{ marginLeft: '1rem' }}>
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Automatic Analysis</h3>
             <p style={{ marginBottom: '1.5rem' }}>
-              Enable <strong>"Auto Analyze"</strong> when <Link to="/help/creating-conversations" style={{ color: '#4299e1' }}>creating a conversation</Link> to have analysis run automatically when the <Link to="/help/closing-conversations" style={{ color: '#4299e1' }}>conversation closes</Link>.
+              Enable <strong>"Auto Analyze"</strong> when <Link to="/help/creating-conversations" style={{ color: 'var(--color-primary-600)' }}>creating a conversation</Link> to have analysis run automatically when the <Link to="/help/closing-conversations" style={{ color: 'var(--color-primary-600)' }}>conversation closes</Link>.
             </p>
 
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Manual Analysis</h3>
@@ -136,19 +137,19 @@ export default function AnalysisHelp() {
 
             <h3>Example</h3>
             <div style={{
-              backgroundColor: '#f7fafc',
+              backgroundColor: 'var(--color-primary-100)',
               padding: '1rem',
               borderRadius: '6px',
               marginTop: '1rem'
             }}>
               <p style={{ margin: 0, fontWeight: 600 }}>Theme: Product Usability</p>
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.95rem', color: '#718096' }}>
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.95rem', color: 'var(--color-primary-500)' }}>
                 Frequency: 15 responses
               </p>
               <p style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.9rem' }}>
                 <strong>Perspectives:</strong>
               </p>
-              <ul style={{ margin: 0, fontSize: '0.9rem', color: '#4a5568' }}>
+              <ul style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-primary-600)' }}>
                 <li>Easy to learn (8 responses)</li>
                 <li>Needs better documentation (5 responses)</li>
                 <li>Mobile experience needs improvement (2 responses)</li>
@@ -218,10 +219,10 @@ export default function AnalysisHelp() {
 
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Taking Action</h3>
             <p style={{ marginBottom: '1.5rem' }}>
-              Analysis is most valuable when it leads to action. Share insights with relevant stakeholders to drive alignment. Create <Link to="/help/follow-ups" style={{ color: '#4299e1' }}>follow-up conversations</Link> to explore interesting themes in more depth.
+              Analysis is most valuable when it leads to action. Share insights with relevant stakeholders to drive alignment. Create <Link to="/help/follow-ups" style={{ color: 'var(--color-primary-600)' }}>follow-up conversations</Link> to explore interesting themes in more depth.
             </p>
             <p style={{ marginBottom: '1.5rem' }}>
-              Use the findings to inform decisions and demonstrate that feedback is being heard. For ongoing topics, track how themes evolve over time using <Link to="/help/recurring-conversations" style={{ color: '#4299e1' }}>recurring conversations</Link>.
+              Use the findings to inform decisions and demonstrate that feedback is being heard. For ongoing topics, track how themes evolve over time using <Link to="/help/recurring-conversations" style={{ color: 'var(--color-primary-600)' }}>recurring conversations</Link>.
             </p>
           </div>
         </section>
@@ -331,19 +332,13 @@ export default function AnalysisHelp() {
           </div>
         </section>
 
-        <div style={{
-          backgroundColor: '#fff5f5',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          borderLeft: '4px solid #fc8181'
-        }}>
-          <h3 style={{ marginTop: 0, color: '#c53030' }}>Important Note</h3>
-          <p style={{ margin: 0, color: '#2d3748' }}>
+        <CalloutBox variant="error" title="Important Note">
+          <p style={{ margin: 0 }}>
             AI analysis is a tool to help identify patterns, not a replacement for human judgment.
             Always review the actual responses alongside the generated themes. The AI may miss
             important nuances or context that you would catch.
           </p>
-        </div>
+        </CalloutBox>
       </div>
     </div>
   );

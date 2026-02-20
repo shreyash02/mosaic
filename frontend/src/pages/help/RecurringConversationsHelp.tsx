@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import CalloutBox from '../../components/CalloutBox';
 
 export default function RecurringConversationsHelp() {
   return (
@@ -41,7 +42,7 @@ export default function RecurringConversationsHelp() {
               <li>Enable <strong>"This is a recurring conversation"</strong></li>
               <li>Choose a recurrence pattern</li>
               <li>Optionally set an end date</li>
-              <li>Configure other <Link to="/help/creating-conversations" style={{ color: '#4299e1' }}>conversation settings</Link> as normal</li>
+              <li>Configure other <Link to="/help/creating-conversations" style={{ color: 'var(--color-primary-600)' }}>conversation settings</Link> as normal</li>
               <li>Save as draft or publish</li>
             </ol>
 
@@ -120,7 +121,7 @@ export default function RecurringConversationsHelp() {
 
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Instance Independence</h3>
             <p style={{ marginBottom: '1.5rem' }}>
-              Each instance is a separate, independent conversation with its own responses. Instances can be <Link to="/help/analysis" style={{ color: '#4299e1' }}>analyzed</Link> separately and <Link to="/help/closing-conversations" style={{ color: '#4299e1' }}>closed</Link> independently.
+              Each instance is a separate, independent conversation with its own responses. Instances can be <Link to="/help/analysis" style={{ color: 'var(--color-primary-600)' }}>analyzed</Link> separately and <Link to="/help/closing-conversations" style={{ color: 'var(--color-primary-600)' }}>closed</Link> independently.
             </p>
             <p style={{ marginBottom: '1.5rem' }}>
               While they start as copies of the template, settings can be adjusted individually for each instance if needed.
@@ -214,20 +215,14 @@ export default function RecurringConversationsHelp() {
           </div>
         </section>
 
-        <div style={{
-          backgroundColor: '#ebf8ff',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          borderLeft: '4px solid #4299e1'
-        }}>
-          <h3 style={{ marginTop: 0, color: '#2c5282' }}>Pro Tips</h3>
-          <ul style={{ margin: 0, color: '#2d3748' }}>
+        <CalloutBox title="Pro Tips">
+          <ul style={{ margin: 0 }}>
             <li>Start with a longer recurrence period (monthly) and increase frequency if needed</li>
             <li>Use the same questions across instances to track trends accurately</li>
             <li>Set expectations with participants about the recurring nature</li>
             <li>Review and update templates quarterly to ensure questions stay relevant</li>
           </ul>
-        </div>
+        </CalloutBox>
       </div>
     </div>
   );

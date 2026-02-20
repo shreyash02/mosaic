@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import CalloutBox from '../../components/CalloutBox';
 
 export default function FollowUpsHelp() {
   return (
@@ -24,7 +25,7 @@ export default function FollowUpsHelp() {
           <div style={{ marginLeft: '1rem' }}>
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Why Use Follow-ups?</h3>
             <p style={{ marginBottom: '1.5rem' }}>
-              Follow-ups help you explore themes discovered in <Link to="/help/analysis" style={{ color: '#4299e1' }}>analysis</Link>, ask clarifying questions based on initial responses, and gather more detailed feedback on specific topics.
+              Follow-ups help you explore themes discovered in <Link to="/help/analysis" style={{ color: 'var(--color-primary-600)' }}>analysis</Link>, ask clarifying questions based on initial responses, and gather more detailed feedback on specific topics.
             </p>
             <p style={{ marginBottom: '1.5rem' }}>
               They maintain conversation history and context, making it easy for participants to see how the discussion is evolving. Plus, they save you time by reusing settings and invitations from the original conversation.
@@ -50,7 +51,7 @@ export default function FollowUpsHelp() {
               You have control over what gets copied from the original conversation. You can copy settings like anonymity level, results access, and timing options.
             </p>
             <p style={{ marginBottom: '1.5rem' }}>
-              You can also copy all <Link to="/help/inviting-participants" style={{ color: '#4299e1' }}>invited participants</Link> from the original, making it easy to reach the same audience. The question set can be copied as well, though you can then modify it to suit the follow-up's focus.
+              You can also copy all <Link to="/help/inviting-participants" style={{ color: 'var(--color-primary-600)' }}>invited participants</Link> from the original, making it easy to reach the same audience. The question set can be copied as well, though you can then modify it to suit the follow-up's focus.
             </p>
 
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>What's Different</h3>
@@ -69,7 +70,7 @@ export default function FollowUpsHelp() {
           <div style={{ marginLeft: '1rem' }}>
             <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Deep Dive on Themes</h3>
             <p style={{ marginBottom: '1rem' }}>
-              After running <Link to="/help/analysis" style={{ color: '#4299e1' }}>analysis</Link> on the original conversation:
+              After running <Link to="/help/analysis" style={{ color: 'var(--color-primary-600)' }}>analysis</Link> on the original conversation:
             </p>
             <ol style={{ marginBottom: '1.5rem', marginLeft: '2rem' }}>
               <li>Identify the most interesting or important themes</li>
@@ -149,7 +150,7 @@ export default function FollowUpsHelp() {
           <h2>Example Follow-up Flow</h2>
 
           <div style={{
-            backgroundColor: '#f7fafc',
+            backgroundColor: 'var(--color-primary-100)',
             padding: '1.5rem',
             borderRadius: '8px',
             marginTop: '1rem'
@@ -179,19 +180,13 @@ export default function FollowUpsHelp() {
           </div>
         </section>
 
-        <div style={{
-          backgroundColor: '#ebf8ff',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          borderLeft: '4px solid #4299e1'
-        }}>
-          <h3 style={{ marginTop: 0, color: '#2c5282' }}>Pro Tip</h3>
-          <p style={{ margin: 0, color: '#2d3748' }}>
+        <CalloutBox title="Pro Tip">
+          <p style={{ margin: 0 }}>
             Follow-ups work best when you share analysis results from the original conversation
             with participants before asking for follow-up responses. This shows you listened and
             creates a sense of progress and collaboration.
           </p>
-        </div>
+        </CalloutBox>
       </div>
     </div>
   );

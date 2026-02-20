@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import CalloutBox from '../../components/CalloutBox';
 
 export default function OrganizationsHelp() {
   return (
@@ -334,20 +335,14 @@ export default function OrganizationsHelp() {
           </div>
         </section>
 
-        <div style={{
-          backgroundColor: '#ebf8ff',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          borderLeft: '4px solid #4299e1'
-        }}>
-          <h3 style={{ marginTop: 0, color: '#2c5282' }}>Pro Tips</h3>
-          <ul style={{ margin: 0, color: '#2d3748' }}>
+        <CalloutBox title="Pro Tips">
+          <ul style={{ margin: 0 }}>
             <li>Use organizations to separate work contexts (e.g., HR, Product, Marketing)</li>
             <li>Start with a small trusted team before expanding</li>
             <li>Establish conventions for conversation titles and descriptions</li>
             <li>Leverage recurring conversations for regular team feedback</li>
           </ul>
-        </div>
+        </CalloutBox>
       </div>
     </div>
   );

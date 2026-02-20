@@ -9,6 +9,7 @@ import { api } from '../../services/api';
 import type { Series } from '../../types';
 import { typography, spacing, borders, shadows, mediaQueries } from '../../styles';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern } from '../../types';
+import Modal from '../../components/Modal';
 
 // Card component for consistent styling
 const Card = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
@@ -1150,18 +1151,20 @@ export default function ReviewStep() {
       )}
 
       {/* Create Series Modal */}
-      {showCreateSeriesModal && (
-        <div className="modal-overlay" onClick={() => {
+      <Modal
+        isOpen={showCreateSeriesModal}
+        onClose={() => {
           if (!creatingSeries) {
             setShowCreateSeriesModal(false);
             setNewSeriesName('');
             setNewSeriesDescription('');
             setError('');
           }
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <h2>Create New Collection</h2>
-            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+        }}
+        title="Create New Collection"
+        maxWidth="500px"
+      >
+            <p style={{ color: 'var(--color-primary-500)', marginBottom: '1.5rem' }}>
               Create a new collection to group related conversations together.
             </p>
 
@@ -1221,9 +1224,7 @@ export default function ReviewStep() {
                 {creatingSeries ? 'Creating...' : 'Create Collection'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

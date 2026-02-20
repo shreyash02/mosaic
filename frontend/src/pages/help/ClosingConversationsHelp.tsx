@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import CalloutBox from '../../components/CalloutBox';
 
 export default function ClosingConversationsHelp() {
   return (
@@ -175,19 +176,13 @@ export default function ClosingConversationsHelp() {
           </div>
         </section>
 
-        <div style={{
-          backgroundColor: '#ebf8ff',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          borderLeft: '4px solid #4299e1'
-        }}>
-          <h3 style={{ marginTop: 0, color: '#2c5282' }}>Pro Tip</h3>
-          <p style={{ margin: 0, color: '#2d3748' }}>
+        <CalloutBox title="Pro Tip">
+          <p style={{ margin: 0 }}>
             For important conversations, enable both manual close and time extensions. This gives
             you maximum flexibility to adjust as needed while still having automatic closure as a
             backup.
           </p>
-        </div>
+        </CalloutBox>
       </div>
     </div>
   );
