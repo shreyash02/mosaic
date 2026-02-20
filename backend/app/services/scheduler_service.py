@@ -1407,6 +1407,52 @@ async def check_periodic_analyses():
             db.close()
 
 
+async def recover_stale_analyses():
+    """
+    Recover conversations stuck in ANALYZING state for longer than 10 minutes.
+
+    If the LLM hangs or the background task crashes, conversations can get
+    permanently stuck in ANALYZING state with no way for the user to retry.
+    This job resets them to CLOSED so analysis can be re-triggered.
+
+    Runs every 5 minutes.
+    """
+    async with log_job_execution('recover_stale_analyses') as ctx:
+        db: Session = SessionLocal()
+        try:
+            cutoff = datetime.utcnow() - timedelta(minutes=10)
+
+            stale_conversations = db.query(Conversation).filter(
+                Conversation.state == ConversationState.ANALYZING.value,
+                Conversation.updated_at < cutoff
+            ).all()
+
+            ctx.set_details({'stale_found': len(stale_conversations)})
+
+            for conv in stale_conversations:
+                try:
+                    logger.warning(
+                        f"Recovering stale analysis for conversation {conv.id} "
+                        f"(stuck since {conv.updated_at})"
+                    )
+                    conv.state = ConversationState.CLOSED.value
+                    ctx.add_processed()
+                except Exception as e:
+                    ctx.add_failed()
+                    logger.error(f"Failed to recover conversation {conv.id}: {e}", exc_info=True)
+
+            if stale_conversations:
+                db.commit()
+                logger.info(f"Recovered {len(stale_conversations)} stale analyzing conversation(s)")
+
+        except Exception as e:
+            logger.error(f"Error recovering stale analyses: {e}", exc_info=True)
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+
 async def cleanup_old_job_logs():
     """
     Auto-cleanup scheduler logs older than 7 days.
@@ -1494,6 +1540,15 @@ def start_scheduler():
         max_instances=1
     )
 
+    # Add job to recover conversations stuck in ANALYZING state every 5 minutes
+    scheduler.add_job(
+        recover_stale_analyses,
+        trigger=IntervalTrigger(minutes=5),
+        id='recover_stale_analyses',
+        replace_existing=True,
+        max_instances=1
+    )
+
     # Add job to cleanup old scheduler logs daily
     scheduler.add_job(
         cleanup_old_job_logs,
@@ -1504,7 +1559,7 @@ def start_scheduler():
     )
 
     scheduler.start()
-    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, closing warning, scheduled reminder, and log cleanup jobs")
+    logger.info("Scheduler started with activation, closure, recurring instance, periodic analysis, closing warning, scheduled reminder, stale analysis recovery, and log cleanup jobs")
 
 
 def shutdown_scheduler():

@@ -252,7 +252,16 @@ def run_analysis_task(
 
     except Exception as e:
         db.rollback()
-        # Log error (in production, use proper logging)
+        # Reset conversation state so the user can retry analysis
+        try:
+            conversation = db.query(Conversation).filter(
+                Conversation.id == conversation_id
+            ).first()
+            if conversation and conversation.state == ConversationState.ANALYZING.value:
+                conversation.state = ConversationState.CLOSED.value
+                db.commit()
+        except Exception:
+            pass
         logger.error(f"Analysis failed for conversation {conversation_id}: {str(e)}")
         raise
     finally:
