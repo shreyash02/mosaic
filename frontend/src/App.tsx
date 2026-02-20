@@ -55,6 +55,7 @@ import AdminPlanTiersPage from './pages/AdminPlanTiersPage';
 import AdminCostEstimatorPage from './pages/AdminCostEstimatorPage';
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
 import AdminLLMUsagePage from './pages/AdminLLMUsagePage';
+import AdminEmailLogsPage from './pages/AdminEmailLogsPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -499,6 +500,7 @@ function App() {
             <Route path="/adminportal/cost-estimator" element={<AdminCostEstimatorPage />} />
             <Route path="/adminportal/analytics" element={<AdminAnalyticsPage />} />
             <Route path="/adminportal/llm-usage" element={<AdminLLMUsagePage />} />
+            <Route path="/adminportal/email-logs" element={<AdminEmailLogsPage />} />
 
             {/* Help Pages */}
             <Route path="/help" element={<HelpPage />} />

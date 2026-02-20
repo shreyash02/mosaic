@@ -1147,6 +1147,178 @@ async def get_llm_usage(
 
 
 # ============================================================
+# Email Logs endpoint
+# ============================================================
+
+from app.schemas.email_log import (
+    AdminEmailLogsResponse,
+    EmailLogSummary,
+    EmailDailyVolume,
+    EmailTypeBreakdown,
+    EmailLogEntry,
+    RecentFailure,
+)
+
+
+@router.get("/email-logs", response_model=AdminEmailLogsResponse)
+async def get_email_logs(
+    period_days: int = 30,
+    email_type: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Get email logs with summary stats, daily volumes, type breakdown,
+    and paginated log entries.
+
+    Args:
+        period_days: Number of days to include (default 30).
+        email_type: Optional filter by email type.
+        status_filter: Optional filter by status ("sent" or "failed").
+        page: Page number (default 1).
+        page_size: Results per page (default 50, max 100).
+        admin: Current authenticated admin.
+        db: Database session.
+
+    Returns:
+        Email log dashboard data.
+    """
+    from datetime import timedelta
+    from app.models.email_log import EmailLog
+
+    page_size = min(page_size, 100)
+    now = datetime.utcnow()
+    period_start = now - timedelta(days=period_days)
+
+    base = db.query(EmailLog).filter(EmailLog.created_at >= period_start)
+
+    # --- Summary ---
+    total_sent = base.filter(EmailLog.status == "sent").count()
+    total_failed = base.filter(EmailLog.status == "failed").count()
+    total = total_sent + total_failed
+    success_rate = round(total_sent / total, 4) if total > 0 else 1.0
+
+    summary = EmailLogSummary(
+        total_sent=total_sent,
+        total_failed=total_failed,
+        success_rate=success_rate,
+        period_days=period_days,
+    )
+
+    # --- Daily volumes (zero-filled) ---
+    raw_daily = db.query(
+        cast(EmailLog.created_at, Date),
+        EmailLog.status,
+        func.count(EmailLog.id),
+    ).filter(
+        EmailLog.created_at >= period_start,
+    ).group_by(cast(EmailLog.created_at, Date), EmailLog.status).all()
+
+    daily_map: dict[str, dict[str, int]] = {}
+    for row in raw_daily:
+        d = str(row[0])
+        if d not in daily_map:
+            daily_map[d] = {"sent": 0, "failed": 0}
+        daily_map[d][row[1]] = row[2]
+
+    daily_volumes = []
+    for i in range(period_days):
+        d = (period_start + timedelta(days=i)).date()
+        counts = daily_map.get(str(d), {"sent": 0, "failed": 0})
+        daily_volumes.append(EmailDailyVolume(
+            date=str(d),
+            sent=counts.get("sent", 0),
+            failed=counts.get("failed", 0),
+        ))
+
+    # --- By type ---
+    raw_types = db.query(
+        EmailLog.email_type,
+        EmailLog.status,
+        func.count(EmailLog.id),
+    ).filter(
+        EmailLog.created_at >= period_start,
+    ).group_by(EmailLog.email_type, EmailLog.status).all()
+
+    type_map: dict[str, dict[str, int]] = {}
+    for row in raw_types:
+        t = row[0]
+        if t not in type_map:
+            type_map[t] = {"sent": 0, "failed": 0}
+        type_map[t][row[1]] = row[2]
+
+    by_type = [
+        EmailTypeBreakdown(
+            email_type=t,
+            sent=counts.get("sent", 0),
+            failed=counts.get("failed", 0),
+        )
+        for t, counts in sorted(type_map.items())
+    ]
+
+    # --- Paginated logs ---
+    log_query = db.query(EmailLog).filter(EmailLog.created_at >= period_start)
+    if email_type:
+        log_query = log_query.filter(EmailLog.email_type == email_type)
+    if status_filter:
+        log_query = log_query.filter(EmailLog.status == status_filter)
+
+    total_logs = log_query.count()
+    total_pages = (total_logs + page_size - 1) // page_size if page_size > 0 else 0
+
+    log_rows = log_query.order_by(EmailLog.created_at.desc())\
+        .offset((page - 1) * page_size)\
+        .limit(page_size)\
+        .all()
+
+    logs = [
+        EmailLogEntry(
+            id=str(row.id),
+            recipient_email=row.recipient_email,
+            email_type=row.email_type,
+            subject=row.subject,
+            status=row.status,
+            error_message=row.error_message,
+            conversation_id=str(row.conversation_id) if row.conversation_id else None,
+            organization_id=str(row.organization_id) if row.organization_id else None,
+            user_id=str(row.user_id) if row.user_id else None,
+            created_at=row.created_at,
+        )
+        for row in log_rows
+    ]
+
+    # --- Recent failures ---
+    raw_failures = db.query(EmailLog).filter(
+        EmailLog.status == "failed",
+    ).order_by(EmailLog.created_at.desc()).limit(20).all()
+
+    recent_failures = [
+        RecentFailure(
+            recipient_email=f.recipient_email,
+            email_type=f.email_type,
+            error_message=f.error_message,
+            created_at=f.created_at,
+        )
+        for f in raw_failures
+    ]
+
+    return AdminEmailLogsResponse(
+        summary=summary,
+        daily_volumes=daily_volumes,
+        by_type=by_type,
+        logs=logs,
+        total_logs=total_logs,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        recent_failures=recent_failures,
+    )
+
+
+# ============================================================
 # Analytics endpoint
 # ============================================================
 

@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Optional
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from app.core.config import settings
+from app.services.email_log_service import log_email
 
 logger = logging.getLogger(__name__)
 
@@ -161,10 +162,14 @@ Join the conversation by clicking this link:
             
             await self.fastmail.send_message(message)
             logger.info(f"Invitation email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="invitation",
+                      status="sent", subject=subject)
             return True
-                
+
         except Exception as e:
             logger.error(f"Failed to send invitation email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="invitation",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_organization_invitation_email(
@@ -293,10 +298,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Organization invitation email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="org_invitation",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send organization invitation email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="org_invitation",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_closing_warning_email(
@@ -393,10 +402,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Closing warning email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="closing_warning",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send closing warning email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="closing_warning",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_reminder_email(
@@ -498,10 +511,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Reminder email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="reminder",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send reminder email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="reminder",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_announcement_email(
@@ -591,10 +608,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Announcement email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="announcement",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send announcement email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="announcement",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_conversation_closed_email(
@@ -693,10 +714,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Conversation closed email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="conversation_closed",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send conversation closed email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="conversation_closed",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_analysis_ready_email(
@@ -785,10 +810,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Analysis ready email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="analysis_ready",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send analysis ready email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="analysis_ready",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_periodic_analysis_ready_email(
@@ -886,10 +915,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Periodic analysis ready email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="periodic_analysis_ready",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send periodic analysis ready email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="periodic_analysis_ready",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_recurring_instance_created_email(
@@ -994,10 +1027,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Recurring instance created email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="recurring_instance",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send recurring instance created email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="recurring_instance",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
 
@@ -1087,10 +1124,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Password reset email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="password_reset",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send password reset email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="password_reset",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
 
@@ -1175,10 +1216,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Password reset confirmation email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="password_reset_confirmation",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send password reset confirmation email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="password_reset_confirmation",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
     async def send_email_verification_email(
@@ -1265,10 +1310,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Email verification email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="email_verification",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send email verification email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="email_verification",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
 
@@ -1377,10 +1426,14 @@ If you did not expect this invitation, you can safely ignore this email.
 
             await self.fastmail.send_message(message)
             logger.info(f"Journal share email sent successfully to {to_email}")
+            log_email(recipient_email=to_email, email_type="journal_share",
+                      status="sent", subject=subject)
             return True
 
         except Exception as e:
             logger.error(f"Failed to send journal share email to {to_email}: {str(e)}", exc_info=True)
+            log_email(recipient_email=to_email, email_type="journal_share",
+                      status="failed", subject=subject, error_message=str(e))
             return False
 
 

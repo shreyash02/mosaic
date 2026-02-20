@@ -323,6 +323,9 @@ export default function AdminPortalPage() {
               <Link to="/adminportal/llm-usage" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
                 LLM Usage
               </Link>
+              <Link to="/adminportal/email-logs" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
+                Email Logs
+              </Link>
             </div>
           )}
         </div>

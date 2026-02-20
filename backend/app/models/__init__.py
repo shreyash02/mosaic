@@ -28,6 +28,7 @@ from app.models.journal_template import JournalTemplate
 from app.models.journal_share import JournalShare
 from app.models.conversation_preset import ConversationPreset
 from app.models.llm_usage_log import LLMUsageLog
+from app.models.email_log import EmailLog
 
 __all__ = [
     "User",
@@ -61,4 +62,5 @@ __all__ = [
     "JournalShare",
     "ConversationPreset",
     "LLMUsageLog",
+    "EmailLog",
 ]

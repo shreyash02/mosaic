@@ -1719,3 +1719,55 @@ export interface AdminLLMUsageResponse {
   by_model: LLMModelBreakdown[];
   recent_errors: LLMRecentError[];
 }
+
+// Email Logs types (Admin)
+export interface EmailLogSummary {
+  total_sent: number;
+  total_failed: number;
+  success_rate: number;
+  period_days: number;
+}
+
+export interface EmailDailyVolume {
+  date: string;
+  sent: number;
+  failed: number;
+}
+
+export interface EmailTypeBreakdown {
+  email_type: string;
+  sent: number;
+  failed: number;
+}
+
+export interface EmailLogEntry {
+  id: string;
+  recipient_email: string;
+  email_type: string;
+  subject: string | null;
+  status: string;
+  error_message: string | null;
+  conversation_id: string | null;
+  organization_id: string | null;
+  user_id: string | null;
+  created_at: string;
+}
+
+export interface EmailRecentFailure {
+  recipient_email: string;
+  email_type: string;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface AdminEmailLogsResponse {
+  summary: EmailLogSummary;
+  daily_volumes: EmailDailyVolume[];
+  by_type: EmailTypeBreakdown[];
+  logs: EmailLogEntry[];
+  total_logs: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  recent_failures: EmailRecentFailure[];
+}
