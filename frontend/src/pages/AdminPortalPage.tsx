@@ -314,6 +314,9 @@ export default function AdminPortalPage() {
               <Link to="/adminportal/plan-tiers" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
                 Plan Tiers
               </Link>
+              <Link to="/adminportal/cost-estimator" className="tab-dropdown-item" onClick={() => setShowPlatformDropdown(false)}>
+                Cost Estimator
+              </Link>
             </div>
           )}
         </div>

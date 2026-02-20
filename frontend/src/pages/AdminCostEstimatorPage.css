@@ -1,0 +1,387 @@
+/* =============================================================================
+   Admin Cost Estimator Page
+   ============================================================================= */
+
+.cost-estimator {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--spacing-6);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.cost-estimator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-6);
+}
+
+.cost-estimator-header h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  margin: 0;
+}
+
+.cost-estimator-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.cost-estimator-back {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-600);
+  text-decoration: none;
+}
+
+.cost-estimator-back:hover {
+  color: var(--color-primary-900);
+}
+
+/* Two-column grid layout */
+.cost-estimator-grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: var(--spacing-6);
+  align-items: start;
+}
+
+/* =============================================================================
+   Input Panels (Left Column)
+   ============================================================================= */
+
+.cost-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.cost-section {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-6);
+}
+
+.cost-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cost-section-header h2 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  margin: 0;
+}
+
+.cost-section-header .section-toggle {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-500);
+  transition: transform var(--transition-fast) ease;
+}
+
+.cost-section-header .section-toggle.open {
+  transform: rotate(180deg);
+}
+
+.cost-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  margin-top: var(--spacing-4);
+}
+
+/* =============================================================================
+   Slider Input
+   ============================================================================= */
+
+.slider-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.slider-input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slider-input-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-700);
+  font-weight: 500;
+}
+
+.slider-input-value {
+  width: 80px;
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  text-align: right;
+  color: var(--color-primary-900);
+  font-family: var(--font-family-mono);
+  background: var(--color-primary-50);
+}
+
+.slider-input-value:focus {
+  outline: none;
+  border-color: var(--color-primary-900);
+}
+
+.slider-input input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-primary-300);
+  outline: none;
+  cursor: pointer;
+}
+
+.slider-input input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary-900);
+  cursor: pointer;
+  transition: transform var(--transition-fast) ease;
+}
+
+.slider-input input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.slider-input input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary-900);
+  cursor: pointer;
+  border: none;
+}
+
+/* =============================================================================
+   Results Panel (Right Column)
+   ============================================================================= */
+
+.cost-results {
+  position: sticky;
+  top: calc(var(--header-height) + var(--spacing-6));
+}
+
+.cost-results-card {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.cost-results-header {
+  padding: var(--spacing-4) var(--spacing-6);
+  border-bottom: 1px solid var(--color-primary-300);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cost-results-header h2 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  margin: 0;
+}
+
+/* Summary stats */
+.cost-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-6);
+  border-bottom: 1px solid var(--color-primary-200);
+}
+
+.cost-summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.cost-summary-stat .stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-500);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cost-summary-stat .stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-primary-900);
+  font-family: var(--font-family-mono);
+}
+
+/* Cost split bar */
+.cost-split {
+  padding: var(--spacing-3) var(--spacing-6);
+  border-bottom: 1px solid var(--color-primary-200);
+}
+
+.cost-split-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-500);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-2);
+}
+
+.cost-split-bar {
+  display: flex;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-primary-200);
+}
+
+.cost-split-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary-50);
+  transition: width var(--transition-normal) ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cost-split-segment.anthropic {
+  background: var(--color-primary-900);
+}
+
+.cost-split-segment.openai {
+  background: var(--color-primary-600);
+}
+
+.cost-split-legend {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-2);
+}
+
+.cost-split-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-600);
+}
+
+.cost-split-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.cost-split-legend-dot.anthropic {
+  background: var(--color-primary-900);
+}
+
+.cost-split-legend-dot.openai {
+  background: var(--color-primary-600);
+}
+
+/* Breakdown table */
+.cost-breakdown {
+  padding: 0;
+}
+
+.cost-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.cost-breakdown-table th {
+  padding: var(--spacing-2) var(--spacing-3);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-primary-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-primary-300);
+  background: var(--color-primary-100);
+}
+
+.cost-breakdown-table th:not(:first-child) {
+  text-align: right;
+}
+
+.cost-breakdown-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  color: var(--color-primary-700);
+  border-bottom: 1px solid var(--color-primary-200);
+}
+
+.cost-breakdown-table td:not(:first-child) {
+  text-align: right;
+  font-family: var(--font-family-mono);
+}
+
+.cost-breakdown-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cost-breakdown-table .op-name {
+  font-weight: 500;
+  color: var(--color-primary-900);
+}
+
+.cost-breakdown-table tfoot td {
+  font-weight: 700;
+  color: var(--color-primary-900);
+  border-top: 2px solid var(--color-primary-400);
+  border-bottom: none;
+  background: var(--color-primary-100);
+}
+
+/* =============================================================================
+   Responsive
+   ============================================================================= */
+
+@media (max-width: 1024px) {
+  .cost-estimator-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cost-results {
+    position: static;
+  }
+
+  .cost-estimator {
+    padding: var(--spacing-4);
+  }
+}
+
+@media (max-width: 640px) {
+  .cost-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .cost-estimator-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+}
