@@ -729,6 +729,50 @@ export interface AdminSubscriptionInfo {
   organization_id: string | null;
 }
 
+// Analytics types
+
+export type AnalyticsPeriod = 7 | 30 | 90;
+
+export interface DailyCount {
+  date: string;
+  count: number;
+}
+
+export interface ConversationStateCount {
+  state: string;
+  count: number;
+}
+
+export interface TierDistribution {
+  tier: string;
+  count: number;
+}
+
+export interface AnonymityDistribution {
+  anonymity_level: string;
+  count: number;
+}
+
+export interface AdminAnalyticsResponse {
+  total_users: number;
+  total_conversations: number;
+  total_responses: number;
+  total_analyses: number;
+  period_users: number;
+  period_conversations: number;
+  period_responses: number;
+  period_analyses: number;
+  daily_signups: DailyCount[];
+  daily_conversations: DailyCount[];
+  daily_responses: DailyCount[];
+  avg_responses_per_conversation: number;
+  avg_analysis_duration_ms: number | null;
+  completion_rate: number;
+  conversations_by_state: ConversationStateCount[];
+  subscriptions_by_tier: TierDistribution[];
+  conversations_by_anonymity: AnonymityDistribution[];
+}
+
 export interface GenerateTestDataRequest {
   conversation_id: string;
   num_respondents: number;

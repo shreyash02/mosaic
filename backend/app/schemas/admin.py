@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class AdminLoginRequest(BaseModel):
@@ -167,4 +167,61 @@ class AdminSubscriptionInfo(BaseModel):
     expires_at: Optional[datetime] = None
     user_id: Optional[UUID] = None
     organization_id: Optional[UUID] = None
+
+
+# Analytics schemas
+
+class DailyCount(BaseModel):
+    """A single day's count for time-series data."""
+    date: str
+    count: int
+
+
+class ConversationStateCount(BaseModel):
+    """Count of conversations by state."""
+    state: str
+    count: int
+
+
+class TierDistribution(BaseModel):
+    """Count of subscriptions by tier."""
+    tier: str
+    count: int
+
+
+class AnonymityDistribution(BaseModel):
+    """Count of conversations by anonymity level."""
+    anonymity_level: str
+    count: int
+
+
+class AdminAnalyticsResponse(BaseModel):
+    """Aggregated platform analytics response."""
+
+    # Totals
+    total_users: int
+    total_conversations: int
+    total_responses: int
+    total_analyses: int
+
+    # Period deltas (new in last N days)
+    period_users: int
+    period_conversations: int
+    period_responses: int
+    period_analyses: int
+
+    # Time series (daily counts within period)
+    daily_signups: List[DailyCount]
+    daily_conversations: List[DailyCount]
+    daily_responses: List[DailyCount]
+
+    # Operational metrics
+    avg_responses_per_conversation: float
+    avg_analysis_duration_ms: Optional[float] = None
+    completion_rate: float  # fraction of closed/analyzed/analyzing vs all non-draft
+
+    # Distributions
+    conversations_by_state: List[ConversationStateCount]
+    subscriptions_by_tier: List[TierDistribution]
+    conversations_by_anonymity: List[AnonymityDistribution]
 

@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func, cast, distinct
+from sqlalchemy.types import Date
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, decode_token
@@ -23,6 +24,7 @@ from app.models.response import Response
 from app.models.analysis import Analysis
 from app.models.organization import Organization
 from app.models.journal_template import JournalTemplate
+from app.models.subscription import Subscription
 from app.schemas.admin import (
     AdminLoginRequest,
     AdminToken,
@@ -38,6 +40,11 @@ from app.schemas.admin import (
     SchedulerLogsCleanupResponse,
     AdminSetTierRequest,
     AdminSubscriptionInfo,
+    DailyCount,
+    ConversationStateCount,
+    TierDistribution,
+    AnonymityDistribution,
+    AdminAnalyticsResponse,
 )
 from app.schemas.analysis import Analysis as AnalysisSchema
 from app.schemas.common import SuccessResponse
@@ -900,6 +907,167 @@ async def set_subscription_tier(
         expires_at=sub.expires_at,
         user_id=request.user_id,
         organization_id=request.organization_id,
+    )
+
+
+# ============================================================
+# Analytics endpoint
+# ============================================================
+
+@router.get("/analytics", response_model=AdminAnalyticsResponse)
+async def get_analytics(
+    period_days: int = 30,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Get aggregated platform analytics.
+
+    Args:
+        period_days: Number of days to include in the period (default 30).
+        admin: Current authenticated admin.
+        db: Database session.
+
+    Returns:
+        Aggregated analytics data.
+    """
+    from datetime import timedelta
+
+    now = datetime.utcnow()
+    period_start = now - timedelta(days=period_days)
+
+    # ---------- totals ----------
+    total_users = db.query(func.count(User.id)).scalar() or 0
+    total_conversations = db.query(func.count(Conversation.id)).filter(
+        Conversation.is_template == False,
+    ).scalar() or 0
+    total_responses = db.query(func.count(Response.id)).filter(
+        Response.status == 'submitted',
+    ).scalar() or 0
+    total_analyses = db.query(func.count(Analysis.id)).scalar() or 0
+
+    # ---------- period deltas ----------
+    period_users = db.query(func.count(User.id)).filter(
+        User.created_at >= period_start,
+    ).scalar() or 0
+    period_conversations = db.query(func.count(Conversation.id)).filter(
+        Conversation.is_template == False,
+        Conversation.created_at >= period_start,
+    ).scalar() or 0
+    period_responses = db.query(func.count(Response.id)).filter(
+        Response.status == 'submitted',
+        Response.submitted_at >= period_start,
+    ).scalar() or 0
+    period_analyses = db.query(func.count(Analysis.id)).filter(
+        Analysis.created_at >= period_start,
+    ).scalar() or 0
+
+    # ---------- helper: zero-fill daily series ----------
+    def _zero_fill(rows: list, days: int) -> list[DailyCount]:
+        counts_map = {str(r[0]): r[1] for r in rows}
+        result = []
+        for i in range(days):
+            d = (period_start + timedelta(days=i)).date()
+            result.append(DailyCount(date=str(d), count=counts_map.get(str(d), 0)))
+        return result
+
+    # ---------- time series ----------
+    raw_signups = db.query(
+        cast(User.created_at, Date), func.count(User.id)
+    ).filter(
+        User.created_at >= period_start,
+    ).group_by(cast(User.created_at, Date)).all()
+
+    raw_conversations = db.query(
+        cast(Conversation.created_at, Date), func.count(Conversation.id)
+    ).filter(
+        Conversation.is_template == False,
+        Conversation.created_at >= period_start,
+    ).group_by(cast(Conversation.created_at, Date)).all()
+
+    raw_responses = db.query(
+        cast(Response.submitted_at, Date), func.count(Response.id)
+    ).filter(
+        Response.status == 'submitted',
+        Response.submitted_at >= period_start,
+    ).group_by(cast(Response.submitted_at, Date)).all()
+
+    daily_signups = _zero_fill(raw_signups, period_days)
+    daily_conversations = _zero_fill(raw_conversations, period_days)
+    daily_responses = _zero_fill(raw_responses, period_days)
+
+    # ---------- operational metrics ----------
+    # Average responses per conversation (non-template conversations with at least 1 response)
+    convs_with_responses = db.query(
+        func.count(distinct(Response.conversation_id))
+    ).filter(Response.status == 'submitted').scalar() or 0
+
+    avg_responses_per_conversation = (
+        total_responses / convs_with_responses if convs_with_responses > 0 else 0.0
+    )
+
+    # Average analysis duration
+    avg_duration = db.query(
+        func.avg(Analysis.analysis_duration_ms)
+    ).filter(Analysis.analysis_duration_ms.isnot(None)).scalar()
+
+    # Completion rate: conversations that progressed past active (closed/analyzing/analyzed)
+    # out of all non-draft, non-deleted conversations
+    non_draft_count = db.query(func.count(Conversation.id)).filter(
+        Conversation.is_template == False,
+        Conversation.state.notin_(['draft', 'deleted']),
+    ).scalar() or 0
+
+    completed_count = db.query(func.count(Conversation.id)).filter(
+        Conversation.is_template == False,
+        Conversation.state.in_(['closed', 'analyzing', 'analyzed']),
+    ).scalar() or 0
+
+    completion_rate = completed_count / non_draft_count if non_draft_count > 0 else 0.0
+
+    # ---------- distributions ----------
+    conversations_by_state = [
+        ConversationStateCount(state=row[0], count=row[1])
+        for row in db.query(Conversation.state, func.count(Conversation.id))
+        .filter(Conversation.is_template == False)
+        .group_by(Conversation.state).all()
+    ]
+
+    subscriptions_by_tier = [
+        TierDistribution(tier=row[0], count=row[1])
+        for row in db.query(Subscription.tier, func.count(Subscription.id))
+        .filter(Subscription.status == 'active')
+        .group_by(Subscription.tier).all()
+    ]
+
+    conversations_by_anonymity = [
+        AnonymityDistribution(anonymity_level=row[0], count=row[1])
+        for row in db.query(Conversation.anonymity_level, func.count(Conversation.id))
+        .filter(
+            Conversation.is_template == False,
+            Conversation.anonymity_level.isnot(None),
+        )
+        .group_by(Conversation.anonymity_level).all()
+    ]
+
+    return AdminAnalyticsResponse(
+        total_users=total_users,
+        total_conversations=total_conversations,
+        total_responses=total_responses,
+        total_analyses=total_analyses,
+        period_users=period_users,
+        period_conversations=period_conversations,
+        period_responses=period_responses,
+        period_analyses=period_analyses,
+        daily_signups=daily_signups,
+        daily_conversations=daily_conversations,
+        daily_responses=daily_responses,
+        avg_responses_per_conversation=round(avg_responses_per_conversation, 1),
+        avg_analysis_duration_ms=round(avg_duration, 0) if avg_duration else None,
+        completion_rate=round(completion_rate, 3),
+        conversations_by_state=conversations_by_state,
+        subscriptions_by_tier=subscriptions_by_tier,
+        conversations_by_anonymity=conversations_by_anonymity,
     )
 
 
