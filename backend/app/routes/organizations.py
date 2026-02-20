@@ -325,9 +325,11 @@ async def list_org_conversations(
     require_organization_membership(db, organization_id, current_user)
 
     # Build query
+    from app.models.journal import Journal as JournalModel
     query = db.query(Conversation).filter(
         Conversation.organization_id == organization_id,
-        Conversation.state != ConversationState.DELETED.value
+        Conversation.state != ConversationState.DELETED.value,
+        ~Conversation.journal.has()
     )
 
     # Apply state filter if provided

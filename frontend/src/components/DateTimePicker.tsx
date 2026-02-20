@@ -1,4 +1,4 @@
-import { forwardRef, useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { typography, spacing, borders } from '../styles';
@@ -50,13 +50,13 @@ function to24Hour(hour: number, period: 'AM' | 'PM'): number {
 }
 
 // Custom input component to match our design system
-const CustomInput = forwardRef<HTMLButtonElement, { value?: string; onClick?: () => void; placeholder?: string; disabled?: boolean; id?: string }>(
-  ({ value, onClick, placeholder, disabled, id }, ref) => (
+const CustomInput = forwardRef<HTMLButtonElement, { value?: string; onClick?: () => void; onToggle?: () => void; placeholder?: string; disabled?: boolean; id?: string }>(
+  ({ value, onClick: _onClick, onToggle, placeholder, disabled, id }, ref) => (
     <button
       type="button"
       ref={ref}
       id={id}
-      onClick={onClick}
+      onClick={onToggle || _onClick}
       disabled={disabled}
       className="datetime-picker-input"
       style={{
@@ -102,10 +102,11 @@ const CustomInput = forwardRef<HTMLButtonElement, { value?: string; onClick?: ()
 
 CustomInput.displayName = 'CustomInput';
 
-// Custom time input with separate hour, minute, AM/PM selectors
+// Custom time input with Today button and separate hour, minute, AM/PM selectors
 interface CustomTimeInputProps {
   date: Date | null;
   onTimeChange: (hour: number, minute: number) => void;
+  onTodayClick: () => void;
 }
 
 const HOUR_OPTIONS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => ({
@@ -123,7 +124,7 @@ const PERIOD_OPTIONS = [
   { value: 'PM', label: 'PM' },
 ];
 
-function CustomTimeInput({ date, onTimeChange }: CustomTimeInputProps) {
+function CustomTimeInput({ date, onTimeChange, onTodayClick }: CustomTimeInputProps) {
   const currentHour24 = date?.getHours() ?? 9;
   const currentMinute = date?.getMinutes() ?? 0;
   const { hour: hour12, period } = to12Hour(currentHour24);
@@ -161,33 +162,79 @@ function CustomTimeInput({ date, onTimeChange }: CustomTimeInputProps) {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: spacing[2],
-      padding: `${spacing[3]} ${spacing[4]}`,
-      borderTop: '1px solid var(--color-primary-200)',
-      backgroundColor: 'var(--color-primary-50)',
-    }}>
-      <CustomSelect
-        value={selectedHour}
-        options={HOUR_OPTIONS}
-        onChange={handleHourChange}
-        minWidth="60px"
-      />
-      <span style={{ color: 'var(--color-primary-600)', fontWeight: typography.fontWeight.medium }}>:</span>
-      <CustomSelect
-        value={selectedMinute}
-        options={MINUTE_OPTIONS}
-        onChange={handleMinuteChange}
-        minWidth="65px"
-      />
-      <CustomSelect
-        value={selectedPeriod}
-        options={PERIOD_OPTIONS}
-        onChange={handlePeriodChange}
-        minWidth="65px"
-      />
+    <div>
+      <style>{`
+        .datetime-time-select .custom-select-trigger {
+          min-width: 0 !important;
+          width: 100% !important;
+          padding: ${spacing[2]} ${spacing[3]} !important;
+          box-sizing: border-box !important;
+        }
+        .datetime-today-btn:hover {
+          background-color: var(--color-primary-200) !important;
+        }
+      `}</style>
+      <div style={{
+        borderTop: '1px solid var(--color-primary-200)',
+        backgroundColor: 'var(--color-primary-50)',
+      }}>
+        <button
+          type="button"
+          className="datetime-today-btn"
+          onClick={onTodayClick}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: `${spacing[2]} ${spacing[4]}`,
+            border: 'none',
+            backgroundColor: 'var(--color-primary-100)',
+            color: 'var(--color-primary-700)',
+            fontWeight: typography.fontWeight.medium,
+            fontSize: typography.fontSize.sm,
+            cursor: 'pointer',
+            textAlign: 'center',
+          }}
+        >
+          Today
+        </button>
+      </div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing[2],
+        padding: `${spacing[2]} ${spacing[3]}`,
+        borderTop: '1px solid var(--color-primary-200)',
+        backgroundColor: 'var(--color-primary-50)',
+        boxSizing: 'border-box',
+        width: '100%',
+      }}>
+        <div className="datetime-time-select" style={{ flex: 1, minWidth: 0 }}>
+          <CustomSelect
+            value={selectedHour}
+            options={HOUR_OPTIONS}
+            onChange={handleHourChange}
+            minWidth="100%"
+          />
+        </div>
+        <span style={{ color: 'var(--color-primary-600)', fontWeight: typography.fontWeight.medium, flexShrink: 0 }}>:</span>
+        <div className="datetime-time-select" style={{ flex: 1, minWidth: 0 }}>
+          <CustomSelect
+            value={selectedMinute}
+            options={MINUTE_OPTIONS}
+            onChange={handleMinuteChange}
+            minWidth="100%"
+          />
+        </div>
+        <div className="datetime-time-select" style={{ flex: 1, minWidth: 0 }}>
+          <CustomSelect
+            value={selectedPeriod}
+            options={PERIOD_OPTIONS}
+            onChange={handlePeriodChange}
+            minWidth="100%"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -206,6 +253,25 @@ export default function DateTimePicker({
   const minDate = parseValue(min || '');
   const maxDate = parseValue(max || '');
 
+  // Controlled open state for proper toggle-to-close behavior
+  const [isOpen, setIsOpen] = useState(false);
+  const closedAtRef = useRef(0);
+
+  const handleToggle = () => {
+    // Guard against close-then-reopen race (onClickOutside fires before click)
+    if (Date.now() - closedAtRef.current < 200) return;
+    setIsOpen(prev => !prev);
+  };
+
+  const handleClickOutside = (event: Event) => {
+    // Don't close if clicking inside a portaled CustomSelect dropdown
+    const dropdown = document.getElementById('custom-select-dropdown');
+    if (dropdown && dropdown.contains(event.target as Node)) return;
+
+    closedAtRef.current = Date.now();
+    setIsOpen(false);
+  };
+
   const handleDateChange = (date: Date | null) => {
     if (date) {
       // Preserve existing time if we have one, otherwise use current time
@@ -216,6 +282,15 @@ export default function DateTimePicker({
     } else {
       onChange('');
     }
+  };
+
+  const handleTodayClick = () => {
+    const today = new Date();
+    // Preserve existing time or use current time
+    if (selectedDate) {
+      today.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+    }
+    onChange(formatValue(today));
   };
 
   const handleTimeChange = (hour: number, minute: number) => {
@@ -243,6 +318,13 @@ export default function DateTimePicker({
           border-radius: ${borders.radius.lg};
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
           background-color: var(--color-primary-50);
+          display: inline-block;
+          overflow: hidden;
+          min-width: 304px;
+        }
+
+        .react-datepicker__month-container {
+          float: none;
         }
 
         .react-datepicker__header {
@@ -289,6 +371,18 @@ export default function DateTimePicker({
           color: var(--color-primary-400);
         }
 
+        .react-datepicker__navigation {
+          top: 6px;
+          border: none;
+          outline: none;
+        }
+
+        .react-datepicker__navigation:focus-visible {
+          outline: 2px solid var(--color-primary-400);
+          outline-offset: 2px;
+          border-radius: ${borders.radius.sm};
+        }
+
         .react-datepicker__navigation-icon::before {
           border-color: var(--color-primary-600);
         }
@@ -304,26 +398,18 @@ export default function DateTimePicker({
 
         /* Popper positioning */
         .react-datepicker-popper {
-          z-index: 50;
-        }
-
-        /* Today button */
-        .react-datepicker__today-button {
-          background-color: var(--color-primary-100);
-          border-top: 1px solid var(--color-primary-200);
-          color: var(--color-primary-700);
-          font-weight: ${typography.fontWeight.medium};
-          font-size: ${typography.fontSize.sm};
-          padding: ${spacing[2]} ${spacing[4]};
-        }
-
-        .react-datepicker__today-button:hover {
-          background-color: var(--color-primary-200);
+          z-index: 9999;
         }
 
         /* Custom time input styles */
         .datetime-picker-wrapper .react-datepicker__children-container {
           width: 100%;
+          padding: 0;
+        }
+
+        /* Remove default outline on all datepicker buttons */
+        .react-datepicker button:focus {
+          outline: none;
         }
 
         /* Dark mode support */
@@ -341,17 +427,20 @@ export default function DateTimePicker({
         id={id}
         selected={selectedDate}
         onChange={handleDateChange}
+        open={isOpen}
+        onClickOutside={handleClickOutside}
         dateFormat="d MMM yyyy, h:mm aa"
         minDate={minDate || undefined}
         maxDate={maxDate || undefined}
         disabled={disabled}
         placeholderText={placeholder}
-        customInput={<CustomInput placeholder={placeholder} disabled={disabled} id={id} />}
+        customInput={<CustomInput placeholder={placeholder} disabled={disabled} id={id} onToggle={handleToggle} />}
         popperPlacement="bottom-start"
         showPopperArrow={false}
-        todayButton="Today"
+        shouldCloseOnSelect={false}
+        fixedHeight
       >
-        <CustomTimeInput date={selectedDate} onTimeChange={handleTimeChange} />
+        <CustomTimeInput date={selectedDate} onTimeChange={handleTimeChange} onTodayClick={handleTodayClick} />
       </DatePicker>
     </div>
   );

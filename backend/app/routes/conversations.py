@@ -538,6 +538,10 @@ async def list_participated_conversations(
         Conversation.state != ConversationState.DELETED
     ).group_by(Conversation.id)
 
+    # Exclude journals (they have their own /api/journals endpoint)
+    from app.models.journal import Journal as JournalModel
+    query = query.filter(~Conversation.journal.has())
+
     if state:
         query = query.filter(Conversation.state == state.value)
 

@@ -57,7 +57,7 @@ const to24HourTime = (hour: number, period: 'AM' | 'PM'): string => {
   return `${hour24.toString().padStart(2, '0')}:00`;
 };
 
-const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
+const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => ({
   value: i + 1,
   label: `${i + 1}${getOrdinalSuffix(i + 1)}`,
 }));
@@ -221,12 +221,11 @@ function DurationInput({ id, value, min, max, onChange, onOverflow, label, padDi
         />
         <div style={{
           position: 'absolute',
-          right: '4px',
+          right: '2px',
           top: '50%',
           transform: 'translateY(-50%)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1px',
         }}>
           <button
             type="button"
@@ -236,12 +235,12 @@ function DurationInput({ id, value, min, max, onChange, onOverflow, label, padDi
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '22px',
-              height: '14px',
-              padding: 0,
+              width: '28px',
+              height: '20px',
+              padding: '3px',
               border: 'none',
               borderRadius: '3px',
-              background: 'var(--color-primary-200)',
+              background: 'transparent',
               color: 'var(--color-primary-600)',
               cursor: value >= max && !onOverflow ? 'default' : 'pointer',
               opacity: value >= max && !onOverflow ? 0.4 : 1,
@@ -259,12 +258,12 @@ function DurationInput({ id, value, min, max, onChange, onOverflow, label, padDi
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '22px',
-              height: '14px',
-              padding: 0,
+              width: '28px',
+              height: '20px',
+              padding: '3px',
               border: 'none',
               borderRadius: '3px',
-              background: 'var(--color-primary-200)',
+              background: 'transparent',
               color: 'var(--color-primary-600)',
               cursor: value <= min && !onOverflow ? 'default' : 'pointer',
               opacity: value <= min && !onOverflow ? 0.4 : 1,
@@ -290,6 +289,7 @@ export default function TimingStep() {
   const continuousEnabled = useFeature('continuous_conversations');
   const showNotificationsStep = slackEnabled && !!currentOrgId;
   const [showMinutesInput, setShowMinutesInput] = useState(formState.durationMinutes > 0);
+  const [error, setError] = useState('');
 
   const isTemplate = formState.createTemplate;
 
@@ -298,14 +298,15 @@ export default function TimingStep() {
   const handleNext = () => {
     // Validate scheduled activation
     if (formState.activationMode === 'scheduled' && !formState.scheduledActivateAt) {
-      alert('Please select a scheduled activation date and time');
+      setError('Please select a scheduled activation date and time');
       return;
     }
     // Validate recurring schedule
     if (isTemplate && formState.enableRecurring && !formState.nextInstanceDate) {
-      alert('Please select when to create the first instance');
+      setError('Please select when to create the first instance');
       return;
     }
+    setError('');
     navigate(getStepPath(showNotificationsStep ? 'notifications' : 'review'));
   };
 
@@ -339,6 +340,7 @@ export default function TimingStep() {
           }
         }
       `}</style>
+      {error && <div className="error-message">{error}</div>}
       <div>
         <h2 className="form-section-title">Timing Settings</h2>
         <p className="form-help-text" style={{ marginBottom: '1.5rem' }}>
@@ -443,7 +445,7 @@ export default function TimingStep() {
               </p>
               {isZeroDuration && (
                 <p style={{ marginTop: spacing[2], fontSize: typography.fontSize.sm, color: 'var(--color-error)' }}>
-                  Duration must be at least 1 minute
+                  Duration must be greater than zero
                 </p>
               )}
             </div>
@@ -757,7 +759,7 @@ export default function TimingStep() {
           disabled={isZeroDuration}
           className="btn btn-primary btn-large"
         >
-          Next: Notifications →
+          Next: {showNotificationsStep ? 'Notifications' : 'Review'} →
         </button>
       </div>
     </div>

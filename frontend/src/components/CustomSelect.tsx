@@ -164,7 +164,10 @@ export default function CustomSelect({
 
     updatePosition();
 
-    const handleScroll = () => {
+    const handleScroll = (e: Event) => {
+      // Don't close if scrolling inside the dropdown itself
+      const dropdown = document.getElementById('custom-select-dropdown');
+      if (dropdown && dropdown.contains(e.target as Node)) return;
       setIsOpen(false);
       setSearchQuery('');
     };
