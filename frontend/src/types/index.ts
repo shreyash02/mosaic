@@ -729,6 +729,30 @@ export interface AdminSubscriptionInfo {
   organization_id: string | null;
 }
 
+// Admin user context types (for user detail debugging)
+
+export interface AdminUserOrgMembership {
+  id: string;
+  name: string;
+  role: string;
+  joined_at: string;
+  tier: string;
+}
+
+export interface AdminUserFlagInfo {
+  name: string;
+  slug: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  resolution_chain: string[];
+}
+
+export interface AdminUserContext {
+  subscription: AdminSubscriptionInfo;
+  organizations: AdminUserOrgMembership[];
+  flags: AdminUserFlagInfo[];
+}
+
 // Analytics types
 
 export type AnalyticsPeriod = 7 | 30 | 90;

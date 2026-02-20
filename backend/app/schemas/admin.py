@@ -169,6 +169,38 @@ class AdminSubscriptionInfo(BaseModel):
     organization_id: Optional[UUID] = None
 
 
+# User context schemas (for admin user detail page)
+
+class AdminUserOrgMembershipInfo(BaseModel):
+    """Organization membership info for a user."""
+
+    id: UUID
+    name: str
+    role: str
+    joined_at: datetime
+    tier: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminUserFlagInfo(BaseModel):
+    """Resolved feature flag info for a user."""
+
+    name: str
+    slug: str
+    enabled: bool
+    config: Dict[str, Any]
+    resolution_chain: List[str]
+
+
+class AdminUserContextResponse(BaseModel):
+    """Full user context for admin debugging."""
+
+    subscription: AdminSubscriptionInfo
+    organizations: List[AdminUserOrgMembershipInfo]
+    flags: List[AdminUserFlagInfo]
+
+
 # Analytics schemas
 
 class DailyCount(BaseModel):

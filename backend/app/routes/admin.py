@@ -40,6 +40,9 @@ from app.schemas.admin import (
     SchedulerLogsCleanupResponse,
     AdminSetTierRequest,
     AdminSubscriptionInfo,
+    AdminUserContextResponse,
+    AdminUserOrgMembershipInfo,
+    AdminUserFlagInfo,
     DailyCount,
     ConversationStateCount,
     TierDistribution,
@@ -274,6 +277,90 @@ async def get_user(
             detail="User not found"
         )
     return user
+
+
+@router.get("/users/{user_id}/context", response_model=AdminUserContextResponse)
+async def get_user_context(
+    user_id: UUID,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get full debugging context for a user: subscription, org memberships,
+    and resolved feature flags.
+    """
+    from app.models.organization import OrganizationMember
+    from app.services.subscription_service import subscription_service
+    from app.services.feature_flag_service import feature_flag_service
+
+    # Verify user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # 1. Subscription
+    sub = subscription_service.get_subscription(db, user_id=user_id)
+    if sub:
+        sub_info = AdminSubscriptionInfo(
+            tier=sub.tier,
+            status=sub.status,
+            expires_at=sub.expires_at,
+            user_id=user_id,
+        )
+    else:
+        sub_info = AdminSubscriptionInfo(
+            tier="free",
+            status="none",
+            expires_at=None,
+            user_id=user_id,
+        )
+
+    # 2. Organization memberships
+    memberships = (
+        db.query(OrganizationMember)
+        .filter(OrganizationMember.user_id == user_id)
+        .all()
+    )
+    org_list = []
+    for mem in memberships:
+        org = db.query(Organization).filter(Organization.id == mem.organization_id).first()
+        if org:
+            org_tier = subscription_service.get_tier(db, org_id=org.id)
+            org_list.append(AdminUserOrgMembershipInfo(
+                id=org.id,
+                name=org.name,
+                role=mem.role,
+                joined_at=mem.joined_at,
+                tier=org_tier,
+            ))
+
+    # 3. Resolved feature flags (personal context: tier + user_id, no org)
+    user_tier = sub_info.tier
+    all_flags = feature_flag_service.list_all_flags(db)
+    flag_list = []
+    for flag in all_flags:
+        try:
+            resolved = feature_flag_service.get_flag(
+                db, flag.slug, tier=user_tier, user_id=user_id
+            )
+            flag_list.append(AdminUserFlagInfo(
+                name=resolved.name,
+                slug=resolved.slug,
+                enabled=resolved.enabled,
+                config=resolved.config,
+                resolution_chain=resolved.resolution_chain or ["global"],
+            ))
+        except Exception:
+            pass
+
+    return AdminUserContextResponse(
+        subscription=sub_info,
+        organizations=org_list,
+        flags=flag_list,
+    )
 
 
 @router.get("/conversations/{conversation_id}", response_model=AdminConversationInfo)
