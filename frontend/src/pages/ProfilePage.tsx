@@ -232,6 +232,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -347,6 +348,20 @@ export default function ProfilePage() {
     });
   };
 
+  const handleResendVerification = async () => {
+    if (!profile?.email || sendingVerification) return;
+    setSendingVerification(true);
+    try {
+      await api.resendVerificationEmail(profile.email);
+      setSuccess('Verification email sent');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      setError('Failed to send verification email');
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
   const hasChanges = profile && fullName !== (profile.full_name || '');
 
   if (loading) {
@@ -445,7 +460,29 @@ export default function ProfilePage() {
                   disabled
                   style={{ ...styles.input, ...styles.inputDisabled }}
                 />
-                <p style={styles.infoText}>Email cannot be changed</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginTop: spacing[1] }}>
+                  <p style={{ ...styles.infoText, marginTop: 0 }}>Email cannot be changed</p>
+                  {profile && !profile.email_verified && (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={sendingVerification}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        fontSize: typography.fontSize.sm,
+                        color: 'var(--color-primary-900)',
+                        fontWeight: typography.fontWeight.medium,
+                        cursor: sendingVerification ? 'not-allowed' : 'pointer',
+                        textDecoration: 'underline',
+                        opacity: sendingVerification ? 0.6 : 1,
+                      }}
+                    >
+                      {sendingVerification ? 'Sending...' : 'Verify email'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div style={styles.formGroup}>

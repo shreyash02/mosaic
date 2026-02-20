@@ -76,6 +76,21 @@ async def register(
             detail="Email already registered"
         )
 
+    # Check if invite code is required
+    from app.services import platform_settings_service, invite_code_service
+    if platform_settings_service.is_invite_code_required(db):
+        if not user_data.invite_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An invite code is required to register"
+            )
+        valid, msg, _ = invite_code_service.validate_code(db, user_data.invite_code, email=user_data.email)
+        if not valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=msg
+            )
+
     # Create new user (password is required for regular registration)
     if not user_data.password:
         raise HTTPException(
@@ -83,34 +98,56 @@ async def register(
             detail="Password is required for registration"
         )
 
-    # Generate email verification token
+    # Check if this invite code already proves email ownership (waitlist codes
+    # are emailed to a specific address, so if the email matches, it's verified)
+    email_already_verified = False
+    if user_data.invite_code:
+        from app.services import invite_code_service as ic_svc
+        _, _, code_obj = ic_svc.validate_code(db, user_data.invite_code)
+        if code_obj and code_obj.code_type == "waitlist" and code_obj.waitlist_request_id:
+            from app.models.waitlist_request import WaitlistRequest
+            wr = db.query(WaitlistRequest).filter(
+                WaitlistRequest.id == code_obj.waitlist_request_id
+            ).first()
+            if wr and wr.email.lower().strip() == user_data.email.lower().strip():
+                email_already_verified = True
+
+    # Generate email verification token (only needed if not already verified)
     import secrets
-    verification_token = secrets.token_urlsafe(32)
+    verification_token = secrets.token_urlsafe(32) if not email_already_verified else None
 
     user = User(
         email=user_data.email,
         password_hash=get_password_hash(user_data.password),
         full_name=user_data.full_name,
-        email_verified=False,
+        email_verified=email_already_verified,
         email_verification_token=verification_token,
-        email_verification_expires=datetime.now(timezone.utc) + timedelta(hours=24),
+        email_verification_expires=(
+            datetime.now(timezone.utc) + timedelta(hours=24)
+        ) if not email_already_verified else None,
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # Send verification email (don't block registration if email fails)
-    try:
-        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
-        await email_service.send_email_verification_email(
-            to_email=user.email,
-            verification_url=verification_url,
-        )
-    except Exception as e:
-        # Log error but don't fail registration
-        import logging
-        logging.error(f"Failed to send verification email: {e}")
+    # Redeem invite code if one was used
+    if user_data.invite_code:
+        from app.services import invite_code_service
+        invite_code_service.redeem_code(db, user_data.invite_code, user.id)
+
+    # Send verification email only if not already verified
+    if not email_already_verified:
+        try:
+            verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+            await email_service.send_email_verification_email(
+                to_email=user.email,
+                verification_url=verification_url,
+            )
+        except Exception as e:
+            # Log error but don't fail registration
+            import logging
+            logging.error(f"Failed to send verification email: {e}")
 
     return user
 
@@ -331,13 +368,14 @@ async def logout():
 
 
 @router.get("/google/login")
-async def google_login(request: Request, redirect: str = Query(None)):
+async def google_login(request: Request, redirect: str = Query(None), invite_code: str = Query(None)):
     """
     Initiate Google OAuth login flow.
 
     Args:
         request: FastAPI request object
         redirect: Optional redirect URL to return to after login
+        invite_code: Optional invite code for gated registration
 
     Returns:
         Redirect to Google OAuth authorization page
@@ -354,18 +392,20 @@ async def google_login(request: Request, redirect: str = Query(None)):
         redirect_uri=settings.google_redirect_uri,
     )
 
-    # Generate state and encode redirect if provided
+    # Generate state and encode redirect/invite_code if provided
     import secrets
     import base64
     import json
 
     state_token = secrets.token_urlsafe(32)
-    if redirect:
-        # Encode redirect in state: base64(json({state: token, redirect: url}))
+    if redirect or invite_code:
         state_data = {
             "token": state_token,
-            "redirect": redirect
         }
+        if redirect:
+            state_data["redirect"] = redirect
+        if invite_code:
+            state_data["invite_code"] = invite_code
         state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
     else:
         state = state_token
@@ -419,14 +459,16 @@ async def google_callback(
             detail="Google OAuth is not configured"
         )
 
-    # Extract redirect from state if present
+    # Extract redirect and invite_code from state if present
     redirect_url = None
+    invite_code_from_state = None
     if state:
         try:
             import base64
             import json
             state_data = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
             redirect_url = state_data.get("redirect")
+            invite_code_from_state = state_data.get("invite_code")
         except:
             # If state is not in expected format, treat it as a simple token
             pass
@@ -468,6 +510,7 @@ async def google_callback(
 
     # Find or create user
     user = db.query(User).filter(User.google_id == google_id).first()
+    is_new_user = False
 
     if not user:
         # Check if user exists with this email (for linking accounts)
@@ -479,10 +522,23 @@ async def google_callback(
             if not user.full_name and full_name:
                 user.full_name = full_name
             # Google verified the email, so mark it verified
+            # Keep the verification token so any pending email links still work
             user.email_verified = True
-            user.email_verification_token = None
-            user.email_verification_expires = None
         else:
+            is_new_user = True
+            # New user — check invite code requirement
+            from app.services import platform_settings_service, invite_code_service
+            if platform_settings_service.is_invite_code_required(db):
+                if not invite_code_from_state:
+                    return RedirectResponse(
+                        url=f"{frontend_url}/register?error=invite_code_required"
+                    )
+                valid, msg, _ = invite_code_service.validate_code(db, invite_code_from_state)
+                if not valid:
+                    return RedirectResponse(
+                        url=f"{frontend_url}/register?error=invalid_invite_code"
+                    )
+
             # Create new user
             user = User(
                 email=email,
@@ -495,12 +551,18 @@ async def google_callback(
 
         db.commit()
         db.refresh(user)
+
+        # Redeem invite code if one was used for a new user
+        if is_new_user and invite_code_from_state:
+            try:
+                from app.services import invite_code_service
+                invite_code_service.redeem_code(db, invite_code_from_state, user.id)
+            except Exception:
+                pass
     else:
         # Existing Google user logging in — ensure verified
         if not user.email_verified:
             user.email_verified = True
-            user.email_verification_token = None
-            user.email_verification_expires = None
             db.commit()
             db.refresh(user)
 
@@ -764,8 +826,15 @@ async def verify_email(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification link"
+            detail="Invalid verification link. Please request a new one."
         )
+
+    # If already verified (e.g. via Google OAuth), just clean up and return success
+    if user.email_verified:
+        user.email_verification_token = None
+        user.email_verification_expires = None
+        db.commit()
+        return {"message": "Email verified successfully"}
 
     if not user.email_verification_expires or user.email_verification_expires < datetime.now(timezone.utc):
         raise HTTPException(
