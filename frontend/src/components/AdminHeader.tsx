@@ -78,6 +78,7 @@ export default function AdminHeader() {
   const navigate = useNavigate();
   const [showTestToolsDropdown, setShowTestToolsDropdown] = useState(false);
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const testToolsRef = useRef<HTMLDivElement>(null);
   const platformRef = useRef<HTMLDivElement>(null);
 
@@ -102,20 +103,40 @@ export default function AdminHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     navigate('/adminportal');
   };
 
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + '/');
+
   return (
     <>
       <div className="admin-header">
-        <h1>Admin Portal</h1>
+        <div className="admin-header-left">
+          <button
+            className="admin-hamburger"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation"
+          >
+            <span className={`hamburger-line ${mobileMenuOpen ? 'open' : ''}`} />
+            <span className={`hamburger-line ${mobileMenuOpen ? 'open' : ''}`} />
+            <span className={`hamburger-line ${mobileMenuOpen ? 'open' : ''}`} />
+          </button>
+          <h1>Admin Portal</h1>
+        </div>
         <button onClick={handleLogout} className="btn btn-secondary">
           Logout
         </button>
       </div>
 
+      {/* Desktop tabs */}
       <div className="admin-tabs">
         {MAIN_TABS.map((tab) => (
           <Link
@@ -179,6 +200,51 @@ export default function AdminHeader() {
           )}
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileMenuOpen && (
+        <div className="admin-mobile-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+      <nav className={`admin-mobile-drawer ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="admin-mobile-section">
+          <div className="admin-mobile-heading">Data</div>
+          {MAIN_TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              to={tab.path}
+              className={`admin-mobile-link ${activeTab === tab.key ? 'active' : ''}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+        <div className="admin-mobile-section">
+          <div className="admin-mobile-heading">Test Tools</div>
+          {TEST_TOOLS_ITEMS.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`admin-mobile-link ${isActive(item.path) ? 'active' : ''}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+        {PLATFORM_SECTIONS.map((section) => (
+          <div key={section.heading} className="admin-mobile-section">
+            <div className="admin-mobile-heading">{section.heading}</div>
+            {section.items.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`admin-mobile-link ${isActive(item.path) ? 'active' : ''}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        ))}
+      </nav>
     </>
   );
 }
