@@ -11,6 +11,7 @@ from anthropic import Anthropic
 from app.core.config import settings
 from app.models.response import Response
 from app.models.question import Question
+from app.services.llm_usage_service import log_llm_usage
 
 
 class AnalysisService:
@@ -383,10 +384,17 @@ Provide a concise, actionable summary of what these responses reveal about the o
 IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #)."""
 
         try:
+            t0 = time.time()
             message = self.anthropic_client.messages.create(
                 model=self.llm_model,
                 max_tokens=300,
                 messages=[{"role": "user", "content": prompt}]
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="conversation_summary", provider="anthropic", model=self.llm_model,
+                input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+                latency_ms=latency,
             )
             return message.content[0].text.strip()
         except Exception as e:
@@ -486,9 +494,15 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
         Returns:
             NumPy array of embeddings
         """
+        t0 = time.time()
         response = self.openai_client.embeddings.create(
             model=self.embedding_model,
             input=texts
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="embedding", provider="openai", model=self.embedding_model,
+            total_tokens=response.usage.total_tokens, latency_ms=latency,
         )
 
         embeddings = [item.embedding for item in response.data]
@@ -596,10 +610,17 @@ Return your analysis in this exact JSON format:
 
 The number of perspectives should match the natural groupings in the responses (could be 1-5 or more). Each response should be counted in exactly one perspective."""
 
+        t0 = time.time()
         message = self.anthropic_client.messages.create(
             model=self.llm_model,
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="cluster_theme_analysis", provider="anthropic", model=self.llm_model,
+            input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+            latency_ms=latency,
         )
 
         # Extract JSON from response
@@ -677,10 +698,17 @@ Provide a concise, actionable summary of what these responses reveal.
 
 IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #)."""
 
+        t0 = time.time()
         message = self.anthropic_client.messages.create(
             model=self.llm_model,
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}]
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="overall_summary", provider="anthropic", model=self.llm_model,
+            input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+            latency_ms=latency,
         )
 
         return message.content[0].text.strip()
@@ -713,10 +741,17 @@ Provide a concise summary of the key feedback.
 
 IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bold**, no *italic*, no bullet points with -, no headers with #)."""
 
+        t0 = time.time()
         message = self.anthropic_client.messages.create(
             model=self.llm_model,
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}]
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="simple_summary", provider="anthropic", model=self.llm_model,
+            input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+            latency_ms=latency,
         )
 
         return message.content[0].text.strip()
@@ -861,12 +896,19 @@ IMPORTANT:
 Focus on the most interesting and actionable insights. If there are no particularly surprising insights, you can still provide 1-2 thoughtful reflections on what stands out as noteworthy or different from what might have been expected."""
 
         try:
+            t0 = time.time()
             message = self.anthropic_client.messages.create(
                 model=self.llm_model,
                 max_tokens=1200,
                 messages=[{"role": "user", "content": prompt}]
             )
-            
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="surprising_insights", provider="anthropic", model=self.llm_model,
+                input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+                latency_ms=latency,
+            )
+
             # Extract JSON from response
             response_text = message.content[0].text
             print(f"DEBUG: _generate_surprising_insights - LLM response received, length: {len(response_text)}")

@@ -2,11 +2,13 @@
 
 import logging
 import random
+import time
 import traceback
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from anthropic import Anthropic
+from app.services.llm_usage_service import log_llm_usage
 
 from app.core.config import settings
 from app.models.question import Question
@@ -212,10 +214,17 @@ RESPONSE_2: There are some issues with...
 Now generate responses for ALL questions listed above:"""
 
         try:
+            t0 = time.time()
             response = self.anthropic_client.messages.create(
                 model=self.llm_model,
                 max_tokens=4000,
                 messages=[{"role": "user", "content": prompt}]
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="test_data_generation", provider="anthropic", model=self.llm_model,
+                input_tokens=response.usage.input_tokens, output_tokens=response.usage.output_tokens,
+                latency_ms=latency,
             )
 
             # Parse the response

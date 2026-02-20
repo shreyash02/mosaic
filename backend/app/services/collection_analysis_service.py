@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.models.conversation import Conversation
 from app.models.analysis import Analysis
 from app.models.question import Question
+from app.services.llm_usage_service import log_llm_usage
 
 logger = logging.getLogger(__name__)
 
@@ -389,10 +390,17 @@ class CollectionAnalysisService:
         logger.debug(f"Collection summary prompt (length: {len(prompt)}):\n{prompt}")
 
         try:
+            t0 = time.time()
             message = self.anthropic_client.messages.create(
                 model=self.llm_model,
                 max_tokens=400,  # Increased for richer summaries
                 messages=[{"role": "user", "content": prompt}]
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="collection_summary", provider="anthropic", model=self.llm_model,
+                input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+                latency_ms=latency,
             )
 
             response_text = message.content[0].text.strip()

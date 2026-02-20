@@ -911,6 +911,155 @@ async def set_subscription_tier(
 
 
 # ============================================================
+# LLM Usage endpoint
+# ============================================================
+
+from app.schemas.llm_usage import AdminLLMUsageResponse, LLMUsageSummary, DailyCost, OperationBreakdown, ProviderBreakdown, ModelBreakdown, RecentError
+
+
+@router.get("/llm-usage", response_model=AdminLLMUsageResponse)
+async def get_llm_usage(
+    period_days: int = 30,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Get aggregated LLM usage data for the admin dashboard.
+
+    Args:
+        period_days: Number of days to include (default 30).
+        admin: Current authenticated admin.
+        db: Database session.
+
+    Returns:
+        Aggregated LLM usage data.
+    """
+    from datetime import timedelta
+    from app.models.llm_usage_log import LLMUsageLog
+
+    now = datetime.utcnow()
+    period_start = now - timedelta(days=period_days)
+
+    base = db.query(LLMUsageLog).filter(LLMUsageLog.created_at >= period_start)
+
+    # --- Summary ---
+    total_calls = base.count()
+    total_cost = db.query(func.coalesce(func.sum(LLMUsageLog.estimated_cost_usd), 0.0)).filter(
+        LLMUsageLog.created_at >= period_start
+    ).scalar()
+    total_input = db.query(func.coalesce(func.sum(LLMUsageLog.input_tokens), 0)).filter(
+        LLMUsageLog.created_at >= period_start
+    ).scalar()
+    total_output = db.query(func.coalesce(func.sum(LLMUsageLog.output_tokens), 0)).filter(
+        LLMUsageLog.created_at >= period_start
+    ).scalar()
+    avg_latency = db.query(func.avg(LLMUsageLog.latency_ms)).filter(
+        LLMUsageLog.created_at >= period_start,
+        LLMUsageLog.latency_ms.isnot(None),
+    ).scalar()
+    error_count = base.filter(LLMUsageLog.status == "error").count()
+    error_rate = error_count / total_calls if total_calls > 0 else 0.0
+
+    summary = LLMUsageSummary(
+        total_calls=total_calls,
+        total_cost=round(float(total_cost), 4),
+        total_input_tokens=int(total_input),
+        total_output_tokens=int(total_output),
+        avg_latency_ms=round(float(avg_latency), 1) if avg_latency else None,
+        error_rate=round(error_rate, 4),
+    )
+
+    # --- Daily costs (zero-filled) ---
+    raw_daily = db.query(
+        cast(LLMUsageLog.created_at, Date),
+        func.coalesce(func.sum(LLMUsageLog.estimated_cost_usd), 0.0),
+        func.count(LLMUsageLog.id),
+    ).filter(
+        LLMUsageLog.created_at >= period_start,
+    ).group_by(cast(LLMUsageLog.created_at, Date)).all()
+
+    daily_map = {str(row[0]): (float(row[1]), row[2]) for row in raw_daily}
+    daily_costs = []
+    from datetime import timedelta as td
+    for i in range(period_days):
+        d = (period_start + td(days=i)).date()
+        cost, calls = daily_map.get(str(d), (0.0, 0))
+        daily_costs.append(DailyCost(date=str(d), cost=round(cost, 4), calls=calls))
+
+    # --- By operation ---
+    raw_ops = db.query(
+        LLMUsageLog.operation_type,
+        func.count(LLMUsageLog.id),
+        func.coalesce(func.sum(LLMUsageLog.estimated_cost_usd), 0.0),
+        func.avg(LLMUsageLog.latency_ms),
+    ).filter(
+        LLMUsageLog.created_at >= period_start,
+    ).group_by(LLMUsageLog.operation_type).all()
+
+    by_operation = [
+        OperationBreakdown(
+            operation_type=row[0],
+            calls=row[1],
+            cost=round(float(row[2]), 4),
+            avg_latency_ms=round(float(row[3]), 1) if row[3] else None,
+        )
+        for row in raw_ops
+    ]
+    by_operation.sort(key=lambda x: x.cost, reverse=True)
+
+    # --- By provider ---
+    raw_prov = db.query(
+        LLMUsageLog.provider,
+        func.count(LLMUsageLog.id),
+        func.coalesce(func.sum(LLMUsageLog.estimated_cost_usd), 0.0),
+    ).filter(
+        LLMUsageLog.created_at >= period_start,
+    ).group_by(LLMUsageLog.provider).all()
+
+    by_provider = [
+        ProviderBreakdown(provider=row[0], calls=row[1], cost=round(float(row[2]), 4))
+        for row in raw_prov
+    ]
+
+    # --- By model ---
+    raw_model = db.query(
+        LLMUsageLog.model,
+        func.count(LLMUsageLog.id),
+        func.coalesce(func.sum(LLMUsageLog.estimated_cost_usd), 0.0),
+    ).filter(
+        LLMUsageLog.created_at >= period_start,
+    ).group_by(LLMUsageLog.model).all()
+
+    by_model = [
+        ModelBreakdown(model=row[0], calls=row[1], cost=round(float(row[2]), 4))
+        for row in raw_model
+    ]
+
+    # --- Recent errors ---
+    raw_errors = db.query(LLMUsageLog).filter(
+        LLMUsageLog.status == "error",
+    ).order_by(LLMUsageLog.created_at.desc()).limit(20).all()
+
+    recent_errors = [
+        RecentError(
+            operation_type=e.operation_type,
+            error_message=e.error_message,
+            created_at=e.created_at,
+        )
+        for e in raw_errors
+    ]
+
+    return AdminLLMUsageResponse(
+        summary=summary,
+        daily_costs=daily_costs,
+        by_operation=by_operation,
+        by_provider=by_provider,
+        by_model=by_model,
+        recent_errors=recent_errors,
+    )
+
+
+# ============================================================
 # Analytics endpoint
 # ============================================================
 

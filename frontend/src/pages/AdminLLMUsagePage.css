@@ -1,0 +1,243 @@
+/* Admin LLM Usage Page Styles */
+
+.admin-llm-usage-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--spacing-8);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.admin-llm-usage-page .admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-8);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 2px solid var(--color-primary-300);
+}
+
+.admin-llm-usage-page .admin-header h1 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+  color: var(--color-primary-900);
+  font-weight: 700;
+}
+
+.admin-llm-usage-page .back-link {
+  display: inline-block;
+  margin-bottom: var(--spacing-2);
+  color: var(--color-primary-600);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.admin-llm-usage-page .back-link:hover {
+  color: var(--color-primary-900);
+}
+
+.admin-llm-usage-page .loading {
+  text-align: center;
+  padding: var(--spacing-16);
+  color: var(--color-primary-500);
+  font-size: var(--font-size-lg);
+}
+
+.admin-llm-usage-page .error-message {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-6);
+  font-size: var(--font-size-sm);
+}
+
+/* Period selector */
+.admin-llm-usage-page .period-selector {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-8);
+}
+
+.admin-llm-usage-page .period-selector button {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-llm-usage-page .period-selector button:hover {
+  background: var(--color-primary-100);
+  color: var(--color-primary-900);
+}
+
+.admin-llm-usage-page .period-selector button.active {
+  background: var(--color-primary-900);
+  color: var(--color-primary-50);
+  border-color: var(--color-primary-900);
+}
+
+/* Summary cards */
+.admin-llm-usage-page .summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-8);
+}
+
+.admin-llm-usage-page .summary-card {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-6);
+}
+
+.admin-llm-usage-page .summary-card .card-label {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primary-500);
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.admin-llm-usage-page .summary-card .card-value {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--color-primary-900);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.admin-llm-usage-page .summary-card .card-sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-600);
+  margin: var(--spacing-1) 0 0 0;
+}
+
+/* Section titles */
+.admin-llm-usage-page .section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  margin: 0 0 var(--spacing-4) 0;
+}
+
+/* Charts grid */
+.admin-llm-usage-page .charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-8);
+}
+
+.admin-llm-usage-page .charts-grid.equal {
+  grid-template-columns: 1fr 1fr;
+}
+
+.admin-llm-usage-page .chart-card {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-6);
+}
+
+.admin-llm-usage-page .chart-card h3 {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary-900);
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+/* Table styles */
+.admin-llm-usage-page .usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.admin-llm-usage-page .usage-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-primary-500);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--color-primary-200);
+}
+
+.admin-llm-usage-page .usage-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--color-primary-100);
+  color: var(--color-primary-900);
+}
+
+.admin-llm-usage-page .usage-table td.number {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Errors table */
+.admin-llm-usage-page .errors-section {
+  margin-bottom: var(--spacing-8);
+}
+
+.admin-llm-usage-page .error-row {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-2);
+}
+
+.admin-llm-usage-page .error-row .error-meta {
+  display: flex;
+  gap: var(--spacing-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-500);
+  margin-bottom: var(--spacing-1);
+}
+
+.admin-llm-usage-page .error-row .error-msg {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  word-break: break-word;
+}
+
+.admin-llm-usage-page .no-data {
+  text-align: center;
+  color: var(--color-primary-400);
+  padding: var(--spacing-8);
+  font-size: var(--font-size-sm);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .admin-llm-usage-page .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-llm-usage-page .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-llm-usage-page .charts-grid.equal {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-llm-usage-page {
+    padding: var(--spacing-4);
+  }
+
+  .admin-llm-usage-page .summary-cards {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,10 +1,12 @@
 """Service for AI-powered question suggestions."""
 
+import time
 from typing import List, Optional
 from anthropic import Anthropic
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.services.llm_usage_service import log_llm_usage
 
 
 class QuestionSuggestion(BaseModel):
@@ -125,12 +127,19 @@ Example when context is insufficient:
 
 Respond ONLY with the JSON object, no other text."""
 
+        t0 = time.time()
         response = self.client.messages.create(
             model=self.model,
             max_tokens=1024,
             messages=[
                 {"role": "user", "content": prompt}
             ]
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="question_suggestions", provider="anthropic", model=self.model,
+            input_tokens=response.usage.input_tokens, output_tokens=response.usage.output_tokens,
+            latency_ms=latency,
         )
 
         # Parse the response

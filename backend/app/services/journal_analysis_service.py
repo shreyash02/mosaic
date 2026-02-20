@@ -8,6 +8,7 @@ from typing import Optional
 from anthropic import Anthropic
 
 from app.core.config import settings
+from app.services.llm_usage_service import log_llm_usage
 
 logger = logging.getLogger(__name__)
 
@@ -152,11 +153,18 @@ Guidelines:
 - For rating/choice prompts, incorporate the numeric or choice values into your analysis.
 - Return ONLY the JSON object, nothing else."""
 
+        t0 = time.time()
         response = self.client.messages.create(
             model=self.model,
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="journal_analysis", provider="anthropic", model=self.model,
+            input_tokens=response.usage.input_tokens, output_tokens=response.usage.output_tokens,
+            latency_ms=latency,
         )
 
         result_text = response.content[0].text
@@ -245,11 +253,18 @@ Guidelines:
 - suggested_followups: 1-3 thought-provoking follow-up questions for future reflection
 - Return ONLY the JSON object, nothing else."""
 
+        t0 = time.time()
         response = self.client.messages.create(
             model=self.model,
             max_tokens=1024,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="journal_entry_analysis", provider="anthropic", model=self.model,
+            input_tokens=response.usage.input_tokens, output_tokens=response.usage.output_tokens,
+            latency_ms=latency,
         )
 
         result_text = response.content[0].text

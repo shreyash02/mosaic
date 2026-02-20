@@ -3,11 +3,13 @@
 import json
 import logging
 import re
+import time
 from typing import List, Dict, Any, Optional
 
 from anthropic import Anthropic
 
 from app.core.config import settings
+from app.services.llm_usage_service import log_llm_usage
 
 logger = logging.getLogger(__name__)
 
@@ -142,10 +144,17 @@ Return ONLY a valid JSON object:
 {{"actions": [{{"title": "...", "description": "...", "action_type": "...", "priority": "...", "sentiment": "...", "response_percentage": N}}]}}"""
 
         try:
+            t0 = time.time()
             message = self.anthropic_client.messages.create(
                 model=self.llm_model,
                 max_tokens=1500,
                 messages=[{"role": "user", "content": prompt}],
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="suggested_actions", provider="anthropic", model=self.llm_model,
+                input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens,
+                latency_ms=latency,
             )
             response_text = message.content[0].text
             return self._parse_actions_response(response_text)

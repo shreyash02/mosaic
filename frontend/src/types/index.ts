@@ -1645,3 +1645,53 @@ export interface PresetUpdate {
   invite_only?: boolean;
   skip_steps?: ('timing' | 'notifications')[];
 }
+
+// LLM Usage types (Admin)
+export interface LLMUsageSummary {
+  total_calls: number;
+  total_cost: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  avg_latency_ms: number | null;
+  error_rate: number;
+}
+
+export interface LLMDailyCost {
+  date: string;
+  cost: number;
+  calls: number;
+}
+
+export interface LLMOperationBreakdown {
+  operation_type: string;
+  calls: number;
+  cost: number;
+  avg_latency_ms: number | null;
+}
+
+export interface LLMProviderBreakdown {
+  provider: string;
+  calls: number;
+  cost: number;
+}
+
+export interface LLMModelBreakdown {
+  model: string;
+  calls: number;
+  cost: number;
+}
+
+export interface LLMRecentError {
+  operation_type: string;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface AdminLLMUsageResponse {
+  summary: LLMUsageSummary;
+  daily_costs: LLMDailyCost[];
+  by_operation: LLMOperationBreakdown[];
+  by_provider: LLMProviderBreakdown[];
+  by_model: LLMModelBreakdown[];
+  recent_errors: LLMRecentError[];
+}
