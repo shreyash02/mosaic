@@ -24,6 +24,7 @@ from app.schemas.feature_flag import (
     FlagImportResult,
 )
 from app.services.feature_flag_service import feature_flag_service
+from app.services.audit_log_service import log_audit
 
 
 class ReorderRequest(BaseModel):
@@ -52,13 +53,22 @@ async def create_flag(
     db: Session = Depends(get_db)
 ):
     """Create a new feature flag."""
-    return feature_flag_service.create_flag(
+    flag = feature_flag_service.create_flag(
         db,
         name=flag_data.name,
         description=flag_data.description,
         enabled=flag_data.enabled,
         config=flag_data.config
     )
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="create_feature_flag",
+        entity_type="feature_flag",
+        entity_id=flag.slug,
+        details={"name": flag_data.name, "enabled": flag_data.enabled},
+    )
+    return flag
 
 
 @router.put("/reorder", response_model=FeatureFlagList)
@@ -88,6 +98,14 @@ async def reorder_flags(
     # Invalidate cache since ordering metadata changed
     feature_flag_service.invalidate_cache()
 
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="reorder_feature_flags",
+        entity_type="feature_flag",
+        details={"slugs": body.slugs},
+    )
+
     # Return updated list
     flags = feature_flag_service.list_all_flags(db)
     return FeatureFlagList(flags=flags)
@@ -110,7 +128,15 @@ async def import_flags(
 ):
     """Import feature flags with tier-level overrides."""
     flags_data = [entry.model_dump() for entry in body.flags]
-    return feature_flag_service.import_flags(db, flags_data, full_sync=body.full_sync)
+    result = feature_flag_service.import_flags(db, flags_data, full_sync=body.full_sync)
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="import_feature_flags",
+        entity_type="feature_flag",
+        details={"count": len(flags_data), "full_sync": body.full_sync},
+    )
+    return result
 
 
 @router.get("/plan-tiers", response_model=PlanTiersResponse)
@@ -143,7 +169,7 @@ async def update_flag(
     db: Session = Depends(get_db)
 ):
     """Update a feature flag."""
-    return feature_flag_service.update_flag(
+    flag = feature_flag_service.update_flag(
         db,
         flag_slug=flag_slug,
         name=flag_data.name,
@@ -151,6 +177,15 @@ async def update_flag(
         enabled=flag_data.enabled,
         config=flag_data.config
     )
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="update_feature_flag",
+        entity_type="feature_flag",
+        entity_id=flag_slug,
+        details={"changes": flag_data.model_dump(exclude_unset=True)},
+    )
+    return flag
 
 
 @router.delete("/{flag_slug}", status_code=status.HTTP_204_NO_CONTENT)
@@ -161,6 +196,13 @@ async def delete_flag(
 ):
     """Delete a feature flag."""
     feature_flag_service.delete_flag(db, flag_slug)
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="delete_feature_flag",
+        entity_type="feature_flag",
+        entity_id=flag_slug,
+    )
 
 
 # --- Override Management (Admin only) ---
@@ -183,7 +225,7 @@ async def create_override(
     db: Session = Depends(get_db)
 ):
     """Create or update an override for a feature flag."""
-    return feature_flag_service.set_override(
+    override = feature_flag_service.set_override(
         db,
         flag_slug=flag_slug,
         tier=override_data.tier,
@@ -192,6 +234,15 @@ async def create_override(
         enabled=override_data.enabled,
         config_override=override_data.config_override
     )
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="set_flag_override",
+        entity_type="feature_flag",
+        entity_id=flag_slug,
+        details={"tier": override_data.tier, "org_id": str(override_data.organization_id) if override_data.organization_id else None, "user_id": str(override_data.user_id) if override_data.user_id else None, "enabled": override_data.enabled},
+    )
+    return override
 
 
 @router.delete("/{flag_slug}/overrides", status_code=status.HTTP_204_NO_CONTENT)
@@ -210,6 +261,14 @@ async def delete_override(
             detail="Must provide tier, organization_id, or user_id"
         )
     feature_flag_service.remove_override(db, flag_slug, tier=tier, org_id=organization_id, user_id=user_id)
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="delete_flag_override",
+        entity_type="feature_flag",
+        entity_id=flag_slug,
+        details={"tier": tier, "org_id": str(organization_id) if organization_id else None, "user_id": str(user_id) if user_id else None},
+    )
 
 
 # --- Preview (Admin only) ---

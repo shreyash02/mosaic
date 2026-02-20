@@ -20,6 +20,7 @@ class UserCreate(UserBase):
     """Schema for user registration."""
 
     password: str = Field(..., min_length=8, max_length=100)
+    invite_code: Optional[str] = None
 
 
 # User update schema

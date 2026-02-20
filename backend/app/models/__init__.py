@@ -29,6 +29,10 @@ from app.models.journal_share import JournalShare
 from app.models.conversation_preset import ConversationPreset
 from app.models.llm_usage_log import LLMUsageLog
 from app.models.email_log import EmailLog
+from app.models.platform_settings import PlatformSettings
+from app.models.invite_code import InviteCode
+from app.models.waitlist_request import WaitlistRequest
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User",
@@ -63,4 +67,8 @@ __all__ = [
     "ConversationPreset",
     "LLMUsageLog",
     "EmailLog",
+    "PlatformSettings",
+    "InviteCode",
+    "WaitlistRequest",
+    "AuditLog",
 ]
