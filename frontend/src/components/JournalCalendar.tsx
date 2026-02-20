@@ -50,14 +50,14 @@ const s = {
     backgroundColor: 'var(--color-primary-100)',
     border: '1px solid var(--color-primary-200)',
     borderRadius: borders.radius.lg,
-    padding: spacing[4],
+    padding: spacing[3],
     marginBottom: spacing[6],
   },
   topBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing[3],
+    marginBottom: spacing[2],
   },
   navRow: {
     display: 'flex',
@@ -117,7 +117,7 @@ const s = {
   dayLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: 'var(--color-primary-400)',
+    color: 'var(--color-primary-500)',
     textAlign: 'center' as const,
     padding: `${spacing[1]} 0`,
   },
@@ -129,58 +129,59 @@ const s = {
   cell: {
     position: 'relative' as const,
     width: '100%',
-    aspectRatio: '1',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: borders.radius.sm,
     fontSize: typography.fontSize.xs,
-    color: 'var(--color-primary-600)',
+    color: 'var(--color-primary-700)',
     cursor: 'default',
     transition: 'background-color 100ms',
-    minHeight: '32px',
+    padding: '6px 0',
   },
   cellOutside: {
-    color: 'var(--color-primary-300)',
+    color: 'var(--color-primary-500)',
     backgroundColor: 'transparent',
   },
   cellDefault: {
-    backgroundColor: 'var(--color-primary-50)',
+    backgroundColor: 'var(--color-primary-100)',
   },
   cellEntry: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'var(--cal-entry-bg)',
+    color: 'var(--cal-entry-text)',
     cursor: 'pointer',
   },
   cellMissed: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'var(--cal-missed-bg)',
+    color: 'var(--cal-missed-text)',
   },
   cellFuture: {
-    color: 'var(--color-primary-300)',
+    color: 'var(--color-primary-500)',
     backgroundColor: 'var(--color-primary-50)',
   },
   cellPreCreation: {
     backgroundColor: 'transparent',
-    color: 'var(--color-primary-300)',
+    color: 'var(--color-primary-500)',
   },
   cellToday: {
-    boxShadow: 'inset 0 0 0 2px var(--color-primary-900)',
+    boxShadow: 'inset 0 0 0 2px var(--cal-today-ring)',
   },
   entryDot: {
     position: 'absolute' as const,
-    bottom: '3px',
+    bottom: '2px',
     left: '50%',
     transform: 'translateX(-50%)',
-    width: '5px',
-    height: '5px',
+    width: '4px',
+    height: '4px',
     borderRadius: '50%',
     backgroundColor: '#22c55e',
   },
   analysisDot: {
     position: 'absolute' as const,
-    bottom: '3px',
+    bottom: '2px',
     right: '3px',
-    width: '4px',
-    height: '4px',
+    width: '3px',
+    height: '3px',
     borderRadius: '50%',
     backgroundColor: '#3b82f6',
   },
@@ -214,11 +215,13 @@ const s = {
     backgroundColor: 'var(--color-primary-50)',
   },
   timelineCellEntry: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'var(--cal-entry-bg)',
+    color: 'var(--cal-entry-text)',
     cursor: 'pointer',
   },
   timelineCellMissed: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'var(--cal-missed-bg)',
+    color: 'var(--cal-missed-text)',
   },
   timelineCellFuture: {
     backgroundColor: 'var(--color-primary-50)',
@@ -255,7 +258,7 @@ const s = {
     backgroundColor: '#3b82f6',
   },
   timelineTodayRing: {
-    boxShadow: 'inset 0 0 0 2px var(--color-primary-900)',
+    boxShadow: 'inset 0 0 0 2px var(--cal-today-ring)',
   },
   scrollButton: {
     position: 'absolute' as const,
@@ -278,7 +281,7 @@ const s = {
   legend: {
     display: 'flex',
     gap: spacing[4],
-    marginTop: spacing[3],
+    marginTop: spacing[2],
     flexWrap: 'wrap' as const,
   },
   legendItem: {
@@ -661,6 +664,20 @@ export default function JournalCalendar({
     <div style={s.wrapper}>
       <style>{`
         .journal-timeline-scroller::-webkit-scrollbar { display: none; }
+        :root {
+          --cal-entry-bg: #dcfce7;
+          --cal-entry-text: var(--color-primary-700);
+          --cal-missed-bg: #fef3c7;
+          --cal-missed-text: var(--color-primary-700);
+          --cal-today-ring: var(--color-primary-800);
+        }
+        html.dark {
+          --cal-entry-bg: #14532d;
+          --cal-entry-text: #bbf7d0;
+          --cal-missed-bg: #713f12;
+          --cal-missed-text: #fef08a;
+          --cal-today-ring: var(--color-primary-700);
+        }
       `}</style>
 
       {/* Top bar: navigation + view toggle */}
@@ -756,7 +773,6 @@ export default function JournalCalendar({
                   key={cell.dateStr}
                   style={cellStyle}
                   onClick={() => cell.hasEntry && handleCellClick(cell.dateStr)}
-                  title={cell.dateStr}
                 >
                   {cell.date.getDate()}
                   {cell.hasEntry && cell.inMonth && <div style={s.entryDot} />}
@@ -812,7 +828,6 @@ export default function JournalCalendar({
                   ref={cell.isToday ? todayCellRef : undefined}
                   style={cellStyle}
                   onClick={() => cell.hasEntry && handleCellClick(cell.dateStr)}
-                  title={cell.dateStr}
                 >
                   <div style={dotStyle} />
                   {cell.hasAnalysis && <div style={s.timelineAnalysisIndicator} />}
