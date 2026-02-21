@@ -322,6 +322,10 @@ async def get_user_features(
         org_id=parsed_org_id
     )
 
+    # Check platform-level overrides
+    from app.services.platform_settings_service import is_spaces_enabled
+    spaces_platform_enabled = is_spaces_enabled(db)
+
     all_flags = feature_flag_service.list_all_flags(db)
     features = {}
 
@@ -332,6 +336,12 @@ async def get_user_features(
             org_id=parsed_org_id,
             user_id=current_user.id
         )
+
+        enabled = effective.enabled
+
+        # Platform-level kill switch for spaces
+        if flag.slug == "spaces" and not spaces_platform_enabled:
+            enabled = False
 
         # Get usage for config keys that look like limits
         usage = {}
@@ -345,7 +355,7 @@ async def get_user_features(
                 )
 
         features[flag.slug] = {
-            "enabled": effective.enabled,
+            "enabled": enabled,
             "config": effective.config,
             "usage": usage,
         }

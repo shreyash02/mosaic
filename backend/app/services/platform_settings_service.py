@@ -55,6 +55,11 @@ def is_invite_code_required(db: Session) -> bool:
     return get_setting(db, "invite_code_required", "false").lower() == "true"
 
 
+def is_spaces_enabled(db: Session) -> bool:
+    """Check if the Spaces feature is enabled at the platform level."""
+    return get_setting(db, "spaces_enabled", "true").lower() == "true"
+
+
 def get_all_settings(db: Session) -> List[PlatformSettings]:
     """Get all platform settings."""
     return db.query(PlatformSettings).order_by(PlatformSettings.key).all()

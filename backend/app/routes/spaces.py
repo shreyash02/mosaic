@@ -45,6 +45,14 @@ def _require_spaces_flag(current_user: User, db: Session) -> str:
     """Check spaces feature flag, return tier. Raises 403 if disabled."""
     from app.services.feature_flag_service import feature_flag_service
     from app.services.subscription_service import subscription_service
+    from app.services.platform_settings_service import is_spaces_enabled
+
+    # Platform-level kill switch
+    if not is_spaces_enabled(db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Spaces are not currently available",
+        )
 
     tier = subscription_service.get_tier(db, user_id=current_user.id)
     if not feature_flag_service.is_enabled(
