@@ -1781,6 +1781,7 @@ export interface SpaceListItem {
   idea_count: number;
   theme_count: number;
   auto_organize: boolean;
+  clustering_mode: 'dbscan' | 'llm';
   created_at: string;
 }
 
@@ -1791,6 +1792,7 @@ export interface Space {
   idea_count: number;
   theme_count: number;
   auto_organize: boolean;
+  clustering_mode: 'dbscan' | 'llm';
   last_organized_at?: string;
   created_at: string;
   updated_at: string;
@@ -1805,6 +1807,7 @@ export interface SpaceUpdate {
   title?: string;
   description?: string;
   auto_organize?: boolean;
+  clustering_mode?: 'dbscan' | 'llm';
 }
 
 export interface SpaceIdeaTheme {

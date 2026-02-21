@@ -192,6 +192,7 @@ export default function SpaceSettingsPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [autoOrganize, setAutoOrganize] = useState(true);
+  const [clusteringMode, setClusteringMode] = useState<'dbscan' | 'llm'>('dbscan');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +210,7 @@ export default function SpaceSettingsPage() {
         setTitle(data.title);
         setDescription(data.description || '');
         setAutoOrganize(data.auto_organize);
+        setClusteringMode(data.clustering_mode || 'dbscan');
       })
       .catch((err) => {
         setError(err.response?.data?.detail || 'Failed to load space');
@@ -226,6 +228,7 @@ export default function SpaceSettingsPage() {
         title: title.trim(),
         description: description.trim() || undefined,
         auto_organize: autoOrganize,
+        clustering_mode: clusteringMode,
       });
       setSpace(updated);
       setSuccess('Settings saved');
@@ -345,6 +348,54 @@ export default function SpaceSettingsPage() {
                 }}
               />
             </button>
+          </div>
+
+          {/* Clustering mode */}
+          <div style={{ marginTop: spacing[6] }}>
+            <label style={s.label}>Clustering method</label>
+            <span style={{ ...s.toggleDescription, display: 'block', marginBottom: spacing[3] }}>
+              How ideas are grouped into themes during organization.
+            </span>
+            <div style={{ display: 'flex', gap: '0', borderRadius: borders.radius.md, overflow: 'hidden', border: '1px solid var(--color-primary-300)', width: 'fit-content' }}>
+              <button
+                type="button"
+                onClick={() => setClusteringMode('dbscan')}
+                style={{
+                  padding: `${spacing[2]} ${spacing[4]}`,
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: transitions.duration.normal,
+                  backgroundColor: clusteringMode === 'dbscan' ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                  color: clusteringMode === 'dbscan' ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                }}
+              >
+                Embedding (DBSCAN)
+              </button>
+              <button
+                type="button"
+                onClick={() => setClusteringMode('llm')}
+                style={{
+                  padding: `${spacing[2]} ${spacing[4]}`,
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  border: 'none',
+                  borderLeft: '1px solid var(--color-primary-300)',
+                  cursor: 'pointer',
+                  transition: transitions.duration.normal,
+                  backgroundColor: clusteringMode === 'llm' ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                  color: clusteringMode === 'llm' ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                }}
+              >
+                LLM-assisted
+              </button>
+            </div>
+            <span style={{ ...s.toggleDescription, display: 'block', marginTop: spacing[2] }}>
+              {clusteringMode === 'dbscan'
+                ? 'Groups ideas by embedding similarity. Fast and good for diverse, longer-form ideas.'
+                : 'Uses AI to understand meaning and group ideas directly. Better for short, structurally similar ideas.'}
+            </span>
           </div>
         </div>
 

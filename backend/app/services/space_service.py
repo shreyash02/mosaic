@@ -223,17 +223,20 @@ class SpaceService:
 
         db.commit()
 
-    def organize(self, db: Session, space_id: UUID, context: Optional[str] = None):
+    def organize(self, db: Session, space_id: UUID, context: Optional[str] = None, clustering_mode: str = "dbscan"):
         """Full re-organization (on-demand).
 
         1. Load all active ideas with embeddings
-        2. DBSCAN clustering
+        2. DBSCAN or LLM clustering
         3. LLM theme extraction per cluster
         4. Match new clusters to existing themes (centroid overlap > 0.8)
         5. Create new themes for unmatched clusters
         6. Rebuild all IdeaTheme assignments
         7. Compute ThemeConnections
         """
+        if clustering_mode == "llm":
+            return self._organize_with_llm(db, space_id, context)
+
         # Load ideas
         ideas = (
             db.query(Idea)
@@ -694,6 +697,226 @@ class SpaceService:
                     "lost": lost,
                 },
             ))
+
+    def _organize_with_llm(self, db: Session, space_id: UUID, context: Optional[str] = None):
+        """LLM-based clustering: ask Claude to group ideas directly instead of DBSCAN.
+
+        Better for structurally similar short sentences where DBSCAN chains
+        everything together based on embedding proximity.
+        """
+        # Load ideas
+        ideas = (
+            db.query(Idea)
+            .filter(Idea.space_id == space_id, Idea.status == "active")
+            .all()
+        )
+        if not ideas:
+            return
+
+        # Ensure embeddings exist (needed for connections + theme matching)
+        dims = {len(i.embedding) for i in ideas if i.embedding}
+        if len(dims) > 1:
+            for idea in ideas:
+                idea.embedding = None
+
+        ideas_needing_embeddings = [i for i in ideas if not i.embedding]
+        if ideas_needing_embeddings:
+            texts = [i.text for i in ideas_needing_embeddings]
+            embeddings = self.generate_embeddings_batch(texts)
+            for idea, emb in zip(ideas_needing_embeddings, embeddings):
+                idea.embedding = emb
+            db.commit()
+
+        ideas_with_emb = [i for i in ideas if i.embedding]
+        if len(ideas_with_emb) < 2:
+            return
+
+        texts = [i.text for i in ideas_with_emb]
+        embeddings = np.array([i.embedding for i in ideas_with_emb])
+
+        # Ask LLM to cluster ideas
+        context_section = ""
+        if context:
+            context_section = f"""CONTEXT (provided by the user):
+{context}
+
+Use this context to make cluster groupings more specific and relevant.
+
+"""
+        prompt = f"""{context_section}Given these {len(texts)} ideas, group them into thematic clusters.
+Return JSON: {{"clusters": [{{"theme": "Short name (1-6 words)", "summary": "1-2 sentence description", "indices": [0, 2, 5]}}]}}
+Ideas that don't fit any cluster should be omitted from the indices.
+
+Ideas:
+{chr(10).join(f"{i}. {text}" for i, text in enumerate(texts))}"""
+
+        t0 = time.time()
+        response = self.anthropic_client.messages.create(
+            model=self.llm_model,
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="space_llm_clustering",
+            provider="anthropic",
+            model=self.llm_model,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            latency_ms=latency,
+        )
+
+        # Parse LLM response
+        try:
+            text = response.content[0].text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            result = json.loads(text)
+            llm_clusters = result.get("clusters", [])
+        except (json.JSONDecodeError, IndexError, KeyError):
+            logger.warning("Failed to parse LLM clustering response, falling back to DBSCAN")
+            return self.organize(db, space_id, context=context, clustering_mode="dbscan")
+
+        if not llm_clusters:
+            return
+
+        # Build cluster map: cluster_idx -> list of idea indices
+        clusters: Dict[int, List[int]] = {}
+        cluster_meta: Dict[int, Dict[str, str]] = {}
+        for ci, cluster in enumerate(llm_clusters):
+            indices = cluster.get("indices", [])
+            # Validate indices are in range
+            valid_indices = [idx for idx in indices if 0 <= idx < len(ideas_with_emb)]
+            if len(valid_indices) >= 1:
+                clusters[ci] = valid_indices
+                cluster_meta[ci] = {
+                    "theme": cluster.get("theme", f"Theme {ci + 1}"),
+                    "summary": cluster.get("summary", ""),
+                }
+
+        # Load existing themes and snapshot BEFORE clearing assignments
+        existing_themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+        theme_centroids_snapshot: Dict[UUID, np.ndarray] = {}
+        old_membership: Dict[UUID, Set[UUID]] = {}
+        old_theme_info: Dict[UUID, Dict[str, Any]] = {}
+        for theme in existing_themes:
+            old_theme_info[theme.id] = {"name": theme.name, "color": theme.color}
+            assignments = (
+                db.query(IdeaTheme)
+                .filter(IdeaTheme.theme_id == theme.id)
+                .all()
+            )
+            if assignments:
+                idea_ids = [a.idea_id for a in assignments]
+                old_membership[theme.id] = set(idea_ids)
+                member_ideas = db.query(Idea).filter(
+                    Idea.id.in_(idea_ids), Idea.embedding.isnot(None)
+                ).all()
+                if member_ideas:
+                    theme_centroids_snapshot[theme.id] = self._compute_centroid(
+                        [i.embedding for i in member_ideas]
+                    )
+            else:
+                old_membership[theme.id] = set()
+
+        # Clear existing AI assignments
+        db.query(IdeaTheme).filter(
+            IdeaTheme.idea_id.in_([i.id for i in ideas_with_emb]),
+            IdeaTheme.assigned_by == "ai",
+        ).delete(synchronize_session=False)
+
+        matched_theme_ids = set()
+        created_themes: List[Theme] = []
+        color_idx = len(existing_themes)
+
+        for label, indices in clusters.items():
+            cluster_embeddings = [embeddings[i] for i in indices]
+            cluster_centroid = self._compute_centroid(cluster_embeddings)
+
+            # Try matching to existing theme using snapshotted centroids
+            best_match = None
+            best_overlap = 0.0
+            for theme in existing_themes:
+                if theme.id in matched_theme_ids:
+                    continue
+                if theme.id not in theme_centroids_snapshot:
+                    continue
+                overlap = self._cosine_similarity(
+                    cluster_centroid, theme_centroids_snapshot[theme.id]
+                )
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    best_match = theme
+
+            meta = cluster_meta[label]
+            if best_match and best_overlap > 0.8:
+                theme = best_match
+                matched_theme_ids.add(theme.id)
+                theme.summary = meta["summary"]
+            else:
+                theme = Theme(
+                    space_id=space_id,
+                    name=meta["theme"],
+                    summary=meta["summary"],
+                    color=THEME_COLORS[color_idx % len(THEME_COLORS)],
+                    is_ai_generated=True,
+                )
+                db.add(theme)
+                db.flush()
+                created_themes.append(theme)
+                color_idx += 1
+
+            # Assign ideas to this theme
+            for idx in indices:
+                idea = ideas_with_emb[idx]
+                similarity = self._cosine_similarity(
+                    np.array(idea.embedding), cluster_centroid
+                )
+                db.add(IdeaTheme(
+                    idea_id=idea.id,
+                    theme_id=theme.id,
+                    confidence=float(similarity),
+                    assigned_by="ai",
+                ))
+
+        # Clean up orphaned AI-generated themes
+        retired_themes: List[Dict[str, Any]] = []
+        for theme in existing_themes:
+            if theme.id not in matched_theme_ids and theme.is_ai_generated:
+                remaining = (
+                    db.query(func.count(IdeaTheme.id))
+                    .filter(IdeaTheme.theme_id == theme.id)
+                    .scalar()
+                )
+                if not remaining:
+                    retired_themes.append({
+                        "id": theme.id,
+                        "name": theme.name,
+                        "color": theme.color,
+                    })
+                    db.query(ThemeConnection).filter(
+                        (ThemeConnection.theme_a_id == theme.id) |
+                        (ThemeConnection.theme_b_id == theme.id)
+                    ).delete(synchronize_session=False)
+                    db.delete(theme)
+
+        # Emit evolution events
+        self._emit_evolution_events(
+            db, space_id, old_membership, old_theme_info,
+            matched_theme_ids, created_themes, retired_themes,
+        )
+
+        # Update auto-organize tracking
+        from datetime import datetime as dt
+        space = db.query(Space).filter(Space.id == space_id).first()
+        if space:
+            space.last_organized_at = dt.utcnow()
+            space.ideas_at_last_organize = len(ideas_with_emb)
+
+        db.commit()
+
+        # Compute theme connections
+        self.compute_connections(db, space_id)
 
     def _extract_theme_with_llm(self, cluster_texts: List[str], context: Optional[str] = None) -> Dict[str, Any]:
         """Use Claude to extract a theme name and summary from a cluster of ideas."""

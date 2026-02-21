@@ -93,6 +93,7 @@ def _build_space_response(space: Space, db: Session) -> dict:
         "idea_count": idea_count,
         "theme_count": theme_count,
         "auto_organize": space.auto_organize,
+        "clustering_mode": space.clustering_mode,
         "last_organized_at": space.last_organized_at,
         "created_at": space.created_at,
         "updated_at": space.updated_at,
@@ -150,8 +151,10 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
         # Check if auto-organize should trigger
         if service.should_auto_organize(db, space_id):
             logger.info(f"Auto-organizing space {space_id}")
+            space = db.query(Space).filter(Space.id == space_id).first()
+            clustering_mode = space.clustering_mode if space else "dbscan"
             sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
-            service.organize(db, space_id)
+            service.organize(db, space_id, clustering_mode=clustering_mode)
             sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error classifying idea {idea_id}: {e}")
@@ -175,7 +178,9 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
     try:
         llm_model = get_llm_model(db)
         service = SpaceService(model=llm_model)
-        service.organize(db, space_id, context=context)
+        space = db.query(Space).filter(Space.id == space_id).first()
+        clustering_mode = space.clustering_mode if space else "dbscan"
+        service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
         logger.info(f"Organized space {space_id}")
         sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
@@ -271,6 +276,8 @@ def update_space(
         space.description = data.description
     if data.auto_organize is not None:
         space.auto_organize = data.auto_organize
+    if data.clustering_mode is not None:
+        space.clustering_mode = data.clustering_mode
     db.commit()
     db.refresh(space)
     return _build_space_response(space, db)

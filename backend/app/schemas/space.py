@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # --- Space schemas ---
@@ -19,6 +19,14 @@ class SpaceUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
     auto_organize: Optional[bool] = None
+    clustering_mode: Optional[str] = None
+
+    @field_validator("clustering_mode")
+    @classmethod
+    def validate_clustering_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("dbscan", "llm"):
+            raise ValueError("clustering_mode must be 'dbscan' or 'llm'")
+        return v
 
 
 class SpaceResponse(BaseModel):
@@ -29,6 +37,7 @@ class SpaceResponse(BaseModel):
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True
+    clustering_mode: str = "dbscan"
     last_organized_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -44,6 +53,7 @@ class SpaceListItem(BaseModel):
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True
+    clustering_mode: str = "dbscan"
     created_at: datetime
 
     model_config = {"from_attributes": True}
