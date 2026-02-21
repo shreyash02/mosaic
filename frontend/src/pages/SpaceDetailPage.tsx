@@ -258,6 +258,7 @@ export default function SpaceDetailPage() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [], unthemed_count: 0 });
   const [evolution, setEvolution] = useState<OrganizeRun[]>([]);
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<{ sourceId: string; targetId: string } | null>(null);
   const [ideaText, setIdeaText] = useState('');
   const [loading, setLoading] = useState(true);
   const [organizing, setOrganizing] = useState(false);
@@ -445,6 +446,14 @@ export default function SpaceDetailPage() {
 
   function handleNodeClick(nodeId: string) {
     setSelectedThemeId(prev => prev === nodeId ? null : nodeId);
+    setSelectedEdge(null);
+  }
+
+  function handleEdgeClick(sourceId: string, targetId: string) {
+    setSelectedEdge(prev =>
+      prev && prev.sourceId === sourceId && prev.targetId === targetId ? null : { sourceId, targetId }
+    );
+    setSelectedThemeId(null);
   }
 
   async function handleDeleteIdea(ideaId: string) {
@@ -457,13 +466,30 @@ export default function SpaceDetailPage() {
   }
 
   const filteredIdeas = useMemo(() => {
+    if (selectedEdge) {
+      // Show ideas belonging to either theme, with shared (both) ideas first
+      const inSource = (idea: SpaceIdea) => idea.themes.some(t => t.theme_id === selectedEdge.sourceId);
+      const inTarget = (idea: SpaceIdea) => idea.themes.some(t => t.theme_id === selectedEdge.targetId);
+      const edgeIdeas = ideas.filter(idea => inSource(idea) || inTarget(idea));
+      // Sort: ideas in both themes first, then the rest
+      edgeIdeas.sort((a, b) => {
+        const aShared = inSource(a) && inTarget(a) ? 1 : 0;
+        const bShared = inSource(b) && inTarget(b) ? 1 : 0;
+        return bShared - aShared;
+      });
+      return edgeIdeas;
+    }
     if (!selectedThemeId) return ideas;
     if (selectedThemeId === '__unthemed') {
       return ideas.filter(idea => idea.themes.length === 0);
     }
     return ideas.filter(idea => idea.themes.some(t => t.theme_id === selectedThemeId));
-  }, [ideas, selectedThemeId]);
+  }, [ideas, selectedThemeId, selectedEdge]);
   const selectedTheme = themes.find(t => t.id === selectedThemeId);
+  const edgeThemeNames = selectedEdge ? {
+    source: themes.find(t => t.id === selectedEdge.sourceId)?.name || 'Unknown',
+    target: themes.find(t => t.id === selectedEdge.targetId)?.name || 'Unknown',
+  } : null;
 
   if (loading) {
     return (
@@ -599,6 +625,8 @@ export default function SpaceDetailPage() {
             data={graphData}
             onNodeClick={handleNodeClick}
             selectedNodeId={selectedThemeId || undefined}
+            onEdgeClick={handleEdgeClick}
+            selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
           />
         </div>
 
@@ -651,7 +679,9 @@ export default function SpaceDetailPage() {
           {/* Ideas section */}
           <div style={s.sidebarSection}>
             <div style={s.sidebarTitle}>
-              {selectedTheme
+              {edgeThemeNames
+                ? `Ideas in "${edgeThemeNames.source}" & "${edgeThemeNames.target}" (${filteredIdeas.length})`
+                : selectedTheme
                 ? `Ideas in "${selectedTheme.name}"`
                 : selectedThemeId === '__unthemed'
                 ? 'Unthemed Ideas'

@@ -7,6 +7,8 @@ interface NetworkGraphProps {
   data: GraphData;
   onNodeClick: (nodeId: string) => void;
   selectedNodeId?: string;
+  onEdgeClick?: (sourceId: string, targetId: string) => void;
+  selectedEdge?: { source: string; target: string };
 }
 
 interface GraphNodeData extends GraphNode {
@@ -28,7 +30,7 @@ interface GraphDataInternal {
 // Show all labels when node count is at or below this threshold
 const LABEL_NODE_THRESHOLD = 15;
 
-export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: NetworkGraphProps) {
+export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdgeClick, selectedEdge }: NetworkGraphProps) {
   const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
@@ -97,6 +99,13 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
   const handleNodeClick = useCallback((node: GraphNodeData) => {
     onNodeClick(node.id);
   }, [onNodeClick]);
+
+  const handleLinkClick = useCallback((link: GraphEdgeData) => {
+    if (!onEdgeClick) return;
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    onEdgeClick(sourceId, targetId);
+  }, [onEdgeClick]);
 
   // Lookup map for resolving node IDs to data (used by tooltip)
   const nodeMap = useMemo(() => {
@@ -172,11 +181,17 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
     if (!source.x || !source.y || !target.x || !target.y) return;
 
     const isHovered = hoveredLink === link;
+    const sourceId = typeof link.source === 'string' ? link.source : (link.source as GraphNodeData).id;
+    const targetId = typeof link.target === 'string' ? link.target : (link.target as GraphNodeData).id;
+    const isSelected = selectedEdge != null && (
+      (sourceId === selectedEdge.source && targetId === selectedEdge.target) ||
+      (sourceId === selectedEdge.target && targetId === selectedEdge.source)
+    );
 
     ctx.beginPath();
     ctx.moveTo(source.x, source.y);
     ctx.lineTo(target.x, target.y);
-    if (isHovered) {
+    if (isSelected || isHovered) {
       ctx.strokeStyle = isDark
         ? `rgba(209, 213, 219, 0.8)`
         : `rgba(75, 85, 99, 0.8)`;
@@ -186,7 +201,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
       ctx.lineWidth = Math.max(0.5, link.strength * 3);
     }
     ctx.stroke();
-  }, [hoveredLink, isDark]);
+  }, [hoveredLink, isDark, selectedEdge]);
 
   const nodePointerAreaPaint = useCallback((node: GraphNodeData, color: string, ctx: CanvasRenderingContext2D) => {
     const size = Math.max(6, Math.sqrt(node.size) * 3 + 4);
@@ -290,6 +305,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
         linkCanvasObject={linkCanvasObject}
         linkPointerAreaPaint={linkPointerAreaPaint}
         onNodeClick={handleNodeClick}
+        onLinkClick={handleLinkClick}
         onNodeHover={(node: GraphNodeData | null) => setHoveredNode(node?.id || null)}
         onLinkHover={handleLinkHover}
         nodeLabel={() => ''}
