@@ -38,7 +38,7 @@ class SpaceService:
 
     SIMILARITY_THRESHOLD = 0.75
     SECONDARY_THRESHOLD = 0.65
-    RESCUE_THRESHOLD = 0.5
+    RESCUE_THRESHOLD = 0.45
     CONNECTION_THRESHOLD = 0.3
 
     # Auto-organize tunable parameters
@@ -53,7 +53,7 @@ class SpaceService:
     def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
         self.openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
         self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.embedding_model = "text-embedding-3-small"
+        self.embedding_model = "text-embedding-3-large"
         self.llm_model = model
 
     def should_auto_organize(self, db: Session, space_id: UUID) -> bool:
@@ -243,7 +243,14 @@ class SpaceService:
         if not ideas:
             return
 
-        # Generate embeddings for ideas that don't have them
+        # Generate embeddings for ideas that don't have them,
+        # or regenerate all if dimensions are mixed (model change)
+        dims = {len(i.embedding) for i in ideas if i.embedding}
+        if len(dims) > 1:
+            # Mixed dimensions — clear all so they get regenerated uniformly
+            for idea in ideas:
+                idea.embedding = None
+
         ideas_needing_embeddings = [i for i in ideas if not i.embedding]
         if ideas_needing_embeddings:
             texts = [i.text for i in ideas_needing_embeddings]
