@@ -253,6 +253,10 @@ export default function SpaceDetailPage() {
 
   usePageTitle(space?.title || 'Space');
 
+  // Ref for accessing latest selectedThemeId in callbacks without re-creating them
+  const selectedThemeIdRef = useRef(selectedThemeId);
+  selectedThemeIdRef.current = selectedThemeId;
+
   // Refresh only sidebar + graph content without touching input or page state
   const refreshContent = useCallback(async (themeFilter?: string | null) => {
     if (!id) return;
@@ -263,7 +267,7 @@ export default function SpaceDetailPage() {
       api.getEvolution(id),
     ]);
     // Refresh ideas respecting current theme filter
-    const filter = themeFilter !== undefined ? themeFilter : selectedThemeId;
+    const filter = themeFilter !== undefined ? themeFilter : selectedThemeIdRef.current;
     let ideasData: SpaceIdea[];
     if (filter === '__unthemed') {
       ideasData = await api.getIdeas(id, undefined, true);
@@ -275,12 +279,10 @@ export default function SpaceDetailPage() {
     setIdeas(ideasData);
     setGraphData(graph);
     setEvolution(evoData);
-  }, [id, selectedThemeId]);
+  }, [id]);
 
   // --- SSE-driven updates (replace polling) ---
   // Use refs to access latest values in SSE callbacks without re-subscribing
-  const selectedThemeIdRef = useRef(selectedThemeId);
-  selectedThemeIdRef.current = selectedThemeId;
   const refreshContentRef = useRef(refreshContent);
   refreshContentRef.current = refreshContent;
 
