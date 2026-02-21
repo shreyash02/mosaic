@@ -151,8 +151,6 @@ const s = {
     fontWeight: typography.fontWeight.semibold,
     color: 'var(--color-primary-700)',
     marginBottom: spacing[3],
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.05em',
   },
   themeItem: {
     display: 'flex',
@@ -456,6 +454,11 @@ export default function SpaceDetailPage() {
     setSelectedThemeId(null);
   }
 
+  function handleClearSelection() {
+    setSelectedThemeId(null);
+    setSelectedEdge(null);
+  }
+
   async function handleDeleteIdea(ideaId: string) {
     if (!id) return;
     try {
@@ -627,6 +630,7 @@ export default function SpaceDetailPage() {
             selectedNodeId={selectedThemeId || undefined}
             onEdgeClick={handleEdgeClick}
             selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
+            onClearSelection={handleClearSelection}
           />
         </div>
 

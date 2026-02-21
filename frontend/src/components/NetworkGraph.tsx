@@ -9,6 +9,7 @@ interface NetworkGraphProps {
   selectedNodeId?: string;
   onEdgeClick?: (sourceId: string, targetId: string) => void;
   selectedEdge?: { source: string; target: string };
+  onClearSelection?: () => void;
 }
 
 interface GraphNodeData extends GraphNode {
@@ -30,7 +31,7 @@ interface GraphDataInternal {
 // Show all labels when node count is at or below this threshold
 const LABEL_NODE_THRESHOLD = 15;
 
-export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdgeClick, selectedEdge }: NetworkGraphProps) {
+export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdgeClick, selectedEdge, onClearSelection }: NetworkGraphProps) {
   const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
@@ -267,34 +268,67 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     graphRef.current?.zoomToFit(400, 60);
   }, []);
 
+  const hasSelection = !!(selectedNodeId || selectedEdge);
+
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} onMouseMove={handleMouseMove}>
-      <button
-        onClick={handleResetView}
-        title="Reset view"
-        style={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          zIndex: zIndex.dropdown,
-          background: isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-          color: isDark ? '#e2e8f0' : '#475569',
-          border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
-          borderRadius: borders.radius.md,
-          padding: '4px 6px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          lineHeight: 1,
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          <line x1="8" y1="11" x2="14" y2="11" />
-        </svg>
-      </button>
+      <div style={{
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        zIndex: zIndex.dropdown,
+        display: 'flex',
+        gap: 4,
+        alignItems: 'center',
+      }}>
+        {hasSelection && onClearSelection && (
+          <button
+            onClick={onClearSelection}
+            style={{
+              background: isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+              color: isDark ? '#e2e8f0' : '#475569',
+              border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+              borderRadius: borders.radius.md,
+              padding: '4px 8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: typography.fontSize.xs,
+              fontFamily: typography.fontFamily.sans,
+              lineHeight: 1,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Clear selection
+          </button>
+        )}
+        <button
+          onClick={handleResetView}
+          title="Reset view"
+          style={{
+            background: isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+            color: isDark ? '#e2e8f0' : '#475569',
+            border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+            borderRadius: borders.radius.md,
+            padding: '4px 6px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            <line x1="8" y1="11" x2="14" y2="11" />
+          </svg>
+        </button>
+      </div>
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
