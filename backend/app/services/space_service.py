@@ -38,6 +38,7 @@ class SpaceService:
 
     SIMILARITY_THRESHOLD = 0.75
     SECONDARY_THRESHOLD = 0.65
+    RESCUE_THRESHOLD = 0.5
     CONNECTION_THRESHOLD = 0.3
 
     # Auto-organize tunable parameters
@@ -422,7 +423,7 @@ class SpaceService:
                     if similarity > best_sim:
                         best_sim = similarity
                         best_theme_id = theme_id
-                if best_theme_id and best_sim >= self.SECONDARY_THRESHOLD:
+                if best_theme_id and best_sim >= self.RESCUE_THRESHOLD:
                     db.add(IdeaTheme(
                         idea_id=idea.id,
                         theme_id=best_theme_id,
