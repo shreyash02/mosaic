@@ -544,9 +544,6 @@ export default function SpaceDetailPage() {
             )}
           </div>
 
-          {/* Evolution timeline */}
-          <ThemeEvolutionTimeline runs={evolution} />
-
           {/* Ideas section */}
           <div style={s.sidebarSection}>
             <div style={s.sidebarTitle}>
@@ -608,6 +605,9 @@ export default function SpaceDetailPage() {
               ))
             )}
           </div>
+
+          {/* Evolution timeline */}
+          <ThemeEvolutionTimeline runs={evolution} />
         </div>
       </div>
 
