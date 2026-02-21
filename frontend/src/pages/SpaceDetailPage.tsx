@@ -78,6 +78,7 @@ const s = {
   },
   inputRow: {
     display: 'flex',
+    alignItems: 'center',
     gap: spacing[3],
     maxWidth: '800px',
     margin: '0 auto',
@@ -106,7 +107,6 @@ const s = {
     borderRadius: borders.radius.md,
     border: 'none',
     cursor: 'pointer',
-    alignSelf: 'flex-end' as const,
     whiteSpace: 'nowrap' as const,
   },
   // Main layout
@@ -577,7 +577,7 @@ export default function SpaceDetailPage() {
             style={s.ideaInput}
             value={ideaText}
             onChange={(e) => setIdeaText(e.target.value)}
-            placeholder="Drop an idea..."
+            placeholder="Drop a thought or an idea..."
             rows={1}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -594,7 +594,7 @@ export default function SpaceDetailPage() {
             onClick={handleDropIdea}
             disabled={!ideaText.trim() || dropping}
           >
-            {dropping ? 'Adding...' : 'Drop Idea'}
+            {dropping ? 'Adding...' : 'Add'}
           </button>
         </div>
       </div>
