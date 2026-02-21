@@ -192,7 +192,7 @@ export default function SpaceSettingsPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [autoOrganize, setAutoOrganize] = useState(true);
-  const [clusteringMode, setClusteringMode] = useState<'dbscan' | 'llm'>('dbscan');
+  const [clusteringMode, setClusteringMode] = useState<'dbscan' | 'llm'>('llm');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -309,16 +309,6 @@ export default function SpaceSettingsPage() {
               placeholder="What is this space about?"
             />
           </div>
-          <button
-            style={{
-              ...s.saveButton,
-              opacity: !title.trim() || saving ? 0.5 : 1,
-            }}
-            onClick={handleSave}
-            disabled={!title.trim() || saving}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
         </div>
 
         {/* Organization */}
@@ -398,6 +388,18 @@ export default function SpaceSettingsPage() {
             </span>
           </div>
         </div>
+
+        <button
+          style={{
+            ...s.saveButton,
+            opacity: !title.trim() || saving ? 0.5 : 1,
+            marginBottom: spacing[6],
+          }}
+          onClick={handleSave}
+          disabled={!title.trim() || saving}
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
 
         {/* Danger zone */}
         <div style={{ ...s.card, ...s.dangerZone }}>

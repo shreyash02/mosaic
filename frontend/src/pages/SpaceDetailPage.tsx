@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun } from '../types';
@@ -381,6 +381,15 @@ export default function SpaceDetailPage() {
     } catch {}
   }
 
+  const filteredIdeas = useMemo(() => {
+    if (!selectedThemeId) return ideas;
+    if (selectedThemeId === '__unthemed') {
+      return ideas.filter(idea => idea.themes.length === 0);
+    }
+    return ideas.filter(idea => idea.themes.some(t => t.theme_id === selectedThemeId));
+  }, [ideas, selectedThemeId]);
+  const selectedTheme = themes.find(t => t.id === selectedThemeId);
+
   if (loading) {
     return (
       <div style={s.page}>
@@ -396,9 +405,6 @@ export default function SpaceDetailPage() {
       </div>
     );
   }
-
-  const filteredIdeas = ideas;
-  const selectedTheme = themes.find(t => t.id === selectedThemeId);
 
   return (
     <div style={s.page}>

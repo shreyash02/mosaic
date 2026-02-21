@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("spaces", sa.Column("clustering_mode", sa.String(20), nullable=False, server_default=sa.text("'dbscan'")))
+    op.add_column("spaces", sa.Column("clustering_mode", sa.String(20), nullable=False, server_default=sa.text("'llm'")))
 
 
 def downgrade() -> None:

@@ -37,7 +37,7 @@ class SpaceResponse(BaseModel):
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True
-    clustering_mode: str = "dbscan"
+    clustering_mode: str = "llm"
     last_organized_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -53,7 +53,7 @@ class SpaceListItem(BaseModel):
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True
-    clustering_mode: str = "dbscan"
+    clustering_mode: str = "llm"
     created_at: datetime
 
     model_config = {"from_attributes": True}
