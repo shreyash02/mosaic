@@ -9,8 +9,11 @@ import ThemeEvolutionTimeline from '../components/ThemeEvolutionTimeline';
 
 const s = {
   page: {
-    minHeight: 'calc(100vh - var(--header-height))',
+    height: 'calc(100vh - var(--header-height))',
     backgroundColor: 'var(--color-primary-100)',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    overflow: 'hidden',
   },
   topBar: {
     display: 'flex',
@@ -108,12 +111,15 @@ const s = {
   // Main layout
   mainLayout: {
     display: 'flex',
-    minHeight: 'calc(100vh - var(--header-height) - 130px)',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
   },
   graphArea: {
     flex: 1,
     padding: spacing[4],
     minWidth: 0,
+    overflow: 'hidden',
   },
   sidebar: {
     width: '340px',
