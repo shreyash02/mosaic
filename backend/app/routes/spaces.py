@@ -128,12 +128,13 @@ def _build_idea_response(idea: Idea, db: Session) -> dict:
 
 # --- Background tasks ---
 
-def run_classify_idea_task(idea_id: UUID, space_id: UUID, db_url: str):
+def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url: str):
     """Background task to classify a new idea against existing themes."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from app.services.space_service import SpaceService
     from app.services.platform_settings_service import get_llm_model
+    from app.services.sse_service import sse_service
 
     engine = create_engine(db_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -144,11 +145,14 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, db_url: str):
         service = SpaceService(model=llm_model)
         service.classify_idea(db, idea_id, space_id)
         logger.info(f"Classified idea {idea_id} in space {space_id}")
+        sse_service.send_to_user_sync(owner_id, "space_classify_completed", {"space_id": str(space_id)})
 
         # Check if auto-organize should trigger
         if service.should_auto_organize(db, space_id):
             logger.info(f"Auto-organizing space {space_id}")
+            sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
             service.organize(db, space_id)
+            sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error classifying idea {idea_id}: {e}")
     finally:
@@ -156,12 +160,13 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, db_url: str):
         engine.dispose()
 
 
-def run_organize_space_task(space_id: UUID, db_url: str, context: Optional[str] = None):
+def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context: Optional[str] = None):
     """Background task to run full space organization."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from app.services.space_service import SpaceService
     from app.services.platform_settings_service import get_llm_model
+    from app.services.sse_service import sse_service
 
     engine = create_engine(db_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -172,6 +177,7 @@ def run_organize_space_task(space_id: UUID, db_url: str, context: Optional[str] 
         service = SpaceService(model=llm_model)
         service.organize(db, space_id, context=context)
         logger.info(f"Organized space {space_id}")
+        sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error organizing space {space_id}: {e}")
     finally:
@@ -335,6 +341,7 @@ def create_idea(
         run_classify_idea_task,
         idea_id=idea.id,
         space_id=space_id,
+        owner_id=current_user.id,
         db_url=str(settings.DATABASE_URL),
     )
 
@@ -418,6 +425,7 @@ def update_idea(
         run_classify_idea_task,
         idea_id=idea.id,
         space_id=space_id,
+        owner_id=current_user.id,
         db_url=str(settings.DATABASE_URL),
     )
 
@@ -625,6 +633,7 @@ def organize_space(
     background_tasks.add_task(
         run_organize_space_task,
         space_id=space.id,
+        owner_id=current_user.id,
         db_url=str(settings.DATABASE_URL),
     )
 

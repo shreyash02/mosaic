@@ -14,6 +14,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from datetime import datetime
 import json
+import asyncio
 import logging
 import os
 import time
@@ -23,6 +24,7 @@ from app.core.database import SessionLocal
 from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack, reminders, announcements, search, feature_flags, notifications, suggested_actions, insight_annotations, journals, presets, invite_codes, spaces
 from app.services.platform_settings_service import is_maintenance_mode
 from app.services.scheduler_service import start_scheduler, shutdown_scheduler
+from app.services.sse_service import sse_service
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     # Startup
+    sse_service.set_loop(asyncio.get_running_loop())
     start_scheduler()
     yield
     # Shutdown

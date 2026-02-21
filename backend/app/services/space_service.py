@@ -261,7 +261,7 @@ class SpaceService:
         embeddings = np.array([i.embedding for i in ideas_with_emb])
 
         # DBSCAN clustering
-        clustering = DBSCAN(eps=0.35, min_samples=2, metric="cosine")
+        clustering = DBSCAN(eps=0.50, min_samples=2, metric="cosine")
         labels = clustering.fit_predict(embeddings)
 
         # Group ideas by cluster

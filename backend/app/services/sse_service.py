@@ -17,6 +17,24 @@ class SSEService:
         # Supports multiple tabs/connections per user
         self._connections: Dict[UUID, Set[asyncio.Queue]] = {}
         self._lock = asyncio.Lock()
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Store the main event loop so sync threads can schedule coroutines."""
+        self._loop = loop
+
+    def send_to_user_sync(self, user_id: UUID, event_type: str, data: Any) -> None:
+        """Best-effort sync bridge to send_to_user() from a background thread."""
+        if self._loop is None:
+            logger.warning("SSE loop not set, cannot send sync event")
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(
+                self.send_to_user(user_id, event_type, data),
+                self._loop,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send SSE event (sync bridge): {e}")
 
     async def connect(self, user_id: UUID) -> asyncio.Queue:
         """

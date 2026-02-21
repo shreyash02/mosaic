@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun } from '../types';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useSSEEvent } from '../hooks/useSSEEvent';
 import NetworkGraph from '../components/NetworkGraph';
 import ThemeEvolutionTimeline from '../components/ThemeEvolutionTimeline';
 
@@ -246,32 +247,80 @@ export default function SpaceDetailPage() {
   const [ideaText, setIdeaText] = useState('');
   const [loading, setLoading] = useState(true);
   const [organizing, setOrganizing] = useState(false);
+  const [autoOrganizing, setAutoOrganizing] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   usePageTitle(space?.title || 'Space');
 
+  // Refresh only sidebar + graph content without touching input or page state
+  const refreshContent = useCallback(async (themeFilter?: string | null) => {
+    if (!id) return;
+    const [spaceData, themesData, graph, evoData] = await Promise.all([
+      api.getSpace(id),
+      api.getThemes(id),
+      api.getGraphData(id),
+      api.getEvolution(id),
+    ]);
+    // Refresh ideas respecting current theme filter
+    const filter = themeFilter !== undefined ? themeFilter : selectedThemeId;
+    let ideasData: SpaceIdea[];
+    if (filter === '__unthemed') {
+      ideasData = await api.getIdeas(id, undefined, true);
+    } else {
+      ideasData = await api.getIdeas(id, filter || undefined);
+    }
+    setSpace(spaceData);
+    setThemes(themesData);
+    setIdeas(ideasData);
+    setGraphData(graph);
+    setEvolution(evoData);
+  }, [id, selectedThemeId]);
+
+  // --- SSE-driven updates (replace polling) ---
+  // Use refs to access latest values in SSE callbacks without re-subscribing
+  const selectedThemeIdRef = useRef(selectedThemeId);
+  selectedThemeIdRef.current = selectedThemeId;
+  const refreshContentRef = useRef(refreshContent);
+  refreshContentRef.current = refreshContent;
+
+  const handleClassifyCompleted = useCallback((data: any) => {
+    if (!id || data.space_id !== id) return;
+    // Refresh ideas to pick up new theme tags
+    const filter = selectedThemeIdRef.current;
+    if (filter === '__unthemed') {
+      api.getIdeas(id, undefined, true).then(setIdeas).catch(() => {});
+    } else {
+      api.getIdeas(id, filter || undefined).then(setIdeas).catch(() => {});
+    }
+  }, [id]);
+
+  const handleOrganizeStarted = useCallback((data: any) => {
+    if (data.space_id !== id) return;
+    setAutoOrganizing(true);
+  }, [id]);
+
+  const handleOrganizeCompleted = useCallback((data: any) => {
+    if (data.space_id !== id) return;
+    setAutoOrganizing(false);
+    setOrganizing(false);
+    refreshContentRef.current();
+  }, [id]);
+
+  useSSEEvent('space_classify_completed', handleClassifyCompleted);
+  useSSEEvent('space_organize_started', handleOrganizeStarted);
+  useSSEEvent('space_organize_completed', handleOrganizeCompleted);
+
   const loadData = useCallback(async () => {
     if (!id) return;
     try {
-      const [spaceData, themesData, ideasData, graph, evoData] = await Promise.all([
-        api.getSpace(id),
-        api.getThemes(id),
-        api.getIdeas(id),
-        api.getGraphData(id),
-        api.getEvolution(id),
-      ]);
-      setSpace(spaceData);
-      setThemes(themesData);
-      setIdeas(ideasData);
-      setGraphData(graph);
-      setEvolution(evoData);
+      await refreshContent(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load space');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, refreshContent]);
 
   useEffect(() => {
     loadData();
@@ -294,31 +343,9 @@ export default function SpaceDetailPage() {
       setError(null);
       const newIdea = await api.createIdea(id, ideaText.trim());
       setIdeaText('');
-      // Add to list
+      // Add to list immediately; SSE events handle classify/organize updates
       setIdeas(prev => [newIdea, ...prev]);
-      // Update counts
       setSpace(prev => prev ? { ...prev, idea_count: prev.idea_count + 1 } : prev);
-
-      // Poll for background processing results (classify + potential auto-organize)
-      const orgAt = space?.last_organized_at;
-      let handled = false;
-      const checkForUpdates = async () => {
-        if (!id || handled) return;
-        try {
-          const spaceData = await api.getSpace(id);
-          if (spaceData.last_organized_at !== orgAt) {
-            // Auto-organize completed — full reload
-            handled = true;
-            loadData();
-          } else {
-            // Refresh ideas to pick up classify theme tags
-            const ideasData = await api.getIdeas(id);
-            setIdeas(ideasData);
-          }
-        } catch {}
-      };
-      setTimeout(checkForUpdates, 3000);
-      setTimeout(checkForUpdates, 10000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to add idea');
     } finally {
@@ -331,40 +358,8 @@ export default function SpaceDetailPage() {
     try {
       setOrganizing(true);
       setError(null);
-      const orgAt = space?.last_organized_at;
       await api.organizeSpace(id);
-      // Poll until last_organized_at changes (organize completed)
-      const poll = async (attempts = 0) => {
-        if (attempts > 30) {
-          setOrganizing(false);
-          return;
-        }
-        await new Promise(r => setTimeout(r, 2000));
-        try {
-          const spaceData = await api.getSpace(id);
-          if (spaceData.last_organized_at !== orgAt) {
-            // Organize completed — full reload
-            const [themesData, ideasData, graph, evoData] = await Promise.all([
-              api.getThemes(id),
-              api.getIdeas(id),
-              api.getGraphData(id),
-              api.getEvolution(id),
-            ]);
-            setSpace(spaceData);
-            setThemes(themesData);
-            setIdeas(ideasData);
-            setGraphData(graph);
-            setEvolution(evoData);
-            setSelectedThemeId(null);
-            setOrganizing(false);
-          } else {
-            poll(attempts + 1);
-          }
-        } catch {
-          poll(attempts + 1);
-        }
-      };
-      poll();
+      // SSE space_organize_completed event handles the rest
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to organize');
       setOrganizing(false);
@@ -493,6 +488,25 @@ export default function SpaceDetailPage() {
       </div>
 
       {error && <div style={s.error}>{error}</div>}
+
+      {/* Auto-organizing indicator */}
+      {autoOrganizing && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[2],
+          padding: `${spacing[1]} ${spacing[8]}`,
+          fontSize: typography.fontSize.xs,
+          color: 'var(--color-primary-500)',
+          backgroundColor: 'var(--color-primary-50)',
+          borderBottom: '1px solid var(--color-primary-200)',
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+            <path d="M21 12a9 9 0 11-6.219-8.56" />
+          </svg>
+          Auto-organizing themes...
+        </div>
+      )}
 
       {/* Main layout: graph + sidebar */}
       <div style={s.mainLayout}>

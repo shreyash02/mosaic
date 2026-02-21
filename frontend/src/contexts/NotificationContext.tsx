@@ -168,6 +168,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
     });
 
+    // Forward space events as CustomEvents (decoupled from NotificationContext state)
+    for (const evt of ['space_classify_completed', 'space_organize_started', 'space_organize_completed'] as const) {
+      eventSource.addEventListener(evt, (e: MessageEvent) => {
+        window.dispatchEvent(new CustomEvent(`sse:${evt}`, { detail: JSON.parse(e.data) }));
+      });
+    }
+
     eventSource.addEventListener('heartbeat', () => {
       // Keep alive - connection still active
     });
