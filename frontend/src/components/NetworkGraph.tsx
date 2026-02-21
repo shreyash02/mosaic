@@ -248,8 +248,38 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
     );
   }
 
+  const handleResetView = useCallback(() => {
+    graphRef.current?.zoomToFit(400, 60);
+  }, []);
+
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} onMouseMove={handleMouseMove}>
+      <button
+        onClick={handleResetView}
+        title="Reset view"
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: zIndex.dropdown,
+          background: isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+          color: isDark ? '#e2e8f0' : '#475569',
+          border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+          borderRadius: borders.radius.md,
+          padding: '4px 6px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: 1,
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <line x1="8" y1="11" x2="14" y2="11" />
+        </svg>
+      </button>
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
