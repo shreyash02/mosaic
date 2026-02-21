@@ -441,6 +441,9 @@ class SpaceService:
                         assigned_by="ai",
                     ))
 
+        # Flush all assignments (secondary + rescue) so they're visible to queries below
+        db.flush()
+
         # Clean up orphaned AI-generated themes (0 ideas after reassignment)
         retired_themes: List[Dict[str, Any]] = []  # {id, name, color}
         for theme in existing_themes:
@@ -878,6 +881,9 @@ Ideas:
                     confidence=float(similarity),
                     assigned_by="ai",
                 ))
+
+        # Flush assignments so they're visible to orphan cleanup + evolution queries
+        db.flush()
 
         # Clean up orphaned AI-generated themes
         retired_themes: List[Dict[str, Any]] = []
