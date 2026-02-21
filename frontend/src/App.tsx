@@ -83,6 +83,9 @@ import JournalInsightsPage from './pages/JournalInsightsPage';
 import JournalSettingsPage from './pages/JournalSettingsPage';
 import SharedJournalDetailPage from './pages/SharedJournalDetailPage';
 import AcceptJournalSharePage from './pages/AcceptJournalSharePage';
+import SpacesPage from './pages/SpacesPage';
+import SpaceDetailPage from './pages/SpaceDetailPage';
+import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ExplorePage from './pages/ExplorePage';
@@ -466,6 +469,32 @@ function App() {
               element={
                 <ProtectedRoute>
                   <JournalInsightsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Spaces */}
+            <Route
+              path="/spaces"
+              element={
+                <ProtectedRoute>
+                  <SpacesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/spaces/:id"
+              element={
+                <ProtectedRoute>
+                  <SpaceDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/spaces/:id/settings"
+              element={
+                <ProtectedRoute>
+                  <SpaceSettingsPage />
                 </ProtectedRoute>
               }
             />

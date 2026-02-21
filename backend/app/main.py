@@ -20,7 +20,7 @@ import time
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack, reminders, announcements, search, feature_flags, notifications, suggested_actions, insight_annotations, journals, presets, invite_codes
+from app.routes import auth, conversations, responses, analysis, organizations, admin, upload, series, periodic_analysis, slack, reminders, announcements, search, feature_flags, notifications, suggested_actions, insight_annotations, journals, presets, invite_codes, spaces
 from app.services.platform_settings_service import is_maintenance_mode
 from app.services.scheduler_service import start_scheduler, shutdown_scheduler
 
@@ -127,6 +127,7 @@ app.include_router(insight_annotations.router, prefix="/api", tags=["insight-ann
 app.include_router(journals.router, prefix="/api/journals", tags=["journals"])
 app.include_router(presets.router, prefix="/api/presets", tags=["presets"])
 app.include_router(invite_codes.router, prefix="/api", tags=["invite-codes"])
+app.include_router(spaces.router, prefix="/api/spaces", tags=["spaces"])
 
 
 @app.get("/health")

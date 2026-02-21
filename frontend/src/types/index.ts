@@ -1773,6 +1773,104 @@ export interface AdminEmailLogsResponse {
   recent_failures: EmailRecentFailure[];
 }
 
+// Spaces types
+export interface SpaceListItem {
+  id: string;
+  title: string;
+  description?: string;
+  idea_count: number;
+  theme_count: number;
+  auto_organize: boolean;
+  created_at: string;
+}
+
+export interface Space {
+  id: string;
+  title: string;
+  description?: string;
+  idea_count: number;
+  theme_count: number;
+  auto_organize: boolean;
+  last_organized_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpaceCreate {
+  title: string;
+  description?: string;
+}
+
+export interface SpaceUpdate {
+  title?: string;
+  description?: string;
+  auto_organize?: boolean;
+}
+
+export interface SpaceIdeaTheme {
+  theme_id: string;
+  theme_name: string;
+  confidence: number;
+  assigned_by: 'ai' | 'user';
+}
+
+export interface SpaceIdea {
+  id: string;
+  text: string;
+  status: string;
+  themes: SpaceIdeaTheme[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpaceTheme {
+  id: string;
+  name: string;
+  summary?: string;
+  color?: string;
+  is_ai_generated: boolean;
+  idea_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GraphNode {
+  id: string;
+  name: string;
+  size: number;
+  color: string;
+  summary?: string;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  strength: number;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  unthemed_count: number;
+}
+
+// Theme Evolution types
+export interface ThemeEvent {
+  id: string;
+  organize_run_id: string;
+  event_type: 'created' | 'retired' | 'persisted';
+  theme_name: string;
+  theme_color?: string;
+  details: Record<string, any>;
+  created_at: string;
+}
+
+export interface OrganizeRun {
+  run_id: string;
+  events: ThemeEvent[];
+  created_at: string;
+}
+
 // Audit Log types
 export interface AuditLogEntry {
   id: string;

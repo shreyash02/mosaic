@@ -33,6 +33,12 @@ from app.models.platform_settings import PlatformSettings
 from app.models.invite_code import InviteCode
 from app.models.waitlist_request import WaitlistRequest
 from app.models.audit_log import AuditLog
+from app.models.space import Space
+from app.models.idea import Idea
+from app.models.theme import Theme
+from app.models.idea_theme import IdeaTheme
+from app.models.theme_connection import ThemeConnection
+from app.models.theme_event import ThemeEvent
 
 __all__ = [
     "User",
@@ -71,4 +77,10 @@ __all__ = [
     "InviteCode",
     "WaitlistRequest",
     "AuditLog",
+    "Space",
+    "Idea",
+    "Theme",
+    "IdeaTheme",
+    "ThemeConnection",
+    "ThemeEvent",
 ]

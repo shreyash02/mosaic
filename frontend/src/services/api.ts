@@ -99,6 +99,14 @@ import type {
   ConversationPreset,
   PresetCreate,
   PresetUpdate,
+  Space,
+  SpaceListItem,
+  SpaceCreate,
+  SpaceUpdate,
+  SpaceIdea,
+  SpaceTheme,
+  GraphData,
+  OrganizeRun,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1327,6 +1335,93 @@ class ApiService {
 
   async adminUpdatePlatformSetting(key: string, data: { value: string; description?: string }): Promise<any> {
     const response = await this.client.put(`/admin/platform-settings/${key}`, data);
+    return response.data;
+  }
+
+  // Spaces endpoints
+
+  async getSpaces(): Promise<SpaceListItem[]> {
+    const response = await this.client.get<SpaceListItem[]>('/spaces');
+    return response.data;
+  }
+
+  async getSpace(spaceId: string): Promise<Space> {
+    const response = await this.client.get<Space>(`/spaces/${spaceId}`);
+    return response.data;
+  }
+
+  async createSpace(data: SpaceCreate): Promise<Space> {
+    const response = await this.client.post<Space>('/spaces', data);
+    return response.data;
+  }
+
+  async updateSpace(spaceId: string, data: SpaceUpdate): Promise<Space> {
+    const response = await this.client.patch<Space>(`/spaces/${spaceId}`, data);
+    return response.data;
+  }
+
+  async deleteSpace(spaceId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}`);
+  }
+
+  async getIdeas(spaceId: string, themeId?: string, unthemed?: boolean): Promise<SpaceIdea[]> {
+    const params = new URLSearchParams();
+    if (unthemed) params.set('unthemed', 'true');
+    else if (themeId) params.set('theme_id', themeId);
+    const qs = params.toString();
+    const response = await this.client.get<SpaceIdea[]>(`/spaces/${spaceId}/ideas${qs ? `?${qs}` : ''}`);
+    return response.data;
+  }
+
+  async createIdea(spaceId: string, text: string): Promise<SpaceIdea> {
+    const response = await this.client.post<SpaceIdea>(`/spaces/${spaceId}/ideas`, { text });
+    return response.data;
+  }
+
+  async updateIdea(spaceId: string, ideaId: string, text: string): Promise<SpaceIdea> {
+    const response = await this.client.patch<SpaceIdea>(`/spaces/${spaceId}/ideas/${ideaId}`, { text });
+    return response.data;
+  }
+
+  async deleteIdea(spaceId: string, ideaId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/ideas/${ideaId}`);
+  }
+
+  async getThemes(spaceId: string): Promise<SpaceTheme[]> {
+    const response = await this.client.get<SpaceTheme[]>(`/spaces/${spaceId}/themes`);
+    return response.data;
+  }
+
+  async updateTheme(spaceId: string, themeId: string, data: { name?: string; color?: string }): Promise<SpaceTheme> {
+    const response = await this.client.patch<SpaceTheme>(`/spaces/${spaceId}/themes/${themeId}`, data);
+    return response.data;
+  }
+
+  async mergeThemes(spaceId: string, sourceThemeId: string, targetThemeId: string): Promise<SpaceTheme> {
+    const response = await this.client.post<SpaceTheme>(`/spaces/${spaceId}/themes/merge`, {
+      source_theme_id: sourceThemeId,
+      target_theme_id: targetThemeId,
+    });
+    return response.data;
+  }
+
+  async deleteTheme(spaceId: string, themeId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/themes/${themeId}`);
+  }
+
+  async organizeSpace(spaceId: string): Promise<{ message: string; idea_count: number }> {
+    const response = await this.client.post<{ message: string; idea_count: number }>(`/spaces/${spaceId}/organize`);
+    return response.data;
+  }
+
+  async getGraphData(spaceId: string): Promise<GraphData> {
+    const response = await this.client.get<GraphData>(`/spaces/${spaceId}/graph`);
+    return response.data;
+  }
+
+  async getEvolution(spaceId: string, limit?: number): Promise<OrganizeRun[]> {
+    const params = limit ? `?limit=${limit}` : '';
+    const response = await this.client.get<OrganizeRun[]>(`/spaces/${spaceId}/evolution${params}`);
     return response.data;
   }
 }
