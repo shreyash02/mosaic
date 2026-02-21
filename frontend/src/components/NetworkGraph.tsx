@@ -7,7 +7,6 @@ interface NetworkGraphProps {
   data: GraphData;
   onNodeClick: (nodeId: string) => void;
   selectedNodeId?: string;
-  height?: number;
 }
 
 interface GraphNodeData extends GraphNode {
@@ -29,10 +28,10 @@ interface GraphDataInternal {
 // Show all labels when node count is at or below this threshold
 const LABEL_NODE_THRESHOLD = 15;
 
-export default function NetworkGraph({ data, onNodeClick, selectedNodeId, height = 500 }: NetworkGraphProps) {
+export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: NetworkGraphProps) {
   const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 600, height });
+  const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(() =>
     document.documentElement.getAttribute('data-theme') === 'dark'
@@ -50,17 +49,20 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, height
   // High-contrast hardcoded colors for canvas (CSS vars don't work in canvas)
   const labelColor = isDark ? '#e2e8f0' : '#1e293b';
 
-  // Observe container width
+  // Observe container size
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setDimensions({ width: entry.contentRect.width, height });
+        setDimensions({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
       }
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [height]);
+  }, []);
 
   // Memoize graph data so it only changes when the actual data prop changes
   const graphData: GraphDataInternal = useMemo(() => ({
@@ -168,7 +170,8 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, height
       <div
         ref={containerRef}
         style={{
-          height,
+          width: '100%',
+          height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -184,7 +187,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, height
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height, position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}

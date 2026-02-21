@@ -117,7 +117,6 @@ const s = {
   },
   graphArea: {
     flex: 1,
-    padding: spacing[4],
     minWidth: 0,
     overflow: 'hidden',
   },
@@ -503,7 +502,6 @@ export default function SpaceDetailPage() {
             data={graphData}
             onNodeClick={handleNodeClick}
             selectedNodeId={selectedThemeId || undefined}
-            height={Math.max(400, window.innerHeight - 300)}
           />
         </div>
 
