@@ -122,11 +122,25 @@ const s = {
     overflow: 'hidden',
   },
   sidebar: {
-    width: '340px',
     borderLeft: '1px solid var(--color-primary-200)',
     backgroundColor: 'var(--color-primary-50)',
     overflowY: 'auto' as const,
     flexShrink: 0,
+    position: 'relative' as const,
+  },
+  dragHandle: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    width: '5px',
+    height: '100%',
+    cursor: 'col-resize',
+    zIndex: 10,
+    background: 'transparent',
+    transition: 'background 0.15s',
+  },
+  dragHandleHover: {
+    background: 'var(--color-primary-400)',
   },
   sidebarSection: {
     padding: spacing[4],
@@ -250,6 +264,33 @@ export default function SpaceDetailPage() {
   const [autoOrganizing, setAutoOrganizing] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(340);
+  const [dragging, setDragging] = useState(false);
+  const [dragHandleHovered, setDragHandleHovered] = useState(false);
+  const mainLayoutRef = useRef<HTMLDivElement>(null);
+
+  // Sidebar drag-to-resize
+  useEffect(() => {
+    if (!dragging) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!mainLayoutRef.current) return;
+      const rect = mainLayoutRef.current.getBoundingClientRect();
+      const maxWidth = rect.width * 0.35;
+      const newWidth = Math.max(280, Math.min(maxWidth, rect.right - e.clientX));
+      setSidebarWidth(newWidth);
+    };
+    const handleMouseUp = () => setDragging(false);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [dragging]);
 
   usePageTitle(space?.title || 'Space');
 
@@ -551,7 +592,7 @@ export default function SpaceDetailPage() {
       )}
 
       {/* Main layout: graph + sidebar */}
-      <div style={s.mainLayout}>
+      <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph area */}
         <div style={s.graphArea}>
           <NetworkGraph
@@ -562,7 +603,14 @@ export default function SpaceDetailPage() {
         </div>
 
         {/* Sidebar */}
-        <div style={s.sidebar}>
+        <div style={{ ...s.sidebar, width: sidebarWidth }}>
+          {/* Drag handle */}
+          <div
+            style={{ ...s.dragHandle, ...(dragging || dragHandleHovered ? s.dragHandleHover : {}) }}
+            onMouseDown={() => setDragging(true)}
+            onMouseEnter={() => setDragHandleHovered(true)}
+            onMouseLeave={() => setDragHandleHovered(false)}
+          />
           {/* Themes section */}
           <div style={s.sidebarSection}>
             <div style={s.sidebarTitle}>
