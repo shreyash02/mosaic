@@ -1,7 +1,7 @@
 import { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import type { GraphData, GraphNode } from '../types';
-import { typography, spacing } from '../styles/tokens';
+import { typography, spacing, borders, shadows, zIndex } from '../styles/tokens';
 
 interface NetworkGraphProps {
   data: GraphData;
@@ -33,6 +33,8 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [hoveredLink, setHoveredLink] = useState<GraphEdgeData | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isDark, setIsDark] = useState(() =>
     document.documentElement.getAttribute('data-theme') === 'dark'
   );
@@ -96,6 +98,26 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
     onNodeClick(node.id);
   }, [onNodeClick]);
 
+  // Lookup map for resolving node IDs to data (used by tooltip)
+  const nodeMap = useMemo(() => {
+    const map: Record<string, GraphNodeData> = {};
+    for (const node of data.nodes) {
+      map[node.id] = node;
+    }
+    return map;
+  }, [data.nodes]);
+
+  const handleLinkHover = useCallback((link: GraphEdgeData | null) => {
+    setHoveredLink(link || null);
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }
+  }, []);
+
   const nodeCanvasObject = useCallback((node: GraphNodeData, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const isSelected = node.id === selectedNodeId;
     const isHovered = node.id === hoveredNode;
@@ -149,13 +171,22 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
     const target = link.target as GraphNodeData;
     if (!source.x || !source.y || !target.x || !target.y) return;
 
+    const isHovered = hoveredLink === link;
+
     ctx.beginPath();
     ctx.moveTo(source.x, source.y);
     ctx.lineTo(target.x, target.y);
-    ctx.strokeStyle = `rgba(107, 114, 128, ${Math.max(0.15, link.strength * 0.6)})`;
-    ctx.lineWidth = Math.max(0.5, link.strength * 3);
+    if (isHovered) {
+      ctx.strokeStyle = isDark
+        ? `rgba(209, 213, 219, 0.8)`
+        : `rgba(75, 85, 99, 0.8)`;
+      ctx.lineWidth = Math.max(2, link.strength * 4);
+    } else {
+      ctx.strokeStyle = `rgba(107, 114, 128, ${Math.max(0.15, link.strength * 0.6)})`;
+      ctx.lineWidth = Math.max(0.5, link.strength * 3);
+    }
     ctx.stroke();
-  }, []);
+  }, [hoveredLink, isDark]);
 
   const nodePointerAreaPaint = useCallback((node: GraphNodeData, color: string, ctx: CanvasRenderingContext2D) => {
     const size = Math.max(6, Math.sqrt(node.size) * 3 + 4);
@@ -164,6 +195,37 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
     ctx.fillStyle = color;
     ctx.fill();
   }, []);
+
+  const linkPointerAreaPaint = useCallback((link: GraphEdgeData, color: string, ctx: CanvasRenderingContext2D) => {
+    const source = link.source as GraphNodeData;
+    const target = link.target as GraphNodeData;
+    if (!source.x || !source.y || !target.x || !target.y) return;
+
+    const hitWidth = Math.max(6, link.strength * 6);
+    ctx.beginPath();
+    ctx.moveTo(source.x, source.y);
+    ctx.lineTo(target.x, target.y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = hitWidth;
+    ctx.stroke();
+  }, []);
+
+  // Resolve link source/target to node data for tooltip display
+  const tooltipData = useMemo(() => {
+    if (!hoveredLink) return null;
+    const sourceId = typeof hoveredLink.source === 'string' ? hoveredLink.source : hoveredLink.source.id;
+    const targetId = typeof hoveredLink.target === 'string' ? hoveredLink.target : hoveredLink.target.id;
+    const sourceNode = nodeMap[sourceId];
+    const targetNode = nodeMap[targetId];
+    if (!sourceNode || !targetNode) return null;
+    return {
+      sourceName: sourceNode.name,
+      sourceColor: sourceNode.color,
+      targetName: targetNode.name,
+      targetColor: targetNode.color,
+      strength: hoveredLink.strength,
+    };
+  }, [hoveredLink, nodeMap]);
 
   if (data.nodes.length === 0) {
     return (
@@ -187,7 +249,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} onMouseMove={handleMouseMove}>
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
@@ -196,8 +258,10 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
         nodeCanvasObject={nodeCanvasObject}
         nodePointerAreaPaint={nodePointerAreaPaint}
         linkCanvasObject={linkCanvasObject}
+        linkPointerAreaPaint={linkPointerAreaPaint}
         onNodeClick={handleNodeClick}
         onNodeHover={(node: GraphNodeData | null) => setHoveredNode(node?.id || null)}
+        onLinkHover={handleLinkHover}
         nodeLabel={() => ''}
         cooldownTicks={100}
         d3AlphaDecay={0.02}
@@ -206,6 +270,57 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId }: Netw
         enablePanInteraction={true}
         backgroundColor="transparent"
       />
+      {tooltipData && (
+        <div
+          style={{
+            position: 'absolute',
+            left: mousePos.x + 12,
+            top: mousePos.y - 8,
+            zIndex: zIndex.tooltip,
+            pointerEvents: 'none',
+            background: isDark ? '#1e293b' : '#ffffff',
+            color: isDark ? '#e2e8f0' : '#1e293b',
+            border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+            borderRadius: borders.radius.md,
+            boxShadow: shadows.md,
+            padding: `${spacing[1]} ${spacing[2]}`,
+            fontSize: typography.fontSize.xs,
+            fontFamily: typography.fontFamily.sans,
+            lineHeight: typography.lineHeight.normal,
+            whiteSpace: 'nowrap',
+            maxWidth: 280,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: '2px' }}>
+            <span style={{
+              display: 'inline-block',
+              width: 8,
+              height: 8,
+              borderRadius: borders.radius.full,
+              background: tooltipData.sourceColor,
+              flexShrink: 0,
+            }} />
+            <span style={{ fontWeight: typography.fontWeight.medium }}>{tooltipData.sourceName}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: '4px' }}>
+            <span style={{
+              display: 'inline-block',
+              width: 8,
+              height: 8,
+              borderRadius: borders.radius.full,
+              background: tooltipData.targetColor,
+              flexShrink: 0,
+            }} />
+            <span style={{ fontWeight: typography.fontWeight.medium }}>{tooltipData.targetName}</span>
+          </div>
+          <div style={{
+            color: isDark ? '#94a3b8' : '#6b7280',
+            fontSize: typography.fontSize.xs,
+          }}>
+            Strength: {Math.round(tooltipData.strength * 100)}%
+          </div>
+        </div>
+      )}
     </div>
   );
 }
