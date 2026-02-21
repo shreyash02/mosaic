@@ -148,16 +148,22 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
         logger.info(f"Classified idea {idea_id} in space {space_id}")
         sse_service.send_to_user_sync(owner_id, "space_classify_completed", {"space_id": str(space_id)})
 
+        # Expire cached session state so should_auto_organize gets fresh counts
+        db.expire_all()
+
         # Check if auto-organize should trigger
-        if service.should_auto_organize(db, space_id):
+        should_organize = service.should_auto_organize(db, space_id)
+        logger.info(f"should_auto_organize={should_organize} for space {space_id}")
+        if should_organize:
             logger.info(f"Auto-organizing space {space_id}")
             space = db.query(Space).filter(Space.id == space_id).first()
             clustering_mode = space.clustering_mode if space else "dbscan"
             sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
             service.organize(db, space_id, clustering_mode=clustering_mode)
+            logger.info(f"Auto-organize completed for space {space_id}")
             sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
-        logger.error(f"Error classifying idea {idea_id}: {e}")
+        logger.error(f"Error in classify/auto-organize for idea {idea_id} in space {space_id}: {e}", exc_info=True)
     finally:
         db.close()
         engine.dispose()

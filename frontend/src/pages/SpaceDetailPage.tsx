@@ -285,6 +285,8 @@ export default function SpaceDetailPage() {
   // Use refs to access latest values in SSE callbacks without re-subscribing
   const refreshContentRef = useRef(refreshContent);
   refreshContentRef.current = refreshContent;
+  // Fallback poll ref for auto-organize detection (SSE backup)
+  const autoOrgPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClassifyCompleted = useCallback((data: any) => {
     if (!id || data.space_id !== id) return;
@@ -306,6 +308,11 @@ export default function SpaceDetailPage() {
     if (data.space_id !== id) return;
     setAutoOrganizing(false);
     setOrganizing(false);
+    // Clear fallback poll timer since SSE delivered the event
+    if (autoOrgPollRef.current) {
+      clearTimeout(autoOrgPollRef.current);
+      autoOrgPollRef.current = null;
+    }
     refreshContentRef.current();
   }, [id]);
 
@@ -326,6 +333,9 @@ export default function SpaceDetailPage() {
 
   useEffect(() => {
     loadData();
+    return () => {
+      if (autoOrgPollRef.current) clearTimeout(autoOrgPollRef.current);
+    };
   }, [loadData]);
 
   // Load ideas filtered by theme when selection changes
@@ -347,7 +357,31 @@ export default function SpaceDetailPage() {
       setIdeaText('');
       // Add to list immediately; SSE events handle classify/organize updates
       setIdeas(prev => [newIdea, ...prev]);
-      setSpace(prev => prev ? { ...prev, idea_count: prev.idea_count + 1 } : prev);
+      const newCount = (space?.idea_count ?? 0) + 1;
+      setSpace(prev => prev ? { ...prev, idea_count: newCount } : prev);
+
+      // Fallback polling for auto-organize (in case SSE misses the event)
+      if (space?.auto_organize && newCount >= 5) {
+        const orgAt = space?.last_organized_at;
+        if (autoOrgPollRef.current) clearTimeout(autoOrgPollRef.current);
+        const poll = async (attempt: number) => {
+          if (!id || attempt > 5) {
+            setAutoOrganizing(false);
+            return;
+          }
+          try {
+            const s = await api.getSpace(id);
+            if (s.last_organized_at !== orgAt) {
+              // Auto-organize completed — refresh everything
+              setAutoOrganizing(false);
+              await refreshContent();
+              return;
+            }
+          } catch {}
+          autoOrgPollRef.current = setTimeout(() => poll(attempt + 1), 5000);
+        };
+        autoOrgPollRef.current = setTimeout(() => poll(0), 5000);
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to add idea');
     } finally {
