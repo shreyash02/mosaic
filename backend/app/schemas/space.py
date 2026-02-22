@@ -189,3 +189,17 @@ class OrganizeRunResponse(BaseModel):
     run_id: UUID
     events: List[ThemeEventResponse]
     created_at: datetime
+
+
+class SynthesisNoteStateUpdate(BaseModel):
+    """Update the state of a single synthesis note."""
+    theme_id: str
+    note_index: int = Field(..., ge=0)
+    state: Optional[str] = None
+
+    @field_validator("state")
+    @classmethod
+    def validate_state(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("completed", "dismissed"):
+            raise ValueError("state must be 'completed', 'dismissed', or null")
+        return v

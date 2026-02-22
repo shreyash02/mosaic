@@ -783,7 +783,7 @@ export default function SpaceDetailPage() {
                     {theme.summary}
                   </div>
                 )}
-                {selectedThemeId === theme.id && space.purpose_synthesis?.theme_notes?.[theme.id] && pc.themeNotesLabel && (() => {
+                {space.purpose_synthesis?.theme_notes?.[theme.id] && pc.themeNotesLabel && (() => {
                   const notes = space.purpose_synthesis!.theme_notes[theme.id];
                   const noteStates = space.purpose_synthesis!.note_states || {};
                   const dismissedNotes = notes.map((note, i) => ({ note, index: i })).filter(({ index }) => noteStates[`${theme.id}:${index}`] === 'dismissed');

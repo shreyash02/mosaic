@@ -1419,6 +1419,20 @@ class ApiService {
     return response.data;
   }
 
+  async updateSynthesisNoteState(
+    spaceId: string,
+    themeId: string,
+    noteIndex: number,
+    state: 'completed' | 'dismissed' | null,
+  ): Promise<any> {
+    const response = await this.client.patch(`/spaces/${spaceId}/synthesis/note-state`, {
+      theme_id: themeId,
+      note_index: noteIndex,
+      state,
+    });
+    return response.data;
+  }
+
   async getEvolution(spaceId: string, limit?: number): Promise<OrganizeRun[]> {
     const params = limit ? `?limit=${limit}` : '';
     const response = await this.client.get<OrganizeRun[]>(`/spaces/${spaceId}/evolution${params}`);

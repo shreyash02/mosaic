@@ -33,6 +33,7 @@ from app.schemas.space import (
     GraphData,
     OrganizeRunResponse,
     ThemeEventResponse,
+    SynthesisNoteStateUpdate,
 )
 
 logger = logging.getLogger(__name__)
@@ -743,6 +744,49 @@ def get_graph_data(
     from app.services.space_service import SpaceService
     service = SpaceService()
     return service.get_graph_data(db, space_id)
+
+
+@router.patch("/{space_id}/synthesis/note-state")
+def update_synthesis_note_state(
+    space_id: UUID,
+    data: SynthesisNoteStateUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update the state of a single synthesis note (completed/dismissed/reset)."""
+    space = _get_space_or_404(space_id, current_user, db)
+
+    if not space.settings or not isinstance(space.settings, dict):
+        raise HTTPException(status_code=400, detail="No synthesis data exists")
+
+    synthesis = space.settings.get("purpose_synthesis")
+    if not synthesis or not isinstance(synthesis, dict):
+        raise HTTPException(status_code=400, detail="No synthesis data exists")
+
+    theme_notes = synthesis.get("theme_notes", {})
+    if data.theme_id not in theme_notes:
+        raise HTTPException(status_code=404, detail="Theme not found in synthesis")
+
+    notes_list = theme_notes[data.theme_id]
+    if data.note_index >= len(notes_list):
+        raise HTTPException(status_code=404, detail="Note index out of range")
+
+    note_key = f"{data.theme_id}:{data.note_index}"
+    note_states = synthesis.get("note_states", {})
+
+    if data.state is None:
+        note_states.pop(note_key, None)
+    else:
+        note_states[note_key] = data.state
+
+    synthesis["note_states"] = note_states
+    current_settings = dict(space.settings)
+    current_settings["purpose_synthesis"] = synthesis
+    space.settings = current_settings
+    flag_modified(space, "settings")
+    db.commit()
+
+    return synthesis
 
 
 @router.get("/{space_id}/evolution", response_model=list[OrganizeRunResponse])
