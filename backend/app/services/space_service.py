@@ -1024,8 +1024,8 @@ Ideas:
 
         purpose_instructions = {
             "actions": {
-                "space_summary": "Provide a brief overall recommended approach or strategy based on all the themes. Focus on what to do next.",
-                "theme_notes": "For each theme, list 2-4 concrete preparation or planning steps that are NOT already in the user's ideas. Focus on logistics, research, considerations, and prerequisites the user may not have thought of.",
+                "space_summary": "Provide a brief overall recommended approach or strategy based on all the themes. Focus on what to build, try, or do next.",
+                "theme_notes": "For each theme, list 2-4 concrete next steps the user could take to move forward. Focus on building, prototyping, testing, and validating — things they can actually do this week. Avoid research tasks, risk analysis, legal/compliance considerations, or overly cautious prerequisites. Bias toward action over preparation.",
             },
             "insights": {
                 "space_summary": "Describe the most interesting cross-theme patterns, tensions, or surprising connections you notice across all themes.",
