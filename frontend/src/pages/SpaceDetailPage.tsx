@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose } from '../types';
+import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis } from '../types';
 import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -130,15 +130,18 @@ const s = {
     position: 'relative' as const,
   },
   dragHandle: {
-    position: 'absolute' as const,
+    position: 'sticky' as const,
     top: 0,
     left: 0,
     width: '5px',
     height: '100%',
+    minHeight: '100%',
     cursor: 'col-resize',
     zIndex: 10,
     background: 'transparent',
     transition: 'background 0.15s',
+    float: 'left' as const,
+    marginRight: '-5px',
   },
   dragHandleHover: {
     background: 'var(--color-primary-400)',
@@ -315,6 +318,7 @@ export default function SpaceDetailPage() {
   const [sidebarWidth, setSidebarWidth] = useState(340);
   const [dragging, setDragging] = useState(false);
   const [dragHandleHovered, setDragHandleHovered] = useState(false);
+  const [showDismissed, setShowDismissed] = useState<Record<string, boolean>>({});
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -516,6 +520,48 @@ export default function SpaceDetailPage() {
       setSpace(prev => prev ? { ...prev, idea_count: Math.max(0, prev.idea_count - 1) } : prev);
     } catch {}
   }
+
+  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'completed' | 'dismissed' | null) {
+    if (!id || !space) return;
+    // Optimistically update local state
+    const synthesis = space.purpose_synthesis;
+    if (!synthesis) return;
+    const noteKey = `${themeId}:${noteIndex}`;
+    const updatedStates = { ...(synthesis.note_states || {}) };
+    if (newState === null) {
+      delete updatedStates[noteKey];
+    } else {
+      updatedStates[noteKey] = newState;
+    }
+    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates };
+    setSpace(prev => prev ? { ...prev, purpose_synthesis: updatedSynthesis } : prev);
+    try {
+      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState);
+    } catch {
+      // Revert on failure
+      setSpace(prev => prev ? { ...prev, purpose_synthesis: synthesis } : prev);
+    }
+  }
+
+  // Compute synthesis progress stats
+  const synthesisProgress = useMemo(() => {
+    const synthesis = space?.purpose_synthesis;
+    if (!synthesis?.theme_notes) return null;
+    let totalNotes = 0;
+    let completedCount = 0;
+    let dismissedCount = 0;
+    const noteStates = synthesis.note_states || {};
+    for (const themeId of Object.keys(synthesis.theme_notes)) {
+      const notes = synthesis.theme_notes[themeId];
+      totalNotes += notes.length;
+      for (let i = 0; i < notes.length; i++) {
+        const state = noteStates[`${themeId}:${i}`];
+        if (state === 'completed') completedCount++;
+        if (state === 'dismissed') dismissedCount++;
+      }
+    }
+    return { totalNotes, completedCount, dismissedCount };
+  }, [space?.purpose_synthesis]);
 
   const filteredIdeas = useMemo(() => {
     if (selectedEdge) {
@@ -737,33 +783,126 @@ export default function SpaceDetailPage() {
                     {theme.summary}
                   </div>
                 )}
-                {selectedThemeId === theme.id && space.purpose_synthesis?.theme_notes?.[theme.id] && pc.themeNotesLabel && (
-                  <div style={{
-                    padding: `0 ${spacing[3]} ${spacing[3]} ${spacing[3]}`,
-                    marginLeft: spacing[5],
-                  }}>
+                {selectedThemeId === theme.id && space.purpose_synthesis?.theme_notes?.[theme.id] && pc.themeNotesLabel && (() => {
+                  const notes = space.purpose_synthesis!.theme_notes[theme.id];
+                  const noteStates = space.purpose_synthesis!.note_states || {};
+                  const dismissedNotes = notes.map((note, i) => ({ note, index: i })).filter(({ index }) => noteStates[`${theme.id}:${index}`] === 'dismissed');
+                  const completedCount = notes.filter((_, i) => noteStates[`${theme.id}:${i}`] === 'completed').length;
+                  const showingDismissed = showDismissed[theme.id];
+                  return (
                     <div style={{
-                      fontSize: typography.fontSize.xs,
-                      fontWeight: typography.fontWeight.medium,
-                      color: 'var(--color-primary-500)',
-                      marginBottom: spacing[1],
+                      padding: `0 ${spacing[3]} ${spacing[3]} ${spacing[3]}`,
+                      marginLeft: spacing[5],
                     }}>
-                      {pc.themeNotesLabel}
-                    </div>
-                    {space.purpose_synthesis.theme_notes[theme.id].map((note, i) => (
-                      <div key={i} style={{
+                      <div style={{
                         fontSize: typography.fontSize.xs,
-                        color: 'var(--color-primary-700)',
-                        lineHeight: typography.lineHeight.relaxed,
-                        padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
-                        borderLeft: `2px solid var(--color-primary-300)`,
+                        fontWeight: typography.fontWeight.medium,
+                        color: 'var(--color-primary-500)',
                         marginBottom: spacing[1],
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}>
-                        {note}
+                        <span>{pc.themeNotesLabel}{completedCount > 0 ? ` (${completedCount}/${notes.length} done)` : ''}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      {notes.map((note, i) => {
+                        const state = noteStates[`${theme.id}:${i}`];
+                        if (state === 'dismissed') return null;
+                        const isCompleted = state === 'completed';
+                        return (
+                          <div key={i} style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: spacing[2],
+                            fontSize: typography.fontSize.xs,
+                            color: isCompleted ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                            lineHeight: typography.lineHeight.relaxed,
+                            padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
+                            borderLeft: `2px solid ${isCompleted ? 'var(--color-primary-200)' : 'var(--color-primary-300)'}`,
+                            marginBottom: spacing[1],
+                            textDecoration: isCompleted ? 'line-through' : 'none',
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={isCompleted}
+                              onChange={() => handleNoteStateChange(theme.id, i, isCompleted ? null : 'completed')}
+                              style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
+                            />
+                            <span style={{ flex: 1 }}>{note}</span>
+                            <button
+                              onClick={() => handleNoteStateChange(theme.id, i, 'dismissed')}
+                              title="Dismiss"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--color-primary-400)',
+                                padding: '0 2px',
+                                fontSize: typography.fontSize.xs,
+                                flexShrink: 0,
+                                lineHeight: 1,
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {dismissedNotes.length > 0 && (
+                        <button
+                          onClick={() => setShowDismissed(prev => ({ ...prev, [theme.id]: !prev[theme.id] }))}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary-400)',
+                            fontSize: typography.fontSize.xs,
+                            padding: `${spacing[1]} 0`,
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          {showingDismissed ? 'Hide' : `${dismissedNotes.length} dismissed`}
+                        </button>
+                      )}
+                      {showingDismissed && dismissedNotes.map(({ note, index }) => (
+                        <div key={index} style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: spacing[2],
+                          fontSize: typography.fontSize.xs,
+                          color: 'var(--color-primary-400)',
+                          lineHeight: typography.lineHeight.relaxed,
+                          padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
+                          borderLeft: `2px solid var(--color-primary-200)`,
+                          marginBottom: spacing[1],
+                          textDecoration: 'line-through',
+                        }}>
+                          <span style={{ flex: 1 }}>{note}</span>
+                          <button
+                            onClick={() => handleNoteStateChange(theme.id, index, null)}
+                            title="Undo dismiss"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: 'var(--color-primary-400)',
+                              padding: '0 2px',
+                              fontSize: typography.fontSize.xs,
+                              flexShrink: 0,
+                              lineHeight: 1,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            undo
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
             {graphData.unthemed_count > 0 && (
@@ -795,11 +934,20 @@ export default function SpaceDetailPage() {
               }}>
                 {space.purpose_synthesis.space_summary}
               </div>
+              {synthesisProgress && synthesisProgress.completedCount > 0 && (
+                <div style={{
+                  fontSize: typography.fontSize.xs,
+                  color: 'var(--color-primary-500)',
+                  marginTop: spacing[2],
+                }}>
+                  {synthesisProgress.completedCount}/{synthesisProgress.totalNotes} items completed
+                </div>
+              )}
               {space.purpose_synthesis.generated_at && (
                 <div style={{
                   fontSize: typography.fontSize.xs,
                   color: 'var(--color-primary-400)',
-                  marginTop: spacing[2],
+                  marginTop: spacing[1],
                 }}>
                   Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
                 </div>
