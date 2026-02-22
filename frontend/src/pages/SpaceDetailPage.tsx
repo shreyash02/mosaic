@@ -900,19 +900,19 @@ export default function SpaceDetailPage() {
                       <div style={{
                         padding: `${spacing[2]} 0 0 ${spacing[6]}`,
                       }}>
-                        <input
-                          type="text"
+                        <textarea
                           placeholder="What happened? (optional — helps plan next steps)"
                           value={completionOutcome}
                           onChange={(e) => setCompletionOutcome(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleNoteStateChange(themeId, noteIndex, 'completed', undefined, completionOutcome.trim() || undefined);
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleNoteStateChange(themeId, noteIndex, 'completed', undefined, completionOutcome.trim() || undefined); }
                             if (e.key === 'Escape') { setCompletingNote(null); setCompletionOutcome(''); }
                           }}
                           autoFocus
+                          rows={2}
                           style={{
                             width: '100%',
-                            padding: `${spacing[1]} ${spacing[2]}`,
+                            padding: `${spacing[2]} ${spacing[2]}`,
                             fontSize: typography.fontSize.xs,
                             border: '1px solid var(--color-primary-300)',
                             borderRadius: borders.radius.sm,
@@ -921,9 +921,10 @@ export default function SpaceDetailPage() {
                             outline: 'none',
                             boxSizing: 'border-box',
                             fontFamily: 'inherit',
+                            resize: 'vertical' as const,
                           }}
                         />
-                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
                           <button
                             onClick={() => handleNoteStateChange(themeId, noteIndex, 'completed', undefined, completionOutcome.trim() || undefined)}
                             style={{
@@ -1211,19 +1212,19 @@ export default function SpaceDetailPage() {
                                 borderLeft: '2px solid var(--color-primary-600)',
                                 marginLeft: 0,
                               }}>
-                                <input
-                                  type="text"
+                                <textarea
                                   placeholder="What happened? (optional — helps plan next steps)"
                                   value={completionOutcome}
                                   onChange={(e) => setCompletionOutcome(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleNoteStateChange(theme.id, i, 'completed', undefined, completionOutcome.trim() || undefined);
+                                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleNoteStateChange(theme.id, i, 'completed', undefined, completionOutcome.trim() || undefined); }
                                     if (e.key === 'Escape') { setCompletingNote(null); setCompletionOutcome(''); }
                                   }}
                                   autoFocus
+                                  rows={2}
                                   style={{
                                     width: '100%',
-                                    padding: `${spacing[1]} ${spacing[2]}`,
+                                    padding: `${spacing[2]} ${spacing[2]}`,
                                     fontSize: typography.fontSize.xs,
                                     border: '1px solid var(--color-primary-300)',
                                     borderRadius: borders.radius.sm,
@@ -1232,9 +1233,10 @@ export default function SpaceDetailPage() {
                                     outline: 'none',
                                     boxSizing: 'border-box',
                                     fontFamily: 'inherit',
+                                    resize: 'vertical' as const,
                                   }}
                                 />
-                                <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                                <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
                                   <button
                                     onClick={() => handleNoteStateChange(theme.id, i, 'completed', undefined, completionOutcome.trim() || undefined)}
                                     style={{
