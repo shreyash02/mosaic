@@ -319,6 +319,8 @@ export default function SpaceDetailPage() {
   const [dragging, setDragging] = useState(false);
   const [dragHandleHovered, setDragHandleHovered] = useState(false);
   const [showDismissed, setShowDismissed] = useState<Record<string, boolean>>({});
+  const [dismissingNote, setDismissingNote] = useState<string | null>(null); // "themeId:index"
+  const [dismissReason, setDismissReason] = useState('');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -521,26 +523,40 @@ export default function SpaceDetailPage() {
     } catch {}
   }
 
-  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'completed' | 'dismissed' | null) {
+  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'completed' | 'dismissed' | null, reason?: string) {
     if (!id || !space) return;
     // Optimistically update local state
     const synthesis = space.purpose_synthesis;
     if (!synthesis) return;
     const noteKey = `${themeId}:${noteIndex}`;
     const updatedStates = { ...(synthesis.note_states || {}) };
+    const updatedReasons = { ...(synthesis.dismiss_reasons || {}) };
     if (newState === null) {
       delete updatedStates[noteKey];
+      delete updatedReasons[noteKey];
     } else {
       updatedStates[noteKey] = newState;
+      if (newState === 'dismissed' && reason) {
+        updatedReasons[noteKey] = reason;
+      } else if (newState !== 'dismissed') {
+        delete updatedReasons[noteKey];
+      }
     }
-    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates };
+    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates, dismiss_reasons: updatedReasons };
     setSpace(prev => prev ? { ...prev, purpose_synthesis: updatedSynthesis } : prev);
+    setDismissingNote(null);
+    setDismissReason('');
     try {
-      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState);
+      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason);
     } catch {
       // Revert on failure
       setSpace(prev => prev ? { ...prev, purpose_synthesis: synthesis } : prev);
     }
+  }
+
+  function startDismiss(themeId: string, noteIndex: number) {
+    setDismissingNote(`${themeId}:${noteIndex}`);
+    setDismissReason('');
   }
 
   // Compute synthesis progress stats
@@ -806,48 +822,111 @@ export default function SpaceDetailPage() {
                         <span>{pc.themeNotesLabel}{completedCount > 0 ? ` (${completedCount}/${notes.length} done)` : ''}</span>
                       </div>
                       {notes.map((note, i) => {
-                        const state = noteStates[`${theme.id}:${i}`];
+                        const noteKey = `${theme.id}:${i}`;
+                        const state = noteStates[noteKey];
                         if (state === 'dismissed') return null;
                         const isCompleted = state === 'completed';
+                        const isDismissing = dismissingNote === noteKey;
                         return (
-                          <div key={i} style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: spacing[2],
-                            fontSize: typography.fontSize.xs,
-                            color: isCompleted ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
-                            lineHeight: typography.lineHeight.relaxed,
-                            padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
-                            borderLeft: `2px solid ${isCompleted ? 'var(--color-primary-200)' : 'var(--color-primary-300)'}`,
-                            marginBottom: spacing[1],
-                            textDecoration: isCompleted ? 'line-through' : 'none',
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={isCompleted}
-                              onChange={() => handleNoteStateChange(theme.id, i, isCompleted ? null : 'completed')}
-                              style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
-                            />
-                            <span style={{ flex: 1 }}>{note}</span>
-                            <button
-                              onClick={() => handleNoteStateChange(theme.id, i, 'dismissed')}
-                              title="Dismiss"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: 'var(--color-primary-400)',
-                                padding: '0 2px',
-                                fontSize: typography.fontSize.xs,
-                                flexShrink: 0,
-                                lineHeight: 1,
-                              }}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                            </button>
+                          <div key={i} style={{ marginBottom: spacing[1] }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: spacing[2],
+                              fontSize: typography.fontSize.xs,
+                              color: isCompleted ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
+                              lineHeight: typography.lineHeight.relaxed,
+                              padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
+                              borderLeft: `2px solid ${isCompleted ? 'var(--color-primary-200)' : 'var(--color-primary-300)'}`,
+                              textDecoration: isCompleted ? 'line-through' : 'none',
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={isCompleted}
+                                onChange={() => handleNoteStateChange(theme.id, i, isCompleted ? null : 'completed')}
+                                style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
+                              />
+                              <span style={{ flex: 1 }}>{note}</span>
+                              <button
+                                onClick={() => startDismiss(theme.id, i)}
+                                title="Dismiss"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--color-primary-400)',
+                                  padding: '0 2px',
+                                  fontSize: typography.fontSize.xs,
+                                  flexShrink: 0,
+                                  lineHeight: 1,
+                                }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                            {isDismissing && (
+                              <div style={{
+                                padding: `${spacing[2]} 0 ${spacing[2]} ${spacing[3]}`,
+                                borderLeft: '2px solid var(--color-primary-300)',
+                                marginLeft: 0,
+                              }}>
+                                <input
+                                  type="text"
+                                  placeholder="Why? (optional, helps improve future suggestions)"
+                                  value={dismissReason}
+                                  onChange={(e) => setDismissReason(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleNoteStateChange(theme.id, i, 'dismissed', dismissReason.trim() || undefined);
+                                    if (e.key === 'Escape') { setDismissingNote(null); setDismissReason(''); }
+                                  }}
+                                  autoFocus
+                                  style={{
+                                    width: '100%',
+                                    padding: `${spacing[1]} ${spacing[2]}`,
+                                    fontSize: typography.fontSize.xs,
+                                    border: '1px solid var(--color-primary-300)',
+                                    borderRadius: borders.radius.sm,
+                                    backgroundColor: 'var(--color-primary-50)',
+                                    color: 'var(--color-primary-700)',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                    fontFamily: 'inherit',
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                                  <button
+                                    onClick={() => handleNoteStateChange(theme.id, i, 'dismissed', dismissReason.trim() || undefined)}
+                                    style={{
+                                      padding: `2px ${spacing[2]}`,
+                                      fontSize: typography.fontSize.xs,
+                                      backgroundColor: 'var(--color-primary-700)',
+                                      color: 'var(--color-primary-50)',
+                                      border: 'none',
+                                      borderRadius: borders.radius.sm,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Dismiss
+                                  </button>
+                                  <button
+                                    onClick={() => { setDismissingNote(null); setDismissReason(''); }}
+                                    style={{
+                                      padding: `2px ${spacing[2]}`,
+                                      fontSize: typography.fontSize.xs,
+                                      backgroundColor: 'transparent',
+                                      color: 'var(--color-primary-500)',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -867,39 +946,50 @@ export default function SpaceDetailPage() {
                           {showingDismissed ? 'Hide' : `${dismissedNotes.length} dismissed`}
                         </button>
                       )}
-                      {showingDismissed && dismissedNotes.map(({ note, index }) => (
+                      {showingDismissed && dismissedNotes.map(({ note, index }) => {
+                        const dismissReasonText = (space.purpose_synthesis!.dismiss_reasons || {})[`${theme.id}:${index}`];
+                        return (
                         <div key={index} style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: spacing[2],
                           fontSize: typography.fontSize.xs,
                           color: 'var(--color-primary-400)',
                           lineHeight: typography.lineHeight.relaxed,
                           padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
                           borderLeft: `2px solid var(--color-primary-200)`,
                           marginBottom: spacing[1],
-                          textDecoration: 'line-through',
                         }}>
-                          <span style={{ flex: 1 }}>{note}</span>
-                          <button
-                            onClick={() => handleNoteStateChange(theme.id, index, null)}
-                            title="Undo dismiss"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--color-primary-400)',
-                              padding: '0 2px',
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2], textDecoration: 'line-through' }}>
+                            <span style={{ flex: 1 }}>{note}</span>
+                            <button
+                              onClick={() => handleNoteStateChange(theme.id, index, null)}
+                              title="Undo dismiss"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--color-primary-400)',
+                                padding: '0 2px',
+                                fontSize: typography.fontSize.xs,
+                                flexShrink: 0,
+                                lineHeight: 1,
+                                textDecoration: 'none',
+                              }}
+                            >
+                              undo
+                            </button>
+                          </div>
+                          {dismissReasonText && (
+                            <div style={{
                               fontSize: typography.fontSize.xs,
-                              flexShrink: 0,
-                              lineHeight: 1,
-                              textDecoration: 'none',
-                            }}
-                          >
-                            undo
-                          </button>
+                              color: 'var(--color-primary-400)',
+                              fontStyle: 'italic',
+                              marginTop: '2px',
+                            }}>
+                              Reason: {dismissReasonText}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })()}

@@ -939,6 +939,34 @@ Ideas:
         if not themes:
             return None
 
+        # Collect previous user feedback (dismissed notes + reasons)
+        previous_feedback: List[str] = []
+        space = db.query(Space).filter(Space.id == space_id).first()
+        if space and space.settings and isinstance(space.settings, dict):
+            prev_synthesis = space.settings.get("purpose_synthesis")
+            if prev_synthesis and isinstance(prev_synthesis, dict):
+                prev_notes = prev_synthesis.get("theme_notes", {})
+                prev_states = prev_synthesis.get("note_states", {})
+                prev_reasons = prev_synthesis.get("dismiss_reasons", {})
+                for key, state in prev_states.items():
+                    if state == "dismissed":
+                        # Resolve the note text from theme_id:index
+                        parts = key.rsplit(":", 1)
+                        if len(parts) == 2:
+                            tid, idx_str = parts
+                            try:
+                                idx = int(idx_str)
+                                notes_list = prev_notes.get(tid, [])
+                                if idx < len(notes_list):
+                                    note_text = notes_list[idx]
+                                    reason = prev_reasons.get(key, "")
+                                    if reason:
+                                        previous_feedback.append(f"- \"{note_text}\" (reason: {reason})")
+                                    else:
+                                        previous_feedback.append(f"- \"{note_text}\"")
+                            except (ValueError, IndexError):
+                                pass
+
         # Build theme data with member ideas (cap 15 per theme)
         theme_data: List[Dict[str, Any]] = []
         for theme in themes:
@@ -966,7 +994,7 @@ Ideas:
         if not theme_data:
             return None
 
-        prompt = self._build_synthesis_prompt(purpose, theme_data)
+        prompt = self._build_synthesis_prompt(purpose, theme_data, previous_feedback)
 
         try:
             t0 = time.time()
@@ -1015,7 +1043,11 @@ Ideas:
             return None
 
     @staticmethod
-    def _build_synthesis_prompt(purpose: str, theme_data: List[Dict[str, Any]]) -> str:
+    def _build_synthesis_prompt(
+        purpose: str,
+        theme_data: List[Dict[str, Any]],
+        previous_feedback: Optional[List[str]] = None,
+    ) -> str:
         """Build a purpose-specific prompt for synthesis."""
         themes_section = ""
         for td in theme_data:
@@ -1043,10 +1075,17 @@ Ideas:
 
         instructions = purpose_instructions.get(purpose, purpose_instructions["explore"])
 
+        feedback_section = ""
+        if previous_feedback:
+            feedback_section = f"""
+The user previously dismissed the following suggestions. Avoid generating similar notes. Pay attention to the reasons — they indicate what the user does NOT want:
+{chr(10).join(previous_feedback)}
+"""
+
         return f"""Analyze the following themes and their member ideas. Provide purpose-specific synthesis.
 
 {themes_section}
-
+{feedback_section}
 Instructions:
 - space_summary: {instructions["space_summary"]}
 - theme_notes: {instructions["theme_notes"]}

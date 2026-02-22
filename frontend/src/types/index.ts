@@ -1789,6 +1789,7 @@ export interface PurposeSynthesis {
   theme_notes: Record<string, string[]>;
   generated_at: string;
   note_states?: Record<string, string>;
+  dismiss_reasons?: Record<string, string>;
 }
 
 export interface SpaceListItem {

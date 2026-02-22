@@ -196,6 +196,7 @@ class SynthesisNoteStateUpdate(BaseModel):
     theme_id: str
     note_index: int = Field(..., ge=0)
     state: Optional[str] = None
+    reason: Optional[str] = Field(None, max_length=500)
 
     @field_validator("state")
     @classmethod
