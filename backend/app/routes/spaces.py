@@ -774,19 +774,26 @@ def update_synthesis_note_state(
     note_key = f"{data.theme_id}:{data.note_index}"
     note_states = synthesis.get("note_states", {})
     dismiss_reasons = synthesis.get("dismiss_reasons", {})
+    completion_outcomes = synthesis.get("completion_outcomes", {})
 
     if data.state is None:
         note_states.pop(note_key, None)
         dismiss_reasons.pop(note_key, None)
+        completion_outcomes.pop(note_key, None)
     else:
         note_states[note_key] = data.state
         if data.state == "dismissed" and data.reason:
             dismiss_reasons[note_key] = data.reason
         elif data.state != "dismissed":
             dismiss_reasons.pop(note_key, None)
+        if data.state == "completed" and data.outcome:
+            completion_outcomes[note_key] = data.outcome
+        elif data.state != "completed":
+            completion_outcomes.pop(note_key, None)
 
     synthesis["note_states"] = note_states
     synthesis["dismiss_reasons"] = dismiss_reasons
+    synthesis["completion_outcomes"] = completion_outcomes
     current_settings = dict(space.settings)
     current_settings["purpose_synthesis"] = synthesis
     space.settings = current_settings

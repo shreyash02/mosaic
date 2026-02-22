@@ -197,10 +197,11 @@ class SynthesisNoteStateUpdate(BaseModel):
     note_index: int = Field(..., ge=0)
     state: Optional[str] = None
     reason: Optional[str] = Field(None, max_length=500)
+    outcome: Optional[str] = Field(None, max_length=500)
 
     @field_validator("state")
     @classmethod
     def validate_state(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in ("completed", "dismissed"):
-            raise ValueError("state must be 'completed', 'dismissed', or null")
+        if v is not None and v not in ("accepted", "completed", "dismissed"):
+            raise ValueError("state must be 'accepted', 'completed', 'dismissed', or null")
         return v

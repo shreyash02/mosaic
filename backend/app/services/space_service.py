@@ -939,8 +939,9 @@ Ideas:
         if not themes:
             return None
 
-        # Collect previous user feedback (dismissed notes + reasons)
+        # Collect previous user feedback (dismissed notes + reasons, completed outcomes)
         previous_feedback: List[str] = []
+        completed_outcomes: List[str] = []
         space = db.query(Space).filter(Space.id == space_id).first()
         if space and space.settings and isinstance(space.settings, dict):
             prev_synthesis = space.settings.get("purpose_synthesis")
@@ -948,24 +949,34 @@ Ideas:
                 prev_notes = prev_synthesis.get("theme_notes", {})
                 prev_states = prev_synthesis.get("note_states", {})
                 prev_reasons = prev_synthesis.get("dismiss_reasons", {})
+                prev_outcomes = prev_synthesis.get("completion_outcomes", {})
                 for key, state in prev_states.items():
+                    # Resolve the note text from theme_id:index
+                    parts = key.rsplit(":", 1)
+                    if len(parts) != 2:
+                        continue
+                    tid, idx_str = parts
+                    try:
+                        idx = int(idx_str)
+                        notes_list = prev_notes.get(tid, [])
+                        if idx >= len(notes_list):
+                            continue
+                        note_text = notes_list[idx]
+                    except (ValueError, IndexError):
+                        continue
+
                     if state == "dismissed":
-                        # Resolve the note text from theme_id:index
-                        parts = key.rsplit(":", 1)
-                        if len(parts) == 2:
-                            tid, idx_str = parts
-                            try:
-                                idx = int(idx_str)
-                                notes_list = prev_notes.get(tid, [])
-                                if idx < len(notes_list):
-                                    note_text = notes_list[idx]
-                                    reason = prev_reasons.get(key, "")
-                                    if reason:
-                                        previous_feedback.append(f"- \"{note_text}\" (reason: {reason})")
-                                    else:
-                                        previous_feedback.append(f"- \"{note_text}\"")
-                            except (ValueError, IndexError):
-                                pass
+                        reason = prev_reasons.get(key, "")
+                        if reason:
+                            previous_feedback.append(f"- \"{note_text}\" (reason: {reason})")
+                        else:
+                            previous_feedback.append(f"- \"{note_text}\"")
+                    elif state == "completed":
+                        outcome = prev_outcomes.get(key, "")
+                        if outcome:
+                            completed_outcomes.append(f"- \"{note_text}\" => outcome: {outcome}")
+                        else:
+                            completed_outcomes.append(f"- \"{note_text}\" (completed, no outcome reported)")
 
         # Build theme data with member ideas (cap 15 per theme)
         theme_data: List[Dict[str, Any]] = []
@@ -994,7 +1005,7 @@ Ideas:
         if not theme_data:
             return None
 
-        prompt = self._build_synthesis_prompt(purpose, theme_data, previous_feedback)
+        prompt = self._build_synthesis_prompt(purpose, theme_data, previous_feedback, completed_outcomes)
 
         try:
             t0 = time.time()
@@ -1047,6 +1058,7 @@ Ideas:
         purpose: str,
         theme_data: List[Dict[str, Any]],
         previous_feedback: Optional[List[str]] = None,
+        completed_outcomes: Optional[List[str]] = None,
     ) -> str:
         """Build a purpose-specific prompt for synthesis."""
         themes_section = ""
@@ -1077,9 +1089,14 @@ Ideas:
 
         feedback_section = ""
         if previous_feedback:
-            feedback_section = f"""
+            feedback_section += f"""
 The user previously dismissed the following suggestions. Avoid generating similar notes. Pay attention to the reasons — they indicate what the user does NOT want:
 {chr(10).join(previous_feedback)}
+"""
+        if completed_outcomes:
+            feedback_section += f"""
+The user completed these actions and reported the following outcomes. Use this to suggest better, more relevant next steps that build on what they've already done:
+{chr(10).join(completed_outcomes)}
 """
 
         return f"""Analyze the following themes and their member ideas. Provide purpose-specific synthesis.

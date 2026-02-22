@@ -321,6 +321,9 @@ export default function SpaceDetailPage() {
   const [showDismissed, setShowDismissed] = useState<Record<string, boolean>>({});
   const [dismissingNote, setDismissingNote] = useState<string | null>(null); // "themeId:index"
   const [dismissReason, setDismissReason] = useState('');
+  const [completingNote, setCompletingNote] = useState<string | null>(null); // "themeId:index"
+  const [completionOutcome, setCompletionOutcome] = useState('');
+  const [actionsExpanded, setActionsExpanded] = useState(true);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -523,7 +526,7 @@ export default function SpaceDetailPage() {
     } catch {}
   }
 
-  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'completed' | 'dismissed' | null, reason?: string) {
+  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'accepted' | 'completed' | 'dismissed' | null, reason?: string, outcome?: string) {
     if (!id || !space) return;
     // Optimistically update local state
     const synthesis = space.purpose_synthesis;
@@ -531,9 +534,11 @@ export default function SpaceDetailPage() {
     const noteKey = `${themeId}:${noteIndex}`;
     const updatedStates = { ...(synthesis.note_states || {}) };
     const updatedReasons = { ...(synthesis.dismiss_reasons || {}) };
+    const updatedOutcomes = { ...(synthesis.completion_outcomes || {}) };
     if (newState === null) {
       delete updatedStates[noteKey];
       delete updatedReasons[noteKey];
+      delete updatedOutcomes[noteKey];
     } else {
       updatedStates[noteKey] = newState;
       if (newState === 'dismissed' && reason) {
@@ -541,13 +546,20 @@ export default function SpaceDetailPage() {
       } else if (newState !== 'dismissed') {
         delete updatedReasons[noteKey];
       }
+      if (newState === 'completed' && outcome) {
+        updatedOutcomes[noteKey] = outcome;
+      } else if (newState !== 'completed') {
+        delete updatedOutcomes[noteKey];
+      }
     }
-    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates, dismiss_reasons: updatedReasons };
+    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates, dismiss_reasons: updatedReasons, completion_outcomes: updatedOutcomes };
     setSpace(prev => prev ? { ...prev, purpose_synthesis: updatedSynthesis } : prev);
     setDismissingNote(null);
     setDismissReason('');
+    setCompletingNote(null);
+    setCompletionOutcome('');
     try {
-      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason);
+      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason, outcome);
     } catch {
       // Revert on failure
       setSpace(prev => prev ? { ...prev, purpose_synthesis: synthesis } : prev);
@@ -566,6 +578,7 @@ export default function SpaceDetailPage() {
     let totalNotes = 0;
     let completedCount = 0;
     let dismissedCount = 0;
+    let acceptedCount = 0;
     const noteStates = synthesis.note_states || {};
     for (const themeId of Object.keys(synthesis.theme_notes)) {
       const notes = synthesis.theme_notes[themeId];
@@ -574,10 +587,35 @@ export default function SpaceDetailPage() {
         const state = noteStates[`${themeId}:${i}`];
         if (state === 'completed') completedCount++;
         if (state === 'dismissed') dismissedCount++;
+        if (state === 'accepted') acceptedCount++;
       }
     }
-    return { totalNotes, completedCount, dismissedCount };
+    return { totalNotes, completedCount, dismissedCount, acceptedCount };
   }, [space?.purpose_synthesis]);
+
+  // Gather accepted items across all themes for "Your Actions" section
+  const acceptedActions = useMemo(() => {
+    const synthesis = space?.purpose_synthesis;
+    if (!synthesis?.theme_notes) return [];
+    const noteStates = synthesis.note_states || {};
+    const actions: { themeId: string; noteIndex: number; note: string; themeName: string; themeColor: string }[] = [];
+    for (const themeId of Object.keys(synthesis.theme_notes)) {
+      const notes = synthesis.theme_notes[themeId];
+      const theme = themes.find(t => t.id === themeId);
+      for (let i = 0; i < notes.length; i++) {
+        if (noteStates[`${themeId}:${i}`] === 'accepted') {
+          actions.push({
+            themeId,
+            noteIndex: i,
+            note: notes[i],
+            themeName: theme?.name || 'Unknown',
+            themeColor: theme?.color || '#3B82F6',
+          });
+        }
+      }
+    }
+    return actions;
+  }, [space?.purpose_synthesis, themes]);
 
   const filteredIdeas = useMemo(() => {
     if (selectedEdge) {
@@ -767,6 +805,220 @@ export default function SpaceDetailPage() {
             onMouseEnter={() => setDragHandleHovered(true)}
             onMouseLeave={() => setDragHandleHovered(false)}
           />
+          {/* Your Actions section — accepted items across themes */}
+          {acceptedActions.length > 0 && (
+            <div style={{
+              ...s.sidebarSection,
+              backgroundColor: 'var(--color-primary-100)',
+            }}>
+              <div
+                style={{
+                  ...s.sidebarTitle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  marginBottom: actionsExpanded ? spacing[3] : 0,
+                }}
+                onClick={() => setActionsExpanded(prev => !prev)}
+              >
+                <span>
+                  Your Actions ({acceptedActions.length})
+                </span>
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: actionsExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+              {actionsExpanded && acceptedActions.map(({ themeId, noteIndex, note, themeName, themeColor }) => {
+                const actionKey = `${themeId}:${noteIndex}`;
+                const isCompleting = completingNote === actionKey;
+                return (
+                  <div key={actionKey} style={{ marginBottom: spacing[2] }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: spacing[2],
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-700)',
+                      lineHeight: typography.lineHeight.relaxed,
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        onChange={() => { setCompletingNote(actionKey); setCompletionOutcome(''); }}
+                        style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
+                        title="Mark as completed"
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: spacing[1],
+                          marginBottom: '2px',
+                        }}>
+                          <div style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: themeColor,
+                            flexShrink: 0,
+                          }} />
+                          <span style={{
+                            fontSize: '10px',
+                            color: 'var(--color-primary-500)',
+                          }}>{themeName}</span>
+                        </div>
+                        <span>{note}</span>
+                      </div>
+                      <button
+                        onClick={() => startDismiss(themeId, noteIndex)}
+                        title="Dismiss"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--color-primary-400)',
+                          padding: '0 2px',
+                          fontSize: typography.fontSize.xs,
+                          flexShrink: 0,
+                          lineHeight: 1,
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                    {/* Completion outcome prompt */}
+                    {isCompleting && (
+                      <div style={{
+                        padding: `${spacing[2]} 0 0 ${spacing[6]}`,
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="What happened? (optional — helps plan next steps)"
+                          value={completionOutcome}
+                          onChange={(e) => setCompletionOutcome(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleNoteStateChange(themeId, noteIndex, 'completed', undefined, completionOutcome.trim() || undefined);
+                            if (e.key === 'Escape') { setCompletingNote(null); setCompletionOutcome(''); }
+                          }}
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            padding: `${spacing[1]} ${spacing[2]}`,
+                            fontSize: typography.fontSize.xs,
+                            border: '1px solid var(--color-primary-300)',
+                            borderRadius: borders.radius.sm,
+                            backgroundColor: 'var(--color-primary-50)',
+                            color: 'var(--color-primary-700)',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                          <button
+                            onClick={() => handleNoteStateChange(themeId, noteIndex, 'completed', undefined, completionOutcome.trim() || undefined)}
+                            style={{
+                              padding: `2px ${spacing[2]}`,
+                              fontSize: typography.fontSize.xs,
+                              backgroundColor: 'var(--color-primary-700)',
+                              color: 'var(--color-primary-50)',
+                              border: 'none',
+                              borderRadius: borders.radius.sm,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Complete
+                          </button>
+                          <button
+                            onClick={() => { setCompletingNote(null); setCompletionOutcome(''); }}
+                            style={{
+                              padding: `2px ${spacing[2]}`,
+                              fontSize: typography.fontSize.xs,
+                              backgroundColor: 'transparent',
+                              color: 'var(--color-primary-500)',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Dismiss prompt in actions section */}
+                    {dismissingNote === actionKey && (
+                      <div style={{
+                        padding: `${spacing[2]} 0 0 ${spacing[6]}`,
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Why? (optional, helps improve future suggestions)"
+                          value={dismissReason}
+                          onChange={(e) => setDismissReason(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleNoteStateChange(themeId, noteIndex, 'dismissed', dismissReason.trim() || undefined);
+                            if (e.key === 'Escape') { setDismissingNote(null); setDismissReason(''); }
+                          }}
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            padding: `${spacing[1]} ${spacing[2]}`,
+                            fontSize: typography.fontSize.xs,
+                            border: '1px solid var(--color-primary-300)',
+                            borderRadius: borders.radius.sm,
+                            backgroundColor: 'var(--color-primary-50)',
+                            color: 'var(--color-primary-700)',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                          <button
+                            onClick={() => handleNoteStateChange(themeId, noteIndex, 'dismissed', dismissReason.trim() || undefined)}
+                            style={{
+                              padding: `2px ${spacing[2]}`,
+                              fontSize: typography.fontSize.xs,
+                              backgroundColor: 'var(--color-primary-700)',
+                              color: 'var(--color-primary-50)',
+                              border: 'none',
+                              borderRadius: borders.radius.sm,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Dismiss
+                          </button>
+                          <button
+                            onClick={() => { setDismissingNote(null); setDismissReason(''); }}
+                            style={{
+                              padding: `2px ${spacing[2]}`,
+                              fontSize: typography.fontSize.xs,
+                              backgroundColor: 'transparent',
+                              color: 'var(--color-primary-500)',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Themes section */}
           <div style={s.sidebarSection}>
             <div style={{
@@ -802,8 +1054,10 @@ export default function SpaceDetailPage() {
                 {space.purpose_synthesis?.theme_notes?.[theme.id] && pc.themeNotesLabel && (() => {
                   const notes = space.purpose_synthesis!.theme_notes[theme.id];
                   const noteStates = space.purpose_synthesis!.note_states || {};
+                  const completionOutcomes = space.purpose_synthesis!.completion_outcomes || {};
                   const dismissedNotes = notes.map((note, i) => ({ note, index: i })).filter(({ index }) => noteStates[`${theme.id}:${index}`] === 'dismissed');
                   const completedCount = notes.filter((_, i) => noteStates[`${theme.id}:${i}`] === 'completed').length;
+                  const acceptedCount = notes.filter((_, i) => noteStates[`${theme.id}:${i}`] === 'accepted').length;
                   const showingDismissed = showDismissed[theme.id];
                   return (
                     <div style={{
@@ -819,14 +1073,21 @@ export default function SpaceDetailPage() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                       }}>
-                        <span>{pc.themeNotesLabel}{completedCount > 0 ? ` (${completedCount}/${notes.length} done)` : ''}</span>
+                        <span>
+                          {pc.themeNotesLabel}
+                          {(acceptedCount > 0 || completedCount > 0) ? ` (${acceptedCount > 0 ? `${acceptedCount} active` : ''}${acceptedCount > 0 && completedCount > 0 ? ', ' : ''}${completedCount > 0 ? `${completedCount} done` : ''})` : ''}
+                        </span>
                       </div>
                       {notes.map((note, i) => {
                         const noteKey = `${theme.id}:${i}`;
                         const state = noteStates[noteKey];
                         if (state === 'dismissed') return null;
                         const isCompleted = state === 'completed';
+                        const isAccepted = state === 'accepted';
+                        const isSuggested = !state;
                         const isDismissing = dismissingNote === noteKey;
+                        const isCompleting = completingNote === noteKey;
+                        const outcomeText = completionOutcomes[noteKey];
                         return (
                           <div key={i} style={{ marginBottom: spacing[1] }}>
                             <div style={{
@@ -836,37 +1097,174 @@ export default function SpaceDetailPage() {
                               fontSize: typography.fontSize.xs,
                               color: isCompleted ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
                               lineHeight: typography.lineHeight.relaxed,
-                              padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
-                              borderLeft: `2px solid ${isCompleted ? 'var(--color-primary-200)' : 'var(--color-primary-300)'}`,
+                              padding: `${spacing[1]} ${spacing[2]} ${spacing[1]} ${spacing[3]}`,
+                              borderLeft: `2px solid ${isCompleted ? 'var(--color-primary-200)' : isAccepted ? 'var(--color-primary-600)' : 'var(--color-primary-300)'}`,
                               textDecoration: isCompleted ? 'line-through' : 'none',
+                              backgroundColor: isAccepted ? 'var(--color-primary-100)' : 'transparent',
+                              borderRadius: `0 ${borders.radius.sm} ${borders.radius.sm} 0`,
                             }}>
-                              <input
-                                type="checkbox"
-                                checked={isCompleted}
-                                onChange={() => handleNoteStateChange(theme.id, i, isCompleted ? null : 'completed')}
-                                style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
-                              />
+                              {/* Checkbox only for accepted items */}
+                              {isAccepted && (
+                                <input
+                                  type="checkbox"
+                                  checked={false}
+                                  onChange={() => { setCompletingNote(noteKey); setCompletionOutcome(''); }}
+                                  style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
+                                  title="Mark as completed"
+                                />
+                              )}
+                              {isCompleted && (
+                                <input
+                                  type="checkbox"
+                                  checked={true}
+                                  onChange={() => handleNoteStateChange(theme.id, i, 'accepted')}
+                                  style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
+                                  title="Undo completion"
+                                />
+                              )}
                               <span style={{ flex: 1 }}>{note}</span>
-                              <button
-                                onClick={() => startDismiss(theme.id, i)}
-                                title="Dismiss"
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: 'var(--color-primary-400)',
-                                  padding: '0 2px',
+                              {/* Accept button for suggested notes */}
+                              {isSuggested && (
+                                <button
+                                  onClick={() => handleNoteStateChange(theme.id, i, 'accepted')}
+                                  title="Accept — add to your actions"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-primary-400)',
+                                    padding: '0 2px',
+                                    fontSize: typography.fontSize.xs,
+                                    flexShrink: 0,
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                </button>
+                              )}
+                              {/* Accepted indicator */}
+                              {isAccepted && (
+                                <span style={{
                                   fontSize: typography.fontSize.xs,
+                                  color: 'var(--color-primary-500)',
                                   flexShrink: 0,
-                                  lineHeight: 1,
-                                }}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18" />
-                                  <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                              </button>
+                                  fontStyle: 'italic',
+                                }}>
+                                  active
+                                </span>
+                              )}
+                              {/* Dismiss button for suggested and accepted (not completed) */}
+                              {!isCompleted && (
+                                <button
+                                  onClick={() => startDismiss(theme.id, i)}
+                                  title="Dismiss"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-primary-400)',
+                                    padding: '0 2px',
+                                    fontSize: typography.fontSize.xs,
+                                    flexShrink: 0,
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
+                            {/* Outcome display for completed items */}
+                            {isCompleted && outcomeText && (
+                              <div style={{
+                                fontSize: typography.fontSize.xs,
+                                color: 'var(--color-primary-400)',
+                                fontStyle: 'italic',
+                                padding: `2px 0 2px ${spacing[3]}`,
+                                borderLeft: '2px solid var(--color-primary-200)',
+                                marginLeft: 0,
+                              }}>
+                                {outcomeText}
+                              </div>
+                            )}
+                            {isCompleted && !outcomeText && (
+                              <div style={{
+                                fontSize: typography.fontSize.xs,
+                                color: 'var(--color-primary-300)',
+                                fontStyle: 'italic',
+                                padding: `2px 0 2px ${spacing[3]}`,
+                                borderLeft: '2px solid var(--color-primary-200)',
+                                marginLeft: 0,
+                              }}>
+                                No outcome recorded
+                              </div>
+                            )}
+                            {/* Completion outcome prompt */}
+                            {isCompleting && (
+                              <div style={{
+                                padding: `${spacing[2]} 0 ${spacing[2]} ${spacing[3]}`,
+                                borderLeft: '2px solid var(--color-primary-600)',
+                                marginLeft: 0,
+                              }}>
+                                <input
+                                  type="text"
+                                  placeholder="What happened? (optional — helps plan next steps)"
+                                  value={completionOutcome}
+                                  onChange={(e) => setCompletionOutcome(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleNoteStateChange(theme.id, i, 'completed', undefined, completionOutcome.trim() || undefined);
+                                    if (e.key === 'Escape') { setCompletingNote(null); setCompletionOutcome(''); }
+                                  }}
+                                  autoFocus
+                                  style={{
+                                    width: '100%',
+                                    padding: `${spacing[1]} ${spacing[2]}`,
+                                    fontSize: typography.fontSize.xs,
+                                    border: '1px solid var(--color-primary-300)',
+                                    borderRadius: borders.radius.sm,
+                                    backgroundColor: 'var(--color-primary-50)',
+                                    color: 'var(--color-primary-700)',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                    fontFamily: 'inherit',
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                                  <button
+                                    onClick={() => handleNoteStateChange(theme.id, i, 'completed', undefined, completionOutcome.trim() || undefined)}
+                                    style={{
+                                      padding: `2px ${spacing[2]}`,
+                                      fontSize: typography.fontSize.xs,
+                                      backgroundColor: 'var(--color-primary-700)',
+                                      color: 'var(--color-primary-50)',
+                                      border: 'none',
+                                      borderRadius: borders.radius.sm,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Complete
+                                  </button>
+                                  <button
+                                    onClick={() => { setCompletingNote(null); setCompletionOutcome(''); }}
+                                    style={{
+                                      padding: `2px ${spacing[2]}`,
+                                      fontSize: typography.fontSize.xs,
+                                      backgroundColor: 'transparent',
+                                      color: 'var(--color-primary-500)',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                             {isDismissing && (
                               <div style={{
                                 padding: `${spacing[2]} 0 ${spacing[2]} ${spacing[3]}`,
@@ -1024,13 +1422,15 @@ export default function SpaceDetailPage() {
               }}>
                 {space.purpose_synthesis.space_summary}
               </div>
-              {synthesisProgress && synthesisProgress.completedCount > 0 && (
+              {synthesisProgress && (synthesisProgress.completedCount > 0 || synthesisProgress.acceptedCount > 0) && (
                 <div style={{
                   fontSize: typography.fontSize.xs,
                   color: 'var(--color-primary-500)',
                   marginTop: spacing[2],
                 }}>
-                  {synthesisProgress.completedCount}/{synthesisProgress.totalNotes} items completed
+                  {synthesisProgress.acceptedCount > 0 && `${synthesisProgress.acceptedCount} in progress`}
+                  {synthesisProgress.acceptedCount > 0 && synthesisProgress.completedCount > 0 && ' · '}
+                  {synthesisProgress.completedCount > 0 && `${synthesisProgress.completedCount} completed`}
                 </div>
               )}
               {space.purpose_synthesis.generated_at && (

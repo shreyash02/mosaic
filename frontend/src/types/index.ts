@@ -1790,6 +1790,7 @@ export interface PurposeSynthesis {
   generated_at: string;
   note_states?: Record<string, string>;
   dismiss_reasons?: Record<string, string>;
+  completion_outcomes?: Record<string, string>;
 }
 
 export interface SpaceListItem {

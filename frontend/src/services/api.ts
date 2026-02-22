@@ -1423,14 +1423,16 @@ class ApiService {
     spaceId: string,
     themeId: string,
     noteIndex: number,
-    state: 'completed' | 'dismissed' | null,
+    state: 'accepted' | 'completed' | 'dismissed' | null,
     reason?: string,
+    outcome?: string,
   ): Promise<any> {
     const response = await this.client.patch(`/spaces/${spaceId}/synthesis/note-state`, {
       theme_id: themeId,
       note_index: noteIndex,
       state,
       reason: reason || undefined,
+      outcome: outcome || undefined,
     });
     return response.data;
   }
