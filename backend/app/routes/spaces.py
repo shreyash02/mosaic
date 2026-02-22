@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -78,6 +79,33 @@ def _get_space_or_404(space_id: UUID, current_user: User, db: Session) -> Space:
     return space
 
 
+def _get_space_purpose(space: Space) -> str:
+    """Read purpose from settings JSONB, defaulting to 'explore'."""
+    if space.settings and isinstance(space.settings, dict):
+        return space.settings.get("purpose", "explore")
+    return "explore"
+
+
+PURPOSE_DESCRIPTIONS = {
+    "explore": "freely explore and collect ideas",
+    "organize": "sort ideas into clear, distinct groups",
+    "connections": "understand how their ideas relate and overlap",
+    "insights": "discover patterns, trends, and surprising findings",
+    "actions": "identify actionable next steps from their ideas",
+}
+
+
+def _build_space_context(space: Space) -> str:
+    """Build context string from space metadata for AI prompts."""
+    purpose = _get_space_purpose(space)
+    purpose_desc = PURPOSE_DESCRIPTIONS.get(purpose, PURPOSE_DESCRIPTIONS["explore"])
+    parts = [f'Space: "{space.title}"']
+    if space.description:
+        parts.append(f"Description: {space.description}")
+    parts.append(f"Purpose: The user wants to {purpose_desc}.")
+    return "\n".join(parts)
+
+
 def _build_space_response(space: Space, db: Session) -> dict:
     """Build a SpaceResponse dict with counts."""
     idea_count = db.query(func.count(Idea.id)).filter(
@@ -86,10 +114,16 @@ def _build_space_response(space: Space, db: Session) -> dict:
     theme_count = db.query(func.count(Theme.id)).filter(
         Theme.space_id == space.id
     ).scalar() or 0
+    purpose_synthesis = None
+    if space.settings and isinstance(space.settings, dict):
+        purpose_synthesis = space.settings.get("purpose_synthesis")
+
     return {
         "id": space.id,
         "title": space.title,
         "description": space.description,
+        "purpose": _get_space_purpose(space),
+        "purpose_synthesis": purpose_synthesis,
         "idea_count": idea_count,
         "theme_count": theme_count,
         "auto_organize": space.auto_organize,
@@ -158,9 +192,24 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
             logger.info(f"Auto-organizing space {space_id}")
             space = db.query(Space).filter(Space.id == space_id).first()
             clustering_mode = space.clustering_mode if space else "dbscan"
+            context = _build_space_context(space) if space else None
             sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
-            service.organize(db, space_id, clustering_mode=clustering_mode)
+            service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
             logger.info(f"Auto-organize completed for space {space_id}")
+
+            # Generate purpose synthesis after auto-organize
+            if space:
+                purpose = _get_space_purpose(space)
+                synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
+                current_settings = dict(space.settings) if space.settings else {}
+                if synthesis:
+                    current_settings["purpose_synthesis"] = synthesis
+                else:
+                    current_settings.pop("purpose_synthesis", None)
+                space.settings = current_settings
+                flag_modified(space, "settings")
+                db.commit()
+
             sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error in classify/auto-organize for idea {idea_id} in space {space_id}: {e}", exc_info=True)
@@ -188,6 +237,20 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
         clustering_mode = space.clustering_mode if space else "dbscan"
         service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
         logger.info(f"Organized space {space_id}")
+
+        # Generate purpose synthesis
+        if space:
+            purpose = _get_space_purpose(space)
+            synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
+            current_settings = dict(space.settings) if space.settings else {}
+            if synthesis:
+                current_settings["purpose_synthesis"] = synthesis
+            else:
+                current_settings.pop("purpose_synthesis", None)
+            space.settings = current_settings
+            flag_modified(space, "settings")
+            db.commit()
+
         sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error organizing space {space_id}: {e}")
@@ -225,10 +288,15 @@ def create_space(
                 detail=f"You have reached the maximum number of spaces ({max_spaces}) for your plan",
             )
 
+    space_settings = {}
+    if data.purpose:
+        space_settings["purpose"] = data.purpose
+
     space = Space(
         title=data.title,
         description=data.description,
         owner_id=current_user.id,
+        settings=space_settings if space_settings else None,
     )
     db.add(space)
     db.commit()
@@ -284,6 +352,13 @@ def update_space(
         space.auto_organize = data.auto_organize
     if data.clustering_mode is not None:
         space.clustering_mode = data.clustering_mode
+    if data.purpose is not None:
+        current_settings = dict(space.settings) if space.settings else {}
+        current_settings["purpose"] = data.purpose
+        # Clear stale synthesis when purpose changes
+        current_settings.pop("purpose_synthesis", None)
+        space.settings = current_settings
+        flag_modified(space, "settings")
     db.commit()
     db.refresh(space)
     return _build_space_response(space, db)
@@ -643,11 +718,14 @@ def organize_space(
             detail="Need at least 2 ideas to organize",
         )
 
+    context = _build_space_context(space)
+
     background_tasks.add_task(
         run_organize_space_task,
         space_id=space.id,
         owner_id=current_user.id,
         db_url=str(settings.DATABASE_URL),
+        context=context,
     )
 
     return {"message": "Organization started", "idea_count": idea_count}

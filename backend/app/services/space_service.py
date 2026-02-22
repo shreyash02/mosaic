@@ -924,6 +924,138 @@ Ideas:
         # Compute theme connections
         self.compute_connections(db, space_id)
 
+    def generate_purpose_synthesis(
+        self, db: Session, space_id: UUID, purpose: str
+    ) -> Optional[Dict[str, Any]]:
+        """Generate purpose-specific synthesis after organizing themes.
+
+        Makes one LLM call with all themes + member ideas, returns structured
+        content tailored to the space purpose. Skipped for 'organize' purpose.
+        """
+        if purpose == "organize":
+            return None
+
+        themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+        if not themes:
+            return None
+
+        # Build theme data with member ideas (cap 15 per theme)
+        theme_data: List[Dict[str, Any]] = []
+        for theme in themes:
+            assignments = (
+                db.query(IdeaTheme)
+                .filter(IdeaTheme.theme_id == theme.id)
+                .all()
+            )
+            if not assignments:
+                continue
+            idea_ids = [a.idea_id for a in assignments]
+            member_ideas = (
+                db.query(Idea)
+                .filter(Idea.id.in_(idea_ids), Idea.status == "active")
+                .limit(15)
+                .all()
+            )
+            theme_data.append({
+                "id": str(theme.id),
+                "name": theme.name,
+                "summary": theme.summary or "",
+                "ideas": [i.text for i in member_ideas],
+            })
+
+        if not theme_data:
+            return None
+
+        prompt = self._build_synthesis_prompt(purpose, theme_data)
+
+        try:
+            t0 = time.time()
+            response = self.anthropic_client.messages.create(
+                model=self.llm_model,
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="space_purpose_synthesis",
+                provider="anthropic",
+                model=self.llm_model,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                latency_ms=latency,
+            )
+
+            text = response.content[0].text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            result = json.loads(text)
+
+            # Map theme names -> theme IDs (case-insensitive fallback)
+            name_to_id: Dict[str, str] = {}
+            name_to_id_lower: Dict[str, str] = {}
+            for td in theme_data:
+                name_to_id[td["name"]] = td["id"]
+                name_to_id_lower[td["name"].lower()] = td["id"]
+
+            raw_notes = result.get("theme_notes", {})
+            mapped_notes: Dict[str, list] = {}
+            for theme_name, notes in raw_notes.items():
+                theme_id = name_to_id.get(theme_name) or name_to_id_lower.get(theme_name.lower())
+                if theme_id and isinstance(notes, list):
+                    mapped_notes[theme_id] = notes
+
+            from datetime import datetime as dt
+            return {
+                "space_summary": result.get("space_summary", ""),
+                "theme_notes": mapped_notes,
+                "generated_at": dt.utcnow().isoformat(),
+            }
+        except Exception:
+            logger.warning("Failed to generate purpose synthesis", exc_info=True)
+            return None
+
+    @staticmethod
+    def _build_synthesis_prompt(purpose: str, theme_data: List[Dict[str, Any]]) -> str:
+        """Build a purpose-specific prompt for synthesis."""
+        themes_section = ""
+        for td in theme_data:
+            ideas_text = "\n".join(f"  - {idea}" for idea in td["ideas"])
+            themes_section += f'\nTheme: "{td["name"]}"\nSummary: {td["summary"]}\nIdeas:\n{ideas_text}\n'
+
+        purpose_instructions = {
+            "actions": {
+                "space_summary": "Provide a brief overall recommended approach or strategy based on all the themes. Focus on what to do next.",
+                "theme_notes": "For each theme, list 2-4 concrete preparation or planning steps that are NOT already in the user's ideas. Focus on logistics, research, considerations, and prerequisites the user may not have thought of.",
+            },
+            "insights": {
+                "space_summary": "Describe the most interesting cross-theme patterns, tensions, or surprising connections you notice across all themes.",
+                "theme_notes": "For each theme, list 2-4 key patterns, surprising observations, or non-obvious findings within that theme's ideas.",
+            },
+            "connections": {
+                "space_summary": "Explain how all the themes fit together as a whole — what's the bigger picture connecting them?",
+                "theme_notes": "For each theme, describe 2-4 specific relationships or connections to other themes by name. How do they overlap, complement, or tension with each other?",
+            },
+            "explore": {
+                "space_summary": "Describe what's emerging overall from these ideas — what directions or possibilities are taking shape?",
+                "theme_notes": "For each theme, suggest 2-4 interesting angles, questions, or directions worth exploring further.",
+            },
+        }
+
+        instructions = purpose_instructions.get(purpose, purpose_instructions["explore"])
+
+        return f"""Analyze the following themes and their member ideas. Provide purpose-specific synthesis.
+
+{themes_section}
+
+Instructions:
+- space_summary: {instructions["space_summary"]}
+- theme_notes: {instructions["theme_notes"]}
+
+Return JSON only:
+{{"space_summary": "Your overall synthesis (2-4 sentences)", "theme_notes": {{"Theme Name": ["note 1", "note 2", "note 3"]}}}}
+
+Use the exact theme names as keys in theme_notes. Be specific and actionable, not generic."""
+
     def _extract_theme_with_llm(self, cluster_texts: List[str], context: Optional[str] = None) -> Dict[str, Any]:
         """Use Claude to extract a theme name and summary from a cluster of ideas."""
         context_section = ""

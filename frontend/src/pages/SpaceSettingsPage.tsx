@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Space } from '../types';
+import type { Space, SpacePurpose } from '../types';
+import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import Modal from '../components/Modal';
@@ -191,6 +192,7 @@ export default function SpaceSettingsPage() {
   const [space, setSpace] = useState<Space | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [purpose, setPurpose] = useState<SpacePurpose>('explore');
   const [autoOrganize, setAutoOrganize] = useState(true);
   const [clusteringMode, setClusteringMode] = useState<'dbscan' | 'llm'>('llm');
   const [loading, setLoading] = useState(true);
@@ -209,6 +211,7 @@ export default function SpaceSettingsPage() {
         setSpace(data);
         setTitle(data.title);
         setDescription(data.description || '');
+        setPurpose(data.purpose || 'explore');
         setAutoOrganize(data.auto_organize);
         setClusteringMode(data.clustering_mode || 'dbscan');
       })
@@ -227,6 +230,7 @@ export default function SpaceSettingsPage() {
       const updated = await api.updateSpace(id, {
         title: title.trim(),
         description: description.trim() || undefined,
+        purpose,
         auto_organize: autoOrganize,
         clustering_mode: clusteringMode,
       });
@@ -308,6 +312,37 @@ export default function SpaceSettingsPage() {
               maxLength={2000}
               placeholder="What is this space about?"
             />
+          </div>
+          <div style={s.formGroup}>
+            <label style={s.label}>Purpose</label>
+            <span style={{ ...s.toggleDescription, display: 'block', marginBottom: spacing[3] }}>
+              What do you want to do with this space? This shapes how AI organizes your ideas.
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }}>
+              {(Object.keys(SPACE_PURPOSES) as SpacePurpose[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPurpose(key)}
+                  style={{
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    fontSize: typography.fontSize.sm,
+                    fontWeight: typography.fontWeight.medium,
+                    borderRadius: borders.radius.md,
+                    border: purpose === key ? '1.5px solid var(--color-primary-900)' : '1px solid var(--color-primary-300)',
+                    backgroundColor: purpose === key ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                    color: purpose === key ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                    cursor: 'pointer',
+                    transition: transitions.duration.normal,
+                  }}
+                >
+                  {SPACE_PURPOSES[key].label}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginTop: spacing[2] }}>
+              {SPACE_PURPOSES[purpose].description}
+            </div>
           </div>
         </div>
 

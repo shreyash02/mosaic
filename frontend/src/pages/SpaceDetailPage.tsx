@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun } from '../types';
+import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose } from '../types';
+import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSSEEvent } from '../hooks/useSSEEvent';
@@ -248,6 +249,54 @@ const s = {
   },
 };
 
+const PURPOSE_CONFIG: Record<SpacePurpose, {
+  emptyThemes: string;
+  emptyIdeas: string;
+  ideasHeader: string;
+  graphFlex: number;
+  synthesisHeader?: string;
+  themeNotesLabel?: string;
+}> = {
+  explore: {
+    emptyThemes: 'Add ideas and click Organize to discover themes',
+    emptyIdeas: 'Drop ideas to see where they go',
+    ideasHeader: 'Recent Ideas',
+    graphFlex: 1,
+    synthesisHeader: "What's Emerging",
+    themeNotesLabel: 'Worth exploring',
+  },
+  organize: {
+    emptyThemes: 'Add ideas and organize to see your groups',
+    emptyIdeas: 'Drop ideas to start organizing',
+    ideasHeader: 'Ideas to Organize',
+    graphFlex: 1,
+  },
+  connections: {
+    emptyThemes: 'Add ideas and organize to see how they connect',
+    emptyIdeas: 'Drop ideas to discover connections',
+    ideasHeader: 'Recent Ideas',
+    graphFlex: 2,
+    synthesisHeader: 'How Themes Connect',
+    themeNotesLabel: 'Connections',
+  },
+  insights: {
+    emptyThemes: 'Add ideas and organize to surface patterns',
+    emptyIdeas: 'Drop ideas to discover patterns',
+    ideasHeader: 'Recent Ideas',
+    graphFlex: 2,
+    synthesisHeader: 'Key Patterns',
+    themeNotesLabel: 'Patterns',
+  },
+  actions: {
+    emptyThemes: 'Add ideas and organize to identify action areas',
+    emptyIdeas: 'Drop ideas to plan next steps',
+    ideasHeader: 'Ideas to Act On',
+    graphFlex: 1,
+    synthesisHeader: 'Recommended Next Steps',
+    themeNotesLabel: 'Steps to consider',
+  },
+};
+
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [space, setSpace] = useState<Space | null>(null);
@@ -488,6 +537,8 @@ export default function SpaceDetailPage() {
     }
     return ideas.filter(idea => idea.themes.some(t => t.theme_id === selectedThemeId));
   }, [ideas, selectedThemeId, selectedEdge]);
+  const purposeKey = (space?.purpose || 'explore') as SpacePurpose;
+  const pc = PURPOSE_CONFIG[purposeKey] || PURPOSE_CONFIG.explore;
   const selectedTheme = themes.find(t => t.id === selectedThemeId);
   const edgeThemeNames = selectedEdge ? {
     source: themes.find(t => t.id === selectedEdge.sourceId)?.name || 'Unknown',
@@ -521,6 +572,17 @@ export default function SpaceDetailPage() {
             </svg>
           </Link>
           <h1 style={s.title}>{space.title}</h1>
+          <span style={{
+            fontSize: typography.fontSize.xs,
+            color: 'var(--color-primary-500)',
+            backgroundColor: 'var(--color-primary-200)',
+            padding: `2px ${spacing[2]}`,
+            borderRadius: borders.radius.full,
+            fontWeight: typography.fontWeight.medium,
+            whiteSpace: 'nowrap',
+          }}>
+            {SPACE_PURPOSES[purposeKey]?.label || 'Freely explore'}
+          </span>
         </div>
         <div style={s.topBarRight}>
           <button
@@ -623,7 +685,7 @@ export default function SpaceDetailPage() {
       {/* Main layout: graph + sidebar */}
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph area */}
-        <div style={s.graphArea}>
+        <div style={{ ...s.graphArea, flex: pc.graphFlex }}>
           <NetworkGraph
             data={graphData}
             onNodeClick={handleNodeClick}
@@ -645,21 +707,63 @@ export default function SpaceDetailPage() {
           />
           {/* Themes section */}
           <div style={s.sidebarSection}>
-            <div style={s.sidebarTitle}>
+            <div style={{
+              ...s.sidebarTitle,
+              ...(purposeKey === 'organize' ? { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold } : {}),
+            }}>
               Themes ({themes.length})
             </div>
             {themes.map((theme) => (
-              <div
-                key={theme.id}
-                style={{
-                  ...s.themeItem,
-                  ...(selectedThemeId === theme.id ? s.themeItemSelected : {}),
-                }}
-                onClick={() => handleNodeClick(theme.id)}
-              >
-                <div style={{ ...s.themeColor, backgroundColor: theme.color || '#3B82F6' }} />
-                <span style={s.themeName}>{theme.name}</span>
-                <span style={s.themeCount}>{theme.idea_count}</span>
+              <div key={theme.id}>
+                <div
+                  style={{
+                    ...s.themeItem,
+                    ...(selectedThemeId === theme.id ? s.themeItemSelected : {}),
+                  }}
+                  onClick={() => handleNodeClick(theme.id)}
+                >
+                  <div style={{ ...s.themeColor, backgroundColor: theme.color || '#3B82F6' }} />
+                  <span style={s.themeName}>{theme.name}</span>
+                  <span style={s.themeCount}>{theme.idea_count}</span>
+                </div>
+                {selectedThemeId === theme.id && theme.summary && (
+                  <div style={{
+                    fontSize: typography.fontSize.xs,
+                    color: 'var(--color-primary-600)',
+                    lineHeight: typography.lineHeight.relaxed,
+                    padding: `0 ${spacing[3]} ${spacing[2]} ${spacing[3]}`,
+                    marginLeft: spacing[5],
+                  }}>
+                    {theme.summary}
+                  </div>
+                )}
+                {selectedThemeId === theme.id && space.purpose_synthesis?.theme_notes?.[theme.id] && pc.themeNotesLabel && (
+                  <div style={{
+                    padding: `0 ${spacing[3]} ${spacing[3]} ${spacing[3]}`,
+                    marginLeft: spacing[5],
+                  }}>
+                    <div style={{
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.medium,
+                      color: 'var(--color-primary-500)',
+                      marginBottom: spacing[1],
+                    }}>
+                      {pc.themeNotesLabel}
+                    </div>
+                    {space.purpose_synthesis.theme_notes[theme.id].map((note, i) => (
+                      <div key={i} style={{
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-700)',
+                        lineHeight: typography.lineHeight.relaxed,
+                        padding: `${spacing[1]} 0 ${spacing[1]} ${spacing[3]}`,
+                        borderLeft: `2px solid var(--color-primary-300)`,
+                        marginBottom: spacing[1],
+                      }}>
+                        {note}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {graphData.unthemed_count > 0 && (
@@ -675,10 +779,33 @@ export default function SpaceDetailPage() {
             )}
             {themes.length === 0 && graphData.unthemed_count === 0 && (
               <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', padding: spacing[2] }}>
-                Add ideas and click Organize to discover themes
+                {pc.emptyThemes}
               </div>
             )}
           </div>
+
+          {/* Purpose synthesis section */}
+          {space.purpose_synthesis?.space_summary && pc.synthesisHeader && (
+            <div style={s.sidebarSection}>
+              <div style={s.sidebarTitle}>{pc.synthesisHeader}</div>
+              <div style={{
+                fontSize: typography.fontSize.sm,
+                color: 'var(--color-primary-700)',
+                lineHeight: typography.lineHeight.relaxed,
+              }}>
+                {space.purpose_synthesis.space_summary}
+              </div>
+              {space.purpose_synthesis.generated_at && (
+                <div style={{
+                  fontSize: typography.fontSize.xs,
+                  color: 'var(--color-primary-400)',
+                  marginTop: spacing[2],
+                }}>
+                  Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Ideas section */}
           <div style={s.sidebarSection}>
@@ -689,11 +816,11 @@ export default function SpaceDetailPage() {
                 ? `Ideas in "${selectedTheme.name}"`
                 : selectedThemeId === '__unthemed'
                 ? 'Unthemed Ideas'
-                : `Recent Ideas (${space.idea_count})`}
+                : `${pc.ideasHeader} (${space.idea_count})`}
             </div>
             {filteredIdeas.length === 0 ? (
               <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', padding: spacing[2] }}>
-                No ideas {selectedThemeId ? 'in this theme' : 'yet'}
+                {selectedThemeId ? 'No ideas in this theme' : pc.emptyIdeas}
               </div>
             ) : (
               filteredIdeas.slice(0, 30).map((idea) => (

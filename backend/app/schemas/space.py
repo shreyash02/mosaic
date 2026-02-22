@@ -8,10 +8,21 @@ from pydantic import BaseModel, Field, field_validator
 
 # --- Space schemas ---
 
+VALID_PURPOSES = ("explore", "organize", "connections", "insights", "actions")
+
+
 class SpaceCreate(BaseModel):
     """Create a new space."""
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
+    purpose: Optional[str] = None
+
+    @field_validator("purpose")
+    @classmethod
+    def validate_purpose(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in VALID_PURPOSES:
+            raise ValueError(f"purpose must be one of: {', '.join(VALID_PURPOSES)}")
+        return v
 
 
 class SpaceUpdate(BaseModel):
@@ -20,6 +31,7 @@ class SpaceUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     auto_organize: Optional[bool] = None
     clustering_mode: Optional[str] = None
+    purpose: Optional[str] = None
 
     @field_validator("clustering_mode")
     @classmethod
@@ -28,12 +40,21 @@ class SpaceUpdate(BaseModel):
             raise ValueError("clustering_mode must be 'dbscan' or 'llm'")
         return v
 
+    @field_validator("purpose")
+    @classmethod
+    def validate_purpose(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in VALID_PURPOSES:
+            raise ValueError(f"purpose must be one of: {', '.join(VALID_PURPOSES)}")
+        return v
+
 
 class SpaceResponse(BaseModel):
     """Full space detail response."""
     id: UUID
     title: str
     description: Optional[str] = None
+    purpose: str = "explore"
+    purpose_synthesis: Optional[Dict[str, Any]] = None
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True
@@ -50,6 +71,8 @@ class SpaceListItem(BaseModel):
     id: UUID
     title: str
     description: Optional[str] = None
+    purpose: str = "explore"
+    purpose_synthesis: Optional[Dict[str, Any]] = None
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True

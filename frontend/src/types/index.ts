@@ -1774,10 +1774,28 @@ export interface AdminEmailLogsResponse {
 }
 
 // Spaces types
+export type SpacePurpose = 'explore' | 'organize' | 'connections' | 'insights' | 'actions';
+
+export const SPACE_PURPOSES: Record<SpacePurpose, { label: string; description: string }> = {
+  explore: { label: 'Freely explore', description: 'Collect and see where ideas go' },
+  organize: { label: 'Organize into groups', description: 'Sort ideas into clear themes' },
+  connections: { label: 'Find connections', description: 'Understand how ideas relate' },
+  insights: { label: 'Get insights', description: 'Surface patterns and surprises' },
+  actions: { label: 'Plan next steps', description: 'Turn ideas into actionable items' },
+};
+
+export interface PurposeSynthesis {
+  space_summary: string;
+  theme_notes: Record<string, string[]>;
+  generated_at: string;
+}
+
 export interface SpaceListItem {
   id: string;
   title: string;
   description?: string;
+  purpose?: SpacePurpose;
+  purpose_synthesis?: PurposeSynthesis;
   idea_count: number;
   theme_count: number;
   auto_organize: boolean;
@@ -1789,6 +1807,8 @@ export interface Space {
   id: string;
   title: string;
   description?: string;
+  purpose?: SpacePurpose;
+  purpose_synthesis?: PurposeSynthesis;
   idea_count: number;
   theme_count: number;
   auto_organize: boolean;
@@ -1801,6 +1821,7 @@ export interface Space {
 export interface SpaceCreate {
   title: string;
   description?: string;
+  purpose?: SpacePurpose;
 }
 
 export interface SpaceUpdate {
@@ -1808,6 +1829,7 @@ export interface SpaceUpdate {
   description?: string;
   auto_organize?: boolean;
   clustering_mode?: 'dbscan' | 'llm';
+  purpose?: SpacePurpose;
 }
 
 export interface SpaceIdeaTheme {

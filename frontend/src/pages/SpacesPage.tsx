@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { SpaceListItem } from '../types';
+import type { SpaceListItem, SpacePurpose } from '../types';
+import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import EmptyState from '../components/EmptyState';
@@ -175,6 +176,7 @@ export default function SpacesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createDescription, setCreateDescription] = useState('');
+  const [createPurpose, setCreatePurpose] = useState<SpacePurpose>('explore');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -200,10 +202,12 @@ export default function SpacesPage() {
       const space = await api.createSpace({
         title: createTitle.trim(),
         description: createDescription.trim() || undefined,
+        purpose: createPurpose,
       });
       setShowCreateModal(false);
       setCreateTitle('');
       setCreateDescription('');
+      setCreatePurpose('explore');
       navigate(`/spaces/${space.id}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create space');
@@ -314,6 +318,34 @@ export default function SpacesPage() {
             placeholder="What is this space about?"
             maxLength={2000}
           />
+        </div>
+        <div style={s.formGroup}>
+          <label style={s.label}>Purpose</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }}>
+            {(Object.keys(SPACE_PURPOSES) as SpacePurpose[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setCreatePurpose(key)}
+                style={{
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  borderRadius: borders.radius.md,
+                  border: createPurpose === key ? '1.5px solid var(--color-primary-900)' : '1px solid var(--color-primary-300)',
+                  backgroundColor: createPurpose === key ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                  color: createPurpose === key ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                  cursor: 'pointer',
+                  transition: transitions.duration.normal,
+                }}
+              >
+                {SPACE_PURPOSES[key].label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginTop: spacing[2] }}>
+            {SPACE_PURPOSES[createPurpose].description}
+          </div>
         </div>
         <div style={s.modalActions}>
           <button style={s.cancelButton} onClick={() => setShowCreateModal(false)}>
