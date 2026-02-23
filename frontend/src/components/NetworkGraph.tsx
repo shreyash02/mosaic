@@ -274,8 +274,8 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} onMouseMove={handleMouseMove}>
       <div style={{
         position: 'absolute',
-        top: 8,
-        right: 8,
+        bottom: 12,
+        right: 12,
         zIndex: zIndex.dropdown,
         display: 'flex',
         gap: 4,

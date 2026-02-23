@@ -9,6 +9,7 @@ import { formatRelativeTime } from '../utils/formatting';
 import { useSSEEvent } from '../hooks/useSSEEvent';
 import NetworkGraph from '../components/NetworkGraph';
 import ThemeEvolutionTimeline from '../components/ThemeEvolutionTimeline';
+import ThemeEvolutionSankey from '../components/ThemeEvolutionSankey';
 
 const s = {
   page: {
@@ -122,6 +123,25 @@ const s = {
     flex: 1,
     minWidth: 0,
     overflow: 'hidden',
+    position: 'relative' as const,
+  },
+  viewToggle: {
+    position: 'absolute' as const,
+    top: spacing[2],
+    right: spacing[3],
+    zIndex: 5,
+    display: 'flex',
+    backgroundColor: 'var(--color-primary-200)',
+    borderRadius: borders.radius.full,
+    padding: '2px',
+  },
+  viewToggleBtn: {
+    padding: `${spacing[1]} ${spacing[3]}`,
+    fontSize: typography.fontSize.xs,
+    border: 'none',
+    borderRadius: borders.radius.full,
+    cursor: 'pointer',
+    transition: `all ${transitions.duration.fast}`,
   },
   sidebar: {
     borderLeft: '1px solid var(--color-primary-200)',
@@ -330,6 +350,7 @@ export default function SpaceDetailPage() {
   const [themesExpanded, setThemesExpanded] = useState(true);
   const [ideasExpanded, setIdeasExpanded] = useState(true);
   const [evolutionExpanded, setEvolutionExpanded] = useState(true);
+  const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -792,14 +813,44 @@ export default function SpaceDetailPage() {
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph area */}
         <div style={{ ...s.graphArea, flex: pc.graphFlex }}>
-          <NetworkGraph
-            data={graphData}
-            onNodeClick={handleNodeClick}
-            selectedNodeId={selectedThemeId || undefined}
-            onEdgeClick={handleEdgeClick}
-            selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
-            onClearSelection={handleClearSelection}
-          />
+          {/* View toggle: Graph / Evolution */}
+          <div style={s.viewToggle}>
+            <button
+              style={{
+                ...s.viewToggleBtn,
+                fontWeight: mainView === 'graph' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                color: mainView === 'graph' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                backgroundColor: mainView === 'graph' ? 'var(--color-primary-50)' : 'transparent',
+              }}
+              onClick={() => setMainView('graph')}
+            >
+              Graph
+            </button>
+            <button
+              style={{
+                ...s.viewToggleBtn,
+                fontWeight: mainView === 'evolution' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                color: mainView === 'evolution' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                backgroundColor: mainView === 'evolution' ? 'var(--color-primary-50)' : 'transparent',
+              }}
+              onClick={() => setMainView('evolution')}
+            >
+              Evolution
+            </button>
+          </div>
+
+          {mainView === 'graph' ? (
+            <NetworkGraph
+              data={graphData}
+              onNodeClick={handleNodeClick}
+              selectedNodeId={selectedThemeId || undefined}
+              onEdgeClick={handleEdgeClick}
+              selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
+              onClearSelection={handleClearSelection}
+            />
+          ) : (
+            <ThemeEvolutionSankey runs={evolution} />
+          )}
         </div>
 
         {/* Sidebar */}
