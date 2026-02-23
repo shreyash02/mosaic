@@ -763,7 +763,7 @@ async def forgot_password(
         # Generate reset token
         token = create_password_reset_token()
         user.password_reset_token = token
-        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
         db.commit()
 
         # Send email
@@ -798,7 +798,7 @@ async def reset_password(
             detail="Invalid or expired reset token"
         )
 
-    if not user.password_reset_expires or user.password_reset_expires < datetime.now(timezone.utc):
+    if not user.password_reset_expires or user.password_reset_expires < datetime.utcnow():
         # Clear expired token
         user.password_reset_token = None
         user.password_reset_expires = None
