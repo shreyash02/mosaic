@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis } from '../types';
+import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry } from '../types';
 import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { formatRelativeTime } from '../utils/formatting';
 import { useSSEEvent } from '../hooks/useSSEEvent';
 import NetworkGraph from '../components/NetworkGraph';
 import ThemeEvolutionTimeline from '../components/ThemeEvolutionTimeline';
@@ -324,6 +325,7 @@ export default function SpaceDetailPage() {
   const [completingNote, setCompletingNote] = useState<string | null>(null); // "themeId:index"
   const [completionOutcome, setCompletionOutcome] = useState('');
   const [actionsExpanded, setActionsExpanded] = useState(true);
+  const [activityLogExpanded, setActivityLogExpanded] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -1019,6 +1021,127 @@ export default function SpaceDetailPage() {
               })}
             </div>
           )}
+
+          {/* Activity Log — persisted completed/dismissed notes across re-organizes */}
+          {space.synthesis_activity_log && space.synthesis_activity_log.length > 0 && (() => {
+            const log = space.synthesis_activity_log!;
+            // Group by theme_name
+            const grouped: Record<string, SynthesisActivityEntry[]> = {};
+            for (const entry of log) {
+              if (!grouped[entry.theme_name]) grouped[entry.theme_name] = [];
+              grouped[entry.theme_name].push(entry);
+            }
+            const themeNames = Object.keys(grouped);
+            // Find matching current theme colors
+            const themeColorMap: Record<string, string> = {};
+            for (const t of themes) {
+              themeColorMap[t.name] = t.color || '#3B82F6';
+            }
+
+            return (
+              <div style={{
+                ...s.sidebarSection,
+                backgroundColor: 'var(--color-primary-50)',
+                borderTop: '1px solid var(--color-primary-200)',
+              }}>
+                <div
+                  style={{
+                    ...s.sidebarTitle,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    marginBottom: activityLogExpanded ? spacing[3] : 0,
+                  }}
+                  onClick={() => setActivityLogExpanded(prev => !prev)}
+                >
+                  <span>
+                    Activity Log ({log.length})
+                  </span>
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: activityLogExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+                {activityLogExpanded && themeNames.map(themeName => {
+                  const entries = grouped[themeName];
+                  const dotColor = themeColorMap[themeName] || '#9CA3AF';
+                  return (
+                    <div key={themeName} style={{ marginBottom: spacing[3] }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing[1],
+                        marginBottom: spacing[1],
+                      }}>
+                        <div style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: dotColor,
+                          flexShrink: 0,
+                        }} />
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: typography.fontWeight.semibold,
+                          color: 'var(--color-primary-600)',
+                          textTransform: 'uppercase' as const,
+                          letterSpacing: '0.05em',
+                        }}>{themeName}</span>
+                      </div>
+                      {entries.map((entry, i) => (
+                        <div key={i} style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: spacing[2],
+                          marginBottom: spacing[1],
+                          paddingLeft: spacing[3],
+                          fontSize: typography.fontSize.xs,
+                          color: 'var(--color-primary-600)',
+                          lineHeight: typography.lineHeight.relaxed,
+                        }}>
+                          {entry.action === 'completed' ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}>
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}>
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          )}
+                          <div style={{ flex: 1 }}>
+                            <div>{entry.note_text}</div>
+                            {entry.detail && (
+                              <div style={{
+                                fontStyle: 'italic',
+                                color: 'var(--color-primary-400)',
+                                fontSize: '11px',
+                                marginTop: '1px',
+                              }}>
+                                {entry.detail}
+                              </div>
+                            )}
+                            <div style={{
+                              color: 'var(--color-primary-400)',
+                              fontSize: '10px',
+                              marginTop: '1px',
+                            }}>
+                              {formatRelativeTime(entry.created_at)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Themes section */}
           <div style={s.sidebarSection}>

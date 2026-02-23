@@ -18,6 +18,7 @@ from app.models.theme import Theme
 from app.models.idea_theme import IdeaTheme
 from app.models.theme_connection import ThemeConnection
 from app.models.user import User
+from app.models.synthesis_action import SynthesisAction
 from app.schemas.space import (
     SpaceCreate,
     SpaceUpdate,
@@ -34,6 +35,7 @@ from app.schemas.space import (
     OrganizeRunResponse,
     ThemeEventResponse,
     SynthesisNoteStateUpdate,
+    SynthesisActivityEntry,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,12 +121,26 @@ def _build_space_response(space: Space, db: Session) -> dict:
     if space.settings and isinstance(space.settings, dict):
         purpose_synthesis = space.settings.get("purpose_synthesis")
 
+    # Query persisted synthesis activity log
+    activity_rows = (
+        db.query(SynthesisAction)
+        .filter(SynthesisAction.space_id == space.id)
+        .order_by(SynthesisAction.created_at.desc())
+        .limit(200)
+        .all()
+    )
+    activity_log = [
+        SynthesisActivityEntry.model_validate(row).model_dump()
+        for row in activity_rows
+    ] if activity_rows else None
+
     return {
         "id": space.id,
         "title": space.title,
         "description": space.description,
         "purpose": _get_space_purpose(space),
         "purpose_synthesis": purpose_synthesis,
+        "synthesis_activity_log": activity_log,
         "idea_count": idea_count,
         "theme_count": theme_count,
         "auto_organize": space.auto_organize,
@@ -198,6 +214,10 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
             service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
             logger.info(f"Auto-organize completed for space {space_id}")
 
+            # Persist completed/dismissed notes before replacing synthesis
+            if space:
+                SpaceService.save_synthesis_actions(db, space)
+
             # Generate purpose synthesis after auto-organize
             if space:
                 purpose = _get_space_purpose(space)
@@ -238,6 +258,10 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
         clustering_mode = space.clustering_mode if space else "dbscan"
         service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
         logger.info(f"Organized space {space_id}")
+
+        # Persist completed/dismissed notes before replacing synthesis
+        if space:
+            SpaceService.save_synthesis_actions(db, space)
 
         # Generate purpose synthesis
         if space:
@@ -283,6 +307,9 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
         space = db.query(Space).filter(Space.id == space_id).first()
         if not space:
             return
+
+        # Persist completed/dismissed notes before any synthesis replacement
+        SpaceService.save_synthesis_actions(db, space)
 
         if service.should_auto_organize(db, space_id):
             # Full re-organize (includes synthesis regeneration)

@@ -1793,12 +1793,21 @@ export interface PurposeSynthesis {
   completion_outcomes?: Record<string, string>;
 }
 
+export interface SynthesisActivityEntry {
+  theme_name: string;
+  note_text: string;
+  action: 'completed' | 'dismissed';
+  detail?: string;
+  created_at: string;
+}
+
 export interface SpaceListItem {
   id: string;
   title: string;
   description?: string;
   purpose?: SpacePurpose;
   purpose_synthesis?: PurposeSynthesis;
+  synthesis_activity_log?: SynthesisActivityEntry[];
   idea_count: number;
   theme_count: number;
   auto_organize: boolean;
@@ -1812,6 +1821,7 @@ export interface Space {
   description?: string;
   purpose?: SpacePurpose;
   purpose_synthesis?: PurposeSynthesis;
+  synthesis_activity_log?: SynthesisActivityEntry[];
   idea_count: number;
   theme_count: number;
   auto_organize: boolean;

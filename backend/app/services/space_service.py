@@ -57,6 +57,93 @@ class SpaceService:
         self.embedding_model = "text-embedding-3-large"
         self.llm_model = model
 
+    @staticmethod
+    def save_synthesis_actions(db: Session, space: "Space"):
+        """Persist completed/dismissed synthesis notes before synthesis replacement.
+
+        Reads current purpose_synthesis from space.settings, finds notes with
+        completed or dismissed states, resolves theme names from current Theme
+        rows, and inserts SynthesisAction rows. Deduplicates by checking for
+        identical note_text + action + theme_name created within the last minute.
+        """
+        from datetime import datetime, timedelta
+        from app.models.synthesis_action import SynthesisAction
+
+        if not space.settings or not isinstance(space.settings, dict):
+            return
+        synthesis = space.settings.get("purpose_synthesis")
+        if not synthesis or not isinstance(synthesis, dict):
+            return
+
+        theme_notes = synthesis.get("theme_notes", {})
+        note_states = synthesis.get("note_states", {})
+        dismiss_reasons = synthesis.get("dismiss_reasons", {})
+        completion_outcomes = synthesis.get("completion_outcomes", {})
+
+        if not note_states:
+            return
+
+        # Build theme_id -> name lookup from current Theme rows
+        themes = db.query(Theme).filter(Theme.space_id == space.id).all()
+        theme_id_to_name = {str(t.id): t.name for t in themes}
+
+        now = datetime.utcnow()
+        one_minute_ago = now - timedelta(minutes=1)
+        rows_to_add = []
+
+        for key, state in note_states.items():
+            if state not in ("completed", "dismissed"):
+                continue
+
+            parts = key.rsplit(":", 1)
+            if len(parts) != 2:
+                continue
+            theme_id_str, idx_str = parts
+
+            try:
+                idx = int(idx_str)
+                notes_list = theme_notes.get(theme_id_str, [])
+                if idx >= len(notes_list):
+                    continue
+                note_text = notes_list[idx]
+            except (ValueError, IndexError):
+                continue
+
+            theme_name = theme_id_to_name.get(theme_id_str, "Unknown")
+            detail = None
+            if state == "completed":
+                detail = completion_outcomes.get(key)
+            elif state == "dismissed":
+                detail = dismiss_reasons.get(key)
+
+            # Dedup: skip if identical row created within last minute
+            existing = (
+                db.query(SynthesisAction.id)
+                .filter(
+                    SynthesisAction.space_id == space.id,
+                    SynthesisAction.theme_name == theme_name,
+                    SynthesisAction.note_text == note_text,
+                    SynthesisAction.action == state,
+                    SynthesisAction.created_at >= one_minute_ago,
+                )
+                .first()
+            )
+            if existing:
+                continue
+
+            rows_to_add.append(SynthesisAction(
+                space_id=space.id,
+                theme_name=theme_name,
+                note_text=note_text,
+                action=state,
+                detail=detail,
+                created_at=now,
+            ))
+
+        if rows_to_add:
+            db.add_all(rows_to_add)
+            db.flush()
+
     def should_auto_organize(self, db: Session, space_id: UUID) -> bool:
         """Check if a space should be auto-organized based on scoring heuristics."""
         from datetime import datetime, timedelta

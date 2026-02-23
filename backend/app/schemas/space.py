@@ -48,6 +48,17 @@ class SpaceUpdate(BaseModel):
         return v
 
 
+class SynthesisActivityEntry(BaseModel):
+    """A persisted completed/dismissed synthesis note."""
+    theme_name: str
+    note_text: str
+    action: str  # 'completed' | 'dismissed'
+    detail: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class SpaceResponse(BaseModel):
     """Full space detail response."""
     id: UUID
@@ -55,6 +66,7 @@ class SpaceResponse(BaseModel):
     description: Optional[str] = None
     purpose: str = "explore"
     purpose_synthesis: Optional[Dict[str, Any]] = None
+    synthesis_activity_log: Optional[List[SynthesisActivityEntry]] = None
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True
@@ -73,6 +85,7 @@ class SpaceListItem(BaseModel):
     description: Optional[str] = None
     purpose: str = "explore"
     purpose_synthesis: Optional[Dict[str, Any]] = None
+    synthesis_activity_log: Optional[List[SynthesisActivityEntry]] = None
     idea_count: int = 0
     theme_count: int = 0
     auto_organize: bool = True

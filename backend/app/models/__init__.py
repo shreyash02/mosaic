@@ -39,6 +39,7 @@ from app.models.theme import Theme
 from app.models.idea_theme import IdeaTheme
 from app.models.theme_connection import ThemeConnection
 from app.models.theme_event import ThemeEvent
+from app.models.synthesis_action import SynthesisAction
 
 __all__ = [
     "User",
@@ -83,4 +84,5 @@ __all__ = [
     "IdeaTheme",
     "ThemeConnection",
     "ThemeEvent",
+    "SynthesisAction",
 ]
