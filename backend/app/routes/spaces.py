@@ -260,6 +260,68 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
         engine.dispose()
 
 
+def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str):
+    """Background task triggered by note feedback.
+
+    Checks auto-organize score. If threshold met, does full re-organize
+    (which regenerates synthesis). Otherwise, just regenerates synthesis
+    so the AI incorporates the feedback without re-clustering.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.space_service import SpaceService
+    from app.services.platform_settings_service import get_llm_model
+    from app.services.sse_service import sse_service
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        llm_model = get_llm_model(db)
+        service = SpaceService(model=llm_model)
+        space = db.query(Space).filter(Space.id == space_id).first()
+        if not space:
+            return
+
+        if service.should_auto_organize(db, space_id):
+            # Full re-organize (includes synthesis regeneration)
+            logger.info(f"Note feedback triggered auto-organize for space {space_id}")
+            context = _build_space_context(space)
+            clustering_mode = space.clustering_mode
+            sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
+            service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
+
+            purpose = _get_space_purpose(space)
+            synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
+            current_settings = dict(space.settings) if space.settings else {}
+            if synthesis:
+                current_settings["purpose_synthesis"] = synthesis
+            else:
+                current_settings.pop("purpose_synthesis", None)
+            space.settings = current_settings
+            flag_modified(space, "settings")
+            db.commit()
+            sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
+        else:
+            # Just regenerate synthesis to incorporate feedback (no re-clustering)
+            logger.info(f"Regenerating synthesis for space {space_id} after note feedback")
+            purpose = _get_space_purpose(space)
+            synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
+            if synthesis:
+                current_settings = dict(space.settings) if space.settings else {}
+                current_settings["purpose_synthesis"] = synthesis
+                space.settings = current_settings
+                flag_modified(space, "settings")
+                db.commit()
+                sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
+    except Exception as e:
+        logger.error(f"Error in check-and-resynthesize for space {space_id}: {e}", exc_info=True)
+    finally:
+        db.close()
+        engine.dispose()
+
+
 # --- Space CRUD ---
 
 @router.post("", response_model=SpaceResponse, status_code=status.HTTP_201_CREATED)
@@ -750,6 +812,7 @@ def get_graph_data(
 def update_synthesis_note_state(
     space_id: UUID,
     data: SynthesisNoteStateUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -799,6 +862,20 @@ def update_synthesis_note_state(
     space.settings = current_settings
     flag_modified(space, "settings")
     db.commit()
+
+    # Actionable feedback (reason or outcome) is a signal to re-synthesize.
+    # Check auto-organize score — note feedback weight may push it over threshold.
+    has_feedback = (
+        (data.state == "dismissed" and data.reason)
+        or (data.state == "completed" and data.outcome)
+    )
+    if has_feedback and space.auto_organize:
+        background_tasks.add_task(
+            run_check_and_resynthesize_task,
+            space_id=space.id,
+            owner_id=current_user.id,
+            db_url=str(settings.DATABASE_URL),
+        )
 
     return synthesis
 

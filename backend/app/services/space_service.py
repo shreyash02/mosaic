@@ -48,6 +48,7 @@ class SpaceService:
     UNTHEMED_WEIGHT = 3
     STALENESS_WEIGHT = 1
     STALENESS_CAP_HOURS = 48
+    NOTE_FEEDBACK_WEIGHT = 4
     AUTO_ORGANIZE_SCORE_THRESHOLD = 15
 
     def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
@@ -104,10 +105,22 @@ class SpaceService:
         hours_since = (now - space.last_organized_at).total_seconds() / 3600
         staleness_hours = min(hours_since, self.STALENESS_CAP_HOURS)
 
+        # Count synthesis notes with actionable feedback (dismissed-with-reason
+        # or completed-with-outcome) — signals the user engaged with suggestions
+        # and the AI should regenerate with that context.
+        note_feedback_count = 0
+        if space.settings and isinstance(space.settings, dict):
+            synthesis = space.settings.get("purpose_synthesis")
+            if synthesis and isinstance(synthesis, dict):
+                dismiss_reasons = synthesis.get("dismiss_reasons", {})
+                completion_outcomes = synthesis.get("completion_outcomes", {})
+                note_feedback_count = len(dismiss_reasons) + len(completion_outcomes)
+
         score = (
             new_ideas * self.NEW_IDEA_WEIGHT
             + unthemed * self.UNTHEMED_WEIGHT
             + staleness_hours * self.STALENESS_WEIGHT
+            + note_feedback_count * self.NOTE_FEEDBACK_WEIGHT
         )
 
         return score >= self.AUTO_ORGANIZE_SCORE_THRESHOLD
