@@ -4,6 +4,8 @@ import { typography, spacing, transitions } from '../styles/tokens';
 
 interface Props {
   runs: OrganizeRun[];
+  expanded?: boolean;
+  onToggle?: () => void;
 }
 
 const s = {
@@ -148,7 +150,7 @@ function EventDescription({ event }: { event: ThemeEvent }) {
   );
 }
 
-export default function ThemeEvolutionTimeline({ runs }: Props) {
+export default function ThemeEvolutionTimeline({ runs, expanded, onToggle }: Props) {
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(() => {
     // Expand the most recent run by default
     if (runs.length > 0) return new Set([runs[0].run_id]);
@@ -169,61 +171,89 @@ export default function ThemeEvolutionTimeline({ runs }: Props) {
 
   return (
     <div style={s.container}>
-      <div style={s.header}>Evolution</div>
+      <div
+        style={{
+          ...s.header,
+          ...(onToggle ? {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none' as const,
+            marginBottom: expanded !== false ? spacing[3] : 0,
+          } : {}),
+        }}
+        onClick={onToggle}
+      >
+        <span>Evolution</span>
+        {onToggle && (
+          <svg
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: expanded !== false ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        )}
+      </div>
 
-      {runs.length === 0 ? (
-        <div style={s.empty}>
-          Run Organize to start tracking evolution
-        </div>
-      ) : (
-        runs.map((run) => {
-          const isExpanded = expandedRuns.has(run.run_id);
-          return (
-            <div key={run.run_id} style={s.runGroup}>
-              <div
-                style={s.runHeader}
-                onClick={() => toggleRun(run.run_id)}
-              >
-                <svg
-                  style={{
-                    ...s.chevron,
-                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                  }}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-                <span>
-                  {formatRelativeTime(run.created_at)}
-                  {' — '}
-                  {run.events.length} event{run.events.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-
-              {isExpanded && (
-                <div style={s.eventList}>
-                  {run.events.map((event) => (
-                    <div key={event.id} style={s.eventItem}>
-                      <div
-                        style={{
-                          ...s.eventDot,
-                          backgroundColor: event.theme_color || EVENT_COLORS[event.event_type] || '#9ca3af',
-                          border: `2px solid ${EVENT_COLORS[event.event_type] || '#9ca3af'}`,
-                        }}
-                      />
-                      <EventDescription event={event} />
-                    </div>
-                  ))}
-                </div>
-              )}
+      {expanded !== false && (
+        <>
+          {runs.length === 0 ? (
+            <div style={s.empty}>
+              Run Organize to start tracking evolution
             </div>
-          );
-        })
+          ) : (
+            runs.map((run) => {
+              const isExpanded = expandedRuns.has(run.run_id);
+              return (
+                <div key={run.run_id} style={s.runGroup}>
+                  <div
+                    style={s.runHeader}
+                    onClick={() => toggleRun(run.run_id)}
+                  >
+                    <svg
+                      style={{
+                        ...s.chevron,
+                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                      }}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                    <span>
+                      {formatRelativeTime(run.created_at)}
+                      {' — '}
+                      {run.events.length} event{run.events.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={s.eventList}>
+                      {run.events.map((event) => (
+                        <div key={event.id} style={s.eventItem}>
+                          <div
+                            style={{
+                              ...s.eventDot,
+                              backgroundColor: event.theme_color || EVENT_COLORS[event.event_type] || '#9ca3af',
+                              border: `2px solid ${EVENT_COLORS[event.event_type] || '#9ca3af'}`,
+                            }}
+                          />
+                          <EventDescription event={event} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </>
       )}
     </div>
   );
