@@ -12,6 +12,7 @@ import ThemeEvolutionTimeline from '../components/ThemeEvolutionTimeline';
 import ThemeEvolutionSankey from '../components/ThemeEvolutionSankey';
 import ThemeEvolutionBranch from '../components/ThemeEvolutionBranch';
 import PanZoomContainer from '../components/PanZoomContainer';
+import SpaceMembersModal from '../components/SpaceMembersModal';
 
 const s = {
   page: {
@@ -354,6 +355,7 @@ export default function SpaceDetailPage() {
   const [evolutionExpanded, setEvolutionExpanded] = useState(true);
   const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
   const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch'>('flow');
+  const [showMembersModal, setShowMembersModal] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -444,9 +446,23 @@ export default function SpaceDetailPage() {
     refreshContentRef.current();
   }, [id]);
 
+  const handleIdeaAdded = useCallback((data: any) => {
+    if (!id || data.space_id !== id) return;
+    // Another member added an idea — refresh ideas list
+    const filter = selectedThemeIdRef.current;
+    if (filter === '__unthemed') {
+      api.getIdeas(id, undefined, true).then(setIdeas).catch(() => {});
+    } else {
+      api.getIdeas(id, filter || undefined).then(setIdeas).catch(() => {});
+    }
+    // Bump idea count
+    setSpace(prev => prev ? { ...prev, idea_count: (prev.idea_count ?? 0) + 1 } : prev);
+  }, [id]);
+
   useSSEEvent('space_classify_completed', handleClassifyCompleted);
   useSSEEvent('space_organize_started', handleOrganizeStarted);
   useSSEEvent('space_organize_completed', handleOrganizeCompleted);
+  useSSEEvent('space_idea_added', handleIdeaAdded);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -715,6 +731,92 @@ export default function SpaceDetailPage() {
           </span>
         </div>
         <div style={s.topBarRight}>
+          {/* Member avatars */}
+          {space.members && space.members.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', marginRight: spacing[1] }}>
+              {space.members.slice(0, 5).map((member, idx) => {
+                const avatarColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6'];
+                const initials = member.user_name
+                  ? member.user_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+                  : (member.user_email || '?')[0].toUpperCase();
+                const tooltipLabel = member.user_name || member.user_email || 'Member';
+                return (
+                  <div
+                    key={member.id}
+                    className="member-avatar-tip"
+                    data-tip={tooltipLabel}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: borders.radius.full,
+                      background: avatarColors[idx % avatarColors.length],
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '11px',
+                      fontWeight: typography.fontWeight.semibold,
+                      marginLeft: idx > 0 ? '-6px' : '0',
+                      border: '2px solid var(--color-primary-50)',
+                      zIndex: space.members!.length - idx,
+                      position: 'relative' as const,
+                      cursor: 'default',
+                      userSelect: 'none' as const,
+                    }}
+                  >
+                    {initials}
+                  </div>
+                );
+              })}
+              {space.members.length > 5 && (
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: borders.radius.full,
+                  background: 'var(--color-primary-300)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-primary-700)',
+                  fontSize: '10px',
+                  fontWeight: typography.fontWeight.semibold,
+                  marginLeft: '-6px',
+                  border: '2px solid var(--color-primary-50)',
+                  position: 'relative' as const,
+                  userSelect: 'none' as const,
+                }}>
+                  +{space.members.length - 5}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Members button */}
+          <button
+            onClick={() => setShowMembersModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[1],
+              padding: `${spacing[2]} ${spacing[3]}`,
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-600)',
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              borderRadius: borders.radius.md,
+              border: '1px solid var(--color-primary-300)',
+              cursor: 'pointer',
+              transition: transitions.duration.normal,
+            }}
+            title="Manage members"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            {(space.member_count ?? 1) > 1 ? `${space.member_count}` : 'Members'}
+          </button>
           <button
             style={{
               ...s.organizeButton,
@@ -753,12 +855,14 @@ export default function SpaceDetailPage() {
               </>
             )}
           </button>
-          <Link to={`/spaces/${id}/settings`} style={s.settingsLink}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-            </svg>
-          </Link>
+          {(space.is_owner !== false) && (
+            <Link to={`/spaces/${id}/settings`} style={s.settingsLink}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -1910,7 +2014,36 @@ export default function SpaceDetailPage() {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        .member-avatar-tip::after {
+          content: attr(data-tip);
+          position: absolute;
+          top: calc(100% + 10px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--color-primary-900);
+          color: #fff;
+          font-size: 12px;
+          font-weight: 500;
+          padding: 4px 8px;
+          border-radius: 4px;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.15s;
+          z-index: 1000;
+        }
+        .member-avatar-tip:hover::after {
+          opacity: 1;
+        }
       `}</style>
+
+      {/* Members modal */}
+      <SpaceMembersModal
+        isOpen={showMembersModal}
+        onClose={() => setShowMembersModal(false)}
+        spaceId={id!}
+        isOwner={space.is_owner !== false}
+      />
     </div>
   );
 }

@@ -190,6 +190,34 @@ class InAppNotificationService:
             data={"action_url": action_url},
         )
 
+    async def notify_space_invitation(
+        self,
+        db: Session,
+        user_id: UUID,
+        space_title: str,
+        space_id: UUID,
+        invitation_token: str,
+        inviter_name: Optional[str] = None,
+    ) -> Optional[Notification]:
+        """Notify user when they're invited to a space."""
+        action_url = f"/spaces/accept-invite/{invitation_token}"
+
+        if inviter_name:
+            message = f"{inviter_name} invited you to collaborate on \"{space_title}\""
+        else:
+            message = f"You've been invited to collaborate on \"{space_title}\""
+
+        return await self.create_notification(
+            db=db,
+            user_id=user_id,
+            notification_type="space_invitation",
+            title="Space Invitation",
+            message=message,
+            entity_type="space",
+            entity_id=space_id,
+            data={"action_url": action_url},
+        )
+
     async def notify_journal_shared(
         self,
         db: Session,

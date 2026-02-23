@@ -1259,7 +1259,8 @@ export type NotificationType =
   | 'analysis_ready'
   | 'announcement'
   | 'closing_soon'
-  | 'invitation';
+  | 'invitation'
+  | 'space_invitation';
 
 export interface Notification {
   id: string;
@@ -1801,6 +1802,25 @@ export interface SynthesisActivityEntry {
   created_at: string;
 }
 
+export interface SpaceMember {
+  id: string;
+  space_id: string;
+  user_id: string;
+  role: 'owner' | 'member';
+  joined_at: string;
+  user_name?: string;
+  user_email?: string;
+}
+
+export interface SpaceInvitation {
+  id: string;
+  space_id: string;
+  email: string;
+  invited_by_id?: string;
+  is_accepted: boolean;
+  created_at: string;
+}
+
 export interface SpaceListItem {
   id: string;
   title: string;
@@ -1813,6 +1833,9 @@ export interface SpaceListItem {
   auto_organize: boolean;
   clustering_mode: 'dbscan' | 'llm';
   created_at: string;
+  owner_id?: string;
+  is_owner?: boolean;
+  member_count?: number;
 }
 
 export interface Space {
@@ -1829,6 +1852,10 @@ export interface Space {
   last_organized_at?: string;
   created_at: string;
   updated_at: string;
+  owner_id?: string;
+  is_owner?: boolean;
+  member_count?: number;
+  members?: SpaceMember[];
 }
 
 export interface SpaceCreate {

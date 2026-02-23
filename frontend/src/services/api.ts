@@ -105,6 +105,8 @@ import type {
   SpaceUpdate,
   SpaceIdea,
   SpaceTheme,
+  SpaceMember,
+  SpaceInvitation,
   GraphData,
   OrganizeRun,
 } from '../types';
@@ -148,6 +150,12 @@ class ApiService {
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
+
+          // Don't intercept 401s from login endpoints — let the caller handle them
+          const requestUrl = originalRequest.url || '';
+          if (requestUrl.endsWith('/auth/login') || requestUrl.endsWith('/admin/login')) {
+            return Promise.reject(error);
+          }
 
           // Skip redirect for admin pages — they manage their own auth
           const isAdminPage = window.location.pathname.startsWith('/adminportal');
@@ -1440,6 +1448,39 @@ class ApiService {
   async getEvolution(spaceId: string, limit?: number): Promise<OrganizeRun[]> {
     const params = limit ? `?limit=${limit}` : '';
     const response = await this.client.get<OrganizeRun[]>(`/spaces/${spaceId}/evolution${params}`);
+    return response.data;
+  }
+
+  // Space members & invitations
+
+  async getSpaceMembers(spaceId: string): Promise<SpaceMember[]> {
+    const response = await this.client.get<SpaceMember[]>(`/spaces/${spaceId}/members`);
+    return response.data;
+  }
+
+  async removeSpaceMember(spaceId: string, userId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/members/${userId}`);
+  }
+
+  async inviteToSpace(spaceId: string, emails: string[]): Promise<{ invitations_created: number; space_id: string }> {
+    const response = await this.client.post<{ invitations_created: number; space_id: string }>(
+      `/spaces/${spaceId}/invitations`,
+      { emails },
+    );
+    return response.data;
+  }
+
+  async getSpaceInvitations(spaceId: string): Promise<SpaceInvitation[]> {
+    const response = await this.client.get<SpaceInvitation[]>(`/spaces/${spaceId}/invitations`);
+    return response.data;
+  }
+
+  async deleteSpaceInvitation(spaceId: string, invitationId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/invitations/${invitationId}`);
+  }
+
+  async acceptSpaceInvitation(token: string): Promise<{ space_id: string }> {
+    const response = await this.client.post<{ space_id: string }>(`/spaces/accept-invite/${token}`);
     return response.data;
   }
 }

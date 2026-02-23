@@ -86,6 +86,7 @@ import AcceptJournalSharePage from './pages/AcceptJournalSharePage';
 import SpacesPage from './pages/SpacesPage';
 import SpaceDetailPage from './pages/SpaceDetailPage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
+import AcceptSpaceInvitePage from './pages/AcceptSpaceInvitePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
 import ExplorePage from './pages/ExplorePage';
@@ -495,6 +496,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SpaceSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/spaces/accept-invite/:token"
+              element={
+                <ProtectedRoute>
+                  <AcceptSpaceInvitePage />
                 </ProtectedRoute>
               }
             />

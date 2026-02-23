@@ -34,6 +34,8 @@ from app.models.invite_code import InviteCode
 from app.models.waitlist_request import WaitlistRequest
 from app.models.audit_log import AuditLog
 from app.models.space import Space
+from app.models.space_member import SpaceMember
+from app.models.space_invitation import SpaceInvitation
 from app.models.idea import Idea
 from app.models.theme import Theme
 from app.models.idea_theme import IdeaTheme
@@ -79,6 +81,8 @@ __all__ = [
     "WaitlistRequest",
     "AuditLog",
     "Space",
+    "SpaceMember",
+    "SpaceInvitation",
     "Idea",
     "Theme",
     "IdeaTheme",

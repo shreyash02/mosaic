@@ -59,6 +59,32 @@ class SynthesisActivityEntry(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SpaceMemberResponse(BaseModel):
+    """A space member."""
+    id: UUID
+    space_id: UUID
+    user_id: UUID
+    role: str
+    joined_at: datetime
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+
+
+class SpaceInviteRequest(BaseModel):
+    """Invite users to a space by email."""
+    emails: List[str] = Field(..., min_length=1, max_length=20)
+
+
+class SpaceInvitationResponse(BaseModel):
+    """A pending or accepted space invitation."""
+    id: UUID
+    space_id: UUID
+    email: str
+    invited_by_id: Optional[UUID] = None
+    is_accepted: bool = False
+    created_at: datetime
+
+
 class SpaceResponse(BaseModel):
     """Full space detail response."""
     id: UUID
@@ -74,6 +100,10 @@ class SpaceResponse(BaseModel):
     last_organized_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    owner_id: Optional[UUID] = None
+    is_owner: bool = True
+    member_count: int = 1
+    members: Optional[List[SpaceMemberResponse]] = None
 
     model_config = {"from_attributes": True}
 
@@ -91,6 +121,9 @@ class SpaceListItem(BaseModel):
     auto_organize: bool = True
     clustering_mode: str = "llm"
     created_at: datetime
+    owner_id: Optional[UUID] = None
+    is_owner: bool = True
+    member_count: int = 1
 
     model_config = {"from_attributes": True}
 

@@ -1,11 +1,13 @@
 """Routes for the Spaces feature (second-brain ideas with auto-organization)."""
 
 import logging
-from typing import Optional
+import secrets
+from datetime import datetime
+from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -13,6 +15,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.space import Space
+from app.models.space_member import SpaceMember
+from app.models.space_invitation import SpaceInvitation
 from app.models.idea import Idea
 from app.models.theme import Theme
 from app.models.idea_theme import IdeaTheme
@@ -24,6 +28,9 @@ from app.schemas.space import (
     SpaceUpdate,
     SpaceResponse,
     SpaceListItem,
+    SpaceMemberResponse,
+    SpaceInviteRequest,
+    SpaceInvitationResponse,
     IdeaCreate,
     IdeaUpdate,
     IdeaResponse,
@@ -72,14 +79,36 @@ def _require_spaces_flag(current_user: User, db: Session) -> str:
 
 
 def _get_space_or_404(space_id: UUID, current_user: User, db: Session) -> Space:
-    """Get a space owned by the current user or raise 404."""
-    space = db.query(Space).filter(
-        Space.id == space_id,
-        Space.owner_id == current_user.id,
-    ).first()
+    """Get a space if user is the owner or a member. Raises 404 otherwise."""
+    space = db.query(Space).filter(Space.id == space_id).first()
     if not space:
         raise HTTPException(status_code=404, detail="Space not found")
+    if space.owner_id == current_user.id:
+        return space
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == current_user.id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Space not found")
     return space
+
+
+def _require_space_owner(space: Space, current_user: User) -> None:
+    """Raise 403 if the current user is not the space owner."""
+    if space.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the space owner can perform this action",
+        )
+
+
+def _get_space_member_ids(db: Session, space_id: UUID) -> List[UUID]:
+    """Get all member user IDs for a space (including owner)."""
+    return [
+        row[0] for row in
+        db.query(SpaceMember.user_id).filter(SpaceMember.space_id == space_id).all()
+    ]
 
 
 def _get_space_purpose(space: Space) -> str:
@@ -109,8 +138,8 @@ def _build_space_context(space: Space) -> str:
     return "\n".join(parts)
 
 
-def _build_space_response(space: Space, db: Session) -> dict:
-    """Build a SpaceResponse dict with counts."""
+def _build_space_response(space: Space, db: Session, current_user: Optional[User] = None) -> dict:
+    """Build a SpaceResponse dict with counts and membership info."""
     idea_count = db.query(func.count(Idea.id)).filter(
         Idea.space_id == space.id, Idea.status == "active"
     ).scalar() or 0
@@ -134,6 +163,34 @@ def _build_space_response(space: Space, db: Session) -> dict:
         for row in activity_rows
     ] if activity_rows else None
 
+    # Member info
+    member_count = db.query(func.count(SpaceMember.id)).filter(
+        SpaceMember.space_id == space.id,
+    ).scalar() or 1
+
+    members_data = None
+    if current_user:
+        member_rows = (
+            db.query(SpaceMember, User)
+            .join(User, SpaceMember.user_id == User.id)
+            .filter(SpaceMember.space_id == space.id)
+            .all()
+        )
+        members_data = [
+            {
+                "id": m.id,
+                "space_id": m.space_id,
+                "user_id": m.user_id,
+                "role": m.role,
+                "joined_at": m.joined_at,
+                "user_name": u.full_name,
+                "user_email": u.email,
+            }
+            for m, u in member_rows
+        ]
+
+    is_owner = current_user.id == space.owner_id if current_user else True
+
     return {
         "id": space.id,
         "title": space.title,
@@ -148,6 +205,10 @@ def _build_space_response(space: Space, db: Session) -> dict:
         "last_organized_at": space.last_organized_at,
         "created_at": space.created_at,
         "updated_at": space.updated_at,
+        "owner_id": space.owner_id,
+        "is_owner": is_owner,
+        "member_count": member_count,
+        "members": members_data,
     }
 
 
@@ -180,13 +241,20 @@ def _build_idea_response(idea: Idea, db: Session) -> dict:
 
 # --- Background tasks ---
 
+def _broadcast_sse_to_space(db: Session, space_id: UUID, event_type: str, data: dict):
+    """Send an SSE event to all members of a space."""
+    from app.services.sse_service import sse_service
+    member_ids = _get_space_member_ids(db, space_id)
+    for uid in member_ids:
+        sse_service.send_to_user_sync(uid, event_type, data)
+
+
 def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url: str):
     """Background task to classify a new idea against existing themes."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from app.services.space_service import SpaceService
     from app.services.platform_settings_service import get_llm_model
-    from app.services.sse_service import sse_service
 
     engine = create_engine(db_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -197,7 +265,7 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
         service = SpaceService(model=llm_model)
         service.classify_idea(db, idea_id, space_id)
         logger.info(f"Classified idea {idea_id} in space {space_id}")
-        sse_service.send_to_user_sync(owner_id, "space_classify_completed", {"space_id": str(space_id)})
+        _broadcast_sse_to_space(db, space_id, "space_classify_completed", {"space_id": str(space_id)})
 
         # Expire cached session state so should_auto_organize gets fresh counts
         db.expire_all()
@@ -210,7 +278,7 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
             space = db.query(Space).filter(Space.id == space_id).first()
             clustering_mode = space.clustering_mode if space else "dbscan"
             context = _build_space_context(space) if space else None
-            sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
+            _broadcast_sse_to_space(db, space_id, "space_organize_started", {"space_id": str(space_id)})
             service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
             logger.info(f"Auto-organize completed for space {space_id}")
 
@@ -231,7 +299,7 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
                 flag_modified(space, "settings")
                 db.commit()
 
-            sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
+            _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error in classify/auto-organize for idea {idea_id} in space {space_id}: {e}", exc_info=True)
     finally:
@@ -245,7 +313,6 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
     from sqlalchemy.orm import sessionmaker
     from app.services.space_service import SpaceService
     from app.services.platform_settings_service import get_llm_model
-    from app.services.sse_service import sse_service
 
     engine = create_engine(db_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -276,7 +343,7 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
             flag_modified(space, "settings")
             db.commit()
 
-        sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
+        _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error organizing space {space_id}: {e}")
     finally:
@@ -295,7 +362,6 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
     from sqlalchemy.orm import sessionmaker
     from app.services.space_service import SpaceService
     from app.services.platform_settings_service import get_llm_model
-    from app.services.sse_service import sse_service
 
     engine = create_engine(db_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -316,7 +382,7 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
             logger.info(f"Note feedback triggered auto-organize for space {space_id}")
             context = _build_space_context(space)
             clustering_mode = space.clustering_mode
-            sse_service.send_to_user_sync(owner_id, "space_organize_started", {"space_id": str(space_id)})
+            _broadcast_sse_to_space(db, space_id, "space_organize_started", {"space_id": str(space_id)})
             service.organize(db, space_id, context=context, clustering_mode=clustering_mode)
 
             purpose = _get_space_purpose(space)
@@ -329,7 +395,7 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
             space.settings = current_settings
             flag_modified(space, "settings")
             db.commit()
-            sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
+            _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
         else:
             # Just regenerate synthesis to incorporate feedback (no re-clustering)
             logger.info(f"Regenerating synthesis for space {space_id} after note feedback")
@@ -341,7 +407,7 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
                 space.settings = current_settings
                 flag_modified(space, "settings")
                 db.commit()
-                sse_service.send_to_user_sync(owner_id, "space_organize_completed", {"space_id": str(space_id)})
+                _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
         logger.error(f"Error in check-and-resynthesize for space {space_id}: {e}", exc_info=True)
     finally:
@@ -389,10 +455,19 @@ def create_space(
         settings=space_settings if space_settings else None,
     )
     db.add(space)
+    db.flush()
+
+    # Create owner membership row
+    owner_member = SpaceMember(
+        space_id=space.id,
+        user_id=current_user.id,
+        role="owner",
+    )
+    db.add(owner_member)
     db.commit()
     db.refresh(space)
 
-    return _build_space_response(space, db)
+    return _build_space_response(space, db, current_user)
 
 
 @router.get("", response_model=list[SpaceListItem])
@@ -402,16 +477,26 @@ def list_spaces(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List spaces owned by the current user."""
+    """List spaces the current user owns or is a member of."""
+    member_space_ids = (
+        db.query(SpaceMember.space_id)
+        .filter(SpaceMember.user_id == current_user.id)
+        .subquery()
+    )
     spaces = (
         db.query(Space)
-        .filter(Space.owner_id == current_user.id)
+        .filter(
+            or_(
+                Space.owner_id == current_user.id,
+                Space.id.in_(db.query(member_space_ids)),
+            )
+        )
         .order_by(Space.updated_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
-    return [_build_space_response(s, db) for s in spaces]
+    return [_build_space_response(s, db, current_user) for s in spaces]
 
 
 @router.get("/{space_id}", response_model=SpaceResponse)
@@ -422,7 +507,7 @@ def get_space(
 ):
     """Get a space with counts."""
     space = _get_space_or_404(space_id, current_user, db)
-    return _build_space_response(space, db)
+    return _build_space_response(space, db, current_user)
 
 
 @router.patch("/{space_id}", response_model=SpaceResponse)
@@ -432,8 +517,9 @@ def update_space(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update a space's settings."""
+    """Update a space's settings. Owner only."""
     space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
     if data.title is not None:
         space.title = data.title
     if data.description is not None:
@@ -451,7 +537,7 @@ def update_space(
         flag_modified(space, "settings")
     db.commit()
     db.refresh(space)
-    return _build_space_response(space, db)
+    return _build_space_response(space, db, current_user)
 
 
 @router.delete("/{space_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -460,8 +546,9 @@ def delete_space(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Delete a space and all its ideas/themes."""
+    """Delete a space and all its ideas/themes. Owner only."""
     space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
     db.delete(space)
     db.commit()
 
@@ -478,16 +565,18 @@ def create_idea(
 ):
     """Drop a new idea into a space. Triggers background classification."""
     from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
     from app.services.space_service import SpaceService
 
-    tier = _require_spaces_flag(current_user, db)
+    _require_spaces_flag(current_user, db)
     space = _get_space_or_404(space_id, current_user, db)
 
-    # Check max_ideas_per_space limit
+    # Check max_ideas_per_space limit using the space OWNER's tier
+    owner_tier = subscription_service.get_tier(db, user_id=space.owner_id)
     max_ideas = feature_flag_service.get_config_value(
         db, "spaces", "max_ideas_per_space",
-        tier=tier,
-        user_id=current_user.id,
+        tier=owner_tier,
+        user_id=space.owner_id,
     )
     if max_ideas is not None and max_ideas != -1:
         current_count = db.query(func.count(Idea.id)).filter(
@@ -514,12 +603,19 @@ def create_idea(
     db.commit()
     db.refresh(idea)
 
+    # Notify other members that a new idea was added
+    from app.services.sse_service import sse_service
+    member_ids = _get_space_member_ids(db, space_id)
+    for uid in member_ids:
+        if uid != current_user.id:
+            sse_service.send_to_user_sync(uid, "space_idea_added", {"space_id": str(space_id)})
+
     # Classify in background against existing themes
     background_tasks.add_task(
         run_classify_idea_task,
         idea_id=idea.id,
         space_id=space_id,
-        owner_id=current_user.id,
+        owner_id=space.owner_id,
         db_url=str(settings.DATABASE_URL),
     )
 
@@ -574,7 +670,7 @@ def update_idea(
     db: Session = Depends(get_db),
 ):
     """Edit an idea's text. Re-triggers classification."""
-    _get_space_or_404(space_id, current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
 
     idea = db.query(Idea).filter(
         Idea.id == idea_id, Idea.space_id == space_id
@@ -603,7 +699,7 @@ def update_idea(
         run_classify_idea_task,
         idea_id=idea.id,
         space_id=space_id,
-        owner_id=current_user.id,
+        owner_id=space.owner_id,
         db_url=str(settings.DATABASE_URL),
     )
 
@@ -810,10 +906,15 @@ def organize_space(
 
     context = _build_space_context(space)
 
+    # Send organize_started to all members immediately
+    from app.services.sse_service import sse_service
+    for uid in _get_space_member_ids(db, space_id):
+        sse_service.send_to_user_sync(uid, "space_organize_started", {"space_id": str(space_id)})
+
     background_tasks.add_task(
         run_organize_space_task,
         space_id=space.id,
-        owner_id=current_user.id,
+        owner_id=space.owner_id,
         db_url=str(settings.DATABASE_URL),
         context=context,
     )
@@ -900,7 +1001,7 @@ def update_synthesis_note_state(
         background_tasks.add_task(
             run_check_and_resynthesize_task,
             space_id=space.id,
-            owner_id=current_user.id,
+            owner_id=space.owner_id,
             db_url=str(settings.DATABASE_URL),
         )
 
@@ -943,3 +1044,254 @@ def get_evolution(
         ))
     result.sort(key=lambda r: r.created_at, reverse=True)
     return result[:limit]
+
+
+# --- Members + Invitations ---
+
+@router.get("/{space_id}/members", response_model=list[SpaceMemberResponse])
+def list_members(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all members of a space. Any member can view."""
+    _get_space_or_404(space_id, current_user, db)
+    rows = (
+        db.query(SpaceMember, User)
+        .join(User, SpaceMember.user_id == User.id)
+        .filter(SpaceMember.space_id == space_id)
+        .order_by(SpaceMember.joined_at)
+        .all()
+    )
+    return [
+        {
+            "id": m.id,
+            "space_id": m.space_id,
+            "user_id": m.user_id,
+            "role": m.role,
+            "joined_at": m.joined_at,
+            "user_name": u.full_name,
+            "user_email": u.email,
+        }
+        for m, u in rows
+    ]
+
+
+@router.delete("/{space_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_member(
+    space_id: UUID,
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove a member from a space. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself as the owner")
+
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == user_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    db.delete(member)
+    db.commit()
+
+
+@router.post("/{space_id}/invitations", status_code=status.HTTP_201_CREATED)
+async def invite_to_space(
+    space_id: UUID,
+    data: SpaceInviteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Invite users to a space by email. Owner only."""
+    from app.services.email_service import email_service
+    from app.services.in_app_notification_service import in_app_notification_service
+    from app.utils.email_preferences import should_send_email
+
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    created_invitations = []
+
+    for email in data.emails:
+        email = email.strip().lower()
+        if not email:
+            continue
+
+        # Check if already a member
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
+            existing_member = db.query(SpaceMember).filter(
+                SpaceMember.space_id == space_id,
+                SpaceMember.user_id == existing_user.id,
+            ).first()
+            if existing_member:
+                continue
+
+        # Check if pending invitation exists
+        existing_invitation = db.query(SpaceInvitation).filter(
+            SpaceInvitation.space_id == space_id,
+            SpaceInvitation.email == email,
+            SpaceInvitation.is_accepted == False,
+        ).first()
+        if existing_invitation:
+            continue
+
+        # Create invitation
+        invitation_token = secrets.token_urlsafe(32)
+        invitation = SpaceInvitation(
+            space_id=space_id,
+            email=email,
+            invited_by_id=current_user.id,
+            invited_user_id=existing_user.id if existing_user else None,
+            invitation_token=invitation_token,
+        )
+        db.add(invitation)
+        created_invitations.append(invitation)
+
+    db.commit()
+    for inv in created_invitations:
+        db.refresh(inv)
+
+    # Send emails and in-app notifications
+    for invitation in created_invitations:
+        if should_send_email(db, invitation.email, "space_invitations"):
+            try:
+                await email_service.send_space_invitation_email(
+                    to_email=invitation.email,
+                    space_title=space.title,
+                    invitation_token=invitation.invitation_token,
+                    inviter_name=current_user.full_name,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send space invitation email to {invitation.email}: {e}", exc_info=True)
+
+        # In-app notification if user exists
+        if invitation.invited_user_id:
+            try:
+                await in_app_notification_service.notify_space_invitation(
+                    db=db,
+                    user_id=invitation.invited_user_id,
+                    space_title=space.title,
+                    space_id=space_id,
+                    invitation_token=invitation.invitation_token,
+                    inviter_name=current_user.full_name,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send space invitation notification: {e}", exc_info=True)
+
+    return {
+        "invitations_created": len(created_invitations),
+        "space_id": str(space_id),
+    }
+
+
+@router.get("/{space_id}/invitations", response_model=list[SpaceInvitationResponse])
+def list_invitations(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List invitations for a space. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    invitations = (
+        db.query(SpaceInvitation)
+        .filter(SpaceInvitation.space_id == space_id)
+        .order_by(SpaceInvitation.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": inv.id,
+            "space_id": inv.space_id,
+            "email": inv.email,
+            "invited_by_id": inv.invited_by_id,
+            "is_accepted": inv.is_accepted,
+            "created_at": inv.created_at,
+        }
+        for inv in invitations
+    ]
+
+
+@router.delete("/{space_id}/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_invitation(
+    space_id: UUID,
+    invitation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancel a pending invitation. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    invitation = db.query(SpaceInvitation).filter(
+        SpaceInvitation.id == invitation_id,
+        SpaceInvitation.space_id == space_id,
+    ).first()
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    db.delete(invitation)
+    db.commit()
+
+
+@router.post("/accept-invite/{token}")
+def accept_space_invitation(
+    token: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Accept a space invitation by token."""
+    invitation = db.query(SpaceInvitation).filter(
+        SpaceInvitation.invitation_token == token,
+    ).first()
+
+    if not invitation:
+        raise HTTPException(status_code=404, detail="Invitation not found or has expired")
+
+    if invitation.is_accepted:
+        raise HTTPException(status_code=400, detail="This invitation has already been accepted")
+
+    if invitation.expires_at and invitation.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="This invitation has expired")
+
+    # Verify email matches
+    if invitation.email.lower() != current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This invitation was sent to a different email address",
+        )
+
+    # Check if already a member
+    existing_member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == invitation.space_id,
+        SpaceMember.user_id == current_user.id,
+    ).first()
+
+    if existing_member:
+        invitation.is_accepted = True
+        invitation.accepted_at = datetime.utcnow()
+        db.commit()
+        return {"space_id": str(invitation.space_id)}
+
+    # Create membership
+    member = SpaceMember(
+        space_id=invitation.space_id,
+        user_id=current_user.id,
+        role="member",
+    )
+    db.add(member)
+
+    invitation.is_accepted = True
+    invitation.accepted_at = datetime.utcnow()
+    db.commit()
+
+    return {"space_id": str(invitation.space_id)}
