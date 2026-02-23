@@ -1,7 +1,8 @@
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { Sankey, ResponsiveContainer } from 'recharts';
 import type { OrganizeRun } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
+import { usePanZoomContext } from '../hooks/usePanZoom';
 
 interface Props {
   runs: OrganizeRun[];
@@ -77,7 +78,11 @@ function buildSankeyData(runs: OrganizeRun[]) {
         const s = prev.get(ev.theme_name);
         const t = curr.get(ev.theme_name);
         if (s != null && t != null) {
-          links.push({ source: s, target: t, value: Math.max(ev.details?.idea_count ?? 1, 1) });
+          // Use the ideas that actually carried over (total minus newly gained)
+          const ideaCount = ev.details?.idea_count ?? 1;
+          const gained = ev.details?.gained ?? 0;
+          const carriedOver = Math.max(ideaCount - gained, 1);
+          links.push({ source: s, target: t, value: carriedOver });
           seen.add(`${s}-${t}`);
           linked.add(t);
         }
@@ -155,14 +160,23 @@ function SankeyNodeRenderer({ x, y, width, height, payload }: any) {
 function SankeyLinkRenderer(props: any) {
   const { sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX, linkWidth, payload } = props;
   const color = payload?.source?.color || '#9ca3af';
+  const halfW = Math.max(linkWidth, 1) / 2;
+
+  // Two parallel cubic beziers forming a filled band for smooth splits/merges
+  const d = [
+    `M${sourceX},${sourceY - halfW}`,
+    `C${sourceControlX},${sourceY - halfW} ${targetControlX},${targetY - halfW} ${targetX},${targetY - halfW}`,
+    `L${targetX},${targetY + halfW}`,
+    `C${targetControlX},${targetY + halfW} ${sourceControlX},${sourceY + halfW} ${sourceX},${sourceY + halfW}`,
+    'Z',
+  ].join(' ');
 
   return (
     <path
-      d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
-      stroke={color}
-      strokeWidth={Math.max(linkWidth, 1)}
-      strokeOpacity={0.3}
-      fill="none"
+      d={d}
+      fill={color}
+      fillOpacity={0.25}
+      stroke="none"
     />
   );
 }
@@ -180,7 +194,19 @@ const emptyStyle: React.CSSProperties = {
 
 export default function ThemeEvolutionSankey({ runs }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
+  const { scale, translateX } = usePanZoomContext();
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => {
+      setContainerWidth(entry.contentRect.width);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const data = useMemo(() => {
     if (runs.length < 2) return null;
@@ -233,51 +259,69 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
     return <div style={emptyStyle}>No theme evolution data available</div>;
   }
 
+  // Clamp translateX so content stays within the visible area
+  const scaledWidth = containerWidth * scale;
+  const clampedTx = scaledWidth <= containerWidth
+    ? 0
+    : Math.max(containerWidth - scaledWidth, Math.min(0, translateX));
+
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Date labels as HTML overlay — evenly spaced, independent of Sankey node positions */}
-      {dates.length > 0 && (
+      {/* Overflow-hidden wrapper clips the scaled chart content */}
+      <div style={{ overflow: 'hidden', position: 'absolute', inset: 0 }}>
+        {/* Scaled wrapper — width expands with zoom (X-axis only), translated for pan */}
         <div style={{
-          position: 'absolute',
-          top: 0,
-          left: MARGIN.left + NODE_WIDTH / 2,
-          right: MARGIN.right - NODE_WIDTH / 2,
-          height: MARGIN.top,
-          display: 'flex',
-          justifyContent: dates.length === 1 ? 'flex-start' : 'space-between',
-          alignItems: 'flex-end',
-          paddingBottom: 4,
-          pointerEvents: 'none',
+          width: `${scale * 100}%`,
+          height: '100%',
+          transform: `translateX(${clampedTx}px)`,
+          position: 'relative',
         }}>
-          {dates.map((date, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: 10,
-                color: 'var(--color-primary-500)',
-                fontFamily: typography.fontFamily.sans,
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-              }}
-            >
-              {formatShortDate(date)}
-            </span>
-          ))}
+          {/* Date labels as HTML overlay — evenly spaced, independent of Sankey node positions */}
+          {dates.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: MARGIN.left + NODE_WIDTH / 2,
+              right: MARGIN.right - NODE_WIDTH / 2,
+              height: MARGIN.top,
+              display: 'flex',
+              justifyContent: dates.length === 1 ? 'flex-start' : 'space-between',
+              alignItems: 'flex-end',
+              paddingBottom: 4,
+              pointerEvents: 'none',
+            }}>
+              {dates.map((date, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--color-primary-500)',
+                    fontFamily: typography.fontFamily.sans,
+                    whiteSpace: 'nowrap',
+                    textAlign: 'center',
+                  }}
+                >
+                  {formatShortDate(date)}
+                </span>
+              ))}
+            </div>
+          )}
+          <ResponsiveContainer width="100%" height="100%">
+            <Sankey
+              data={data}
+              nodeWidth={NODE_WIDTH}
+              nodePadding={NODE_PADDING}
+              linkCurvature={0.5}
+              margin={MARGIN}
+              node={SankeyNodeRenderer}
+              link={SankeyLinkRenderer}
+              onMouseEnter={handleMouseEnter as any}
+              onMouseLeave={handleMouseLeave as any}
+            />
+          </ResponsiveContainer>
         </div>
-      )}
-      <ResponsiveContainer width="100%" height="100%">
-        <Sankey
-          data={data}
-          nodeWidth={NODE_WIDTH}
-          nodePadding={NODE_PADDING}
-          linkCurvature={0.5}
-          margin={MARGIN}
-          node={SankeyNodeRenderer}
-          link={SankeyLinkRenderer}
-          onMouseEnter={handleMouseEnter as any}
-          onMouseLeave={handleMouseLeave as any}
-        />
-      </ResponsiveContainer>
+      </div>
+      {/* Tooltip — outside overflow:hidden wrapper, positioned relative to container */}
       {tooltip && (
         <div style={{
           position: 'absolute',

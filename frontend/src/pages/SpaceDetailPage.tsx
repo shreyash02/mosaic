@@ -10,6 +10,8 @@ import { useSSEEvent } from '../hooks/useSSEEvent';
 import NetworkGraph from '../components/NetworkGraph';
 import ThemeEvolutionTimeline from '../components/ThemeEvolutionTimeline';
 import ThemeEvolutionSankey from '../components/ThemeEvolutionSankey';
+import ThemeEvolutionBranch from '../components/ThemeEvolutionBranch';
+import PanZoomContainer from '../components/PanZoomContainer';
 
 const s = {
   page: {
@@ -351,6 +353,7 @@ export default function SpaceDetailPage() {
   const [ideasExpanded, setIdeasExpanded] = useState(true);
   const [evolutionExpanded, setEvolutionExpanded] = useState(true);
   const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
+  const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch'>('flow');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
 
   // Sidebar drag-to-resize
@@ -849,7 +852,47 @@ export default function SpaceDetailPage() {
               onClearSelection={handleClearSelection}
             />
           ) : (
-            <ThemeEvolutionSankey runs={evolution} />
+            <PanZoomContainer
+              key={evolutionStyle}
+              cssTransform={false}
+              bottomRightControls={
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: 'var(--color-primary-200)',
+                  borderRadius: borders.radius.full,
+                  padding: '2px',
+                }}>
+                  <button
+                    style={{
+                      ...s.viewToggleBtn,
+                      fontWeight: evolutionStyle === 'flow' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                      color: evolutionStyle === 'flow' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                      backgroundColor: evolutionStyle === 'flow' ? 'var(--color-primary-50)' : 'transparent',
+                    }}
+                    onClick={() => setEvolutionStyle('flow')}
+                  >
+                    Flow
+                  </button>
+                  <button
+                    style={{
+                      ...s.viewToggleBtn,
+                      fontWeight: evolutionStyle === 'branch' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                      color: evolutionStyle === 'branch' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                      backgroundColor: evolutionStyle === 'branch' ? 'var(--color-primary-50)' : 'transparent',
+                    }}
+                    onClick={() => setEvolutionStyle('branch')}
+                  >
+                    Branch
+                  </button>
+                </div>
+              }
+            >
+              {evolutionStyle === 'flow' ? (
+                <ThemeEvolutionSankey runs={evolution} />
+              ) : (
+                <ThemeEvolutionBranch runs={evolution} />
+              )}
+            </PanZoomContainer>
           )}
         </div>
 
