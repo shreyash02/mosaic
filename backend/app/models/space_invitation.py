@@ -27,6 +27,9 @@ class SpaceInvitation(Base):
     # Invitation token for direct access
     invitation_token = Column(String(100), unique=True, nullable=True, index=True)
 
+    # Role to assign when invitation is accepted
+    role = Column(String(50), default="editor", nullable=False)
+
     # Status tracking
     is_accepted = Column(Boolean, default=False, nullable=False)
     accepted_at = Column(DateTime, nullable=True)

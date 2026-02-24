@@ -1806,7 +1806,7 @@ export interface SpaceMember {
   id: string;
   space_id: string;
   user_id: string;
-  role: 'owner' | 'member';
+  role: 'owner' | 'editor' | 'viewer';
   joined_at: string;
   user_name?: string;
   user_email?: string;
@@ -1835,6 +1835,7 @@ export interface SpaceListItem {
   created_at: string;
   owner_id?: string;
   is_owner?: boolean;
+  can_edit?: boolean;
   member_count?: number;
 }
 
@@ -1854,6 +1855,7 @@ export interface Space {
   updated_at: string;
   owner_id?: string;
   is_owner?: boolean;
+  can_edit?: boolean;
   member_count?: number;
   members?: SpaceMember[];
 }

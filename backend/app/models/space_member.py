@@ -17,7 +17,7 @@ class SpaceMember(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     space_id = Column(UUID(as_uuid=True), ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    role = Column(String(50), default="member", nullable=False)  # owner, member
+    role = Column(String(50), default="editor", nullable=False)  # owner, editor, viewer
 
     joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

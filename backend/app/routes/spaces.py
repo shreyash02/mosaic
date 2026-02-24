@@ -103,6 +103,19 @@ def _require_space_owner(space: Space, current_user: User) -> None:
         )
 
 
+def _require_space_editor(space_id: UUID, current_user: User, db: Session) -> None:
+    """Raise 403 if the current user is a viewer (read-only). Owners and editors pass."""
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == current_user.id,
+    ).first()
+    if member and member.role == "viewer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You have view-only access to this space",
+        )
+
+
 def _get_space_member_ids(db: Session, space_id: UUID) -> List[UUID]:
     """Get all member user IDs for a space (including owner)."""
     return [
@@ -191,6 +204,21 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
 
     is_owner = current_user.id == space.owner_id if current_user else True
 
+    # Determine edit permission: owners and editors can edit, viewers cannot
+    can_edit = True
+    if current_user and not is_owner:
+        if members_data:
+            user_member = next(
+                (m for m, _u in member_rows if m.user_id == current_user.id), None
+            )
+        else:
+            user_member = db.query(SpaceMember).filter(
+                SpaceMember.space_id == space.id,
+                SpaceMember.user_id == current_user.id,
+            ).first()
+        if user_member and user_member.role == "viewer":
+            can_edit = False
+
     return {
         "id": space.id,
         "title": space.title,
@@ -207,6 +235,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "updated_at": space.updated_at,
         "owner_id": space.owner_id,
         "is_owner": is_owner,
+        "can_edit": can_edit,
         "member_count": member_count,
         "members": members_data,
     }
@@ -570,6 +599,7 @@ def create_idea(
 
     _require_spaces_flag(current_user, db)
     space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     # Check max_ideas_per_space limit using the space OWNER's tier
     owner_tier = subscription_service.get_tier(db, user_id=space.owner_id)
@@ -671,6 +701,7 @@ def update_idea(
 ):
     """Edit an idea's text. Re-triggers classification."""
     space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     idea = db.query(Idea).filter(
         Idea.id == idea_id, Idea.space_id == space_id
@@ -715,6 +746,7 @@ def delete_idea(
 ):
     """Archive an idea (soft delete)."""
     _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     idea = db.query(Idea).filter(
         Idea.id == idea_id, Idea.space_id == space_id
@@ -768,6 +800,7 @@ def update_theme(
 ):
     """Rename or recolor a theme."""
     _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     theme = db.query(Theme).filter(Theme.id == theme_id, Theme.space_id == space_id).first()
     if not theme:
@@ -808,6 +841,7 @@ def merge_themes(
 ):
     """Merge source theme into target theme."""
     _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     source = db.query(Theme).filter(Theme.id == data.source_theme_id, Theme.space_id == space_id).first()
     target = db.query(Theme).filter(Theme.id == data.target_theme_id, Theme.space_id == space_id).first()
@@ -866,6 +900,7 @@ def delete_theme(
 ):
     """Delete a theme. Ideas become unthemed."""
     _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     theme = db.query(Theme).filter(Theme.id == theme_id, Theme.space_id == space_id).first()
     if not theme:
@@ -893,6 +928,7 @@ def organize_space(
     """Trigger full re-organization of a space (background task)."""
     _require_spaces_flag(current_user, db)
     space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     # Check minimum ideas
     idea_count = db.query(func.count(Idea.id)).filter(
@@ -946,6 +982,7 @@ def update_synthesis_note_state(
 ):
     """Update the state of a single synthesis note (completed/dismissed/reset)."""
     space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
 
     if not space.settings or not isinstance(space.settings, dict):
         raise HTTPException(status_code=400, detail="No synthesis data exists")
@@ -1102,6 +1139,50 @@ def remove_member(
     db.commit()
 
 
+@router.patch("/{space_id}/members/{user_id}")
+def update_member_role(
+    space_id: UUID,
+    user_id: UUID,
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Change a member's role (editor <-> viewer). Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    new_role = data.get("role")
+    if new_role not in ("editor", "viewer"):
+        raise HTTPException(status_code=400, detail="role must be 'editor' or 'viewer'")
+
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot change your own role")
+
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == user_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if member.role == "owner":
+        raise HTTPException(status_code=400, detail="Cannot change the owner's role")
+
+    member.role = new_role
+    db.commit()
+
+    # Return updated member with user info
+    user = db.query(User).filter(User.id == user_id).first()
+    return {
+        "id": member.id,
+        "space_id": member.space_id,
+        "user_id": member.user_id,
+        "role": member.role,
+        "joined_at": member.joined_at,
+        "user_name": user.full_name if user else None,
+        "user_email": user.email if user else None,
+    }
+
+
 @router.post("/{space_id}/invitations", status_code=status.HTTP_201_CREATED)
 async def invite_to_space(
     space_id: UUID,
@@ -1145,12 +1226,14 @@ async def invite_to_space(
 
         # Create invitation
         invitation_token = secrets.token_urlsafe(32)
+        invite_role = data.role or "editor"
         invitation = SpaceInvitation(
             space_id=space_id,
             email=email,
             invited_by_id=current_user.id,
             invited_user_id=existing_user.id if existing_user else None,
             invitation_token=invitation_token,
+            role=invite_role,
         )
         db.add(invitation)
         created_invitations.append(invitation)
@@ -1282,11 +1365,11 @@ def accept_space_invitation(
         db.commit()
         return {"space_id": str(invitation.space_id)}
 
-    # Create membership
+    # Create membership with the role specified in the invitation
     member = SpaceMember(
         space_id=invitation.space_id,
         user_id=current_user.id,
-        role="member",
+        role=invitation.role or "editor",
     )
     db.add(member)
 

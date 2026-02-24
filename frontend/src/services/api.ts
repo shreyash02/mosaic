@@ -1462,10 +1462,18 @@ class ApiService {
     await this.client.delete(`/spaces/${spaceId}/members/${userId}`);
   }
 
-  async inviteToSpace(spaceId: string, emails: string[]): Promise<{ invitations_created: number; space_id: string }> {
+  async inviteToSpace(spaceId: string, emails: string[], role?: 'editor' | 'viewer'): Promise<{ invitations_created: number; space_id: string }> {
     const response = await this.client.post<{ invitations_created: number; space_id: string }>(
       `/spaces/${spaceId}/invitations`,
-      { emails },
+      { emails, role: role || 'editor' },
+    );
+    return response.data;
+  }
+
+  async updateSpaceMemberRole(spaceId: string, userId: string, role: 'editor' | 'viewer'): Promise<SpaceMember> {
+    const response = await this.client.patch<SpaceMember>(
+      `/spaces/${spaceId}/members/${userId}`,
+      { role },
     );
     return response.data;
   }

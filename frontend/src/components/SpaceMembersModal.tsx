@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { api } from '../services/api';
 import { SpaceMember, SpaceInvitation } from '../types';
-import { colors, typography, spacing, borders } from '../styles/tokens';
+import { colors, typography, spacing, borders, transitions } from '../styles/tokens';
 
 interface SpaceMembersModalProps {
   isOpen: boolean;
@@ -11,10 +11,113 @@ interface SpaceMembersModalProps {
   isOwner: boolean;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  owner: 'Owner',
+  editor: 'Can edit',
+  viewer: 'Can view',
+};
+
+const ROLE_OPTIONS: { value: 'editor' | 'viewer'; label: string }[] = [
+  { value: 'editor', label: 'Can edit' },
+  { value: 'viewer', label: 'Can view' },
+];
+
+// Custom dropdown to replace native <select>
+function RoleDropdown({
+  value,
+  onChange,
+  compact,
+}: {
+  value: 'editor' | 'viewer';
+  onChange: (role: 'editor' | 'viewer') => void;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen((p) => !p)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: spacing[1],
+          padding: compact ? `2px ${spacing[2]}` : `${spacing[1]} ${spacing[2]}`,
+          fontSize: typography.fontSize.xs,
+          color: colors.primary[600],
+          background: colors.primary[100],
+          border: `1px solid ${colors.primary[300]}`,
+          borderRadius: borders.radius.md,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          transition: transitions.duration.normal,
+        }}
+      >
+        {ROLE_LABELS[value]}
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ marginLeft: '2px' }}>
+          <path d="M1 1l4 4 4-4" stroke={colors.primary[500]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          right: 0,
+          zIndex: 50,
+          minWidth: '120px',
+          background: '#fff',
+          border: `1px solid ${colors.primary[200]}`,
+          borderRadius: borders.radius.md,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
+          padding: spacing[1],
+        }}>
+          {ROLE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                width: '100%',
+                padding: `${spacing[2]} ${spacing[2]}`,
+                fontSize: typography.fontSize.sm,
+                color: colors.primary[800],
+                background: value === opt.value ? colors.primary[100] : 'transparent',
+                border: 'none',
+                borderRadius: borders.radius.sm,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {/* Check icon for selected */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={value === opt.value ? colors.primary[700] : 'transparent'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }: SpaceMembersModalProps) {
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [invitations, setInvitations] = useState<SpaceInvitation[]>([]);
   const [emailInput, setEmailInput] = useState('');
+  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
@@ -55,7 +158,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
     setError('');
     setSuccessMessage('');
     try {
-      const result = await api.inviteToSpace(spaceId, emails);
+      const result = await api.inviteToSpace(spaceId, emails, inviteRole);
       if (result.invitations_created > 0) {
         setSuccessMessage(`${result.invitations_created} invitation${result.invitations_created > 1 ? 's' : ''} sent`);
       } else {
@@ -76,6 +179,19 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to remove member');
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: 'editor' | 'viewer') => {
+    // Optimistic update
+    setMembers((prev) =>
+      prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m))
+    );
+    try {
+      await api.updateSpaceMemberRole(spaceId, userId, newRole);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to change role');
+      loadData(); // Revert on failure
     }
   };
 
@@ -104,7 +220,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
   const getAvatarColor = (index: number) => avatarColors[index % avatarColors.length];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Members" maxWidth="520px">
+    <Modal isOpen={isOpen} onClose={onClose} title="People with access" maxWidth="520px">
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
         {/* Error / Success */}
         {error && (
@@ -133,7 +249,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
         {/* Member List */}
         {loading ? (
           <div style={{ color: colors.primary[500], fontSize: typography.fontSize.sm, padding: spacing[4], textAlign: 'center' }}>
-            Loading members...
+            Loading...
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
@@ -190,18 +306,34 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
                   )}
                 </div>
 
-                {/* Role badge */}
-                <div style={{
-                  fontSize: typography.fontSize.xs,
-                  color: member.role === 'owner' ? colors.primary[900] : colors.primary[600],
-                  background: member.role === 'owner' ? colors.primary[200] : 'transparent',
-                  padding: member.role === 'owner' ? `${spacing[0.5]} ${spacing[2]}` : '0',
-                  borderRadius: borders.radius.full,
-                  fontWeight: member.role === 'owner' ? typography.fontWeight.medium : typography.fontWeight.normal,
-                  flexShrink: 0,
-                }}>
-                  {member.role === 'owner' ? 'Owner' : 'Member'}
-                </div>
+                {/* Role: badge for owner, custom dropdown for others (if owner) */}
+                {member.role === 'owner' ? (
+                  <div style={{
+                    fontSize: typography.fontSize.xs,
+                    color: colors.primary[900],
+                    background: colors.primary[200],
+                    padding: `${spacing[0.5]} ${spacing[2]}`,
+                    borderRadius: borders.radius.full,
+                    fontWeight: typography.fontWeight.medium,
+                    flexShrink: 0,
+                  }}>
+                    Owner
+                  </div>
+                ) : isOwner ? (
+                  <RoleDropdown
+                    value={member.role as 'editor' | 'viewer'}
+                    onChange={(role) => handleChangeRole(member.user_id, role)}
+                    compact
+                  />
+                ) : (
+                  <div style={{
+                    fontSize: typography.fontSize.xs,
+                    color: colors.primary[600],
+                    flexShrink: 0,
+                  }}>
+                    {ROLE_LABELS[member.role] || member.role}
+                  </div>
+                )}
 
                 {/* Remove button (owner only, not for self) */}
                 {isOwner && member.role !== 'owner' && (
@@ -323,7 +455,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
             }}>
               Invite People
             </div>
-            <div style={{ display: 'flex', gap: spacing[2] }}>
+            <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
               <input
                 type="text"
                 value={emailInput}
@@ -345,6 +477,10 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
                   color: colors.primary[900],
                   background: colors.primary[50],
                 }}
+              />
+              <RoleDropdown
+                value={inviteRole}
+                onChange={setInviteRole}
               />
               <button
                 onClick={handleInvite}

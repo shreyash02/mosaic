@@ -731,65 +731,6 @@ export default function SpaceDetailPage() {
           </span>
         </div>
         <div style={s.topBarRight}>
-          {/* Member avatars */}
-          {space.members && space.members.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', marginRight: spacing[1] }}>
-              {space.members.slice(0, 5).map((member, idx) => {
-                const avatarColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6'];
-                const initials = member.user_name
-                  ? member.user_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
-                  : (member.user_email || '?')[0].toUpperCase();
-                const tooltipLabel = member.user_name || member.user_email || 'Member';
-                return (
-                  <div
-                    key={member.id}
-                    className="member-avatar-tip"
-                    data-tip={tooltipLabel}
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: borders.radius.full,
-                      background: avatarColors[idx % avatarColors.length],
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontSize: '11px',
-                      fontWeight: typography.fontWeight.semibold,
-                      marginLeft: idx > 0 ? '-6px' : '0',
-                      border: '2px solid var(--color-primary-50)',
-                      zIndex: space.members!.length - idx,
-                      position: 'relative' as const,
-                      cursor: 'default',
-                      userSelect: 'none' as const,
-                    }}
-                  >
-                    {initials}
-                  </div>
-                );
-              })}
-              {space.members.length > 5 && (
-                <div style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: borders.radius.full,
-                  background: 'var(--color-primary-300)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--color-primary-700)',
-                  fontSize: '10px',
-                  fontWeight: typography.fontWeight.semibold,
-                  marginLeft: '-6px',
-                  border: '2px solid var(--color-primary-50)',
-                  position: 'relative' as const,
-                  userSelect: 'none' as const,
-                }}>
-                  +{space.members.length - 5}
-                </div>
-              )}
-            </div>
-          )}
           {/* Members button */}
           <button
             onClick={() => setShowMembersModal(true)}
@@ -817,44 +758,46 @@ export default function SpaceDetailPage() {
             </svg>
             {(space.member_count ?? 1) > 1 ? `${space.member_count}` : 'Members'}
           </button>
-          <button
-            style={{
-              ...s.organizeButton,
-              opacity: organizing || space.idea_count < 2 ? 0.5 : 1,
-              cursor: organizing || space.idea_count < 2 ? 'not-allowed' : 'pointer',
-            }}
-            onClick={handleOrganize}
-            disabled={organizing || space.idea_count < 2}
-            title={space.idea_count < 2 ? 'Need at least 2 ideas to organize' : 'Re-organize all ideas into themes'}
-          >
-            {organizing ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-                  <path d="M21 12a9 9 0 11-6.219-8.56" />
-                </svg>
-                Organizing...
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-                </svg>
-                Organize
-                {space.auto_organize && (
-                  <span style={{
-                    fontSize: typography.fontSize.xs,
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    padding: `0 ${spacing[1]}`,
-                    borderRadius: borders.radius.sm,
-                    fontWeight: typography.fontWeight.normal,
-                  }}>
-                    Auto
-                  </span>
-                )}
-              </>
-            )}
-          </button>
+          {space.can_edit !== false && (
+            <button
+              style={{
+                ...s.organizeButton,
+                opacity: organizing || space.idea_count < 2 ? 0.5 : 1,
+                cursor: organizing || space.idea_count < 2 ? 'not-allowed' : 'pointer',
+              }}
+              onClick={handleOrganize}
+              disabled={organizing || space.idea_count < 2}
+              title={space.idea_count < 2 ? 'Need at least 2 ideas to organize' : 'Re-organize all ideas into themes'}
+            >
+              {organizing ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                    <path d="M21 12a9 9 0 11-6.219-8.56" />
+                  </svg>
+                  Organizing...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                  </svg>
+                  Organize
+                  {space.auto_organize && (
+                    <span style={{
+                      fontSize: typography.fontSize.xs,
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      padding: `0 ${spacing[1]}`,
+                      borderRadius: borders.radius.sm,
+                      fontWeight: typography.fontWeight.normal,
+                    }}>
+                      Auto
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          )}
           {(space.is_owner !== false) && (
             <Link to={`/spaces/${id}/settings`} style={s.settingsLink}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -866,34 +809,36 @@ export default function SpaceDetailPage() {
         </div>
       </div>
 
-      {/* Quick input */}
-      <div style={s.inputArea}>
-        <div style={s.inputRow}>
-          <textarea
-            style={s.ideaInput}
-            value={ideaText}
-            onChange={(e) => setIdeaText(e.target.value)}
-            placeholder="Drop a thought or an idea..."
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleDropIdea();
-              }
-            }}
-          />
-          <button
-            style={{
-              ...s.dropButton,
-              opacity: !ideaText.trim() || dropping ? 0.5 : 1,
-            }}
-            onClick={handleDropIdea}
-            disabled={!ideaText.trim() || dropping}
-          >
-            {dropping ? 'Adding...' : 'Add'}
-          </button>
+      {/* Quick input (editors/owners only) */}
+      {space.can_edit !== false && (
+        <div style={s.inputArea}>
+          <div style={s.inputRow}>
+            <textarea
+              style={s.ideaInput}
+              value={ideaText}
+              onChange={(e) => setIdeaText(e.target.value)}
+              placeholder="Drop a thought or an idea..."
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleDropIdea();
+                }
+              }}
+            />
+            <button
+              style={{
+                ...s.dropButton,
+                opacity: !ideaText.trim() || dropping ? 0.5 : 1,
+              }}
+              onClick={handleDropIdea}
+              disabled={!ideaText.trim() || dropping}
+            >
+              {dropping ? 'Adding...' : 'Add'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {error && <div style={s.error}>{error}</div>}
 
@@ -1051,13 +996,15 @@ export default function SpaceDetailPage() {
                       color: 'var(--color-primary-700)',
                       lineHeight: typography.lineHeight.relaxed,
                     }}>
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        onChange={() => { setCompletingNote(actionKey); setCompletionOutcome(''); }}
-                        style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
-                        title="Mark as completed"
-                      />
+                      {space.can_edit !== false && (
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() => { setCompletingNote(actionKey); setCompletionOutcome(''); }}
+                          style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
+                          title="Mark as completed"
+                        />
+                      )}
                       <div style={{ flex: 1 }}>
                         <div style={{
                           display: 'flex',
@@ -1079,25 +1026,27 @@ export default function SpaceDetailPage() {
                         </div>
                         <span>{note}</span>
                       </div>
-                      <button
-                        onClick={() => startDismiss(themeId, noteIndex)}
-                        title="Dismiss"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--color-primary-400)',
-                          padding: '0 2px',
-                          fontSize: typography.fontSize.xs,
-                          flexShrink: 0,
-                          lineHeight: 1,
-                        }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
+                      {space.can_edit !== false && (
+                        <button
+                          onClick={() => startDismiss(themeId, noteIndex)}
+                          title="Dismiss"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary-400)',
+                            padding: '0 2px',
+                            fontSize: typography.fontSize.xs,
+                            flexShrink: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                     {/* Completion outcome prompt */}
                     {isCompleting && (
@@ -1332,7 +1281,7 @@ export default function SpaceDetailPage() {
                                 title="Mark as completed"
                               />
                             )}
-                            {isCompleted && (
+                            {isCompleted && space.can_edit !== false && (
                               <input
                                 type="checkbox"
                                 checked={true}
@@ -1342,7 +1291,7 @@ export default function SpaceDetailPage() {
                               />
                             )}
                             <span style={{ flex: 1 }}>{note}</span>
-                            {isSuggested && (
+                            {isSuggested && space.can_edit !== false && (
                               <button
                                 onClick={() => handleNoteStateChange(themeId, i, 'accepted')}
                                 title="Accept — add to your actions"
@@ -1373,7 +1322,7 @@ export default function SpaceDetailPage() {
                                 active
                               </span>
                             )}
-                            {!isCompleted && (
+                            {!isCompleted && space.can_edit !== false && (
                               <button
                                 onClick={() => startDismiss(themeId, i)}
                                 title="Dismiss"
@@ -1977,26 +1926,28 @@ export default function SpaceDetailPage() {
                     <div style={s.ideaMeta}>
                       {new Date(idea.created_at).toLocaleDateString()}
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteIdea(idea.id);
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--color-primary-400)',
-                        padding: '2px',
-                        fontSize: typography.fontSize.xs,
-                      }}
-                      title="Remove idea"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                      </svg>
-                    </button>
+                    {space.can_edit !== false && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteIdea(idea.id);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--color-primary-400)',
+                          padding: '2px',
+                          fontSize: typography.fontSize.xs,
+                        }}
+                        title="Remove idea"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -2013,27 +1964,6 @@ export default function SpaceDetailPage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        .member-avatar-tip::after {
-          content: attr(data-tip);
-          position: absolute;
-          top: calc(100% + 10px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: var(--color-primary-900);
-          color: #fff;
-          font-size: 12px;
-          font-weight: 500;
-          padding: 4px 8px;
-          border-radius: 4px;
-          white-space: nowrap;
-          pointer-events: none;
-          opacity: 0;
-          transition: opacity 0.15s;
-          z-index: 1000;
-        }
-        .member-avatar-tip:hover::after {
-          opacity: 1;
         }
       `}</style>
 

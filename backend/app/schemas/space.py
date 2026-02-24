@@ -73,6 +73,14 @@ class SpaceMemberResponse(BaseModel):
 class SpaceInviteRequest(BaseModel):
     """Invite users to a space by email."""
     emails: List[str] = Field(..., min_length=1, max_length=20)
+    role: Optional[str] = "editor"
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("editor", "viewer"):
+            raise ValueError("role must be 'editor' or 'viewer'")
+        return v
 
 
 class SpaceInvitationResponse(BaseModel):
@@ -102,6 +110,7 @@ class SpaceResponse(BaseModel):
     updated_at: datetime
     owner_id: Optional[UUID] = None
     is_owner: bool = True
+    can_edit: bool = True
     member_count: int = 1
     members: Optional[List[SpaceMemberResponse]] = None
 
@@ -123,6 +132,7 @@ class SpaceListItem(BaseModel):
     created_at: datetime
     owner_id: Optional[UUID] = None
     is_owner: bool = True
+    can_edit: bool = True
     member_count: int = 1
 
     model_config = {"from_attributes": True}
