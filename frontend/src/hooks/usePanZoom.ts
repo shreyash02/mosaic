@@ -4,12 +4,21 @@ export interface PanZoomState {
   scale: number;
   translateX: number;
   isPanning: boolean;
+  /** Ref for children to set the fixed (non-scaling) X offset (e.g. label width) */
+  contentOffsetRef: React.MutableRefObject<number>;
+  /** Ref for children to report their scrollable content width (for clamping) */
+  contentWidthRef: React.MutableRefObject<number>;
 }
+
+const defaultOffsetRef: React.MutableRefObject<number> = { current: 0 };
+const defaultWidthRef: React.MutableRefObject<number> = { current: 0 };
 
 export const PanZoomContext = createContext<PanZoomState>({
   scale: 1,
   translateX: 0,
   isPanning: false,
+  contentOffsetRef: defaultOffsetRef,
+  contentWidthRef: defaultWidthRef,
 });
 
 export function usePanZoomContext() {
@@ -37,7 +46,11 @@ export function usePanZoom(options?: UsePanZoomOptions) {
   const [isPanning, setIsPanning] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentOffsetRef = useRef(0);
+  const contentWidthRef = useRef(0);
   const panStart = useRef({ x: 0, tx: 0 });
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
   const translateXRef = useRef(translateX);
   translateXRef.current = translateX;
 
@@ -54,8 +67,20 @@ export function usePanZoom(options?: UsePanZoomOptions) {
     return Math.max(minTx, Math.min(0, tx));
   }, []);
 
+  // Clamp helper for panning bounds (cssTransform=false)
+  // Only used during pan (mousemove), NOT during zoom — zoom needs unclamped tx for anchoring
+  const clampChildTx = useCallback((tx: number): number => {
+    const el = containerRef.current;
+    if (!el || contentWidthRef.current <= 0) return tx;
+    const visibleW = el.clientWidth - contentOffsetRef.current;
+    const contentW = contentWidthRef.current;
+    if (contentW <= visibleW) return 0; // content fits — no panning needed
+    return Math.max(visibleW - contentW, Math.min(0, tx));
+  }, []);
+
   // After every scale/translate change, clamp translateX to keep content in bounds
-  // (only when CSS transform is applied — otherwise child handles layout/clamping)
+  // Only for cssTransform=true — for cssTransform=false, the child clamps visually
+  // and we clamp at pan-start to avoid drift (see handleMouseDownCapture)
   useEffect(() => {
     if (!cssTransform) return;
     const clamped = clampTx(translateX, scale);
@@ -64,7 +89,7 @@ export function usePanZoom(options?: UsePanZoomOptions) {
     }
   }, [translateX, scale, clampTx, cssTransform]);
 
-  // Wheel zoom — proportional to deltaY for smooth trackpad + reasonable mouse wheel
+  // Wheel zoom — use refs to avoid nested state updaters (which double-apply in StrictMode)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -72,16 +97,20 @@ export function usePanZoom(options?: UsePanZoomOptions) {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      const cursorX = e.clientX - rect.left;
+      const cursorX = e.clientX - rect.left - contentOffsetRef.current;
 
-      setScale(prev => {
-        const zoomDelta = (e.deltaY < 0 ? 1 : -1) * Math.min(Math.abs(e.deltaY) * 0.0005, 0.05);
-        const next = Math.min(maxScale, Math.max(minScale, prev + zoomDelta));
-        if (next === prev) return prev;
-        const ratio = next / prev;
-        setTranslateX(tx => cursorX - ratio * (cursorX - tx));
-        return next;
-      });
+      // Read current values from refs (not nested updaters)
+      const prev = scaleRef.current;
+      const tx = translateXRef.current;
+      const zoomDelta = (e.deltaY < 0 ? 1 : -1) * Math.min(Math.abs(e.deltaY) * 0.0005, 0.05);
+      const next = Math.min(maxScale, Math.max(minScale, prev + zoomDelta));
+      if (next === prev) return;
+
+      const ratio = next / prev;
+      const newTx = cursorX - ratio * (cursorX - tx);
+
+      setScale(next);
+      setTranslateX(newTx);
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
@@ -97,14 +126,16 @@ export function usePanZoom(options?: UsePanZoomOptions) {
     e.preventDefault();
     setIsPanning(true);
     panStart.current = { x: e.clientX, tx: translateXRef.current };
-  }, []);
+  }, [cssTransform, clampChildTx]);
 
   useEffect(() => {
     if (!isPanning) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const dx = e.clientX - panStart.current.x;
-      setTranslateX(panStart.current.tx + dx);
+      const rawTx = panStart.current.tx + dx;
+      // Clamp during pan so content can't be dragged off-screen
+      setTranslateX(cssTransform ? rawTx : clampChildTx(rawTx));
     };
 
     const handleMouseUp = () => {
@@ -127,31 +158,33 @@ export function usePanZoom(options?: UsePanZoomOptions) {
   [minScale, maxScale]);
 
   const zoomIn = useCallback(() => {
-    setScale(prev => {
-      const next = clampScale(prev + BUTTON_ZOOM_STEP);
-      if (next === prev) return prev;
-      const ratio = next / prev;
-      const el = containerRef.current;
-      if (el) {
-        const cx = el.clientWidth / 2;
-        setTranslateX(tx => cx - ratio * (cx - tx));
-      }
-      return next;
-    });
+    const prev = scaleRef.current;
+    const tx = translateXRef.current;
+    const next = clampScale(prev + BUTTON_ZOOM_STEP);
+    if (next === prev) return;
+    const ratio = next / prev;
+    const el = containerRef.current;
+    if (el) {
+      const cx = el.clientWidth / 2 - contentOffsetRef.current;
+      const newTx = cx - ratio * (cx - tx);
+      setTranslateX(newTx);
+    }
+    setScale(next);
   }, [clampScale]);
 
   const zoomOut = useCallback(() => {
-    setScale(prev => {
-      const next = clampScale(prev - BUTTON_ZOOM_STEP);
-      if (next === prev) return prev;
-      const ratio = next / prev;
-      const el = containerRef.current;
-      if (el) {
-        const cx = el.clientWidth / 2;
-        setTranslateX(tx => cx - ratio * (cx - tx));
-      }
-      return next;
-    });
+    const prev = scaleRef.current;
+    const tx = translateXRef.current;
+    const next = clampScale(prev - BUTTON_ZOOM_STEP);
+    if (next === prev) return;
+    const ratio = next / prev;
+    const el = containerRef.current;
+    if (el) {
+      const cx = el.clientWidth / 2 - contentOffsetRef.current;
+      const newTx = cx - ratio * (cx - tx);
+      setTranslateX(newTx);
+    }
+    setScale(next);
   }, [clampScale]);
 
   const resetZoom = useCallback(() => {
@@ -164,6 +197,8 @@ export function usePanZoom(options?: UsePanZoomOptions) {
     translateX,
     isPanning,
     containerRef,
+    contentOffsetRef,
+    contentWidthRef,
     handleMouseDownCapture,
     zoomIn,
     zoomOut,

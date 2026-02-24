@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { usePanZoom, PanZoomContext } from '../hooks/usePanZoom';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 
@@ -39,13 +39,15 @@ export default function PanZoomContainer({ children, bottomRightControls, cssTra
     translateX,
     isPanning,
     containerRef,
+    contentOffsetRef,
+    contentWidthRef,
     handleMouseDownCapture,
     zoomIn,
     zoomOut,
     resetZoom,
   } = usePanZoom({ cssTransform });
 
-  const state = { scale, translateX, isPanning };
+  const state = { scale, translateX, isPanning, contentOffsetRef, contentWidthRef };
 
   return (
     <PanZoomContext.Provider value={state}>

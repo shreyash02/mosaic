@@ -42,7 +42,7 @@ function formatShortDate(dateStr: string): string {
 
 const LANE_HEIGHT = 32;
 const DOT_RADIUS = 6;
-const COLUMN_WIDTH = 140;
+// Column width is computed dynamically to fill available space (see baseColWidth)
 const MIN_LABEL_WIDTH = 140;
 const LABEL_PADDING = 12; // gap between label text and first column
 const HEADER_HEIGHT = 32;
@@ -176,7 +176,7 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
-  const { scale, translateX } = usePanZoomContext();
+  const { scale, translateX, contentOffsetRef, contentWidthRef } = usePanZoomContext();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -236,9 +236,6 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
   const longestName = laneOrder.reduce((max, t) => Math.max(max, t.name.length), 0);
   const labelWidth = Math.max(MIN_LABEL_WIDTH, longestName * CHAR_WIDTH_ESTIMATE + LABEL_PADDING);
 
-  // Scale only affects horizontal column spacing (X-axis zoom only)
-  const scaledColWidth = COLUMN_WIDTH * scale;
-
   // SVG fills the container; timeline content is clipped and translated internally
   const svgWidth = containerSize.width || 800;
   const svgHeight = Math.max(
@@ -246,15 +243,29 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
     containerSize.height
   );
 
-  // Clamp translateX so timeline content stays within the visible area
-  const timelineContentWidth = dates.length * scaledColWidth;
+  // Small fixed gap between labels and first/last dot (instead of half a column width)
+  const COL_PAD = 16;
+
+  // Compute column width dynamically so content fills the visible area at scale=1
   const visibleTimelineWidth = svgWidth - labelWidth;
-  const clampedTx = timelineContentWidth <= visibleTimelineWidth
-    ? 0
-    : Math.max(visibleTimelineWidth - timelineContentWidth, Math.min(0, translateX));
+  const baseColWidth = dates.length > 1
+    ? (visibleTimelineWidth - 2 * COL_PAD) / (dates.length - 1)
+    : visibleTimelineWidth - 2 * COL_PAD;
+  const scaledColWidth = baseColWidth * scale;
+
+  // Tell the pan/zoom hook where the scalable content starts (after labels)
+  contentOffsetRef.current = labelWidth + COL_PAD;
+
+  // Content width for pan bounds (clamping happens in the hook during pan, not here)
+  const timelineContentWidth = COL_PAD * 2 + (dates.length - 1) * scaledColWidth;
+  // Pass translateX through directly — zoom formula needs unclamped values for correct anchoring
+  const clampedTx = translateX;
+
+  // Report scalable content width for debug bounds
+  contentWidthRef.current = timelineContentWidth;
 
   // Timeline column positions (absolute X, used inside the translated group)
-  const colX = (ri: number) => labelWidth + ri * scaledColWidth + scaledColWidth / 2;
+  const colX = (ri: number) => labelWidth + COL_PAD + ri * scaledColWidth;
   const laneY = (li: number) => HEADER_HEIGHT + PADDING_TOP + li * LANE_HEIGHT + LANE_HEIGHT / 2;
 
   return (

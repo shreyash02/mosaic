@@ -196,7 +196,7 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
-  const { scale, translateX } = usePanZoomContext();
+  const { scale, translateX, contentWidthRef } = usePanZoomContext();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -264,6 +264,9 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
   const clampedTx = scaledWidth <= containerWidth
     ? 0
     : Math.max(containerWidth - scaledWidth, Math.min(0, translateX));
+
+  // Report content width for debug bounds (no offset — full width is scalable)
+  contentWidthRef.current = scaledWidth;
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
