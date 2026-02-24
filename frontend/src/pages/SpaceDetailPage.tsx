@@ -470,6 +470,10 @@ export default function SpaceDetailPage() {
   const [outcomeModalNoteIndex, setOutcomeModalNoteIndex] = useState(0);
   const outcomeImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Idea search
+  const [ideaSearch, setIdeaSearch] = useState('');
+  const [ideasShowAll, setIdeasShowAll] = useState(false);
+
   // Contextual starter prompts (LLM-generated for empty spaces)
   const [contextualPrompts, setContextualPrompts] = useState<string[] | null>(null);
   const [starterPromptsLoading, setStarterPromptsLoading] = useState(false);
@@ -953,6 +957,13 @@ export default function SpaceDetailPage() {
     }
     return ideas.filter(idea => idea.themes.some(t => t.theme_id === selectedThemeId));
   }, [ideas, selectedThemeId, selectedEdge]);
+  const searchedIdeas = useMemo(() => {
+    if (!ideaSearch.trim()) return filteredIdeas;
+    const q = ideaSearch.toLowerCase();
+    return filteredIdeas.filter(idea => idea.text.toLowerCase().includes(q));
+  }, [filteredIdeas, ideaSearch]);
+  const IDEA_PAGE_SIZE = 30;
+  const visibleIdeas = ideasShowAll ? searchedIdeas : searchedIdeas.slice(0, IDEA_PAGE_SIZE);
   const purposeKey = (space?.purpose || 'explore') as SpacePurpose;
   const pc = PURPOSE_CONFIG[purposeKey] || PURPOSE_CONFIG.explore;
   const isSharedSpace = (space?.member_count ?? 1) > 1;
@@ -1723,6 +1734,64 @@ export default function SpaceDetailPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Purpose synthesis section */}
+          {space.purpose_synthesis?.space_summary && pc.synthesisHeader && (
+            <div style={s.sidebarSection}>
+              <div
+                style={{
+                  ...s.sidebarTitle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  marginBottom: synthesisExpanded ? spacing[3] : 0,
+                }}
+                onClick={() => setSynthesisExpanded(prev => !prev)}
+              >
+                <span>{pc.synthesisHeader}</span>
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: synthesisExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+              {synthesisExpanded && (
+                <>
+                  <div style={{
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-700)',
+                    lineHeight: typography.lineHeight.relaxed,
+                  }}>
+                    {space.purpose_synthesis.space_summary}
+                  </div>
+                  {synthesisProgress && (synthesisProgress.completedCount > 0 || synthesisProgress.acceptedCount > 0) && (
+                    <div style={{
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-500)',
+                      marginTop: spacing[2],
+                    }}>
+                      {synthesisProgress.acceptedCount > 0 && `${synthesisProgress.acceptedCount} in progress`}
+                      {synthesisProgress.acceptedCount > 0 && synthesisProgress.completedCount > 0 && ' · '}
+                      {synthesisProgress.completedCount > 0 && `${synthesisProgress.completedCount} completed`}
+                    </div>
+                  )}
+                  {space.purpose_synthesis.generated_at && (
+                    <div style={{
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-400)',
+                      marginTop: spacing[1],
+                    }}>
+                      Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -2708,64 +2777,6 @@ export default function SpaceDetailPage() {
             )}
           </div>
 
-          {/* Purpose synthesis section */}
-          {space.purpose_synthesis?.space_summary && pc.synthesisHeader && (
-            <div style={s.sidebarSection}>
-              <div
-                style={{
-                  ...s.sidebarTitle,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  marginBottom: synthesisExpanded ? spacing[3] : 0,
-                }}
-                onClick={() => setSynthesisExpanded(prev => !prev)}
-              >
-                <span>{pc.synthesisHeader}</span>
-                <svg
-                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: synthesisExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </div>
-              {synthesisExpanded && (
-                <>
-                  <div style={{
-                    fontSize: typography.fontSize.sm,
-                    color: 'var(--color-primary-700)',
-                    lineHeight: typography.lineHeight.relaxed,
-                  }}>
-                    {space.purpose_synthesis.space_summary}
-                  </div>
-                  {synthesisProgress && (synthesisProgress.completedCount > 0 || synthesisProgress.acceptedCount > 0) && (
-                    <div style={{
-                      fontSize: typography.fontSize.xs,
-                      color: 'var(--color-primary-500)',
-                      marginTop: spacing[2],
-                    }}>
-                      {synthesisProgress.acceptedCount > 0 && `${synthesisProgress.acceptedCount} in progress`}
-                      {synthesisProgress.acceptedCount > 0 && synthesisProgress.completedCount > 0 && ' · '}
-                      {synthesisProgress.completedCount > 0 && `${synthesisProgress.completedCount} completed`}
-                    </div>
-                  )}
-                  {space.purpose_synthesis.generated_at && (
-                    <div style={{
-                      fontSize: typography.fontSize.xs,
-                      color: 'var(--color-primary-400)',
-                      marginTop: spacing[1],
-                    }}>
-                      Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
           {/* Themes section */}
           <div style={s.sidebarSection}>
             <div
@@ -2856,87 +2867,151 @@ export default function SpaceDetailPage() {
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
-            {ideasExpanded && (filteredIdeas.length === 0 ? (
-              <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', padding: spacing[2] }}>
-                {selectedThemeId ? 'No ideas in this theme' : pc.emptyIdeas}
-              </div>
-            ) : (
-              filteredIdeas.slice(0, 30).map((idea) => (
-                <div key={idea.id} style={s.ideaItem}>
-                  <div style={{ display: 'flex', gap: spacing[2] }}>
-                    {idea.image_url && (
-                      <img
-                        src={idea.image_url}
-                        alt=""
-                        style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm, cursor: 'zoom-in', flexShrink: 0 }}
-                        onClick={() => setLightboxSrc(idea.image_url!)}
-                      />
-                    )}
-                    <div style={s.ideaText}>{idea.text}</div>
-                  </div>
-                  {idea.themes.length > 0 && (
-                    <div style={s.ideaThemes}>
-                      {idea.themes.map((t) => (
-                        <span
-                          key={t.theme_id}
-                          style={{
-                            ...s.ideaThemeTag,
-                            backgroundColor: themes.find(th => th.id === t.theme_id)?.color || '#6b7280',
-                          }}
-                        >
-                          {t.theme_name}
-                        </span>
-                      ))}
-                    </div>
+            {ideasExpanded && (<>
+              {/* Search input — show when there are enough ideas to warrant it */}
+              {filteredIdeas.length > 5 && (
+                <div style={{ position: 'relative', marginBottom: spacing[2] }}>
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ position: 'absolute', left: spacing[2], top: '50%', transform: 'translateY(-50%)' }}
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search ideas..."
+                    value={ideaSearch}
+                    onChange={(e) => { setIdeaSearch(e.target.value); setIdeasShowAll(false); }}
+                    style={{
+                      width: '100%',
+                      padding: `${spacing[1]} ${spacing[2]} ${spacing[1]} ${spacing[6]}`,
+                      fontSize: typography.fontSize.sm,
+                      border: '1px solid var(--color-primary-200)',
+                      borderRadius: borders.radius.md,
+                      backgroundColor: 'var(--color-primary-50)',
+                      color: 'var(--color-primary-700)',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      fontFamily: 'inherit',
+                    }}
+                  />
+                  {ideaSearch && (
+                    <button
+                      onClick={() => setIdeaSearch('')}
+                      style={{
+                        position: 'absolute', right: spacing[2], top: '50%', transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary-400)', padding: 0,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ ...s.ideaMeta, display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                      {isSharedSpace && idea.author_name && (
-                        <span style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--color-primary-400)',
-                          color: '#fff',
-                          fontSize: '9px',
-                          fontWeight: typography.fontWeight.semibold,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          letterSpacing: '-0.5px',
-                        }} title={idea.author_name}>
-                          {idea.author_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-                        </span>
-                      )}
-                      Added {formatRelativeTime(idea.created_at)}
-                    </div>
-                    {space.can_edit !== false && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteIdea(idea.id);
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--color-primary-400)',
-                          padding: '2px',
-                          fontSize: typography.fontSize.xs,
-                        }}
-                        title="Remove idea"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
                 </div>
-              ))
-            ))}
+              )}
+              {searchedIdeas.length === 0 ? (
+                <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', padding: spacing[2] }}>
+                  {ideaSearch ? 'No ideas match your search' : selectedThemeId ? 'No ideas in this theme' : pc.emptyIdeas}
+                </div>
+              ) : (<>
+                {visibleIdeas.map((idea) => (
+                  <div key={idea.id} style={s.ideaItem}>
+                    <div style={{ display: 'flex', gap: spacing[2] }}>
+                      {idea.image_url && (
+                        <img
+                          src={idea.image_url}
+                          alt=""
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm, cursor: 'zoom-in', flexShrink: 0 }}
+                          onClick={() => setLightboxSrc(idea.image_url!)}
+                        />
+                      )}
+                      <div style={s.ideaText}>{idea.text}</div>
+                    </div>
+                    {idea.themes.length > 0 && (
+                      <div style={s.ideaThemes}>
+                        {idea.themes.map((t) => (
+                          <span
+                            key={t.theme_id}
+                            style={{
+                              ...s.ideaThemeTag,
+                              backgroundColor: themes.find(th => th.id === t.theme_id)?.color || '#6b7280',
+                            }}
+                          >
+                            {t.theme_name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ ...s.ideaMeta, display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                        {isSharedSpace && idea.author_name && (
+                          <span style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--color-primary-400)',
+                            color: '#fff',
+                            fontSize: '9px',
+                            fontWeight: typography.fontWeight.semibold,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            letterSpacing: '-0.5px',
+                          }} title={idea.author_name}>
+                            {idea.author_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                          </span>
+                        )}
+                        Added {formatRelativeTime(idea.created_at)}
+                      </div>
+                      {space.can_edit !== false && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteIdea(idea.id);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary-400)',
+                            padding: '2px',
+                            fontSize: typography.fontSize.xs,
+                          }}
+                          title="Remove idea"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {!ideasShowAll && searchedIdeas.length > IDEA_PAGE_SIZE && (
+                  <button
+                    onClick={() => setIdeasShowAll(true)}
+                    style={{
+                      width: '100%',
+                      padding: spacing[2],
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-500)',
+                      backgroundColor: 'transparent',
+                      border: '1px dashed var(--color-primary-300)',
+                      borderRadius: borders.radius.md,
+                      cursor: 'pointer',
+                      marginTop: spacing[1],
+                    }}
+                  >
+                    Show all {searchedIdeas.length} ideas
+                  </button>
+                )}
+              </>)}
+            </>)}
           </div>
 
         </div>
