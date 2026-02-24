@@ -49,6 +49,7 @@ const styles = {
     maxHeight: '90vh',
     overflowY: 'auto' as const,
     boxShadow: shadows.lg,
+    boxSizing: 'border-box' as const,
   },
   title: {
     fontSize: typography.fontSize.xl,

@@ -455,7 +455,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
             }}>
               Invite People
             </div>
-            <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 type="text"
                 value={emailInput}
@@ -469,6 +469,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
                 }}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   padding: `${spacing[2]} ${spacing[3]}`,
                   border: `1px solid ${colors.primary[300]}`,
                   borderRadius: borders.radius.md,
@@ -476,6 +477,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
                   outline: 'none',
                   color: colors.primary[900],
                   background: colors.primary[50],
+                  boxSizing: 'border-box' as const,
                 }}
               />
               <RoleDropdown
