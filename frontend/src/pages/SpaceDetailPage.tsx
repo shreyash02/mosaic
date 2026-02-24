@@ -13,6 +13,7 @@ import ThemeEvolutionSankey from '../components/ThemeEvolutionSankey';
 import ThemeEvolutionBranch from '../components/ThemeEvolutionBranch';
 import PanZoomContainer from '../components/PanZoomContainer';
 import SpaceMembersModal from '../components/SpaceMembersModal';
+import { useNotifications } from '../contexts/NotificationContext';
 import CustomSelect from '../components/CustomSelect';
 import ImageIdeaModal from '../components/ImageIdeaModal';
 import ActionOutcomeModal from '../components/ActionOutcomeModal';
@@ -154,9 +155,9 @@ const s = {
     boxSizing: 'border-box' as const,
   },
   dropButton: {
-    padding: `${spacing[2]} ${spacing[5]}`,
-    backgroundColor: 'var(--color-primary-900)',
-    color: 'var(--color-primary-50)',
+    padding: `${spacing[3]} ${spacing[5]}`,
+    backgroundColor: 'var(--color-button-strong-bg)',
+    color: 'var(--color-button-strong-text)',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     borderRadius: borders.radius.md,
@@ -179,17 +180,15 @@ const s = {
   },
   viewToggle: {
     position: 'absolute' as const,
-    top: spacing[2],
-    right: spacing[3],
+    bottom: spacing[3],
+    left: spacing[3],
     zIndex: 5,
     display: 'flex',
-    backgroundColor: 'var(--color-primary-200)',
-    borderRadius: borders.radius.full,
-    padding: '2px',
+    alignItems: 'center',
   },
   viewToggleBtn: {
-    padding: `${spacing[1]} ${spacing[3]}`,
-    fontSize: typography.fontSize.xs,
+    padding: `${spacing[2]} ${spacing[4]}`,
+    fontSize: typography.fontSize.sm,
     border: 'none',
     borderRadius: borders.radius.full,
     cursor: 'pointer',
@@ -201,6 +200,7 @@ const s = {
     overflowY: 'auto' as const,
     flexShrink: 0,
     position: 'relative' as const,
+    cursor: 'default',
   },
   dragHandle: {
     position: 'sticky' as const,
@@ -332,6 +332,9 @@ const PURPOSE_CONFIG: Record<SpacePurpose, {
   graphFlex: number;
   synthesisHeader?: string;
   themeNotesLabel?: string;
+  emptyHeadline: string;
+  emptySubtext: string;
+  starterPrompts: string[];
 }> = {
   explore: {
     emptyThemes: 'Add ideas and click Organize to discover themes',
@@ -340,12 +343,26 @@ const PURPOSE_CONFIG: Record<SpacePurpose, {
     graphFlex: 1,
     synthesisHeader: "What's Emerging",
     themeNotesLabel: 'Worth exploring',
+    emptyHeadline: 'Start dropping ideas',
+    emptySubtext: "Add a few thoughts and we'll find the themes hiding in them",
+    starterPrompts: [
+      'Something I\u2019ve been thinking about\u2026',
+      'An idea I keep coming back to\u2026',
+      'What if we tried\u2026',
+    ],
   },
   organize: {
     emptyThemes: 'Add ideas and organize to see your groups',
     emptyIdeas: 'Drop ideas to start organizing',
     ideasHeader: 'Ideas to Organize',
     graphFlex: 1,
+    emptyHeadline: 'What needs sorting?',
+    emptySubtext: "Add what\u2019s floating around and we\u2019ll group it for you",
+    starterPrompts: [
+      'Something that needs attention\u2026',
+      'A task I keep putting off\u2026',
+      'An open question\u2026',
+    ],
   },
   connections: {
     emptyThemes: 'Add ideas and organize to see how they connect',
@@ -354,6 +371,13 @@ const PURPOSE_CONFIG: Record<SpacePurpose, {
     graphFlex: 2,
     synthesisHeader: 'How Themes Connect',
     themeNotesLabel: 'Connections',
+    emptyHeadline: "What\u2019s on your mind?",
+    emptySubtext: "Drop ideas from different areas and we\u2019ll show how they connect",
+    starterPrompts: [
+      'Something from work\u2026',
+      'Something from a conversation\u2026',
+      'A pattern I noticed\u2026',
+    ],
   },
   insights: {
     emptyThemes: 'Add ideas and organize to surface patterns',
@@ -362,6 +386,13 @@ const PURPOSE_CONFIG: Record<SpacePurpose, {
     graphFlex: 2,
     synthesisHeader: 'Key Patterns',
     themeNotesLabel: 'Patterns',
+    emptyHeadline: 'Gather your observations',
+    emptySubtext: "Add what you\u2019ve been noticing and we\u2019ll surface the patterns",
+    starterPrompts: [
+      'Something surprising I noticed\u2026',
+      'A trend I keep seeing\u2026',
+      'Something that changed recently\u2026',
+    ],
   },
   actions: {
     emptyThemes: 'Add ideas and organize to identify action areas',
@@ -370,11 +401,21 @@ const PURPOSE_CONFIG: Record<SpacePurpose, {
     graphFlex: 1,
     synthesisHeader: 'Recommended Next Steps',
     themeNotesLabel: 'Steps to consider',
+    emptyHeadline: 'What needs to happen?',
+    emptySubtext: "List what\u2019s on your plate and we\u2019ll organize it into action areas",
+    starterPrompts: [
+      'Something that\u2019s blocked\u2026',
+      'A quick win we could try\u2026',
+      'Something we should stop doing\u2026',
+    ],
   },
 };
 
+const ORGANIZE_THRESHOLD = 5;
+
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { addToast } = useNotifications();
   const [space, setSpace] = useState<Space | null>(null);
   const [themes, setThemes] = useState<SpaceTheme[]>([]);
   const [ideas, setIdeas] = useState<SpaceIdea[]>([]);
@@ -417,6 +458,7 @@ export default function SpaceDetailPage() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   const [mobileTab, setMobileTab] = useState<'ideas' | 'map'>('ideas');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
+  const ideaInputRef = useRef<HTMLTextAreaElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -427,6 +469,11 @@ export default function SpaceDetailPage() {
   const [outcomeModalThemeId, setOutcomeModalThemeId] = useState('');
   const [outcomeModalNoteIndex, setOutcomeModalNoteIndex] = useState(0);
   const outcomeImageInputRef = useRef<HTMLInputElement>(null);
+
+  // Contextual starter prompts (LLM-generated for empty spaces)
+  const [contextualPrompts, setContextualPrompts] = useState<string[] | null>(null);
+  const [starterPromptsLoading, setStarterPromptsLoading] = useState(false);
+  const starterPromptsCache = useRef<Record<string, string[]>>({});
 
   // Time filter
   const TIME_FILTER_OPTIONS = [
@@ -668,11 +715,38 @@ export default function SpaceDetailPage() {
     }
   }, [sinceDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch contextual starter prompts for empty spaces
+  useEffect(() => {
+    if (!id || !space || loading) return;
+    if (space.idea_count > 0 || graphData.nodes.length > 0) return;
+
+    const purpose = space.purpose || 'explore';
+    const cacheKey = `${id}:${space.title}:${space.description || ''}:${purpose}`;
+
+    // Check in-memory cache first
+    if (starterPromptsCache.current[cacheKey]) {
+      setContextualPrompts(starterPromptsCache.current[cacheKey]);
+      return;
+    }
+
+    let cancelled = false;
+    setStarterPromptsLoading(true);
+    api.getStarterPrompts(id).then(prompts => {
+      if (cancelled) return;
+      if (prompts) {
+        starterPromptsCache.current[cacheKey] = prompts;
+        setContextualPrompts(prompts);
+      }
+      // If null (failure), contextualPrompts stays null → render falls back to static
+      setStarterPromptsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [id, space?.id, space?.idea_count, space?.title, space?.description, space?.purpose, graphData.nodes.length, loading]);
+
   async function handleDropIdea() {
     if (!id || !ideaText.trim()) return;
     try {
       setDropping(true);
-      setError(null);
       const newIdea = await api.createIdea(id, ideaText.trim());
       setIdeaText('');
 
@@ -687,6 +761,7 @@ export default function SpaceDetailPage() {
       setIdeas(prev => [newIdea, ...prev]);
       const newCount = (space?.idea_count ?? 0) + 1;
       setSpace(prev => prev ? { ...prev, idea_count: newCount } : prev);
+      setContextualPrompts(null);
 
       // Fallback polling for auto-organize (in case SSE misses the event)
       if (space?.auto_organize && newCount >= 5) {
@@ -711,7 +786,11 @@ export default function SpaceDetailPage() {
         autoOrgPollRef.current = setTimeout(() => poll(0), 5000);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to add idea');
+      addToast({
+        type: 'error',
+        title: 'Failed to add idea',
+        message: err.response?.data?.detail || err.message || 'Something went wrong',
+      });
     } finally {
       setDropping(false);
     }
@@ -937,13 +1016,15 @@ export default function SpaceDetailPage() {
           ...s.topBarRight,
           ...(isMobile ? { width: '100%', justifyContent: 'flex-end' } : {}),
         }}>
-          {/* Time filter */}
-          <CustomSelect
-            value={timeFilterDays}
-            options={TIME_FILTER_OPTIONS}
-            onChange={(v) => setTimeFilterDays(Number(v))}
-            minWidth="160px"
-          />
+          {/* Time filter — only relevant for evolution view */}
+          {mainView === 'evolution' && (
+            <CustomSelect
+              value={timeFilterDays}
+              options={TIME_FILTER_OPTIONS}
+              onChange={(v) => setTimeFilterDays(Number(v))}
+              minWidth="180px"
+            />
+          )}
           {/* Members button */}
           <button
             onClick={() => setShowMembersModal(true)}
@@ -1033,9 +1114,11 @@ export default function SpaceDetailPage() {
             ...(isMobile ? { maxWidth: 'none' } : {}),
           }}>
             <textarea
-              style={s.ideaInput}
+              ref={ideaInputRef}
+              style={{ ...s.ideaInput, ...(dropping ? { opacity: 0.6 } : {}) }}
               value={ideaText}
               onChange={(e) => setIdeaText(e.target.value)}
+              readOnly={dropping}
               placeholder={space.can_edit !== false ? 'Drop a thought or an idea...' : 'Suggest an idea...'}
               rows={1}
               onKeyDown={(e) => {
@@ -1097,12 +1180,8 @@ export default function SpaceDetailPage() {
               </svg>
             </button>
             <button
-              style={{
-                ...s.dropButton,
-                opacity: !ideaText.trim() || dropping ? 0.5 : 1,
-              }}
+              style={s.dropButton}
               onClick={handleDropIdea}
-              disabled={!ideaText.trim() || dropping}
             >
               {dropping ? (space.can_edit !== false ? 'Adding...' : 'Suggesting...') : (space.can_edit !== false ? 'Add' : 'Suggest')}
             </button>
@@ -1259,46 +1338,39 @@ export default function SpaceDetailPage() {
         {/* Graph area */}
         {(!isMobile || mobileTab === 'map') && (
         <div style={{ ...s.graphArea, flex: pc.graphFlex }}>
-          {/* View toggle: Graph / Evolution */}
-          <div style={s.viewToggle}>
-            <button
-              style={{
-                ...s.viewToggleBtn,
-                fontWeight: mainView === 'graph' ? typography.fontWeight.medium : typography.fontWeight.normal,
-                color: mainView === 'graph' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
-                backgroundColor: mainView === 'graph' ? 'var(--color-primary-50)' : 'transparent',
-              }}
-              onClick={() => setMainView('graph')}
-            >
-              Graph
-            </button>
-            <button
-              style={{
-                ...s.viewToggleBtn,
-                fontWeight: mainView === 'evolution' ? typography.fontWeight.medium : typography.fontWeight.normal,
-                color: mainView === 'evolution' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
-                backgroundColor: mainView === 'evolution' ? 'var(--color-primary-50)' : 'transparent',
-              }}
-              onClick={() => setMainView('evolution')}
-            >
-              Evolution
-            </button>
-          </div>
-
-          {mainView === 'graph' ? (
-            <NetworkGraph
-              data={graphData}
-              onNodeClick={handleNodeClick}
-              selectedNodeId={selectedThemeId || undefined}
-              onEdgeClick={handleEdgeClick}
-              selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
-              onClearSelection={handleClearSelection}
-            />
-          ) : evolutionStyle === 'timeline' ? (
-            <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-              {/* Style sub-toggle for evolution views */}
+          {/* View toggle: Graph / Evolution + sub-style */}
+          <div style={{ ...s.viewToggle, gap: spacing[2] }}>
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'var(--color-primary-200)',
+              borderRadius: borders.radius.full,
+              padding: '2px',
+            }}>
+              <button
+                style={{
+                  ...s.viewToggleBtn,
+                  fontWeight: mainView === 'graph' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                  color: mainView === 'graph' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                  backgroundColor: mainView === 'graph' ? 'var(--color-primary-50)' : 'transparent',
+                }}
+                onClick={() => setMainView('graph')}
+              >
+                Graph
+              </button>
+              <button
+                style={{
+                  ...s.viewToggleBtn,
+                  fontWeight: mainView === 'evolution' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                  color: mainView === 'evolution' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                  backgroundColor: mainView === 'evolution' ? 'var(--color-primary-50)' : 'transparent',
+                }}
+                onClick={() => setMainView('evolution')}
+              >
+                Evolution
+              </button>
+            </div>
+            {mainView === 'evolution' && (
               <div style={{
-                position: 'absolute', top: spacing[2], right: spacing[2], zIndex: 2,
                 display: 'flex',
                 backgroundColor: 'var(--color-primary-200)',
                 borderRadius: borders.radius.full,
@@ -1319,35 +1391,186 @@ export default function SpaceDetailPage() {
                   </button>
                 ))}
               </div>
+            )}
+          </div>
+
+          {mainView === 'graph' ? (
+            graphData.nodes.length === 0 ? (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: spacing[8],
+              }}>
+                <div style={{
+                  maxWidth: 400,
+                  width: '100%',
+                  textAlign: 'center',
+                }}>
+                  {/* Mini network illustration */}
+                  <svg width="160" height="96" viewBox="0 0 160 96" style={{ marginBottom: spacing[4] }}>
+                    <line x1="46" y1="30" x2="72" y2="18" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <line x1="88" y1="18" x2="116" y2="30" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <line x1="44" y1="38" x2="52" y2="62" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <line x1="74" y1="24" x2="62" y2="60" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <line x1="86" y1="24" x2="100" y2="62" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <line x1="68" y1="70" x2="92" y2="72" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <circle cx="38" cy="30" r="8" fill="var(--color-primary-200)" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <circle cx="80" cy="14" r="10" fill="var(--color-primary-200)" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <circle cx="122" cy="30" r="7" fill="var(--color-primary-200)" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <circle cx="58" cy="70" r="9" fill="var(--color-primary-200)" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                    <circle cx="102" cy="72" r="8" fill="var(--color-primary-200)" stroke="var(--color-primary-400)" strokeWidth="1.5" />
+                  </svg>
+
+                  {/* Headline */}
+                  <div style={{
+                    fontSize: typography.fontSize.lg,
+                    fontWeight: typography.fontWeight.semibold,
+                    color: 'var(--color-primary-800)',
+                    marginBottom: spacing[2],
+                    fontFamily: typography.fontFamily.sans,
+                  }}>
+                    {pc.emptyHeadline}
+                  </div>
+
+                  {/* Subtext */}
+                  <div style={{
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-600)',
+                    lineHeight: 1.5,
+                    marginBottom: spacing[5],
+                    fontFamily: typography.fontFamily.sans,
+                  }}>
+                    {pc.emptySubtext}
+                  </div>
+
+                  {/* Starter prompts */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: spacing[1],
+                    marginBottom: spacing[5],
+                  }}>
+                    {starterPromptsLoading ? (
+                      // Skeleton placeholders while LLM generates prompts
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            padding: `${spacing[2]} ${spacing[3]}`,
+                            backgroundColor: 'var(--color-primary-100)',
+                            border: '1px solid var(--color-primary-200)',
+                            borderRadius: borders.radius.md,
+                            height: 38,
+                            overflow: 'hidden',
+                            position: 'relative',
+                          }}
+                        >
+                          <div style={{
+                            width: `${55 + i * 15}%`,
+                            height: 14,
+                            borderRadius: borders.radius.sm,
+                            backgroundColor: 'var(--color-primary-200)',
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                          }} />
+                        </div>
+                      ))
+                    ) : (
+                      (contextualPrompts || pc.starterPrompts).map((prompt, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setIdeaText(prompt);
+                            ideaInputRef.current?.focus();
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: `${spacing[2]} ${spacing[3]}`,
+                            backgroundColor: 'var(--color-primary-100)',
+                            border: '1px solid var(--color-primary-200)',
+                            borderRadius: borders.radius.md,
+                            cursor: 'pointer',
+                            fontSize: typography.fontSize.sm,
+                            color: 'var(--color-primary-600)',
+                            fontFamily: typography.fontFamily.sans,
+                            textAlign: 'left',
+                            transition: `background-color ${transitions.duration.fast}`,
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-200)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-100)';
+                          }}
+                        >
+                          <span>{prompt}</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: spacing[2], opacity: 0.5 }}>
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Progress indicator — only before first organize */}
+                  {!space?.last_organized_at && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: spacing[2],
+                    }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {Array.from({ length: ORGANIZE_THRESHOLD }).map((_, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              backgroundColor: i < (space?.idea_count ?? 0)
+                                ? 'var(--color-primary-600)'
+                                : 'var(--color-primary-300)',
+                              transition: `background-color ${transitions.duration.normal}`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <span style={{
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-500)',
+                        fontFamily: typography.fontFamily.sans,
+                      }}>
+                        {(space?.idea_count ?? 0) === 0
+                          ? `~${ORGANIZE_THRESHOLD} ideas to first organize`
+                          : `${space?.idea_count ?? 0} of ~${ORGANIZE_THRESHOLD} ideas to first organize`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <NetworkGraph
+                data={graphData}
+                onNodeClick={handleNodeClick}
+                selectedNodeId={selectedThemeId || undefined}
+                onEdgeClick={handleEdgeClick}
+                selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
+                onClearSelection={handleClearSelection}
+              />
+            )
+          ) : evolutionStyle === 'timeline' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
               <ThemeEvolutionTimeline runs={evolution} expanded onToggle={() => {}} />
             </div>
           ) : (
             <PanZoomContainer
               key={evolutionStyle}
               cssTransform={false}
-              bottomRightControls={
-                <div style={{
-                  display: 'flex',
-                  backgroundColor: 'var(--color-primary-200)',
-                  borderRadius: borders.radius.full,
-                  padding: '2px',
-                }}>
-                  {(['flow', 'branch', 'timeline'] as const).map(style => (
-                    <button
-                      key={style}
-                      style={{
-                        ...s.viewToggleBtn,
-                        fontWeight: evolutionStyle === style ? typography.fontWeight.medium : typography.fontWeight.normal,
-                        color: evolutionStyle === style ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
-                        backgroundColor: evolutionStyle === style ? 'var(--color-primary-50)' : 'transparent',
-                      }}
-                      onClick={() => setEvolutionStyle(style)}
-                    >
-                      {style.charAt(0).toUpperCase() + style.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              }
             >
               {evolutionStyle === 'flow' ? (
                 <ThemeEvolutionSankey runs={evolution} />

@@ -1212,6 +1212,73 @@ Return JSON only:
 
 Use the exact theme names as keys in theme_notes. Be specific and actionable, not generic."""
 
+    @staticmethod
+    def generate_starter_prompts(
+        title: str,
+        description: Optional[str],
+        purpose: str,
+    ) -> Optional[List[str]]:
+        """Generate 3 contextual starter prompts for an empty space using Haiku.
+
+        Returns a list of 3 short strings, or None on any failure.
+        """
+        from app.core.config import settings as app_settings
+
+        haiku_model = "claude-haiku-4-5-20251001"
+
+        purpose_verbs = {
+            "explore": "explore ideas freely",
+            "organize": "sort and organize items",
+            "connections": "find connections between ideas",
+            "insights": "discover patterns and insights",
+            "actions": "identify actionable next steps",
+        }
+        purpose_desc = purpose_verbs.get(purpose, "explore ideas freely")
+
+        context_parts = [f'Title: "{title}"']
+        if description:
+            context_parts.append(f"Description: {description}")
+        context_parts.append(f"Goal: {purpose_desc}")
+
+        prompt = f"""A user created an empty idea space with these details:
+{chr(10).join(context_parts)}
+
+Generate exactly 3 short sentence starters (each 4-10 words, ending with \u2026) that the user would begin typing as their own idea. These should read like the START of something the user would write, not questions the platform asks.
+
+Good example for a book space: "I'm thinking of a story where\u2026"
+Bad example (a question): "What genre appeals to you\u2026"
+
+Return JSON only: ["starter 1\u2026", "starter 2\u2026", "starter 3\u2026"]"""
+
+        try:
+            client = Anthropic(api_key=app_settings.ANTHROPIC_API_KEY)
+            t0 = time.time()
+            response = client.messages.create(
+                model=haiku_model,
+                max_tokens=200,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="space_starter_prompts",
+                provider="anthropic",
+                model=haiku_model,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                latency_ms=latency,
+            )
+
+            text = response.content[0].text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            result = json.loads(text)
+            if isinstance(result, list) and len(result) >= 3:
+                return [str(p) for p in result[:3]]
+            return None
+        except Exception:
+            logger.warning("Failed to generate starter prompts", exc_info=True)
+            return None
+
     def _extract_theme_with_llm(self, cluster_texts: List[str], context: Optional[str] = None) -> Dict[str, Any]:
         """Use Claude to extract a theme name and summary from a cluster of ideas."""
         context_section = ""

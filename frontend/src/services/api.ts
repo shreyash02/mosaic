@@ -1575,6 +1575,15 @@ class ApiService {
     return response.data;
   }
 
+  async getStarterPrompts(spaceId: string): Promise<string[] | null> {
+    try {
+      const response = await this.client.get<{ prompts: string[] | null }>(`/spaces/${spaceId}/starter-prompts`);
+      return response.data.prompts;
+    } catch {
+      return null;
+    }
+  }
+
   async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30, since?: string): Promise<SpaceActivityLogPage> {
     const params: Record<string, string | number> = { skip, limit };
     if (since) params.since = since;

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 # Pricing per 1M tokens (USD)
 PRICING = {
     "claude-sonnet-4-5-20250929": {"input": 3.0, "output": 15.0},
+    "claude-haiku-4-5-20251001": {"input": 1.0, "output": 5.0},
     "text-embedding-3-small": {"input": 0.02},
 }
 

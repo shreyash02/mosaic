@@ -1323,6 +1323,32 @@ def get_graph_data(
     return service.get_graph_data(db, space_id)
 
 
+@router.get("/{space_id}/starter-prompts")
+def get_starter_prompts(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate contextual starter prompts for an empty space."""
+    space = _get_space_or_404(space_id, current_user, db)
+
+    # Skip LLM call if the space already has ideas
+    idea_count = db.query(func.count(Idea.id)).filter(
+        Idea.space_id == space_id, Idea.status == "active"
+    ).scalar() or 0
+    if idea_count > 0:
+        return {"prompts": None}
+
+    from app.services.space_service import SpaceService
+    purpose = _get_space_purpose(space)
+    prompts = SpaceService.generate_starter_prompts(
+        title=space.title,
+        description=space.description,
+        purpose=purpose,
+    )
+    return {"prompts": prompts}
+
+
 @router.post("/{space_id}/actions/interpret-outcome-image", response_model=ActionOutcomeImageResponse)
 def interpret_action_outcome_image(
     space_id: UUID,
