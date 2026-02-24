@@ -1792,6 +1792,7 @@ export interface PurposeSynthesis {
   note_states?: Record<string, string>;
   dismiss_reasons?: Record<string, string>;
   completion_outcomes?: Record<string, string>;
+  completion_outcome_images?: Record<string, string>;
 }
 
 export interface SynthesisActivityEntry {

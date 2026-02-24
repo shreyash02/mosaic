@@ -310,6 +310,7 @@ class SynthesisNoteStateUpdate(BaseModel):
     state: Optional[str] = None
     reason: Optional[str] = Field(None, max_length=500)
     outcome: Optional[str] = Field(None, max_length=500)
+    outcome_image_url: Optional[str] = Field(None, max_length=500)
 
     @field_validator("state")
     @classmethod
@@ -317,3 +318,15 @@ class SynthesisNoteStateUpdate(BaseModel):
         if v is not None and v not in ("accepted", "completed", "dismissed"):
             raise ValueError("state must be 'accepted', 'completed', 'dismissed', or null")
         return v
+
+
+class ActionOutcomeImageRequest(BaseModel):
+    """Request to interpret an action outcome from an uploaded image."""
+    image_url: str
+    action_text: str
+    description: Optional[str] = Field(None, max_length=2000)
+
+
+class ActionOutcomeImageResponse(BaseModel):
+    """Response from action outcome image interpretation."""
+    outcome_text: str

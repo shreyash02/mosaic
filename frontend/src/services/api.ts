@@ -1439,6 +1439,7 @@ class ApiService {
     state: 'accepted' | 'completed' | 'dismissed' | null,
     reason?: string,
     outcome?: string,
+    outcomeImageUrl?: string,
   ): Promise<any> {
     const response = await this.client.patch(`/spaces/${spaceId}/synthesis/note-state`, {
       theme_id: themeId,
@@ -1446,7 +1447,25 @@ class ApiService {
       state,
       reason: reason || undefined,
       outcome: outcome || undefined,
+      outcome_image_url: outcomeImageUrl || undefined,
     });
+    return response.data;
+  }
+
+  async interpretActionOutcomeImage(
+    spaceId: string,
+    imageUrl: string,
+    actionText: string,
+    description?: string,
+  ): Promise<{ outcome_text: string }> {
+    const response = await this.client.post<{ outcome_text: string }>(
+      `/spaces/${spaceId}/actions/interpret-outcome-image`,
+      {
+        image_url: imageUrl,
+        action_text: actionText,
+        description: description || undefined,
+      },
+    );
     return response.data;
   }
 

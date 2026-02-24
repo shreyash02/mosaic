@@ -15,6 +15,7 @@ import PanZoomContainer from '../components/PanZoomContainer';
 import SpaceMembersModal from '../components/SpaceMembersModal';
 import CustomSelect from '../components/CustomSelect';
 import ImageIdeaModal from '../components/ImageIdeaModal';
+import ActionOutcomeModal from '../components/ActionOutcomeModal';
 import ImageLightbox from '../components/ImageLightbox';
 
 function getActivityVerb(eventType: SpaceActivityEventType): string {
@@ -420,6 +421,12 @@ export default function SpaceDetailPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [outcomeImageFile, setOutcomeImageFile] = useState<File | null>(null);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [outcomeModalActionText, setOutcomeModalActionText] = useState('');
+  const [outcomeModalThemeId, setOutcomeModalThemeId] = useState('');
+  const [outcomeModalNoteIndex, setOutcomeModalNoteIndex] = useState(0);
+  const outcomeImageInputRef = useRef<HTMLInputElement>(null);
 
   // Time filter
   const TIME_FILTER_OPTIONS = [
@@ -749,7 +756,7 @@ export default function SpaceDetailPage() {
     } catch {}
   }
 
-  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'accepted' | 'completed' | 'dismissed' | null, reason?: string, outcome?: string) {
+  async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'accepted' | 'completed' | 'dismissed' | null, reason?: string, outcome?: string, outcomeImageUrl?: string) {
     if (!id || !space) return;
     // Optimistically update local state
     const synthesis = space.purpose_synthesis;
@@ -758,10 +765,12 @@ export default function SpaceDetailPage() {
     const updatedStates = { ...(synthesis.note_states || {}) };
     const updatedReasons = { ...(synthesis.dismiss_reasons || {}) };
     const updatedOutcomes = { ...(synthesis.completion_outcomes || {}) };
+    const updatedOutcomeImages = { ...(synthesis.completion_outcome_images || {}) };
     if (newState === null) {
       delete updatedStates[noteKey];
       delete updatedReasons[noteKey];
       delete updatedOutcomes[noteKey];
+      delete updatedOutcomeImages[noteKey];
     } else {
       updatedStates[noteKey] = newState;
       if (newState === 'dismissed' && reason) {
@@ -774,15 +783,20 @@ export default function SpaceDetailPage() {
       } else if (newState !== 'completed') {
         delete updatedOutcomes[noteKey];
       }
+      if (newState === 'completed' && outcomeImageUrl) {
+        updatedOutcomeImages[noteKey] = outcomeImageUrl;
+      } else if (newState !== 'completed') {
+        delete updatedOutcomeImages[noteKey];
+      }
     }
-    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates, dismiss_reasons: updatedReasons, completion_outcomes: updatedOutcomes };
+    const updatedSynthesis: PurposeSynthesis = { ...synthesis, note_states: updatedStates, dismiss_reasons: updatedReasons, completion_outcomes: updatedOutcomes, completion_outcome_images: updatedOutcomeImages };
     setSpace(prev => prev ? { ...prev, purpose_synthesis: updatedSynthesis } : prev);
     setDismissingNote(null);
     setDismissReason('');
     setCompletingNote(null);
     setCompletionOutcome('');
     try {
-      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason, outcome);
+      await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason, outcome, outcomeImageUrl);
     } catch {
       // Revert on failure
       setSpace(prev => prev ? { ...prev, purpose_synthesis: synthesis } : prev);
@@ -1125,6 +1139,38 @@ export default function SpaceDetailPage() {
               setIdeas(prev => [...newIdeas, ...prev]);
               setSpace(prev => prev ? { ...prev, idea_count: (prev.idea_count ?? 0) + newIdeas.length } : prev);
             }
+          }}
+        />
+      )}
+
+      {/* Hidden file input for action outcome images */}
+      <input
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        ref={outcomeImageInputRef}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            setOutcomeImageFile(file);
+            setShowOutcomeModal(true);
+          }
+          e.target.value = '';
+        }}
+      />
+
+      {/* Action outcome image modal */}
+      {showOutcomeModal && outcomeImageFile && id && (
+        <ActionOutcomeModal
+          isOpen={showOutcomeModal}
+          onClose={() => { setShowOutcomeModal(false); setOutcomeImageFile(null); }}
+          spaceId={id}
+          actionText={outcomeModalActionText}
+          imageFile={outcomeImageFile}
+          onComplete={(outcomeText, imageUrl) => {
+            setShowOutcomeModal(false);
+            setOutcomeImageFile(null);
+            handleNoteStateChange(outcomeModalThemeId, outcomeModalNoteIndex, 'completed', undefined, outcomeText, imageUrl);
           }}
         />
       )}
@@ -1580,7 +1626,7 @@ export default function SpaceDetailPage() {
                             resize: 'vertical' as const,
                           }}
                         />
-                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
+                        <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3], alignItems: 'center' }}>
                           <button
                             onClick={() => handleNoteStateChange(themeId, noteIndex, 'completed', undefined, completionOutcome.trim() || undefined)}
                             style={{
@@ -1594,6 +1640,31 @@ export default function SpaceDetailPage() {
                             }}
                           >
                             Complete
+                          </button>
+                          <button
+                            onClick={() => {
+                              setOutcomeModalThemeId(themeId);
+                              setOutcomeModalNoteIndex(noteIndex);
+                              setOutcomeModalActionText(note);
+                              outcomeImageInputRef.current?.click();
+                            }}
+                            title="Complete with image"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: 'var(--color-primary-500)',
+                              padding: '0 2px',
+                              lineHeight: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
+                            </svg>
                           </button>
                           <button
                             onClick={() => { setCompletingNote(null); setCompletionOutcome(''); }}
@@ -1730,6 +1801,7 @@ export default function SpaceDetailPage() {
                 const notes = space.purpose_synthesis!.theme_notes[themeId];
                 const noteStates = space.purpose_synthesis!.note_states || {};
                 const completionOutcomesMap = space.purpose_synthesis!.completion_outcomes || {};
+                const completionOutcomeImagesMap = space.purpose_synthesis!.completion_outcome_images || {};
                 const dismissedNotes = notes.map((note: string, i: number) => ({ note, index: i })).filter(({ index }: { index: number }) => noteStates[`${themeId}:${index}`] === 'dismissed');
                 const completedCount = notes.filter((_: string, i: number) => noteStates[`${themeId}:${i}`] === 'completed').length;
                 const acceptedCount = notes.filter((_: string, i: number) => noteStates[`${themeId}:${i}`] === 'accepted').length;
@@ -1760,6 +1832,7 @@ export default function SpaceDetailPage() {
                       const isDismissing = dismissingNote === noteKey;
                       const isCompleting = completingNote === noteKey;
                       const outcomeText = completionOutcomesMap[noteKey];
+                      const outcomeImageUrl = completionOutcomeImagesMap[noteKey];
                       return (
                         <div key={i} style={{ marginBottom: spacing[1] }}>
                           <div style={{
@@ -1855,8 +1928,26 @@ export default function SpaceDetailPage() {
                               padding: `2px 0 2px ${spacing[3]}`,
                               borderLeft: '2px solid var(--color-primary-200)',
                               marginLeft: 0,
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: spacing[2],
                             }}>
-                              {outcomeText}
+                              {outcomeImageUrl && (
+                                <img
+                                  src={outcomeImageUrl}
+                                  alt=""
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    objectFit: 'cover',
+                                    borderRadius: borders.radius.sm,
+                                    cursor: 'zoom-in',
+                                    flexShrink: 0,
+                                  }}
+                                  onClick={() => setLightboxSrc(outcomeImageUrl)}
+                                />
+                              )}
+                              <span>{outcomeText}</span>
                             </div>
                           )}
                           {isCompleted && !outcomeText && (
@@ -1901,7 +1992,7 @@ export default function SpaceDetailPage() {
                                   resize: 'vertical' as const,
                                 }}
                               />
-                              <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3] }}>
+                              <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[3], alignItems: 'center' }}>
                                 <button
                                   onClick={() => handleNoteStateChange(themeId, i, 'completed', undefined, completionOutcome.trim() || undefined)}
                                   style={{
@@ -1915,6 +2006,31 @@ export default function SpaceDetailPage() {
                                   }}
                                 >
                                   Complete
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOutcomeModalThemeId(themeId);
+                                    setOutcomeModalNoteIndex(i);
+                                    setOutcomeModalActionText(note);
+                                    outcomeImageInputRef.current?.click();
+                                  }}
+                                  title="Complete with image"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-primary-500)',
+                                    padding: '0 2px',
+                                    lineHeight: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <polyline points="21 15 16 10 5 21" />
+                                  </svg>
                                 </button>
                                 <button
                                   onClick={() => { setCompletingNote(null); setCompletionOutcome(''); }}

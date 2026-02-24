@@ -196,6 +196,80 @@ Return ONLY valid JSON, no other text."""
             "questions": [],
         }
 
+    def _build_outcome_prompt(
+        self,
+        action_text: str,
+        space_title: str,
+        user_description: Optional[str] = None,
+    ) -> str:
+        desc_clause = ""
+        if user_description:
+            desc_clause = f' and added: "{user_description}"'
+
+        return f"""The user is working in a space called "{space_title}".
+They completed this action: "{action_text}"
+They uploaded this image showing what they accomplished{desc_clause}.
+
+Summarize the outcome in 1-2 concise sentences. Focus on what was done, what changed, or what was achieved. Write as a factual summary, not a question.
+
+Return ONLY valid JSON: {{"outcome_text": "..."}}"""
+
+    def interpret_action_outcome(
+        self,
+        image_url: str,
+        action_text: str,
+        space_title: str,
+        user_description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Analyze an image showing the outcome of a completed action.
+
+        Returns dict with:
+            outcome_text: string summary of what was accomplished
+        """
+        image_data, media_type = self._read_image_as_base64(image_url)
+        prompt = self._build_outcome_prompt(action_text, space_title, user_description)
+
+        t0 = time.time()
+        response = self.anthropic_client.messages.create(
+            model=self.llm_model,
+            max_tokens=500,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_data,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                    ],
+                }
+            ],
+        )
+        latency = int((time.time() - t0) * 1000)
+        log_llm_usage(
+            operation_type="space_action_outcome_interpretation",
+            provider="anthropic",
+            model=self.llm_model,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            latency_ms=latency,
+        )
+
+        try:
+            result = self._parse_response(response.content[0].text)
+            return {"outcome_text": result.get("outcome_text", "")}
+        except (json.JSONDecodeError, IndexError):
+            logger.warning("Failed to parse action outcome interpretation response")
+            return {"outcome_text": ""}
+
     def extract_with_clarification(
         self,
         image_url: str,

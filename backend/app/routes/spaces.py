@@ -50,6 +50,8 @@ from app.schemas.space import (
     SynthesisActivityEntry,
     SpaceActivityLogEntry,
     SpaceActivityLogPage,
+    ActionOutcomeImageRequest,
+    ActionOutcomeImageResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -1321,6 +1323,31 @@ def get_graph_data(
     return service.get_graph_data(db, space_id)
 
 
+@router.post("/{space_id}/actions/interpret-outcome-image", response_model=ActionOutcomeImageResponse)
+def interpret_action_outcome_image(
+    space_id: UUID,
+    data: ActionOutcomeImageRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Use Claude vision to interpret an action outcome from an uploaded image."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    from app.services.image_idea_service import ImageIdeaService
+    from app.services.platform_settings_service import get_llm_model
+
+    service = ImageIdeaService(model=get_llm_model(db))
+    result = service.interpret_action_outcome(
+        image_url=data.image_url,
+        action_text=data.action_text,
+        space_title=space.title,
+        user_description=data.description,
+    )
+    return result
+
+
 @router.patch("/{space_id}/synthesis/note-state")
 def update_synthesis_note_state(
     space_id: UUID,
@@ -1352,11 +1379,13 @@ def update_synthesis_note_state(
     note_states = synthesis.get("note_states", {})
     dismiss_reasons = synthesis.get("dismiss_reasons", {})
     completion_outcomes = synthesis.get("completion_outcomes", {})
+    completion_outcome_images = synthesis.get("completion_outcome_images", {})
 
     if data.state is None:
         note_states.pop(note_key, None)
         dismiss_reasons.pop(note_key, None)
         completion_outcomes.pop(note_key, None)
+        completion_outcome_images.pop(note_key, None)
     else:
         note_states[note_key] = data.state
         if data.state == "dismissed" and data.reason:
@@ -1367,10 +1396,15 @@ def update_synthesis_note_state(
             completion_outcomes[note_key] = data.outcome
         elif data.state != "completed":
             completion_outcomes.pop(note_key, None)
+        if data.state == "completed" and data.outcome_image_url:
+            completion_outcome_images[note_key] = data.outcome_image_url
+        elif data.state != "completed":
+            completion_outcome_images.pop(note_key, None)
 
     synthesis["note_states"] = note_states
     synthesis["dismiss_reasons"] = dismiss_reasons
     synthesis["completion_outcomes"] = completion_outcomes
+    synthesis["completion_outcome_images"] = completion_outcome_images
     current_settings = dict(space.settings)
     current_settings["purpose_synthesis"] = synthesis
     space.settings = current_settings
