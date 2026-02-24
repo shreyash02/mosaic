@@ -138,6 +138,7 @@ class SpaceListItem(BaseModel):
     can_suggest: bool = True
     suggestion_count: int = 0
     member_count: int = 1
+    members: Optional[List[SpaceMemberResponse]] = None
 
     model_config = {"from_attributes": True}
 

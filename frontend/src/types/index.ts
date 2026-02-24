@@ -1839,6 +1839,7 @@ export interface SpaceListItem {
   can_suggest?: boolean;
   suggestion_count?: number;
   member_count?: number;
+  members?: SpaceMember[];
 }
 
 export interface Space {

@@ -807,6 +807,7 @@ export default function SpaceDetailPage() {
   }, [ideas, selectedThemeId, selectedEdge]);
   const purposeKey = (space?.purpose || 'explore') as SpacePurpose;
   const pc = PURPOSE_CONFIG[purposeKey] || PURPOSE_CONFIG.explore;
+  const isSharedSpace = (space?.member_count ?? 1) > 1;
   const selectedTheme = themes.find(t => t.id === selectedThemeId);
   const edgeThemeNames = selectedEdge ? {
     source: themes.find(t => t.id === selectedEdge.sourceId)?.name || 'Unknown',
@@ -1965,8 +1966,26 @@ export default function SpaceDetailPage() {
                       ))}
                     </div>
                   )}
-                  <div style={s.ideaMeta}>
-                    {new Date(idea.created_at).toLocaleDateString()}
+                  <div style={{ ...s.ideaMeta, display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    {isSharedSpace && idea.author_name && (
+                      <span style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--color-primary-400)',
+                        color: '#fff',
+                        fontSize: '9px',
+                        fontWeight: typography.fontWeight.semibold,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        letterSpacing: '-0.5px',
+                      }} title={idea.author_name}>
+                        {idea.author_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                      </span>
+                    )}
+                    Added {formatRelativeTime(idea.created_at)}
                   </div>
                 </div>
               ))}
@@ -2353,8 +2372,26 @@ export default function SpaceDetailPage() {
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={s.ideaMeta}>
-                      {new Date(idea.created_at).toLocaleDateString()}
+                    <div style={{ ...s.ideaMeta, display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                      {isSharedSpace && idea.author_name && (
+                        <span style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--color-primary-400)',
+                          color: '#fff',
+                          fontSize: '9px',
+                          fontWeight: typography.fontWeight.semibold,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          letterSpacing: '-0.5px',
+                        }} title={idea.author_name}>
+                          {idea.author_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                        </span>
+                      )}
+                      Added {formatRelativeTime(idea.created_at)}
                     </div>
                     {space.can_edit !== false && (
                       <button

@@ -308,6 +308,7 @@ def _build_idea_response(idea: Idea, db: Session) -> dict:
         "id": idea.id,
         "text": idea.text,
         "status": idea.status,
+        "author_name": idea.author.full_name if idea.author else None,
         "themes": themes,
         "created_at": idea.created_at,
         "updated_at": idea.updated_at,

@@ -9,6 +9,8 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
 import Modal from '../components/Modal';
 
+const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6'];
+
 const s = {
   page: {
     minHeight: 'calc(100vh - var(--header-height))',
@@ -268,23 +270,83 @@ export default function SpacesPage() {
                 {space.description && (
                   <div style={s.cardDescription}>{space.description}</div>
                 )}
-                <div style={s.cardStats}>
-                  <span style={s.cardStat}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    {space.idea_count} {space.idea_count === 1 ? 'idea' : 'ideas'}
-                  </span>
-                  <span style={s.cardStat}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                      <path d="M2 17l10 5 10-5" />
-                      <path d="M2 12l10 5 10-5" />
-                    </svg>
-                    {space.theme_count} {space.theme_count === 1 ? 'theme' : 'themes'}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={s.cardStats}>
+                    <span style={s.cardStat}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      {space.idea_count} {space.idea_count === 1 ? 'idea' : 'ideas'}
+                    </span>
+                    <span style={s.cardStat}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" />
+                      </svg>
+                      {space.theme_count} {space.theme_count === 1 ? 'theme' : 'themes'}
+                    </span>
+                  </div>
+                  {space.members && space.members.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      {space.members.slice(0, 4).map((member, i) => {
+                        const initials = member.user_name
+                          ? member.user_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+                          : (member.user_email || '?')[0].toUpperCase();
+                        return (
+                          <div
+                            key={member.id}
+                            title={member.user_name || member.user_email || 'Member'}
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+                              color: '#fff',
+                              fontSize: '10px',
+                              fontWeight: typography.fontWeight.semibold,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '2px solid var(--color-primary-50)',
+                              marginLeft: i === 0 ? 0 : '-8px',
+                              position: 'relative',
+                              zIndex: space.members!.length - i,
+                              letterSpacing: '-0.5px',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initials}
+                          </div>
+                        );
+                      })}
+                      {space.members.length > 4 && (
+                        <div
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--color-primary-300)',
+                            color: 'var(--color-primary-700)',
+                            fontSize: '10px',
+                            fontWeight: typography.fontWeight.semibold,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px solid var(--color-primary-50)',
+                            marginLeft: '-8px',
+                            position: 'relative',
+                            zIndex: 0,
+                            flexShrink: 0,
+                          }}
+                        >
+                          +{space.members.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Link>
             ))}
