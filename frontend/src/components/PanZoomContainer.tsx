@@ -119,7 +119,7 @@ export default function PanZoomContainer({ children, bottomRightControls, cssTra
               }}
               title="Reset zoom"
             >
-              {scale === 1 ? '1:1' : `${Math.round(scale * 100)}%`}
+              {`${Math.round(scale * 100)}%`}
             </button>
             <div style={divider} />
             <button
