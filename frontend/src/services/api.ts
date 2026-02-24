@@ -1493,6 +1493,20 @@ class ApiService {
     return response.data;
   }
 
+  async getSuggestions(spaceId: string): Promise<SpaceIdea[]> {
+    const response = await this.client.get<SpaceIdea[]>(`/spaces/${spaceId}/suggestions`);
+    return response.data;
+  }
+
+  async approveSuggestion(spaceId: string, ideaId: string): Promise<SpaceIdea> {
+    const response = await this.client.post<SpaceIdea>(`/spaces/${spaceId}/suggestions/${ideaId}/approve`);
+    return response.data;
+  }
+
+  async rejectSuggestion(spaceId: string, ideaId: string): Promise<void> {
+    await this.client.post(`/spaces/${spaceId}/suggestions/${ideaId}/reject`);
+  }
+
   async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30): Promise<SpaceActivityLogPage> {
     const response = await this.client.get<SpaceActivityLogPage>(`/spaces/${spaceId}/activity`, {
       params: { skip, limit },

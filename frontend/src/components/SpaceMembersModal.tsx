@@ -14,11 +14,15 @@ interface SpaceMembersModalProps {
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
   editor: 'Can edit',
+  suggester: 'Can suggest',
   viewer: 'Can view',
 };
 
-const ROLE_OPTIONS: { value: 'editor' | 'viewer'; label: string }[] = [
+type AssignableRole = 'editor' | 'suggester' | 'viewer';
+
+const ROLE_OPTIONS: { value: AssignableRole; label: string }[] = [
   { value: 'editor', label: 'Can edit' },
+  { value: 'suggester', label: 'Can suggest' },
   { value: 'viewer', label: 'Can view' },
 ];
 
@@ -28,8 +32,8 @@ function RoleDropdown({
   onChange,
   compact,
 }: {
-  value: 'editor' | 'viewer';
-  onChange: (role: 'editor' | 'viewer') => void;
+  value: AssignableRole;
+  onChange: (role: AssignableRole) => void;
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -117,7 +121,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [invitations, setInvitations] = useState<SpaceInvitation[]>([]);
   const [emailInput, setEmailInput] = useState('');
-  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
+  const [inviteRole, setInviteRole] = useState<AssignableRole>('editor');
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
@@ -182,7 +186,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: 'editor' | 'viewer') => {
+  const handleChangeRole = async (userId: string, newRole: AssignableRole) => {
     // Optimistic update
     setMembers((prev) =>
       prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m))
@@ -321,7 +325,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
                   </div>
                 ) : isOwner ? (
                   <RoleDropdown
-                    value={member.role as 'editor' | 'viewer'}
+                    value={member.role as AssignableRole}
                     onChange={(role) => handleChangeRole(member.user_id, role)}
                     compact
                   />

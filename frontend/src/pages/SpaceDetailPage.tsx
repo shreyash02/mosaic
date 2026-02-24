@@ -24,6 +24,9 @@ function getActivityVerb(eventType: SpaceActivityEventType): string {
     case 'action_completed': return 'completed an action:';
     case 'action_dismissed': return 'dismissed an action:';
     case 'member_joined': return 'joined the space';
+    case 'suggestion_submitted': return 'suggested an idea:';
+    case 'suggestion_approved': return 'approved a suggestion:';
+    case 'suggestion_rejected': return 'dismissed a suggestion:';
     default: return eventType;
   }
 }
@@ -45,6 +48,12 @@ function getActivityIcon(eventType: SpaceActivityEventType) {
       return <svg {...base} stroke="var(--color-primary-400)"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
     case 'member_joined':
       return <svg {...base} stroke="var(--color-primary-500)"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>;
+    case 'suggestion_submitted':
+      return <svg {...base} stroke="var(--color-primary-500)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>;
+    case 'suggestion_approved':
+      return <svg {...base} stroke="var(--color-primary-500)"><polyline points="20 6 9 17 4 12" /></svg>;
+    case 'suggestion_rejected':
+      return <svg {...base} stroke="var(--color-primary-400)"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
     default:
       return <svg {...base} stroke="var(--color-primary-400)"><circle cx="12" cy="12" r="10" /></svg>;
   }
@@ -398,6 +407,9 @@ export default function SpaceDetailPage() {
   const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
   const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch'>('flow');
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [suggestions, setSuggestions] = useState<SpaceIdea[]>([]);
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(true);
+  const [suggestionSuccess, setSuggestionSuccess] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   const [mobileTab, setMobileTab] = useState<'ideas' | 'map'>('ideas');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
@@ -542,16 +554,26 @@ export default function SpaceDetailPage() {
     setSpaceActivityTotal(prev => prev + 1);
   }, [id]);
 
+  const handleSuggestionSubmitted = useCallback((data: any) => {
+    if (!id || data.space_id !== id) return;
+    // Reload suggestions for editors/owners
+    api.getSuggestions(id).then(setSuggestions).catch(() => {});
+    setSpace(prev => prev ? { ...prev, suggestion_count: (prev.suggestion_count ?? 0) + 1 } : prev);
+  }, [id]);
+
   useSSEEvent('space_classify_completed', handleClassifyCompleted);
   useSSEEvent('space_organize_started', handleOrganizeStarted);
   useSSEEvent('space_organize_completed', handleOrganizeCompleted);
   useSSEEvent('space_idea_added', handleIdeaAdded);
   useSSEEvent('space_activity', handleSpaceActivity);
+  useSSEEvent('space_suggestion_submitted', handleSuggestionSubmitted);
 
   const loadData = useCallback(async () => {
     if (!id) return;
     try {
       await refreshContent(null);
+      // Load suggestions for editors/owners (ignore errors — suggesters/viewers will 403)
+      api.getSuggestions(id).then(setSuggestions).catch(() => {});
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load space');
     } finally {
@@ -591,6 +613,14 @@ export default function SpaceDetailPage() {
       setError(null);
       const newIdea = await api.createIdea(id, ideaText.trim());
       setIdeaText('');
+
+      if (newIdea.status === 'suggested') {
+        // Suggester flow: show transient success, don't add to main list
+        setSuggestionSuccess('Your suggestion has been submitted for review');
+        setTimeout(() => setSuggestionSuccess(null), 4000);
+        return;
+      }
+
       // Add to list immediately; SSE events handle classify/organize updates
       setIdeas(prev => [newIdea, ...prev]);
       const newCount = (space?.idea_count ?? 0) + 1;
@@ -915,8 +945,8 @@ export default function SpaceDetailPage() {
         </div>
       </div>
 
-      {/* Quick input (editors/owners only) */}
-      {space.can_edit !== false && (
+      {/* Quick input (editors/owners/suggesters) */}
+      {(space.can_edit !== false || space.can_suggest) && (
         <div style={{
           ...s.inputArea,
           ...(isMobile ? { padding: `${spacing[3]} ${spacing[4]}` } : {}),
@@ -929,7 +959,7 @@ export default function SpaceDetailPage() {
               style={s.ideaInput}
               value={ideaText}
               onChange={(e) => setIdeaText(e.target.value)}
-              placeholder="Drop a thought or an idea..."
+              placeholder={space.can_edit !== false ? 'Drop a thought or an idea...' : 'Suggest an idea...'}
               rows={1}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -946,9 +976,22 @@ export default function SpaceDetailPage() {
               onClick={handleDropIdea}
               disabled={!ideaText.trim() || dropping}
             >
-              {dropping ? 'Adding...' : 'Add'}
+              {dropping ? (space.can_edit !== false ? 'Adding...' : 'Suggesting...') : (space.can_edit !== false ? 'Add' : 'Suggest')}
             </button>
           </div>
+          {suggestionSuccess && (
+            <div style={{
+              maxWidth: '800px',
+              margin: `${spacing[2]} auto 0`,
+              padding: `${spacing[2]} ${spacing[3]}`,
+              background: 'var(--color-success-light, #ecfdf5)',
+              color: 'var(--color-success-text, #065f46)',
+              borderRadius: borders.radius.md,
+              fontSize: typography.fontSize.sm,
+            }}>
+              {suggestionSuccess}
+            </div>
+          )}
         </div>
       )}
 
@@ -1127,6 +1170,133 @@ export default function SpaceDetailPage() {
               onMouseLeave={() => setDragHandleHovered(false)}
             />
           )}
+          {/* Suggestion review panel (editors/owners only) */}
+          {space.can_edit !== false && suggestions.length > 0 && (
+            <div style={{
+              ...s.sidebarSection,
+              backgroundColor: 'var(--color-primary-100)',
+            }}>
+              <div
+                style={{
+                  ...s.sidebarTitle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  marginBottom: suggestionsExpanded ? spacing[3] : 0,
+                }}
+                onClick={() => setSuggestionsExpanded(prev => !prev)}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  Suggestions
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '18px',
+                    height: '18px',
+                    padding: '0 5px',
+                    borderRadius: borders.radius.full,
+                    backgroundColor: 'var(--color-primary-900)',
+                    color: 'var(--color-primary-50)',
+                    fontSize: '11px',
+                    fontWeight: typography.fontWeight.semibold,
+                  }}>
+                    {suggestions.length}
+                  </span>
+                </span>
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: suggestionsExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+              {suggestionsExpanded && suggestions.map((suggestion) => (
+                <div key={suggestion.id} style={{
+                  padding: spacing[3],
+                  borderRadius: borders.radius.md,
+                  border: '1px solid var(--color-primary-200)',
+                  marginBottom: spacing[2],
+                  backgroundColor: 'var(--color-primary-50)',
+                }}>
+                  <div style={{
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-800)',
+                    lineHeight: typography.lineHeight.relaxed,
+                    wordBreak: 'break-word',
+                    marginBottom: spacing[2],
+                  }}>
+                    {suggestion.text}
+                  </div>
+                  {suggestion.author_name && (
+                    <div style={{
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-500)',
+                      marginBottom: spacing[2],
+                    }}>
+                      by {suggestion.author_name}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const approved = await api.approveSuggestion(id!, suggestion.id);
+                          setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+                          setIdeas(prev => [approved, ...prev]);
+                          setSpace(prev => prev ? {
+                            ...prev,
+                            idea_count: (prev.idea_count ?? 0) + 1,
+                            suggestion_count: Math.max(0, (prev.suggestion_count ?? 1) - 1),
+                          } : prev);
+                        } catch {}
+                      }}
+                      style={{
+                        padding: `${spacing[1]} ${spacing[3]}`,
+                        fontSize: typography.fontSize.xs,
+                        fontWeight: typography.fontWeight.medium,
+                        backgroundColor: 'var(--color-primary-900)',
+                        color: 'var(--color-primary-50)',
+                        border: 'none',
+                        borderRadius: borders.radius.md,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api.rejectSuggestion(id!, suggestion.id);
+                          setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+                          setSpace(prev => prev ? {
+                            ...prev,
+                            suggestion_count: Math.max(0, (prev.suggestion_count ?? 1) - 1),
+                          } : prev);
+                        } catch {}
+                      }}
+                      style={{
+                        padding: `${spacing[1]} ${spacing[3]}`,
+                        fontSize: typography.fontSize.xs,
+                        fontWeight: typography.fontWeight.medium,
+                        backgroundColor: 'transparent',
+                        color: 'var(--color-primary-500)',
+                        border: '1px solid var(--color-primary-300)',
+                        borderRadius: borders.radius.md,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Your Actions section — accepted items across themes */}
           {acceptedActions.length > 0 && (
             <div style={{

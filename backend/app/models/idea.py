@@ -28,12 +28,19 @@ class Idea(Base):
     text = Column(Text, nullable=False)
     embedding = Column(JSONB, nullable=True)  # 1536-dim float array
     status = Column(String(20), default="active", nullable=False)
+    reviewed_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
     space = relationship("Space", back_populates="ideas")
     author = relationship("User", foreign_keys=[author_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
     theme_assignments = relationship("IdeaTheme", back_populates="idea", cascade="all, delete-orphan")
 
     __table_args__ = (
