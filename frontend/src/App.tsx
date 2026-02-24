@@ -108,6 +108,7 @@ import OrganizationsHelp from './pages/help/OrganizationsHelp';
 import CollectionsHelp from './pages/help/CollectionsHelp';
 import SlackIntegrationHelp from './pages/help/SlackIntegrationHelp';
 import JournalsHelp from './pages/help/JournalsHelp';
+import SpacesHelp from './pages/help/SpacesHelp';
 import { SlackCallbackPage } from './pages/SlackCallbackPage';
 import { AnalysisViewPage } from './pages/AnalysisViewPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -568,6 +569,7 @@ function App() {
             <Route path="/help/collections" element={<CollectionsHelp />} />
             <Route path="/help/slack-integration" element={<SlackIntegrationHelp />} />
             <Route path="/help/journals" element={<JournalsHelp />} />
+            <Route path="/help/spaces" element={<SpacesHelp />} />
 
             {/* Explore / Sandbox (public, no auth required) */}
             <Route path="/explore" element={<ExplorePage />} />
