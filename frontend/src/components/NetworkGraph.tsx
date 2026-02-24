@@ -1,5 +1,8 @@
 import { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore – no type declarations for d3-force-3d
+import { forceX, forceY } from 'd3-force-3d';
 import type { GraphData, GraphNode } from '../types';
 import { typography, spacing, borders, shadows, zIndex } from '../styles/tokens';
 
@@ -84,6 +87,9 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     if (!graphRef.current) return;
     graphRef.current.d3Force('charge')?.strength(-400);
     graphRef.current.d3Force('link')?.distance(120);
+    // Gentle gravity toward center so disconnected nodes don't fly away
+    graphRef.current.d3Force('x', forceX(0).strength(0.08));
+    graphRef.current.d3Force('y', forceY(0).strength(0.08));
   }, [graphData]);
 
   // Zoom to fit all nodes after simulation settles
