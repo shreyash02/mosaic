@@ -15,6 +15,7 @@ import PanZoomContainer from '../components/PanZoomContainer';
 import SpaceMembersModal from '../components/SpaceMembersModal';
 import CustomSelect from '../components/CustomSelect';
 import ImageIdeaModal from '../components/ImageIdeaModal';
+import ImageLightbox from '../components/ImageLightbox';
 
 function getActivityVerb(eventType: SpaceActivityEventType): string {
   switch (eventType) {
@@ -418,6 +419,7 @@ export default function SpaceDetailPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Time filter
   const TIME_FILTER_OPTIONS = [
@@ -1125,6 +1127,11 @@ export default function SpaceDetailPage() {
             }
           }}
         />
+      )}
+
+      {/* Image lightbox */}
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
 
       {error && <div style={s.error}>{error}</div>}
@@ -2104,9 +2111,12 @@ export default function SpaceDetailPage() {
                 <div key={idea.id} style={s.ideaItem}>
                   <div style={{ display: 'flex', gap: spacing[2] }}>
                     {idea.image_url && (
-                      <a href={idea.image_url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
-                        <img src={idea.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm }} />
-                      </a>
+                      <img
+                        src={idea.image_url}
+                        alt=""
+                        style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm, cursor: 'zoom-in', flexShrink: 0 }}
+                        onClick={() => setLightboxSrc(idea.image_url!)}
+                      />
                     )}
                     <div style={s.ideaText}>{idea.text}</div>
                   </div>
@@ -2516,9 +2526,12 @@ export default function SpaceDetailPage() {
                 <div key={idea.id} style={s.ideaItem}>
                   <div style={{ display: 'flex', gap: spacing[2] }}>
                     {idea.image_url && (
-                      <a href={idea.image_url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
-                        <img src={idea.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm }} />
-                      </a>
+                      <img
+                        src={idea.image_url}
+                        alt=""
+                        style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm, cursor: 'zoom-in', flexShrink: 0 }}
+                        onClick={() => setLightboxSrc(idea.image_url!)}
+                      />
                     )}
                     <div style={s.ideaText}>{idea.text}</div>
                   </div>
