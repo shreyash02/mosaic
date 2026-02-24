@@ -461,7 +461,7 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
         # Log organize_completed activity
         theme_count = db.query(func.count(Theme.id)).filter(Theme.space_id == space_id).scalar() or 0
         detail = f"{theme_count} theme{'s' if theme_count != 1 else ''}"
-        log_space_activity(db, space_id, None, user_name, "organize_completed", detail=detail)
+        log_space_activity(db, space_id, owner_id, user_name, "organize_completed", detail=detail)
         db.commit()
 
         _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})

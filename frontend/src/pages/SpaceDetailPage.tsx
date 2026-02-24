@@ -14,6 +14,7 @@ import ThemeEvolutionBranch from '../components/ThemeEvolutionBranch';
 import PanZoomContainer from '../components/PanZoomContainer';
 import SpaceMembersModal from '../components/SpaceMembersModal';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import CustomSelect from '../components/CustomSelect';
 import ImageIdeaModal from '../components/ImageIdeaModal';
 import ActionOutcomeModal from '../components/ActionOutcomeModal';
@@ -415,6 +416,7 @@ const ORGANIZE_THRESHOLD = 5;
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user: currentUser } = useAuth();
   const { addToast } = useNotifications();
   const [space, setSpace] = useState<Space | null>(null);
   const [themes, setThemes] = useState<SpaceTheme[]>([]);
@@ -441,7 +443,7 @@ export default function SpaceDetailPage() {
   const [actionsExpanded, setActionsExpanded] = useState(true);
   const [activityLogExpanded, setActivityLogExpanded] = useState(false);
   const [spaceActivityEntries, setSpaceActivityEntries] = useState<SpaceActivityLogEntry[]>([]);
-  const [spaceActivityTotal, setSpaceActivityTotal] = useState(0);
+  const [, setSpaceActivityTotal] = useState(0);
   const [spaceActivityHasMore, setSpaceActivityHasMore] = useState(false);
   const [spaceActivityExpanded, setSpaceActivityExpanded] = useState(false);
   const [spaceActivityLoading, setSpaceActivityLoading] = useState(false);
@@ -469,6 +471,7 @@ export default function SpaceDetailPage() {
   const [outcomeModalThemeId, setOutcomeModalThemeId] = useState('');
   const [outcomeModalNoteIndex, setOutcomeModalNoteIndex] = useState(0);
   const outcomeImageInputRef = useRef<HTMLInputElement>(null);
+  const activityDropdownRef = useRef<HTMLDivElement>(null);
 
   // Idea search
   const [ideaSearch, setIdeaSearch] = useState('');
@@ -684,6 +687,18 @@ export default function SpaceDetailPage() {
       loadActivity();
     }
   }, [spaceActivityExpanded, loadActivity]);
+
+  // Close activity dropdown on click outside
+  useEffect(() => {
+    if (!spaceActivityExpanded) return;
+    const handleClick = (e: MouseEvent) => {
+      if (activityDropdownRef.current && !activityDropdownRef.current.contains(e.target as Node)) {
+        setSpaceActivityExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [spaceActivityExpanded]);
 
   // Load ideas filtered by theme when selection changes
   useEffect(() => {
@@ -1036,6 +1051,112 @@ export default function SpaceDetailPage() {
               minWidth="180px"
             />
           )}
+          {/* Activity dropdown */}
+          <div ref={activityDropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setSpaceActivityExpanded(prev => !prev)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                backgroundColor: spaceActivityExpanded ? 'var(--color-primary-100)' : 'transparent',
+                color: 'var(--color-primary-600)',
+                borderRadius: borders.radius.md,
+                border: '1px solid var(--color-primary-300)',
+                cursor: 'pointer',
+                transition: transitions.duration.normal,
+                position: 'relative',
+              }}
+              title="Activity log"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+            {spaceActivityExpanded && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: spacing[2],
+                width: '340px',
+                maxHeight: '400px',
+                overflowY: 'auto',
+                backgroundColor: 'var(--color-primary-50)',
+                border: '1px solid var(--color-primary-200)',
+                borderRadius: borders.radius.lg,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 50,
+                padding: spacing[3],
+              }}>
+                <div style={{
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.semibold,
+                  color: 'var(--color-primary-700)',
+                  marginBottom: spacing[3],
+                }}>
+                  Activity
+                </div>
+                {spaceActivityEntries.length === 0 && !spaceActivityLoading && (
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                    No activity yet
+                  </div>
+                )}
+                {spaceActivityEntries.map(entry => (
+                  <div key={entry.id} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: spacing[2],
+                    marginBottom: spacing[2],
+                    fontSize: typography.fontSize.xs,
+                    color: 'var(--color-primary-600)',
+                    lineHeight: typography.lineHeight.relaxed,
+                  }}>
+                    {getActivityIcon(entry.event_type)}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div>
+                        {entry.user_name && <strong>{(entry.user_id === currentUser?.id || entry.user_name === currentUser?.full_name) ? 'You' : entry.user_name}</strong>}
+                        {entry.user_name && ' '}
+                        {getActivityVerb(entry.event_type)}
+                        {entry.detail && (
+                          <span style={{ color: 'var(--color-primary-500)' }}> {entry.detail}</span>
+                        )}
+                      </div>
+                      <div style={{ color: 'var(--color-primary-400)', fontSize: '10px', marginTop: '1px' }}>
+                        {formatRelativeTime(entry.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {spaceActivityLoading && (
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', textAlign: 'center', padding: spacing[2] }}>
+                    Loading...
+                  </div>
+                )}
+                {spaceActivityHasMore && !spaceActivityLoading && (
+                  <button
+                    onClick={() => loadActivity(true)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: spacing[2],
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-500)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Load more
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           {/* Members button */}
           <button
             onClick={() => setShowMembersModal(true)}
@@ -1797,10 +1918,7 @@ export default function SpaceDetailPage() {
 
           {/* Your Actions section — accepted items across themes */}
           {acceptedActions.length > 0 && (
-            <div style={{
-              ...s.sidebarSection,
-              backgroundColor: 'var(--color-primary-100)',
-            }}>
+            <div style={s.sidebarSection}>
               <div
                 style={{
                   ...s.sidebarTitle,
@@ -2689,93 +2807,6 @@ export default function SpaceDetailPage() {
               </div>
             );
           })()}
-
-          {/* Space Activity Log */}
-          <div style={{
-            ...s.sidebarSection,
-            backgroundColor: 'var(--color-primary-50)',
-            borderTop: '1px solid var(--color-primary-200)',
-          }}>
-            <div
-              style={{
-                ...s.sidebarTitle,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                userSelect: 'none',
-                marginBottom: spaceActivityExpanded ? spacing[3] : 0,
-              }}
-              onClick={() => setSpaceActivityExpanded(prev => !prev)}
-            >
-              <span>Activity{spaceActivityTotal > 0 ? ` (${spaceActivityTotal})` : ''}</span>
-              <svg
-                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                style={{ transform: spaceActivityExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-            {spaceActivityExpanded && (
-              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {spaceActivityEntries.length === 0 && !spaceActivityLoading && (
-                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
-                    No activity yet
-                  </div>
-                )}
-                {spaceActivityEntries.map(entry => (
-                  <div key={entry.id} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: spacing[2],
-                    marginBottom: spacing[2],
-                    fontSize: typography.fontSize.xs,
-                    color: 'var(--color-primary-600)',
-                    lineHeight: typography.lineHeight.relaxed,
-                  }}>
-                    {getActivityIcon(entry.event_type)}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div>
-                        {entry.user_name && <strong>{entry.user_name}</strong>}
-                        {entry.user_name && ' '}
-                        {getActivityVerb(entry.event_type)}
-                        {entry.detail && (
-                          <span style={{ color: 'var(--color-primary-500)' }}> {entry.detail}</span>
-                        )}
-                      </div>
-                      <div style={{ color: 'var(--color-primary-400)', fontSize: '10px', marginTop: '1px' }}>
-                        {formatRelativeTime(entry.created_at)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {spaceActivityLoading && (
-                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', textAlign: 'center', padding: spacing[2] }}>
-                    Loading...
-                  </div>
-                )}
-                {spaceActivityHasMore && !spaceActivityLoading && (
-                  <button
-                    onClick={() => loadActivity(true)}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: spacing[2],
-                      fontSize: typography.fontSize.xs,
-                      color: 'var(--color-primary-500)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                    }}
-                  >
-                    Load more
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
 
           {/* Themes section */}
           <div style={s.sidebarSection}>
