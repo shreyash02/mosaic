@@ -86,6 +86,7 @@ import AcceptJournalSharePage from './pages/AcceptJournalSharePage';
 import SpacesPage from './pages/SpacesPage';
 import SpaceDetailPage from './pages/SpaceDetailPage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
+import SpaceActivityPage from './pages/SpaceActivityPage';
 import AcceptSpaceInvitePage from './pages/AcceptSpaceInvitePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
@@ -497,6 +498,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SpaceSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/spaces/:id/activity"
+              element={
+                <ProtectedRoute>
+                  <SpaceActivityPage />
                 </ProtectedRoute>
               }
             />
