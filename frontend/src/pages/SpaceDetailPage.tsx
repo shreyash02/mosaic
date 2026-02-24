@@ -356,7 +356,17 @@ export default function SpaceDetailPage() {
   const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
   const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch'>('flow');
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
+  const [mobileTab, setMobileTab] = useState<'ideas' | 'map'>('ideas');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
+
+  // Track viewport width for responsive layout
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Sidebar drag-to-resize
   useEffect(() => {
@@ -710,27 +720,41 @@ export default function SpaceDetailPage() {
   return (
     <div style={s.page}>
       {/* Top bar */}
-      <div style={s.topBar}>
-        <div style={s.topBarLeft}>
+      <div style={{
+        ...s.topBar,
+        ...(isMobile ? { flexWrap: 'wrap' as const, gap: spacing[2], padding: `${spacing[3]} ${spacing[4]}` } : {}),
+      }}>
+        <div style={{
+          ...s.topBarLeft,
+          ...(isMobile ? { minWidth: 0, flex: 1 } : {}),
+        }}>
           <Link to="/spaces" style={s.backLink}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </Link>
-          <h1 style={s.title}>{space.title}</h1>
-          <span style={{
-            fontSize: typography.fontSize.xs,
-            color: 'var(--color-primary-500)',
-            backgroundColor: 'var(--color-primary-200)',
-            padding: `2px ${spacing[2]}`,
-            borderRadius: borders.radius.full,
-            fontWeight: typography.fontWeight.medium,
-            whiteSpace: 'nowrap',
-          }}>
-            {SPACE_PURPOSES[purposeKey]?.label || 'Freely explore'}
-          </span>
+          <h1 style={{
+            ...s.title,
+            ...(isMobile ? { fontSize: typography.fontSize.base, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const } : {}),
+          }}>{space.title}</h1>
+          {!isMobile && (
+            <span style={{
+              fontSize: typography.fontSize.xs,
+              color: 'var(--color-primary-500)',
+              backgroundColor: 'var(--color-primary-200)',
+              padding: `2px ${spacing[2]}`,
+              borderRadius: borders.radius.full,
+              fontWeight: typography.fontWeight.medium,
+              whiteSpace: 'nowrap',
+            }}>
+              {SPACE_PURPOSES[purposeKey]?.label || 'Freely explore'}
+            </span>
+          )}
         </div>
-        <div style={s.topBarRight}>
+        <div style={{
+          ...s.topBarRight,
+          ...(isMobile ? { width: '100%', justifyContent: 'flex-end' } : {}),
+        }}>
           {/* Members button */}
           <button
             onClick={() => setShowMembersModal(true)}
@@ -811,8 +835,14 @@ export default function SpaceDetailPage() {
 
       {/* Quick input (editors/owners only) */}
       {space.can_edit !== false && (
-        <div style={s.inputArea}>
-          <div style={s.inputRow}>
+        <div style={{
+          ...s.inputArea,
+          ...(isMobile ? { padding: `${spacing[3]} ${spacing[4]}` } : {}),
+        }}>
+          <div style={{
+            ...s.inputRow,
+            ...(isMobile ? { maxWidth: 'none' } : {}),
+          }}>
             <textarea
               style={s.ideaInput}
               value={ideaText}
@@ -861,9 +891,61 @@ export default function SpaceDetailPage() {
         </div>
       )}
 
+      {/* Mobile tab bar */}
+      {isMobile && (
+        <div style={{
+          display: 'flex',
+          padding: `${spacing[2]} ${spacing[4]}`,
+          backgroundColor: 'var(--color-primary-50)',
+          borderBottom: '1px solid var(--color-primary-200)',
+          justifyContent: 'center',
+        }}>
+          <div style={{
+            display: 'flex',
+            backgroundColor: 'var(--color-primary-200)',
+            borderRadius: borders.radius.full,
+            padding: '2px',
+          }}>
+            <button
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                fontSize: typography.fontSize.sm,
+                fontWeight: mobileTab === 'ideas' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                color: mobileTab === 'ideas' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                backgroundColor: mobileTab === 'ideas' ? 'var(--color-primary-50)' : 'transparent',
+                border: 'none',
+                borderRadius: borders.radius.full,
+                cursor: 'pointer',
+                transition: `all ${transitions.duration.fast}`,
+              }}
+              onClick={() => setMobileTab('ideas')}
+            >
+              Ideas
+            </button>
+            <button
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                fontSize: typography.fontSize.sm,
+                fontWeight: mobileTab === 'map' ? typography.fontWeight.medium : typography.fontWeight.normal,
+                color: mobileTab === 'map' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                backgroundColor: mobileTab === 'map' ? 'var(--color-primary-50)' : 'transparent',
+                border: 'none',
+                borderRadius: borders.radius.full,
+                cursor: 'pointer',
+                transition: `all ${transitions.duration.fast}`,
+              }}
+              onClick={() => setMobileTab('map')}
+            >
+              Map
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main layout: graph + sidebar */}
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph area */}
+        {(!isMobile || mobileTab === 'map') && (
         <div style={{ ...s.graphArea, flex: pc.graphFlex }}>
           {/* View toggle: Graph / Evolution */}
           <div style={s.viewToggle}>
@@ -944,16 +1026,25 @@ export default function SpaceDetailPage() {
             </PanZoomContainer>
           )}
         </div>
+        )}
 
         {/* Sidebar */}
-        <div style={{ ...s.sidebar, width: sidebarWidth }}>
-          {/* Drag handle */}
-          <div
-            style={{ ...s.dragHandle, ...(dragging || dragHandleHovered ? s.dragHandleHover : {}) }}
-            onMouseDown={() => setDragging(true)}
-            onMouseEnter={() => setDragHandleHovered(true)}
-            onMouseLeave={() => setDragHandleHovered(false)}
-          />
+        {(!isMobile || mobileTab === 'ideas') && (
+        <div style={{
+          ...s.sidebar,
+          ...(isMobile
+            ? { width: '100%', borderLeft: 'none', flexShrink: 1 }
+            : { width: sidebarWidth }),
+        }}>
+          {/* Drag handle (desktop only) */}
+          {!isMobile && (
+            <div
+              style={{ ...s.dragHandle, ...(dragging || dragHandleHovered ? s.dragHandleHover : {}) }}
+              onMouseDown={() => setDragging(true)}
+              onMouseEnter={() => setDragHandleHovered(true)}
+              onMouseLeave={() => setDragHandleHovered(false)}
+            />
+          )}
           {/* Your Actions section — accepted items across themes */}
           {acceptedActions.length > 0 && (
             <div style={{
@@ -1957,6 +2048,7 @@ export default function SpaceDetailPage() {
           {/* Evolution timeline */}
           <ThemeEvolutionTimeline runs={evolution} expanded={evolutionExpanded} onToggle={() => setEvolutionExpanded(prev => !prev)} />
         </div>
+        )}
       </div>
 
       {/* Spin animation */}
