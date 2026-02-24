@@ -1806,7 +1806,7 @@ export interface SpaceMember {
   id: string;
   space_id: string;
   user_id: string;
-  role: 'owner' | 'editor' | 'viewer';
+  role: 'owner' | 'editor' | 'suggester' | 'viewer';
   joined_at: string;
   user_name?: string;
   user_email?: string;
@@ -1836,6 +1836,8 @@ export interface SpaceListItem {
   owner_id?: string;
   is_owner?: boolean;
   can_edit?: boolean;
+  can_suggest?: boolean;
+  suggestion_count?: number;
   member_count?: number;
 }
 
@@ -1856,6 +1858,8 @@ export interface Space {
   owner_id?: string;
   is_owner?: boolean;
   can_edit?: boolean;
+  can_suggest?: boolean;
+  suggestion_count?: number;
   member_count?: number;
   members?: SpaceMember[];
 }
@@ -1885,6 +1889,7 @@ export interface SpaceIdea {
   id: string;
   text: string;
   status: string;
+  author_name?: string;
   themes: SpaceIdeaTheme[];
   created_at: string;
   updated_at: string;
@@ -1936,6 +1941,36 @@ export interface OrganizeRun {
   run_id: string;
   events: ThemeEvent[];
   created_at: string;
+}
+
+// Space Activity Log types
+export type SpaceActivityEventType =
+  | 'idea_added'
+  | 'idea_removed'
+  | 'organize_started'
+  | 'organize_completed'
+  | 'action_accepted'
+  | 'action_completed'
+  | 'action_dismissed'
+  | 'member_joined'
+  | 'suggestion_submitted'
+  | 'suggestion_approved'
+  | 'suggestion_rejected';
+
+export interface SpaceActivityLogEntry {
+  id: string;
+  space_id: string;
+  user_id?: string;
+  user_name?: string;
+  event_type: SpaceActivityEventType;
+  detail?: string;
+  created_at: string;
+}
+
+export interface SpaceActivityLogPage {
+  items: SpaceActivityLogEntry[];
+  total: number;
+  has_more: boolean;
 }
 
 // Audit Log types

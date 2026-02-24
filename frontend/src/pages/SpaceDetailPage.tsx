@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry } from '../types';
+import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry, SpaceActivityLogEntry, SpaceActivityEventType } from '../types';
 import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -13,6 +13,42 @@ import ThemeEvolutionSankey from '../components/ThemeEvolutionSankey';
 import ThemeEvolutionBranch from '../components/ThemeEvolutionBranch';
 import PanZoomContainer from '../components/PanZoomContainer';
 import SpaceMembersModal from '../components/SpaceMembersModal';
+
+function getActivityVerb(eventType: SpaceActivityEventType): string {
+  switch (eventType) {
+    case 'idea_added': return 'added an idea:';
+    case 'idea_removed': return 'removed an idea:';
+    case 'organize_started': return 'started organizing';
+    case 'organize_completed': return 'finished organizing:';
+    case 'action_accepted': return 'accepted an action:';
+    case 'action_completed': return 'completed an action:';
+    case 'action_dismissed': return 'dismissed an action:';
+    case 'member_joined': return 'joined the space';
+    default: return eventType;
+  }
+}
+
+function getActivityIcon(eventType: SpaceActivityEventType) {
+  const base = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0, marginTop: '1px' } };
+  switch (eventType) {
+    case 'idea_added':
+      return <svg {...base} stroke="var(--color-primary-500)"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+    case 'idea_removed':
+      return <svg {...base} stroke="var(--color-primary-400)"><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+    case 'organize_started':
+    case 'organize_completed':
+      return <svg {...base} stroke="var(--color-primary-500)"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>;
+    case 'action_accepted':
+    case 'action_completed':
+      return <svg {...base} stroke="var(--color-primary-500)"><polyline points="20 6 9 17 4 12" /></svg>;
+    case 'action_dismissed':
+      return <svg {...base} stroke="var(--color-primary-400)"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+    case 'member_joined':
+      return <svg {...base} stroke="var(--color-primary-500)"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>;
+    default:
+      return <svg {...base} stroke="var(--color-primary-400)"><circle cx="12" cy="12" r="10" /></svg>;
+  }
+}
 
 const s = {
   page: {
@@ -349,6 +385,12 @@ export default function SpaceDetailPage() {
   const [completionOutcome, setCompletionOutcome] = useState('');
   const [actionsExpanded, setActionsExpanded] = useState(true);
   const [activityLogExpanded, setActivityLogExpanded] = useState(false);
+  const [spaceActivityEntries, setSpaceActivityEntries] = useState<SpaceActivityLogEntry[]>([]);
+  const [spaceActivityTotal, setSpaceActivityTotal] = useState(0);
+  const [spaceActivityHasMore, setSpaceActivityHasMore] = useState(false);
+  const [spaceActivityExpanded, setSpaceActivityExpanded] = useState(false);
+  const [spaceActivityLoading, setSpaceActivityLoading] = useState(false);
+  const spaceActivityLoadedRef = useRef(false);
   const [synthesisExpanded, setSynthesisExpanded] = useState(true);
   const [themesExpanded, setThemesExpanded] = useState(true);
   const [ideasExpanded, setIdeasExpanded] = useState(true);
@@ -469,10 +511,42 @@ export default function SpaceDetailPage() {
     setSpace(prev => prev ? { ...prev, idea_count: (prev.idea_count ?? 0) + 1 } : prev);
   }, [id]);
 
+  const loadActivity = useCallback(async (append = false) => {
+    if (!id) return;
+    setSpaceActivityLoading(true);
+    try {
+      const skip = append ? spaceActivityEntries.length : 0;
+      const res = await api.getSpaceActivity(id, skip, 30);
+      setSpaceActivityEntries(prev => append ? [...prev, ...res.items] : res.items);
+      setSpaceActivityTotal(res.total);
+      setSpaceActivityHasMore(res.has_more);
+    } catch {
+      // ignore
+    } finally {
+      setSpaceActivityLoading(false);
+    }
+  }, [id, spaceActivityEntries.length]);
+
+  const handleSpaceActivity = useCallback((data: any) => {
+    if (!id || data.space_id !== id) return;
+    const entry: SpaceActivityLogEntry = {
+      id: data.id,
+      space_id: data.space_id,
+      user_id: data.user_id,
+      user_name: data.user_name,
+      event_type: data.event_type,
+      detail: data.detail,
+      created_at: data.created_at,
+    };
+    setSpaceActivityEntries(prev => [entry, ...prev]);
+    setSpaceActivityTotal(prev => prev + 1);
+  }, [id]);
+
   useSSEEvent('space_classify_completed', handleClassifyCompleted);
   useSSEEvent('space_organize_started', handleOrganizeStarted);
   useSSEEvent('space_organize_completed', handleOrganizeCompleted);
   useSSEEvent('space_idea_added', handleIdeaAdded);
+  useSSEEvent('space_activity', handleSpaceActivity);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -491,6 +565,14 @@ export default function SpaceDetailPage() {
       if (autoOrgPollRef.current) clearTimeout(autoOrgPollRef.current);
     };
   }, [loadData]);
+
+  // Lazy-load activity when section first expanded
+  useEffect(() => {
+    if (spaceActivityExpanded && !spaceActivityLoadedRef.current) {
+      spaceActivityLoadedRef.current = true;
+      loadActivity();
+    }
+  }, [spaceActivityExpanded, loadActivity]);
 
   // Load ideas filtered by theme when selection changes
   useEffect(() => {
@@ -1841,6 +1923,93 @@ export default function SpaceDetailPage() {
               </div>
             );
           })()}
+
+          {/* Space Activity Log */}
+          <div style={{
+            ...s.sidebarSection,
+            backgroundColor: 'var(--color-primary-50)',
+            borderTop: '1px solid var(--color-primary-200)',
+          }}>
+            <div
+              style={{
+                ...s.sidebarTitle,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none',
+                marginBottom: spaceActivityExpanded ? spacing[3] : 0,
+              }}
+              onClick={() => setSpaceActivityExpanded(prev => !prev)}
+            >
+              <span>Activity{spaceActivityTotal > 0 ? ` (${spaceActivityTotal})` : ''}</span>
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transform: spaceActivityExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: transitions.duration.normal }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+            {spaceActivityExpanded && (
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {spaceActivityEntries.length === 0 && !spaceActivityLoading && (
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                    No activity yet
+                  </div>
+                )}
+                {spaceActivityEntries.map(entry => (
+                  <div key={entry.id} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: spacing[2],
+                    marginBottom: spacing[2],
+                    fontSize: typography.fontSize.xs,
+                    color: 'var(--color-primary-600)',
+                    lineHeight: typography.lineHeight.relaxed,
+                  }}>
+                    {getActivityIcon(entry.event_type)}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div>
+                        {entry.user_name && <strong>{entry.user_name}</strong>}
+                        {entry.user_name && ' '}
+                        {getActivityVerb(entry.event_type)}
+                        {entry.detail && (
+                          <span style={{ color: 'var(--color-primary-500)' }}> {entry.detail}</span>
+                        )}
+                      </div>
+                      <div style={{ color: 'var(--color-primary-400)', fontSize: '10px', marginTop: '1px' }}>
+                        {formatRelativeTime(entry.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {spaceActivityLoading && (
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', textAlign: 'center', padding: spacing[2] }}>
+                    Loading...
+                  </div>
+                )}
+                {spaceActivityHasMore && !spaceActivityLoading && (
+                  <button
+                    onClick={() => loadActivity(true)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: spacing[2],
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-500)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Load more
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Purpose synthesis section */}
           {space.purpose_synthesis?.space_summary && pc.synthesisHeader && (

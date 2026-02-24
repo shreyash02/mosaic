@@ -78,8 +78,8 @@ class SpaceInviteRequest(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in ("editor", "viewer"):
-            raise ValueError("role must be 'editor' or 'viewer'")
+        if v is not None and v not in ("editor", "suggester", "viewer"):
+            raise ValueError("role must be 'editor', 'suggester', or 'viewer'")
         return v
 
 
@@ -111,6 +111,8 @@ class SpaceResponse(BaseModel):
     owner_id: Optional[UUID] = None
     is_owner: bool = True
     can_edit: bool = True
+    can_suggest: bool = True
+    suggestion_count: int = 0
     member_count: int = 1
     members: Optional[List[SpaceMemberResponse]] = None
 
@@ -133,6 +135,8 @@ class SpaceListItem(BaseModel):
     owner_id: Optional[UUID] = None
     is_owner: bool = True
     can_edit: bool = True
+    can_suggest: bool = True
+    suggestion_count: int = 0
     member_count: int = 1
 
     model_config = {"from_attributes": True}
@@ -165,6 +169,7 @@ class IdeaResponse(BaseModel):
     id: UUID
     text: str
     status: str
+    author_name: Optional[str] = None
     themes: List[IdeaThemeAssignment] = []
     created_at: datetime
     updated_at: datetime
@@ -245,6 +250,26 @@ class OrganizeRunResponse(BaseModel):
     run_id: UUID
     events: List[ThemeEventResponse]
     created_at: datetime
+
+
+class SpaceActivityLogEntry(BaseModel):
+    """A single activity log entry."""
+    id: UUID
+    space_id: UUID
+    user_id: Optional[UUID] = None
+    user_name: Optional[str] = None
+    event_type: str
+    detail: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SpaceActivityLogPage(BaseModel):
+    """Paginated activity log response."""
+    items: List[SpaceActivityLogEntry]
+    total: int
+    has_more: bool
 
 
 class SynthesisNoteStateUpdate(BaseModel):

@@ -107,6 +107,7 @@ import type {
   SpaceTheme,
   SpaceMember,
   SpaceInvitation,
+  SpaceActivityLogPage,
   GraphData,
   OrganizeRun,
 } from '../types';
@@ -1462,7 +1463,7 @@ class ApiService {
     await this.client.delete(`/spaces/${spaceId}/members/${userId}`);
   }
 
-  async inviteToSpace(spaceId: string, emails: string[], role?: 'editor' | 'viewer'): Promise<{ invitations_created: number; space_id: string }> {
+  async inviteToSpace(spaceId: string, emails: string[], role?: 'editor' | 'suggester' | 'viewer'): Promise<{ invitations_created: number; space_id: string }> {
     const response = await this.client.post<{ invitations_created: number; space_id: string }>(
       `/spaces/${spaceId}/invitations`,
       { emails, role: role || 'editor' },
@@ -1470,7 +1471,7 @@ class ApiService {
     return response.data;
   }
 
-  async updateSpaceMemberRole(spaceId: string, userId: string, role: 'editor' | 'viewer'): Promise<SpaceMember> {
+  async updateSpaceMemberRole(spaceId: string, userId: string, role: 'editor' | 'suggester' | 'viewer'): Promise<SpaceMember> {
     const response = await this.client.patch<SpaceMember>(
       `/spaces/${spaceId}/members/${userId}`,
       { role },
@@ -1489,6 +1490,13 @@ class ApiService {
 
   async acceptSpaceInvitation(token: string): Promise<{ space_id: string }> {
     const response = await this.client.post<{ space_id: string }>(`/spaces/accept-invite/${token}`);
+    return response.data;
+  }
+
+  async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30): Promise<SpaceActivityLogPage> {
+    const response = await this.client.get<SpaceActivityLogPage>(`/spaces/${spaceId}/activity`, {
+      params: { skip, limit },
+    });
     return response.data;
   }
 }

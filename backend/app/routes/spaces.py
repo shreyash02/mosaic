@@ -23,6 +23,7 @@ from app.models.idea_theme import IdeaTheme
 from app.models.theme_connection import ThemeConnection
 from app.models.user import User
 from app.models.synthesis_action import SynthesisAction
+from app.models.space_activity_log import SpaceActivityLog
 from app.schemas.space import (
     SpaceCreate,
     SpaceUpdate,
@@ -43,6 +44,8 @@ from app.schemas.space import (
     ThemeEventResponse,
     SynthesisNoteStateUpdate,
     SynthesisActivityEntry,
+    SpaceActivityLogEntry,
+    SpaceActivityLogPage,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,7 +107,7 @@ def _require_space_owner(space: Space, current_user: User) -> None:
 
 
 def _require_space_editor(space_id: UUID, current_user: User, db: Session) -> None:
-    """Raise 403 if the current user is a viewer (read-only). Owners and editors pass."""
+    """Raise 403 if the current user is not an editor or owner. Blocks suggesters and viewers."""
     member = db.query(SpaceMember).filter(
         SpaceMember.space_id == space_id,
         SpaceMember.user_id == current_user.id,
@@ -114,6 +117,33 @@ def _require_space_editor(space_id: UUID, current_user: User, db: Session) -> No
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You have view-only access to this space",
         )
+    if member and member.role == "suggester":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can suggest ideas but cannot edit this space directly",
+        )
+
+
+def _require_space_suggester(space_id: UUID, current_user: User, db: Session) -> None:
+    """Raise 403 if the current user is a viewer. Suggesters, editors, and owners pass."""
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == current_user.id,
+    ).first()
+    if member and member.role == "viewer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You have view-only access to this space",
+        )
+
+
+def _is_suggester(space_id: UUID, current_user: User, db: Session) -> bool:
+    """Return True if the user's role in this space is 'suggester'."""
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == current_user.id,
+    ).first()
+    return member is not None and member.role == "suggester"
 
 
 def _get_space_member_ids(db: Session, space_id: UUID) -> List[UUID]:
@@ -204,8 +234,10 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
 
     is_owner = current_user.id == space.owner_id if current_user else True
 
-    # Determine edit permission: owners and editors can edit, viewers cannot
+    # Determine edit/suggest permissions based on role
     can_edit = True
+    can_suggest = True
+    user_role = "owner" if is_owner else None
     if current_user and not is_owner:
         if members_data:
             user_member = next(
@@ -216,8 +248,20 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
                 SpaceMember.space_id == space.id,
                 SpaceMember.user_id == current_user.id,
             ).first()
+        if user_member:
+            user_role = user_member.role
         if user_member and user_member.role == "viewer":
             can_edit = False
+            can_suggest = False
+        elif user_member and user_member.role == "suggester":
+            can_edit = False
+
+    # Count pending suggestions (only for editors/owners who can review them)
+    suggestion_count = 0
+    if can_edit:
+        suggestion_count = db.query(func.count(Idea.id)).filter(
+            Idea.space_id == space.id, Idea.status == "suggested"
+        ).scalar() or 0
 
     return {
         "id": space.id,
@@ -236,6 +280,8 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "owner_id": space.owner_id,
         "is_owner": is_owner,
         "can_edit": can_edit,
+        "can_suggest": can_suggest,
+        "suggestion_count": suggestion_count,
         "member_count": member_count,
         "members": members_data,
     }
@@ -266,6 +312,38 @@ def _build_idea_response(idea: Idea, db: Session) -> dict:
         "created_at": idea.created_at,
         "updated_at": idea.updated_at,
     }
+
+
+def log_space_activity(
+    db: Session,
+    space_id: UUID,
+    user_id: Optional[UUID],
+    user_name: Optional[str],
+    event_type: str,
+    detail: Optional[str] = None,
+):
+    """Record an activity log entry and broadcast via SSE."""
+    if detail and len(detail) > 200:
+        detail = detail[:200]
+    entry = SpaceActivityLog(
+        space_id=space_id,
+        user_id=user_id,
+        user_name=user_name,
+        event_type=event_type,
+        detail=detail,
+    )
+    db.add(entry)
+    db.flush()
+    # Broadcast to all space members
+    _broadcast_sse_to_space(db, space_id, "space_activity", {
+        "id": str(entry.id),
+        "space_id": str(entry.space_id),
+        "user_id": str(entry.user_id) if entry.user_id else None,
+        "user_name": entry.user_name,
+        "event_type": entry.event_type,
+        "detail": entry.detail,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+    })
 
 
 # --- Background tasks ---
@@ -336,7 +414,7 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
         engine.dispose()
 
 
-def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context: Optional[str] = None):
+def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context: Optional[str] = None, user_name: Optional[str] = None):
     """Background task to run full space organization."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -371,6 +449,12 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
             space.settings = current_settings
             flag_modified(space, "settings")
             db.commit()
+
+        # Log organize_completed activity
+        theme_count = db.query(func.count(Theme.id)).filter(Theme.space_id == space_id).scalar() or 0
+        detail = f"{theme_count} theme{'s' if theme_count != 1 else ''}"
+        log_space_activity(db, space_id, None, user_name, "organize_completed", detail=detail)
+        db.commit()
 
         _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
@@ -599,7 +683,9 @@ def create_idea(
 
     _require_spaces_flag(current_user, db)
     space = _get_space_or_404(space_id, current_user, db)
-    _require_space_editor(space_id, current_user, db)
+    _require_space_suggester(space_id, current_user, db)
+
+    is_suggestion = _is_suggester(space_id, current_user, db)
 
     # Check max_ideas_per_space limit using the space OWNER's tier
     owner_tier = subscription_service.get_tier(db, user_id=space.owner_id)
@@ -628,26 +714,39 @@ def create_idea(
         author_id=current_user.id,
         text=data.text,
         embedding=embedding,
+        status="suggested" if is_suggestion else "active",
     )
     db.add(idea)
+
+    if is_suggestion:
+        log_space_activity(db, space_id, current_user.id, current_user.full_name, "suggestion_submitted", detail=data.text[:80])
+    else:
+        log_space_activity(db, space_id, current_user.id, current_user.full_name, "idea_added", detail=data.text[:80])
     db.commit()
     db.refresh(idea)
 
-    # Notify other members that a new idea was added
     from app.services.sse_service import sse_service
     member_ids = _get_space_member_ids(db, space_id)
-    for uid in member_ids:
-        if uid != current_user.id:
-            sse_service.send_to_user_sync(uid, "space_idea_added", {"space_id": str(space_id)})
 
-    # Classify in background against existing themes
-    background_tasks.add_task(
-        run_classify_idea_task,
-        idea_id=idea.id,
-        space_id=space_id,
-        owner_id=space.owner_id,
-        db_url=str(settings.DATABASE_URL),
-    )
+    if is_suggestion:
+        # Notify editors/owners that a new suggestion was submitted
+        for uid in member_ids:
+            if uid != current_user.id:
+                sse_service.send_to_user_sync(uid, "space_suggestion_submitted", {"space_id": str(space_id)})
+    else:
+        # Notify other members that a new idea was added
+        for uid in member_ids:
+            if uid != current_user.id:
+                sse_service.send_to_user_sync(uid, "space_idea_added", {"space_id": str(space_id)})
+
+        # Classify in background against existing themes (skip for suggestions)
+        background_tasks.add_task(
+            run_classify_idea_task,
+            idea_id=idea.id,
+            space_id=space_id,
+            owner_id=space.owner_id,
+            db_url=str(settings.DATABASE_URL),
+        )
 
     return _build_idea_response(idea, db)
 
@@ -755,7 +854,101 @@ def delete_idea(
         raise HTTPException(status_code=404, detail="Idea not found")
 
     idea.status = "archived"
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, "idea_removed", detail=idea.text[:80])
     db.commit()
+
+
+# --- Suggestions ---
+
+@router.get("/{space_id}/suggestions", response_model=list[IdeaResponse])
+def list_suggestions(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List pending suggestions for a space. Editors/owners only."""
+    _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    suggestions = (
+        db.query(Idea, User)
+        .join(User, Idea.author_id == User.id)
+        .filter(Idea.space_id == space_id, Idea.status == "suggested")
+        .order_by(Idea.created_at.desc())
+        .all()
+    )
+    result = []
+    for idea, author in suggestions:
+        resp = _build_idea_response(idea, db)
+        resp["author_name"] = author.full_name
+        result.append(resp)
+    return result
+
+
+@router.post("/{space_id}/suggestions/{idea_id}/approve", response_model=IdeaResponse)
+def approve_suggestion(
+    space_id: UUID,
+    idea_id: UUID,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Approve a suggestion, making it an active idea. Triggers classification."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    idea = db.query(Idea).filter(
+        Idea.id == idea_id, Idea.space_id == space_id, Idea.status == "suggested"
+    ).first()
+    if not idea:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+
+    idea.status = "active"
+    idea.reviewed_by = current_user.id
+    idea.reviewed_at = datetime.utcnow()
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, "suggestion_approved", detail=idea.text[:80])
+    db.commit()
+    db.refresh(idea)
+
+    # Notify members
+    _broadcast_sse_to_space(db, space_id, "space_idea_added", {"space_id": str(space_id)})
+
+    # Classify in background
+    background_tasks.add_task(
+        run_classify_idea_task,
+        idea_id=idea.id,
+        space_id=space_id,
+        owner_id=space.owner_id,
+        db_url=str(settings.DATABASE_URL),
+    )
+
+    return _build_idea_response(idea, db)
+
+
+@router.post("/{space_id}/suggestions/{idea_id}/reject", status_code=status.HTTP_200_OK)
+def reject_suggestion(
+    space_id: UUID,
+    idea_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Reject a suggestion. It will not appear in the main ideas list."""
+    _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    idea = db.query(Idea).filter(
+        Idea.id == idea_id, Idea.space_id == space_id, Idea.status == "suggested"
+    ).first()
+    if not idea:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+
+    idea.status = "rejected"
+    idea.reviewed_by = current_user.id
+    idea.reviewed_at = datetime.utcnow()
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, "suggestion_rejected", detail=idea.text[:80])
+    db.commit()
+
+    return {"message": "Suggestion dismissed"}
 
 
 # --- Themes ---
@@ -947,12 +1140,16 @@ def organize_space(
     for uid in _get_space_member_ids(db, space_id):
         sse_service.send_to_user_sync(uid, "space_organize_started", {"space_id": str(space_id)})
 
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, "organize_started")
+    db.commit()
+
     background_tasks.add_task(
         run_organize_space_task,
         space_id=space.id,
         owner_id=space.owner_id,
         db_url=str(settings.DATABASE_URL),
         context=context,
+        user_name=current_user.full_name,
     )
 
     return {"message": "Organization started", "idea_count": idea_count}
@@ -1028,6 +1225,15 @@ def update_synthesis_note_state(
     flag_modified(space, "settings")
     db.commit()
 
+    # Log action state changes (not resets)
+    if data.state in ("accepted", "completed", "dismissed"):
+        note_text = notes_list[data.note_index] if data.note_index < len(notes_list) else ""
+        log_space_activity(
+            db, space_id, current_user.id, current_user.full_name,
+            f"action_{data.state}", detail=str(note_text)[:80],
+        )
+        db.commit()
+
     # Actionable feedback (reason or outcome) is a signal to re-synthesize.
     # Check auto-organize score — note feedback weight may push it over threshold.
     has_feedback = (
@@ -1081,6 +1287,39 @@ def get_evolution(
         ))
     result.sort(key=lambda r: r.created_at, reverse=True)
     return result[:limit]
+
+
+# --- Activity Log ---
+
+@router.get("/{space_id}/activity", response_model=SpaceActivityLogPage)
+def get_space_activity(
+    space_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get paginated activity log for a space. Any member can read."""
+    _get_space_or_404(space_id, current_user, db)
+
+    total = (
+        db.query(func.count(SpaceActivityLog.id))
+        .filter(SpaceActivityLog.space_id == space_id)
+        .scalar() or 0
+    )
+    rows = (
+        db.query(SpaceActivityLog)
+        .filter(SpaceActivityLog.space_id == space_id)
+        .order_by(SpaceActivityLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return {
+        "items": [SpaceActivityLogEntry.model_validate(r) for r in rows],
+        "total": total,
+        "has_more": (skip + limit) < total,
+    }
 
 
 # --- Members + Invitations ---
@@ -1152,8 +1391,8 @@ def update_member_role(
     _require_space_owner(space, current_user)
 
     new_role = data.get("role")
-    if new_role not in ("editor", "viewer"):
-        raise HTTPException(status_code=400, detail="role must be 'editor' or 'viewer'")
+    if new_role not in ("editor", "suggester", "viewer"):
+        raise HTTPException(status_code=400, detail="role must be 'editor', 'suggester', or 'viewer'")
 
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot change your own role")
@@ -1375,6 +1614,9 @@ def accept_space_invitation(
 
     invitation.is_accepted = True
     invitation.accepted_at = datetime.utcnow()
+    db.commit()
+
+    log_space_activity(db, invitation.space_id, current_user.id, current_user.full_name, "member_joined")
     db.commit()
 
     return {"space_id": str(invitation.space_id)}
