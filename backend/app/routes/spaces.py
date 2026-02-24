@@ -36,6 +36,10 @@ from app.schemas.space import (
     IdeaUpdate,
     IdeaResponse,
     IdeaThemeAssignment,
+    ImageExtractRequest,
+    ImageClarifyRequest,
+    ImageExtractResponse,
+    IdeaBatchCreate,
     ThemeResponse,
     ThemeUpdate,
     ThemeMerge,
@@ -308,6 +312,7 @@ def _build_idea_response(idea: Idea, db: Session) -> dict:
         "id": idea.id,
         "text": idea.text,
         "status": idea.status,
+        "image_url": idea.image_url,
         "author_name": idea.author.full_name if idea.author else None,
         "themes": themes,
         "created_at": idea.created_at,
@@ -714,6 +719,7 @@ def create_idea(
         space_id=space_id,
         author_id=current_user.id,
         text=data.text,
+        image_url=data.image_url,
         embedding=embedding,
         status="suggested" if is_suggestion else "active",
     )
@@ -757,6 +763,7 @@ def list_ideas(
     space_id: UUID,
     theme_id: Optional[UUID] = Query(None),
     unthemed: bool = Query(False),
+    since: Optional[datetime] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
@@ -766,6 +773,9 @@ def list_ideas(
     _get_space_or_404(space_id, current_user, db)
 
     query = db.query(Idea).filter(Idea.space_id == space_id, Idea.status == "active")
+
+    if since is not None:
+        query = query.filter(Idea.created_at >= since)
 
     if unthemed:
         # Filter ideas that have no theme assignments
@@ -950,6 +960,147 @@ def reject_suggestion(
     db.commit()
 
     return {"message": "Suggestion dismissed"}
+
+
+# --- Image-to-Ideas ---
+
+@router.post("/{space_id}/ideas/extract-from-image", response_model=ImageExtractResponse)
+def extract_ideas_from_image(
+    space_id: UUID,
+    data: ImageExtractRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Use Claude vision to extract ideas from an uploaded image."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_suggester(space_id, current_user, db)
+
+    from app.services.image_idea_service import ImageIdeaService
+    from app.services.platform_settings_service import get_llm_model
+
+    service = ImageIdeaService(model=get_llm_model(db))
+    result = service.extract(
+        image_url=data.image_url,
+        space_title=space.title,
+        space_description=space.description,
+        user_description=data.description,
+    )
+    return result
+
+
+@router.post("/{space_id}/ideas/extract-from-image/clarify", response_model=ImageExtractResponse)
+def clarify_image_extraction(
+    space_id: UUID,
+    data: ImageClarifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Follow-up extraction after answering clarifying questions."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_suggester(space_id, current_user, db)
+
+    from app.services.image_idea_service import ImageIdeaService
+    from app.services.platform_settings_service import get_llm_model
+
+    service = ImageIdeaService(model=get_llm_model(db))
+    result = service.extract_with_clarification(
+        image_url=data.image_url,
+        space_title=space.title,
+        space_description=space.description,
+        user_description=data.description,
+        questions=data.questions,
+        answers=data.answers,
+    )
+    return result
+
+
+@router.post("/{space_id}/ideas/batch", response_model=list[IdeaResponse], status_code=status.HTTP_201_CREATED)
+def create_ideas_batch(
+    space_id: UUID,
+    data: IdeaBatchCreate,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create multiple ideas at once (e.g. from image extraction)."""
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+    from app.services.space_service import SpaceService
+    from app.services.platform_settings_service import get_llm_model
+
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_suggester(space_id, current_user, db)
+
+    is_suggestion = _is_suggester(space_id, current_user, db)
+
+    # Check max_ideas_per_space limit using the space OWNER's tier
+    owner_tier = subscription_service.get_tier(db, user_id=space.owner_id)
+    max_ideas = feature_flag_service.get_config_value(
+        db, "spaces", "max_ideas_per_space",
+        tier=owner_tier,
+        user_id=space.owner_id,
+    )
+    if max_ideas is not None and max_ideas != -1:
+        current_count = db.query(func.count(Idea.id)).filter(
+            Idea.space_id == space_id, Idea.status == "active"
+        ).scalar() or 0
+        if current_count + len(data.ideas) > max_ideas:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Adding {len(data.ideas)} ideas would exceed the maximum ({max_ideas}) for your plan",
+            )
+
+    llm_model = get_llm_model(db)
+    service = SpaceService(model=llm_model)
+
+    created_ideas = []
+    for idea_data in data.ideas:
+        embedding = service.generate_embedding(idea_data.text)
+        idea = Idea(
+            space_id=space_id,
+            author_id=current_user.id,
+            text=idea_data.text,
+            image_url=idea_data.image_url,
+            embedding=embedding,
+            status="suggested" if is_suggestion else "active",
+        )
+        db.add(idea)
+        created_ideas.append(idea)
+
+    db.flush()
+
+    # Log activity for batch
+    detail = f"{len(created_ideas)} ideas from image"
+    event_type = "suggestion_submitted" if is_suggestion else "idea_added"
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, event_type, detail=detail)
+    db.commit()
+
+    for idea in created_ideas:
+        db.refresh(idea)
+
+    # SSE notifications
+    from app.services.sse_service import sse_service
+    member_ids = _get_space_member_ids(db, space_id)
+    sse_event = "space_suggestion_submitted" if is_suggestion else "space_idea_added"
+    for uid in member_ids:
+        if uid != current_user.id:
+            sse_service.send_to_user_sync(uid, sse_event, {"space_id": str(space_id)})
+
+    # Queue background classification for each active idea
+    if not is_suggestion:
+        for idea in created_ideas:
+            background_tasks.add_task(
+                run_classify_idea_task,
+                idea_id=idea.id,
+                space_id=space_id,
+                owner_id=space.owner_id,
+                db_url=str(settings.DATABASE_URL),
+            )
+
+    return [_build_idea_response(i, db) for i in created_ideas]
 
 
 # --- Themes ---
@@ -1139,7 +1290,7 @@ def organize_space(
     # Send organize_started to all members immediately
     from app.services.sse_service import sse_service
     for uid in _get_space_member_ids(db, space_id):
-        sse_service.send_to_user_sync(uid, "space_organize_started", {"space_id": str(space_id)})
+        sse_service.send_to_user_sync(uid, "space_organize_started", {"space_id": str(space_id), "triggered_by": current_user.full_name})
 
     log_space_activity(db, space_id, current_user.id, current_user.full_name, "organize_started")
     db.commit()
@@ -1255,6 +1406,7 @@ def update_synthesis_note_state(
 @router.get("/{space_id}/evolution", response_model=list[OrganizeRunResponse])
 def get_evolution(
     space_id: UUID,
+    since: Optional[datetime] = Query(None),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1265,12 +1417,13 @@ def get_evolution(
 
     _get_space_or_404(space_id, current_user, db)
 
-    events = (
+    events_query = (
         db.query(ThemeEvent)
         .filter(ThemeEvent.space_id == space_id)
-        .order_by(ThemeEvent.created_at.desc())
-        .all()
     )
+    if since is not None:
+        events_query = events_query.filter(ThemeEvent.created_at >= since)
+    events = events_query.order_by(ThemeEvent.created_at.desc()).all()
 
     # Group by organize_run_id
     runs: dict = defaultdict(list)
@@ -1295,6 +1448,7 @@ def get_evolution(
 @router.get("/{space_id}/activity", response_model=SpaceActivityLogPage)
 def get_space_activity(
     space_id: UUID,
+    since: Optional[datetime] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -1303,14 +1457,18 @@ def get_space_activity(
     """Get paginated activity log for a space. Any member can read."""
     _get_space_or_404(space_id, current_user, db)
 
+    base_filter = [SpaceActivityLog.space_id == space_id]
+    if since is not None:
+        base_filter.append(SpaceActivityLog.created_at >= since)
+
     total = (
         db.query(func.count(SpaceActivityLog.id))
-        .filter(SpaceActivityLog.space_id == space_id)
+        .filter(*base_filter)
         .scalar() or 0
     )
     rows = (
         db.query(SpaceActivityLog)
-        .filter(SpaceActivityLog.space_id == space_id)
+        .filter(*base_filter)
         .order_by(SpaceActivityLog.created_at.desc())
         .offset(skip)
         .limit(limit)

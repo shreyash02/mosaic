@@ -26,6 +26,7 @@ class Idea(Base):
         nullable=False,
     )
     text = Column(Text, nullable=False)
+    image_url = Column(String(500), nullable=True)
     embedding = Column(JSONB, nullable=True)  # 1536-dim float array
     status = Column(String(20), default="active", nullable=False)
     reviewed_by = Column(

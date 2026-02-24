@@ -13,6 +13,8 @@ import ThemeEvolutionSankey from '../components/ThemeEvolutionSankey';
 import ThemeEvolutionBranch from '../components/ThemeEvolutionBranch';
 import PanZoomContainer from '../components/PanZoomContainer';
 import SpaceMembersModal from '../components/SpaceMembersModal';
+import CustomSelect from '../components/CustomSelect';
+import ImageIdeaModal from '../components/ImageIdeaModal';
 
 function getActivityVerb(eventType: SpaceActivityEventType): string {
   switch (eventType) {
@@ -382,6 +384,7 @@ export default function SpaceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [organizing, setOrganizing] = useState(false);
   const [autoOrganizing, setAutoOrganizing] = useState(false);
+  const [organizeTriggeredBy, setOrganizeTriggeredBy] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(340);
@@ -403,9 +406,8 @@ export default function SpaceDetailPage() {
   const [synthesisExpanded, setSynthesisExpanded] = useState(true);
   const [themesExpanded, setThemesExpanded] = useState(true);
   const [ideasExpanded, setIdeasExpanded] = useState(true);
-  const [evolutionExpanded, setEvolutionExpanded] = useState(true);
   const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
-  const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch'>('flow');
+  const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch' | 'timeline'>('flow');
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [suggestions, setSuggestions] = useState<SpaceIdea[]>([]);
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(true);
@@ -413,6 +415,28 @@ export default function SpaceDetailPage() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   const [mobileTab, setMobileTab] = useState<'ideas' | 'map'>('ideas');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Time filter
+  const TIME_FILTER_OPTIONS = [
+    { value: 1, label: 'Since yesterday' },
+    { value: 7, label: 'Last week' },
+    { value: 30, label: 'Last month' },
+    { value: 90, label: 'Last 3 months' },
+    { value: 365, label: 'Last year' },
+    { value: 0, label: 'All time' },
+  ];
+  const [timeFilterDays, setTimeFilterDays] = useState<number>(30);
+  const sinceDate = useMemo(() => {
+    if (timeFilterDays === 0) return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() - timeFilterDays);
+    return d.toISOString();
+  }, [timeFilterDays]);
+  const sinceDateRef = useRef(sinceDate);
+  sinceDateRef.current = sinceDate;
 
   // Track viewport width for responsive layout
   useEffect(() => {
@@ -454,19 +478,20 @@ export default function SpaceDetailPage() {
   // Refresh only sidebar + graph content without touching input or page state
   const refreshContent = useCallback(async (themeFilter?: string | null) => {
     if (!id) return;
+    const since = sinceDateRef.current;
     const [spaceData, themesData, graph, evoData] = await Promise.all([
       api.getSpace(id),
       api.getThemes(id),
       api.getGraphData(id),
-      api.getEvolution(id),
+      api.getEvolution(id, undefined, since),
     ]);
     // Refresh ideas respecting current theme filter
     const filter = themeFilter !== undefined ? themeFilter : selectedThemeIdRef.current;
     let ideasData: SpaceIdea[];
     if (filter === '__unthemed') {
-      ideasData = await api.getIdeas(id, undefined, true);
+      ideasData = await api.getIdeas(id, undefined, true, since);
     } else {
-      ideasData = await api.getIdeas(id, filter || undefined);
+      ideasData = await api.getIdeas(id, filter || undefined, undefined, since);
     }
     setSpace(spaceData);
     setThemes(themesData);
@@ -486,21 +511,24 @@ export default function SpaceDetailPage() {
     if (!id || data.space_id !== id) return;
     // Refresh ideas to pick up new theme tags
     const filter = selectedThemeIdRef.current;
+    const since = sinceDateRef.current;
     if (filter === '__unthemed') {
-      api.getIdeas(id, undefined, true).then(setIdeas).catch(() => {});
+      api.getIdeas(id, undefined, true, since).then(setIdeas).catch(() => {});
     } else {
-      api.getIdeas(id, filter || undefined).then(setIdeas).catch(() => {});
+      api.getIdeas(id, filter || undefined, undefined, since).then(setIdeas).catch(() => {});
     }
   }, [id]);
 
   const handleOrganizeStarted = useCallback((data: any) => {
     if (data.space_id !== id) return;
     setAutoOrganizing(true);
+    setOrganizeTriggeredBy(data.triggered_by || null);
   }, [id]);
 
   const handleOrganizeCompleted = useCallback((data: any) => {
     if (data.space_id !== id) return;
     setAutoOrganizing(false);
+    setOrganizeTriggeredBy(null);
     setOrganizing(false);
     // Clear fallback poll timer since SSE delivered the event
     if (autoOrgPollRef.current) {
@@ -514,10 +542,11 @@ export default function SpaceDetailPage() {
     if (!id || data.space_id !== id) return;
     // Another member added an idea — refresh ideas list
     const filter = selectedThemeIdRef.current;
+    const since = sinceDateRef.current;
     if (filter === '__unthemed') {
-      api.getIdeas(id, undefined, true).then(setIdeas).catch(() => {});
+      api.getIdeas(id, undefined, true, since).then(setIdeas).catch(() => {});
     } else {
-      api.getIdeas(id, filter || undefined).then(setIdeas).catch(() => {});
+      api.getIdeas(id, filter || undefined, undefined, since).then(setIdeas).catch(() => {});
     }
     // Bump idea count
     setSpace(prev => prev ? { ...prev, idea_count: (prev.idea_count ?? 0) + 1 } : prev);
@@ -528,7 +557,7 @@ export default function SpaceDetailPage() {
     setSpaceActivityLoading(true);
     try {
       const skip = append ? spaceActivityEntries.length : 0;
-      const res = await api.getSpaceActivity(id, skip, 30);
+      const res = await api.getSpaceActivity(id, skip, 30, sinceDateRef.current);
       setSpaceActivityEntries(prev => append ? [...prev, ...res.items] : res.items);
       setSpaceActivityTotal(res.total);
       setSpaceActivityHasMore(res.has_more);
@@ -599,12 +628,36 @@ export default function SpaceDetailPage() {
   // Load ideas filtered by theme when selection changes
   useEffect(() => {
     if (!id) return;
+    const since = sinceDateRef.current;
     if (selectedThemeId === '__unthemed') {
-      api.getIdeas(id, undefined, true).then(setIdeas).catch(() => {});
+      api.getIdeas(id, undefined, true, since).then(setIdeas).catch(() => {});
     } else {
-      api.getIdeas(id, selectedThemeId || undefined).then(setIdeas).catch(() => {});
+      api.getIdeas(id, selectedThemeId || undefined, undefined, since).then(setIdeas).catch(() => {});
     }
   }, [id, selectedThemeId]);
+
+  // Refetch all filtered data when time filter changes
+  useEffect(() => {
+    if (!id || loading) return;
+    const since = sinceDate;
+    // Refresh ideas
+    const filter = selectedThemeIdRef.current;
+    if (filter === '__unthemed') {
+      api.getIdeas(id, undefined, true, since).then(setIdeas).catch(() => {});
+    } else {
+      api.getIdeas(id, filter || undefined, undefined, since).then(setIdeas).catch(() => {});
+    }
+    // Refresh evolution
+    api.getEvolution(id, undefined, since).then(setEvolution).catch(() => {});
+    // Refresh activity log (reset pagination)
+    if (spaceActivityLoadedRef.current) {
+      api.getSpaceActivity(id, 0, 30, since).then(res => {
+        setSpaceActivityEntries(res.items);
+        setSpaceActivityTotal(res.total);
+        setSpaceActivityHasMore(res.has_more);
+      }).catch(() => {});
+    }
+  }, [sinceDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleDropIdea() {
     if (!id || !ideaText.trim()) return;
@@ -868,6 +921,13 @@ export default function SpaceDetailPage() {
           ...s.topBarRight,
           ...(isMobile ? { width: '100%', justifyContent: 'flex-end' } : {}),
         }}>
+          {/* Time filter */}
+          <CustomSelect
+            value={timeFilterDays}
+            options={TIME_FILTER_OPTIONS}
+            onChange={(v) => setTimeFilterDays(Number(v))}
+            minWidth="160px"
+          />
           {/* Members button */}
           <button
             onClick={() => setShowMembersModal(true)}
@@ -968,7 +1028,58 @@ export default function SpaceDetailPage() {
                   handleDropIdea();
                 }
               }}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = items[i].getAsFile();
+                    if (file) {
+                      setImageFile(file);
+                      setShowImageModal(true);
+                    }
+                    return;
+                  }
+                }
+              }}
             />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImageFile(file);
+                  setShowImageModal(true);
+                }
+                e.target.value = '';
+              }}
+            />
+            <button
+              style={{
+                padding: `${spacing[2]} ${spacing[2]}`,
+                backgroundColor: 'transparent',
+                border: '1px solid var(--color-primary-300)',
+                borderRadius: borders.radius.md,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-primary-600)',
+                flexShrink: 0,
+              }}
+              onClick={() => imageInputRef.current?.click()}
+              title="Add from image"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
             <button
               style={{
                 ...s.dropButton,
@@ -996,10 +1107,30 @@ export default function SpaceDetailPage() {
         </div>
       )}
 
+      {/* Image-to-Ideas modal */}
+      {imageFile && (
+        <ImageIdeaModal
+          isOpen={showImageModal}
+          onClose={() => { setShowImageModal(false); setImageFile(null); }}
+          spaceId={id!}
+          imageFile={imageFile}
+          isSuggester={space?.can_edit === false && space?.can_suggest === true}
+          onIdeasCreated={(newIdeas) => {
+            if (newIdeas.length > 0 && newIdeas[0].status === 'suggested') {
+              setSuggestionSuccess(`${newIdeas.length} suggestion${newIdeas.length !== 1 ? 's' : ''} submitted for review`);
+              setTimeout(() => setSuggestionSuccess(null), 4000);
+            } else {
+              setIdeas(prev => [...newIdeas, ...prev]);
+              setSpace(prev => prev ? { ...prev, idea_count: (prev.idea_count ?? 0) + newIdeas.length } : prev);
+            }
+          }}
+        />
+      )}
+
       {error && <div style={s.error}>{error}</div>}
 
-      {/* Auto-organizing indicator */}
-      {autoOrganizing && (
+      {/* Organizing indicator */}
+      {autoOrganizing && !organizing && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -1013,7 +1144,9 @@ export default function SpaceDetailPage() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
             <path d="M21 12a9 9 0 11-6.219-8.56" />
           </svg>
-          Auto-organizing themes...
+          {organizeTriggeredBy
+            ? `Running organization triggered by ${organizeTriggeredBy}...`
+            : 'Auto-organizing themes...'}
         </div>
       )}
 
@@ -1108,6 +1241,33 @@ export default function SpaceDetailPage() {
               selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
               onClearSelection={handleClearSelection}
             />
+          ) : evolutionStyle === 'timeline' ? (
+            <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+              {/* Style sub-toggle for evolution views */}
+              <div style={{
+                position: 'absolute', top: spacing[2], right: spacing[2], zIndex: 2,
+                display: 'flex',
+                backgroundColor: 'var(--color-primary-200)',
+                borderRadius: borders.radius.full,
+                padding: '2px',
+              }}>
+                {(['flow', 'branch', 'timeline'] as const).map(style => (
+                  <button
+                    key={style}
+                    style={{
+                      ...s.viewToggleBtn,
+                      fontWeight: evolutionStyle === style ? typography.fontWeight.medium : typography.fontWeight.normal,
+                      color: evolutionStyle === style ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                      backgroundColor: evolutionStyle === style ? 'var(--color-primary-50)' : 'transparent',
+                    }}
+                    onClick={() => setEvolutionStyle(style)}
+                  >
+                    {style.charAt(0).toUpperCase() + style.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <ThemeEvolutionTimeline runs={evolution} expanded onToggle={() => {}} />
+            </div>
           ) : (
             <PanZoomContainer
               key={evolutionStyle}
@@ -1119,28 +1279,20 @@ export default function SpaceDetailPage() {
                   borderRadius: borders.radius.full,
                   padding: '2px',
                 }}>
-                  <button
-                    style={{
-                      ...s.viewToggleBtn,
-                      fontWeight: evolutionStyle === 'flow' ? typography.fontWeight.medium : typography.fontWeight.normal,
-                      color: evolutionStyle === 'flow' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
-                      backgroundColor: evolutionStyle === 'flow' ? 'var(--color-primary-50)' : 'transparent',
-                    }}
-                    onClick={() => setEvolutionStyle('flow')}
-                  >
-                    Flow
-                  </button>
-                  <button
-                    style={{
-                      ...s.viewToggleBtn,
-                      fontWeight: evolutionStyle === 'branch' ? typography.fontWeight.medium : typography.fontWeight.normal,
-                      color: evolutionStyle === 'branch' ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
-                      backgroundColor: evolutionStyle === 'branch' ? 'var(--color-primary-50)' : 'transparent',
-                    }}
-                    onClick={() => setEvolutionStyle('branch')}
-                  >
-                    Branch
-                  </button>
+                  {(['flow', 'branch', 'timeline'] as const).map(style => (
+                    <button
+                      key={style}
+                      style={{
+                        ...s.viewToggleBtn,
+                        fontWeight: evolutionStyle === style ? typography.fontWeight.medium : typography.fontWeight.normal,
+                        color: evolutionStyle === style ? 'var(--color-primary-900)' : 'var(--color-primary-600)',
+                        backgroundColor: evolutionStyle === style ? 'var(--color-primary-50)' : 'transparent',
+                      }}
+                      onClick={() => setEvolutionStyle(style)}
+                    >
+                      {style.charAt(0).toUpperCase() + style.slice(1)}
+                    </button>
+                  ))}
                 </div>
               }
             >
@@ -1950,7 +2102,14 @@ export default function SpaceDetailPage() {
               </div>
               {filteredIdeas.slice(0, 30).map((idea) => (
                 <div key={idea.id} style={s.ideaItem}>
-                  <div style={s.ideaText}>{idea.text}</div>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    {idea.image_url && (
+                      <a href={idea.image_url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                        <img src={idea.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm }} />
+                      </a>
+                    )}
+                    <div style={s.ideaText}>{idea.text}</div>
+                  </div>
                   {idea.themes.length > 0 && (
                     <div style={s.ideaThemes}>
                       {idea.themes.map((t) => (
@@ -2355,7 +2514,14 @@ export default function SpaceDetailPage() {
             ) : (
               filteredIdeas.slice(0, 30).map((idea) => (
                 <div key={idea.id} style={s.ideaItem}>
-                  <div style={s.ideaText}>{idea.text}</div>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    {idea.image_url && (
+                      <a href={idea.image_url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                        <img src={idea.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: borders.radius.sm }} />
+                      </a>
+                    )}
+                    <div style={s.ideaText}>{idea.text}</div>
+                  </div>
                   {idea.themes.length > 0 && (
                     <div style={s.ideaThemes}>
                       {idea.themes.map((t) => (
@@ -2421,8 +2587,6 @@ export default function SpaceDetailPage() {
             ))}
           </div>
 
-          {/* Evolution timeline */}
-          <ThemeEvolutionTimeline runs={evolution} expanded={evolutionExpanded} onToggle={() => setEvolutionExpanded(prev => !prev)} />
         </div>
         )}
       </div>

@@ -1890,10 +1890,17 @@ export interface SpaceIdea {
   id: string;
   text: string;
   status: string;
+  image_url?: string;
   author_name?: string;
   themes: SpaceIdeaTheme[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ImageExtractionResult {
+  status: 'extracted' | 'needs_clarification';
+  ideas: Array<{ text: string }>;
+  questions: string[];
 }
 
 export interface SpaceTheme {

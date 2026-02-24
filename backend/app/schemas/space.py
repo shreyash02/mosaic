@@ -1,7 +1,7 @@
 """Pydantic schemas for Spaces, Ideas, Themes, Graph data, and Theme Evolution."""
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
@@ -148,6 +148,7 @@ class SpaceListItem(BaseModel):
 class IdeaCreate(BaseModel):
     """Drop a new idea — minimal friction."""
     text: str = Field(..., min_length=1, max_length=10000)
+    image_url: Optional[str] = Field(None, max_length=500)
 
 
 class IdeaUpdate(BaseModel):
@@ -170,12 +171,41 @@ class IdeaResponse(BaseModel):
     id: UUID
     text: str
     status: str
+    image_url: Optional[str] = None
     author_name: Optional[str] = None
     themes: List[IdeaThemeAssignment] = []
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# --- Image extraction schemas ---
+
+class ImageExtractRequest(BaseModel):
+    """Request to extract ideas from an uploaded image."""
+    image_url: str
+    description: Optional[str] = Field(None, max_length=2000)
+
+
+class ImageClarifyRequest(BaseModel):
+    """Follow-up after clarifying questions were asked."""
+    image_url: str
+    description: Optional[str] = Field(None, max_length=2000)
+    questions: List[str]
+    answers: List[str]
+
+
+class ImageExtractResponse(BaseModel):
+    """Response from image extraction (ideas or clarifying questions)."""
+    status: Literal["extracted", "needs_clarification"]
+    ideas: List[Dict[str, str]] = []
+    questions: List[str] = []
+
+
+class IdeaBatchCreate(BaseModel):
+    """Create multiple ideas at once (e.g. from image extraction)."""
+    ideas: List[IdeaCreate] = Field(..., min_length=1, max_length=20)
 
 
 # --- Theme schemas ---

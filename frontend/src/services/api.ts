@@ -110,6 +110,7 @@ import type {
   SpaceActivityLogPage,
   GraphData,
   OrganizeRun,
+  ImageExtractionResult,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -1373,17 +1374,20 @@ class ApiService {
     await this.client.delete(`/spaces/${spaceId}`);
   }
 
-  async getIdeas(spaceId: string, themeId?: string, unthemed?: boolean): Promise<SpaceIdea[]> {
+  async getIdeas(spaceId: string, themeId?: string, unthemed?: boolean, since?: string): Promise<SpaceIdea[]> {
     const params = new URLSearchParams();
     if (unthemed) params.set('unthemed', 'true');
     else if (themeId) params.set('theme_id', themeId);
+    if (since) params.set('since', since);
     const qs = params.toString();
     const response = await this.client.get<SpaceIdea[]>(`/spaces/${spaceId}/ideas${qs ? `?${qs}` : ''}`);
     return response.data;
   }
 
-  async createIdea(spaceId: string, text: string): Promise<SpaceIdea> {
-    const response = await this.client.post<SpaceIdea>(`/spaces/${spaceId}/ideas`, { text });
+  async createIdea(spaceId: string, text: string, imageUrl?: string): Promise<SpaceIdea> {
+    const body: { text: string; image_url?: string } = { text };
+    if (imageUrl) body.image_url = imageUrl;
+    const response = await this.client.post<SpaceIdea>(`/spaces/${spaceId}/ideas`, body);
     return response.data;
   }
 
@@ -1446,9 +1450,12 @@ class ApiService {
     return response.data;
   }
 
-  async getEvolution(spaceId: string, limit?: number): Promise<OrganizeRun[]> {
-    const params = limit ? `?limit=${limit}` : '';
-    const response = await this.client.get<OrganizeRun[]>(`/spaces/${spaceId}/evolution${params}`);
+  async getEvolution(spaceId: string, limit?: number, since?: string): Promise<OrganizeRun[]> {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    if (since) params.set('since', since);
+    const qs = params.toString();
+    const response = await this.client.get<OrganizeRun[]>(`/spaces/${spaceId}/evolution${qs ? `?${qs}` : ''}`);
     return response.data;
   }
 
@@ -1507,9 +1514,53 @@ class ApiService {
     await this.client.post(`/spaces/${spaceId}/suggestions/${ideaId}/reject`);
   }
 
-  async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30): Promise<SpaceActivityLogPage> {
+  async extractIdeasFromImage(
+    spaceId: string,
+    imageUrl: string,
+    description?: string,
+  ): Promise<ImageExtractionResult> {
+    const response = await this.client.post<ImageExtractionResult>(
+      `/spaces/${spaceId}/ideas/extract-from-image`,
+      { image_url: imageUrl, description: description || undefined },
+    );
+    return response.data;
+  }
+
+  async clarifyImageExtraction(
+    spaceId: string,
+    imageUrl: string,
+    description: string | undefined,
+    questions: string[],
+    answers: string[],
+  ): Promise<ImageExtractionResult> {
+    const response = await this.client.post<ImageExtractionResult>(
+      `/spaces/${spaceId}/ideas/extract-from-image/clarify`,
+      {
+        image_url: imageUrl,
+        description: description || undefined,
+        questions,
+        answers,
+      },
+    );
+    return response.data;
+  }
+
+  async createIdeasBatch(
+    spaceId: string,
+    ideas: Array<{ text: string; image_url?: string }>,
+  ): Promise<SpaceIdea[]> {
+    const response = await this.client.post<SpaceIdea[]>(
+      `/spaces/${spaceId}/ideas/batch`,
+      { ideas },
+    );
+    return response.data;
+  }
+
+  async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30, since?: string): Promise<SpaceActivityLogPage> {
+    const params: Record<string, string | number> = { skip, limit };
+    if (since) params.since = since;
     const response = await this.client.get<SpaceActivityLogPage>(`/spaces/${spaceId}/activity`, {
-      params: { skip, limit },
+      params,
     });
     return response.data;
   }
