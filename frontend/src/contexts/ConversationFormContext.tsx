@@ -62,6 +62,9 @@ export interface ConversationFormState {
   nextInstanceDate: string;
   recurrenceEndDate: string;
 
+  // Auto-analyze on close (for limited-time conversations)
+  autoAnalyze: boolean;
+
   // Long-running feedback (continuous conversations)
   isLongRunning: boolean;
   enableAnalysisSchedule: boolean;
@@ -145,6 +148,9 @@ const getDefaultFormState = (): ConversationFormState => ({
   recurrencePattern: RecurrencePattern.WEEKLY,
   nextInstanceDate: '',
   recurrenceEndDate: '',
+
+  // Auto-analyze
+  autoAnalyze: false,
 
   // Long-running feedback
   isLongRunning: false,
@@ -298,6 +304,7 @@ export function ConversationFormProvider({
       recurrencePattern: conversation.recurrence_pattern || RecurrencePattern.WEEKLY,
       nextInstanceDate: utcToLocalDatetimeString(conversation.next_instance_date),
       recurrenceEndDate: utcToLocalDatetimeString(conversation.recurrence_end_date),
+      autoAnalyze: conversation.auto_analyze || false,
       isLongRunning: !!conversation.is_continuous,
       enableAnalysisSchedule: !!conversation.analysis_interval,
       analysisInterval: conversation.analysis_interval || 'weekly',

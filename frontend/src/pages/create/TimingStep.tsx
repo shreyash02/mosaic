@@ -289,6 +289,7 @@ export default function TimingStep() {
   const slackEnabled = useFeature('slack_integration');
   const recurringEnabled = useFeature('recurring_conversations');
   const continuousEnabled = useFeature('continuous_conversations');
+  const aiAnalysisEnabled = useFeature('ai_analysis');
   const showNotificationsStep = slackEnabled && !!currentOrgId;
   const [showMinutesInput, setShowMinutesInput] = useState(formState.durationMinutes > 0);
   const [error, setError] = useState('');
@@ -448,6 +449,23 @@ export default function TimingStep() {
                 <p style={{ marginTop: spacing[2], fontSize: typography.fontSize.sm, color: 'var(--color-error)' }}>
                   Duration must be greater than zero
                 </p>
+              )}
+              {aiAnalysisEnabled && (
+                <div style={{ marginTop: spacing[4] }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formState.autoAnalyze}
+                      onChange={(e) => updateFormState({ autoAnalyze: e.target.checked })}
+                    />
+                    <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-900)' }}>
+                      Automatically analyze when this conversation closes
+                    </span>
+                  </label>
+                  <p className="form-help-text" style={{ marginTop: spacing[1], marginLeft: '24px' }}>
+                    AI analysis will run as soon as the conversation closes. You'll be notified when results are ready.
+                  </p>
+                </div>
               )}
             </div>
           )}

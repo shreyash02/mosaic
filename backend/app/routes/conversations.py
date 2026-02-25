@@ -72,6 +72,7 @@ from app.services.in_app_notification_service import in_app_notification_service
 from app.utils.email_preferences import should_send_email
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def generate_access_code(length: int = 12) -> str:
@@ -1449,17 +1450,44 @@ async def close_conversation(
     conversation.state = ConversationState.CLOSED.value
     conversation.closed_at = datetime.utcnow()
 
+    # Check if auto-analyze should trigger
+    should_auto_analyze = False
+    response_count = db.query(Response).filter(
+        Response.conversation_id == conversation_id
+    ).count()
+    if conversation.auto_analyze and response_count > 0:
+        should_auto_analyze = True
+        conversation.state = ConversationState.ANALYZING.value
+
     db.commit()
     db.refresh(conversation)
 
     # Send Slack channel notification if configured
     if conversation.slack_channel_id and conversation.slack_notify_on_close:
-        response_count = db.query(Response).filter(
-            Response.conversation_id == conversation_id
-        ).count()
+        if not response_count:
+            response_count = db.query(Response).filter(
+                Response.conversation_id == conversation_id
+            ).count()
         await notification_service.notify_channel_conversation_closed(
             conversation, response_count, db
         )
+
+    # Trigger auto-analysis in background
+    if should_auto_analyze:
+        import asyncio
+        from app.core.config import settings
+        from app.routes.analysis import run_analysis_task
+        try:
+            asyncio.create_task(
+                asyncio.to_thread(
+                    run_analysis_task,
+                    conversation_id,
+                    settings.DATABASE_URL,
+                    2  # min_cluster_size
+                )
+            )
+        except Exception as e:
+            logger.error(f"Failed to trigger auto-analysis for conversation {conversation_id}: {e}", exc_info=True)
 
     return conversation
 

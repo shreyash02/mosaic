@@ -2259,41 +2259,68 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Close Modal */}
-      {showCloseModal && (
+      {showCloseModal && (() => {
+        const hasResponses = (stats?.unique_participants || 0) > 0;
+        const autoAnalyzeOn = conversation?.auto_analyze && hasResponses && aiAnalysisEnabled;
+        return (
         <FocusTrap isActive={showCloseModal} onEscape={() => setShowCloseModal(false)}>
           <div style={s.modalOverlay} onClick={() => setShowCloseModal(false)} role="dialog" aria-modal="true" aria-labelledby="close-modal-title">
             <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
               <h2 style={s.modalTitle} id="close-modal-title">Close Conversation</h2>
               <p style={s.modalText}>
-                {aiAnalysisEnabled && (stats?.unique_participants || 0) > 0
-                  ? 'Close this conversation to stop collecting responses. Would you like to run AI analysis on the responses collected so far?'
-                  : 'Close this conversation? No new responses will be accepted.'}
+                {autoAnalyzeOn
+                  ? 'Close this conversation? AI analysis will run automatically.'
+                  : aiAnalysisEnabled && hasResponses
+                    ? 'Close this conversation to stop collecting responses. Would you like to run AI analysis on the responses collected so far?'
+                    : 'Close this conversation? No new responses will be accepted.'}
               </p>
               <div style={s.modalActions}>
                 <button onClick={() => setShowCloseModal(false)} style={s.buttonSecondary}>
                   Cancel
                 </button>
-                <button
-                  onClick={() => handleClose(false)}
-                  style={aiAnalysisEnabled && (stats?.unique_participants || 0) > 0 ? s.buttonSecondary : s.buttonPrimary}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? 'Closing...' : 'Close'}
-                </button>
-                {aiAnalysisEnabled && (stats?.unique_participants || 0) > 0 && (
-                  <button
-                    onClick={() => handleClose(true)}
-                    style={s.buttonPrimary}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? 'Closing...' : 'Close & Run Analysis'}
-                  </button>
+                {autoAnalyzeOn ? (
+                  <>
+                    <button
+                      onClick={() => handleClose(false)}
+                      style={s.buttonSecondary}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? 'Closing...' : 'Close without analysis'}
+                    </button>
+                    <button
+                      onClick={() => handleClose(true)}
+                      style={s.buttonPrimary}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? 'Closing...' : 'Close & Analyze'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleClose(false)}
+                      style={aiAnalysisEnabled && hasResponses ? s.buttonSecondary : s.buttonPrimary}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? 'Closing...' : 'Close'}
+                    </button>
+                    {aiAnalysisEnabled && hasResponses && (
+                      <button
+                        onClick={() => handleClose(true)}
+                        style={s.buttonPrimary}
+                        disabled={actionLoading}
+                      >
+                        {actionLoading ? 'Closing...' : 'Close & Run Analysis'}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
           </div>
         </FocusTrap>
-      )}
+        );
+      })()}
 
       {/* Archive Modal */}
       {showArchiveModal && (

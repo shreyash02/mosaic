@@ -260,6 +260,10 @@ export default function ReviewStep() {
           ...(formState.nextInstanceDate && { next_instance_date: formState.nextInstanceDate + ':00' }),
           ...(formState.recurrenceEndDate && { recurrence_end_date: formState.recurrenceEndDate + ':00' }),
         }),
+        // Auto-analyze on close (for limited-time conversations)
+        ...(!formState.isLongRunning && formState.autoAnalyze && {
+          auto_analyze: true,
+        }),
         // Long-running feedback (continuous conversations)
         ...(formState.isLongRunning && {
           is_continuous: true,
@@ -567,6 +571,16 @@ export default function ReviewStep() {
                 <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
                   {formState.durationHours} {formState.durationHours === 1 ? 'hour' : 'hours'}
                   {formState.durationMinutes > 0 && ` ${formState.durationMinutes} ${formState.durationMinutes === 1 ? 'minute' : 'minutes'}`}
+                </div>
+              </div>
+            )}
+
+            {/* Auto-analyze */}
+            {!formState.isLongRunning && formState.autoAnalyze && (
+              <div style={{ marginBottom: spacing[3] }}>
+                <div style={{ color: 'var(--color-primary-500)', marginBottom: spacing[1] }}>Auto-analyze</div>
+                <div style={{ fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-900)' }}>
+                  On — AI analysis will run when the conversation closes
                 </div>
               </div>
             )}
