@@ -192,4 +192,12 @@ export const analytics = {
     if (!isActive()) return;
     capture('whats_next_action', props);
   },
+
+  analysisShared(props: {
+    conversationId: string;
+    action: 'enable' | 'disable' | 'copy_link';
+  }) {
+    if (!isActive()) return;
+    capture('analysis_shared', props);
+  },
 };

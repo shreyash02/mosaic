@@ -77,6 +77,8 @@ import type {
   InsightAnnotation,
   UpsertAnnotationRequest,
   AnnotationsListResponse,
+  SharedAnalysis,
+  ConversationSharingResponse,
   Journal,
   JournalListItem,
   JournalCreate,
@@ -156,6 +158,11 @@ class ApiService {
           // Don't intercept 401s from login endpoints — let the caller handle them
           const requestUrl = originalRequest.url || '';
           if (requestUrl.endsWith('/auth/login') || requestUrl.endsWith('/admin/login')) {
+            return Promise.reject(error);
+          }
+
+          // Don't intercept 401s from shared analysis — let the page handle auth redirect
+          if (requestUrl.includes('/analysis/shared/')) {
             return Promise.reject(error);
           }
 
@@ -545,6 +552,18 @@ class ApiService {
 
   async getAnalysisById(conversationId: string, analysisId: string): Promise<Analysis> {
     const response = await this.client.get<Analysis>(`/conversations/${conversationId}/analyses/${analysisId}`);
+    return response.data;
+  }
+
+  async toggleAnalysisSharing(conversationId: string): Promise<ConversationSharingResponse> {
+    const response = await this.client.patch<ConversationSharingResponse>(
+      `/conversations/${conversationId}/sharing`
+    );
+    return response.data;
+  }
+
+  async getSharedAnalysis(shareToken: string): Promise<SharedAnalysis> {
+    const response = await this.client.get<SharedAnalysis>(`/analysis/shared/${shareToken}`);
     return response.data;
   }
 

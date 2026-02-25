@@ -626,6 +626,9 @@ export default function AnalysisPage() {
   const [suggestedActions, setSuggestedActions] = useState<SuggestedAction[]>([]);
   const [activeTab, setActiveTab] = useState<'analysis' | 'actions'>('analysis');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [sharingEnabled, setSharingEnabled] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [togglingShare, setTogglingShare] = useState(false);
   const [annotations, setAnnotations] = useState<InsightAnnotation[]>([]);
   const [savingAnnotation, setSavingAnnotation] = useState<string | null>(null);
   const noteInputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
@@ -795,6 +798,12 @@ export default function AnalysisPage() {
       const convData = await api.getConversation(id);
       setCanAccessConversation(true);
       setFullConversation(convData);
+
+      // Initialize sharing state
+      if (convData.share_token) {
+        setSharingEnabled(true);
+        setShareUrl(`${window.location.origin}/shared/analysis/${convData.share_token}`);
+      }
 
       // If continuous, load periodic analyses
       if (convData.is_continuous) {
@@ -1366,22 +1375,94 @@ export default function AnalysisPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
               {isCreator && fullConversation && (
-                <div style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      setLinkCopied(true);
-                      setTimeout(() => setLinkCopied(false), 2000);
-                    }}
-                    style={{ ...styles.buttonSecondary, gap: spacing[2] }}
-                    className="analysis-btn-secondary"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                    </svg>
-                    {linkCopied ? 'Copied!' : 'Copy Link'}
-                  </button>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  {sharingEnabled ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (shareUrl) {
+                            navigator.clipboard.writeText(shareUrl);
+                            setLinkCopied(true);
+                            analytics.analysisShared({ conversationId: id!, action: 'copy_link' });
+                            setTimeout(() => setLinkCopied(false), 2000);
+                          }
+                        }}
+                        style={{ ...styles.buttonSecondary, gap: spacing[2] }}
+                        className="analysis-btn-secondary"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                        </svg>
+                        {linkCopied ? 'Copied!' : 'Copy Share Link'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (togglingShare) return;
+                          setTogglingShare(true);
+                          try {
+                            const result = await api.toggleAnalysisSharing(id!);
+                            setSharingEnabled(result.sharing_enabled);
+                            setShareUrl(result.share_url);
+                            analytics.analysisShared({ conversationId: id!, action: 'disable' });
+                          } catch (err) {
+                            console.error('Failed to disable sharing:', err);
+                          } finally {
+                            setTogglingShare(false);
+                          }
+                        }}
+                        style={{
+                          ...styles.buttonSecondary,
+                          padding: `${spacing[2]} ${spacing[3]}`,
+                          fontSize: typography.fontSize.xs,
+                          color: 'var(--color-primary-500)',
+                          ...(togglingShare ? styles.buttonDisabled : {}),
+                        }}
+                        className="analysis-btn-secondary"
+                        disabled={togglingShare}
+                      >
+                        {togglingShare ? '...' : 'Disable'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (togglingShare) return;
+                        setTogglingShare(true);
+                        try {
+                          const result = await api.toggleAnalysisSharing(id!);
+                          setSharingEnabled(result.sharing_enabled);
+                          setShareUrl(result.share_url);
+                          if (result.share_url) {
+                            navigator.clipboard.writeText(result.share_url);
+                            setLinkCopied(true);
+                            setTimeout(() => setLinkCopied(false), 2000);
+                          }
+                          analytics.analysisShared({ conversationId: id!, action: 'enable' });
+                        } catch (err) {
+                          console.error('Failed to enable sharing:', err);
+                        } finally {
+                          setTogglingShare(false);
+                        }
+                      }}
+                      style={{
+                        ...styles.buttonSecondary,
+                        gap: spacing[2],
+                        ...(togglingShare ? styles.buttonDisabled : {}),
+                      }}
+                      className="analysis-btn-secondary"
+                      disabled={togglingShare}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                      </svg>
+                      {togglingShare ? 'Sharing...' : 'Share Analysis'}
+                    </button>
+                  )}
                   {linkCopied && (
                     <div style={{
                       position: 'absolute',
@@ -1398,10 +1479,10 @@ export default function AnalysisPage() {
                       boxShadow: shadows.md,
                     }}>
                       {fullConversation.results_access === ResultsAccess.PUBLIC_LINK
-                        ? 'Anyone with this link can view'
+                        ? 'Link copied — anyone can view'
                         : fullConversation.results_access === ResultsAccess.PARTICIPANTS
-                          ? 'Only participants can view'
-                          : 'Only you can view this analysis'}
+                          ? 'Link copied — only participants can view'
+                          : 'Link copied — only you can view'}
                     </div>
                   )}
                 </div>

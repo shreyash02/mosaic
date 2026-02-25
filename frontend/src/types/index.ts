@@ -203,6 +203,8 @@ export interface Conversation {
   // Branding (overrides organization branding)
   brand_logo_url?: string;
   brand_name?: string;
+  // Sharing
+  share_token?: string;
   // Archiving
   is_archived?: boolean;
   archived_at?: string;
@@ -559,6 +561,28 @@ export interface AnalysisListResponse {
   conversation_id: string;
   total: number;
   analyses: AnalysisSummary[];
+}
+
+// Shared analysis (public viewer)
+export interface SharedAnalysis {
+  conversation_title: string;
+  conversation_description?: string;
+  results_access: string;
+  response_count: number;
+  unique_participants: number;
+  analysis_id: string;
+  overall_summary?: string;
+  question_analyses?: QuestionAnalysis[];
+  surprising_insights?: SurprisingInsight[];
+  created_at: string;
+  total_responses_analyzed?: number;
+  num_clusters_found?: number;
+}
+
+export interface ConversationSharingResponse {
+  share_token: string | null;
+  share_url: string | null;
+  sharing_enabled: boolean;
 }
 
 // Periodic analysis for continuous conversations

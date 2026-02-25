@@ -83,6 +83,7 @@ import JournalDetailPage from './pages/JournalDetailPage';
 import JournalInsightsPage from './pages/JournalInsightsPage';
 import JournalSettingsPage from './pages/JournalSettingsPage';
 import SharedJournalDetailPage from './pages/SharedJournalDetailPage';
+import SharedAnalysisPage from './pages/SharedAnalysisPage';
 import AcceptJournalSharePage from './pages/AcceptJournalSharePage';
 import SpacesPage from './pages/SpacesPage';
 import SpaceDetailPage from './pages/SpaceDetailPage';
@@ -143,6 +144,7 @@ function App() {
             <Route path="/auth/callback" element={<LoginPage />} />
             <Route path="/join/:accessCode" element={<JoinPage />} />
             <Route path="/join" element={<JoinPage />} />
+            <Route path="/shared/analysis/:token" element={<SharedAnalysisPage />} />
             <Route
               path="/preview/:accessCode"
               element={
