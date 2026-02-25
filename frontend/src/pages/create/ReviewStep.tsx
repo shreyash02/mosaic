@@ -6,6 +6,7 @@ import { useFeature } from '../../contexts/FeaturesContext';
 import ConversationPreview from '../../components/ConversationPreview';
 import { INTENT_PRESETS } from '../../types/intentPresets';
 import { api } from '../../services/api';
+import { analytics } from '../../services/analytics';
 import type { Series } from '../../types';
 import { typography, spacing, borders, shadows, mediaQueries } from '../../styles';
 import { AnonymityLevel, ResultsAccess, RecurrencePattern } from '../../types';
@@ -305,6 +306,16 @@ export default function ReviewStep() {
 
       // Clear form draft
       resetForm();
+
+      if (!formState.isEditMode) {
+        analytics.conversationCreated({
+          conversationId: conversation.id,
+          anonymityLevel: formState.anonymityLevel,
+          questionCount: formState.questions.length,
+          isTemplate: conversation.is_template || false,
+          isContinuous: formState.isLongRunning || false,
+        });
+      }
 
       // Navigate to appropriate page
       if (conversation.is_template) {

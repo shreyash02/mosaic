@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, transitions, mediaQueries } from '../styles/tokens';
@@ -246,7 +247,8 @@ export default function CollectionsPage() {
         description: collectionDescription.trim() || undefined,
         organization_id: currentOrgId || undefined,
       };
-      await api.createSeries(collectionData);
+      const newCollection = await api.createSeries(collectionData);
+      analytics.collectionCreated({ collectionId: newCollection.id });
       setShowCreateModal(false);
       setCollectionName('');
       setCollectionDescription('');

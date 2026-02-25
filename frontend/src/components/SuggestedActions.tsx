@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, type ReactNode } from 'react';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import { useToast } from '../contexts/NotificationContext';
 import type { SuggestedAction, ActionType, ActionPriority, ActionStatus } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
@@ -479,6 +480,7 @@ export default function SuggestedActions({
         dismissed_reason: dismissedReason,
       });
       setActions(prev => prev.map(a => a.id === actionId ? updated : a));
+      analytics.suggestedActionUpdated({ conversationId, newStatus });
       const labels: Record<string, string> = {
         accepted: 'Action accepted',
         deferred: 'Action deferred',

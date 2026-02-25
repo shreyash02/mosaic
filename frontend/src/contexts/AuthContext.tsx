@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import type { User, LoginRequest, RegisterRequest } from '../types';
 
 interface AuthContextType {
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear organization selection (user-specific)
     localStorage.removeItem('current_organization_id');
     setUser(null);
+    analytics.reset();
   };
 
   const refreshUser = async () => {

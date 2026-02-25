@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import type { CodeValidation, Conversation, ResponseItem, Announcement } from '../types';
 import { LockIcon } from '../components/icons';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
@@ -1150,6 +1151,10 @@ export default function JoinPage() {
         await api.submitResponse(accessCode!, submitData);
         await clearDraft();
         setSuccess(true);
+        analytics.responseSubmitted({
+          questionCount: conversation?.questions?.length ?? 0,
+          anonymityLevel: conversation?.anonymity_level ?? 'unknown',
+        });
       }
     } catch (err: any) {
       if (err.response?.status === 403) {

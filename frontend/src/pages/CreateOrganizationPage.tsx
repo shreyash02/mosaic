@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import type { OrganizationCreate } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
@@ -181,6 +182,7 @@ export default function CreateOrganizationPage() {
       };
 
       const newOrg = await api.createOrganization(orgData);
+      analytics.organizationCreated({ orgId: newOrg.id });
       navigate(`/organizations/${newOrg.id}`);
     } catch (err: any) {
       console.error('Failed to create organization:', err);

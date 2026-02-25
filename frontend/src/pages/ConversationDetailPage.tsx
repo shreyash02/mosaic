@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Series, SuggestedAction } from '../types';
 import { ConversationState, AnonymityLevel } from '../types';
@@ -933,6 +934,7 @@ export default function ConversationDetailPage() {
     try {
       const updated = await api.activateConversation(id!, undefined, scheduledTime);
       setConversation(updated);
+      analytics.conversationActivated({ conversationId: id!, isScheduled: !!scheduledTime });
       setShowActivateModal(false);
       setScheduledActivateAt('');
     } catch (err: any) {
@@ -948,6 +950,11 @@ export default function ConversationDetailPage() {
     try {
       const updated = await api.closeConversation(id!);
       setConversation(updated);
+      analytics.conversationClosed({
+        conversationId: id!,
+        withAnalysis: andAnalyze,
+        responseCount: stats?.total_responses ?? 0,
+      });
       if (andAnalyze) {
         await api.triggerAnalysis(id!);
         await loadConversation();
@@ -974,6 +981,7 @@ export default function ConversationDetailPage() {
     try {
       await api.triggerAnalysis(id!);
       await loadConversation();
+      analytics.analysisTriggered({ conversationId: id!, responseCount: stats?.total_responses ?? 0 });
       setShowAnalysisSuccess(true);
       setTimeout(() => setShowAnalysisSuccess(false), 3000);
     } catch (err: any) {

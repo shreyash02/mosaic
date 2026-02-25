@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import type { JournalPromptCreate, AnalysisInterval, EntryFrequency, JournalTemplate } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -450,6 +451,7 @@ export default function JournalCreatePage() {
         } : {}),
       });
 
+      analytics.journalCreated({ journalId: journal.id, templateId: selectedTemplate });
       navigate(`/journals/${journal.id}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create journal';

@@ -11,6 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
 import MaintenanceBanner from './components/MaintenanceBanner';
 import { ToastContainer } from './components/Toast';
+import PostHogIdentifier from './components/PostHogIdentifier';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -125,6 +126,7 @@ function App() {
             <OrganizationProvider>
             <FeaturesProvider>
             <NotificationProvider>
+            <PostHogIdentifier />
             <div className="App">
               <Header />
               <EmailVerificationBanner />

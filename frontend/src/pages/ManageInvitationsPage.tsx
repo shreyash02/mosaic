@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import type { Conversation, InvitationListResponse, CSVUploadResult } from '../types';
 import { ConversationState } from '../types';
 import { formatRelativeTime } from '../utils/formatting';
@@ -411,6 +412,7 @@ export default function ManageInvitationsPage() {
       }
 
       await api.inviteUsers(id, emails);
+      analytics.invitationsSent({ conversationId: id, recipientCount: emails.length, method: 'email' });
       setInviteEmails('');
       setShowInviteForm(false);
       loadData();

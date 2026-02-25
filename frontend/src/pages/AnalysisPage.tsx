@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import { usePageTitle } from '../hooks/usePageTitle';
 import type { Analysis, AnalysisSummary, Conversation, ResponseWithQuestion, PeriodicAnalysis, SuggestedAction, InsightAnnotation, AnnotationTargetType } from '../types';
 import { ResultsAccess } from '../types';
@@ -658,6 +659,7 @@ export default function AnalysisPage() {
       // Reload annotations
       const data = await api.getAnnotations(id, analysis.id);
       setAnnotations(data.annotations);
+      analytics.insightAnnotated({ conversationId: id, action: newStarred ? 'star' : 'unstar' });
     } catch (err) {
       console.error('Failed to toggle star:', err);
     } finally {
@@ -677,6 +679,7 @@ export default function AnalysisPage() {
       });
       const data = await api.getAnnotations(id, analysis.id);
       setAnnotations(data.annotations);
+      analytics.insightAnnotated({ conversationId: id, action: 'note' });
       // Collapse note input if note was removed
       if (!note) {
         setExpandedNotes(prev => {
@@ -816,6 +819,12 @@ export default function AnalysisPage() {
         ? await api.getAnalysisById(id!, analysisId)
         : await api.getAnalysis(id!);
       setAnalysis(analysisData);
+      analytics.analysisViewed({
+        conversationId: id!,
+        analysisId: analysisData.id,
+        hasThemes: (analysisData.themes?.length ?? 0) > 0,
+        hasSuggestedActions: (analysisData.question_analyses?.length ?? 0) > 0,
+      });
 
       // Fetch analysis history list
       try {
