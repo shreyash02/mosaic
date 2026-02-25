@@ -67,6 +67,7 @@ class Conversation(Base):
 
     # Access
     access_code = Column(String(50), unique=True, nullable=False, index=True)
+    share_token = Column(UUID(as_uuid=True), unique=True, nullable=True, index=True)
 
     # Configuration
     anonymity_level = Column(String(50), nullable=False)

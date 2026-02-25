@@ -206,6 +206,7 @@ async def robots():
 
     robots_txt = "User-agent: *\n"
     robots_txt += "Allow: /\n"
+    robots_txt += "Allow: /shared/\n"
     robots_txt += "Disallow: /api/\n"
     robots_txt += "Disallow: /dashboard\n"
     robots_txt += "Disallow: /conversations/\n"
@@ -216,6 +217,67 @@ async def robots():
     robots_txt += f"Sitemap: {base_url}/sitemap.xml\n"
 
     return Response(content=robots_txt, media_type="text/plain")
+
+
+def _get_shared_analysis_og_tags(path: str) -> dict | None:
+    """If path matches shared/analysis/{uuid}, return OG meta tags dict."""
+    import re
+    from html import escape
+    from uuid import UUID as UUIDType
+    from app.models.conversation import Conversation as ConversationModel
+    from app.models.analysis import Analysis as AnalysisModel
+
+    match = re.match(r"shared/analysis/([0-9a-f\-]{36})$", path)
+    if not match:
+        return None
+
+    token_str = match.group(1)
+    try:
+        UUIDType(token_str)
+    except ValueError:
+        return None
+
+    db = SessionLocal()
+    try:
+        conversation = db.query(ConversationModel).filter(
+            ConversationModel.share_token == token_str
+        ).first()
+        if not conversation:
+            return None
+
+        analysis = db.query(AnalysisModel).filter(
+            AnalysisModel.conversation_id == conversation.id
+        ).order_by(AnalysisModel.created_at.desc()).first()
+
+        conv_title = escape(conversation.title or "Untitled")
+        page_title = f"Analysis: {conv_title} | Mosaic"
+
+        if analysis:
+            responses = analysis.total_responses_analyzed or 0
+            themes = analysis.num_clusters_found or 0
+            description = f"{responses} responses analyzed, {themes} themes found"
+        else:
+            description = "AI-powered analysis of anonymous feedback"
+
+        full_url = f"{settings.FRONTEND_URL}/shared/analysis/{token_str}"
+
+        meta_tags = (
+            f'<meta property="og:title" content="{escape(page_title)}" />\n'
+            f'    <meta property="og:description" content="{escape(description)}" />\n'
+            f'    <meta property="og:type" content="article" />\n'
+            f'    <meta property="og:url" content="{escape(full_url)}" />\n'
+            f'    <meta property="og:site_name" content="Mosaic" />\n'
+            f'    <meta name="twitter:card" content="summary" />\n'
+            f'    <meta name="description" content="{escape(description)}" />'
+        )
+
+        return {"title": page_title, "meta_tags": meta_tags}
+    except Exception:
+        logger.warning("Failed to generate OG tags for shared analysis", exc_info=True)
+        return None
+    finally:
+        db.close()
+
 
 # Serve static files (frontend build)
 static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
@@ -277,6 +339,16 @@ if os.path.exists(static_dir):
 
         # For all other routes, serve index.html (SPA routing)
         index_path = os.path.join(static_dir, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        raise HTTPException(status_code=404)
+        if not os.path.exists(index_path):
+            raise HTTPException(status_code=404)
+
+        # Check if this is a shared analysis route — inject OG meta tags
+        og_tags = _get_shared_analysis_og_tags(full_path)
+        if og_tags:
+            with open(index_path, "r") as f:
+                html = f.read()
+            html = html.replace("<!-- OG_META_PLACEHOLDER -->", og_tags["meta_tags"])
+            html = html.replace("<title>Mosaic</title>", f"<title>{og_tags['title']}</title>")
+            return Response(content=html, media_type="text/html")
+
+        return FileResponse(index_path)

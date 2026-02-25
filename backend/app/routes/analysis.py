@@ -12,7 +12,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_optional_current_user
+from app.core.config import settings
 from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.response import Response
@@ -601,6 +602,156 @@ async def get_analysis(
 
     return _enrich_analysis(analysis, conversation, db)
 
+
+@router.patch("/conversations/{conversation_id}/sharing")
+async def toggle_sharing(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Toggle sharing for a conversation's analysis.
+
+    If share_token is null, generates one (enables sharing).
+    If share_token exists, sets it to null (disables sharing).
+    Creator only.
+    """
+    import uuid as uuid_mod
+
+    conversation = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.creator_id == current_user.id
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    if conversation.share_token is None:
+        # Enable sharing
+        token = uuid_mod.uuid4()
+        conversation.share_token = token
+        db.commit()
+        share_url = f"{settings.FRONTEND_URL}/shared/analysis/{token}"
+        return {
+            "share_token": str(token),
+            "share_url": share_url,
+            "sharing_enabled": True,
+        }
+    else:
+        # Disable sharing
+        conversation.share_token = None
+        db.commit()
+        return {
+            "share_token": None,
+            "share_url": None,
+            "sharing_enabled": False,
+        }
+
+
+@router.get("/analysis/shared/{share_token}")
+async def get_shared_analysis(
+    share_token: UUID,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get analysis for a shared conversation link.
+
+    Access control is based on the conversation's results_access:
+    - public_link: anyone can view
+    - participants: must be logged in and have responded (or be creator)
+    - creator_only: must be creator
+    """
+    from sqlalchemy import func
+    from app.schemas.conversation import ResultsAccess
+
+    conversation = db.query(Conversation).filter(
+        Conversation.share_token == share_token
+    ).first()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shared link not found or no longer active"
+        )
+
+    # Access control
+    if conversation.results_access == ResultsAccess.PUBLIC_LINK.value:
+        pass  # Anyone can view
+    elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Login required to view this analysis"
+            )
+        is_creator = conversation.creator_id == current_user.id
+        if not is_creator:
+            has_responded = db.query(Response).filter(
+                Response.conversation_id == conversation.id,
+                Response.participant_id == current_user.id
+            ).first() is not None
+            if not has_responded:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only participants can view this analysis"
+                )
+    elif conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Login required to view this analysis"
+            )
+        if conversation.creator_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shared link not found or no longer active"
+            )
+
+    # Get latest analysis
+    analysis = db.query(Analysis).filter(
+        Analysis.conversation_id == conversation.id
+    ).order_by(Analysis.created_at.desc()).first()
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No analysis available for this conversation"
+        )
+
+    # Count unique participants
+    unique_by_id = db.query(func.count(func.distinct(Response.participant_id))).filter(
+        Response.conversation_id == conversation.id,
+        Response.participant_id.isnot(None)
+    ).scalar() or 0
+
+    if unique_by_id == 0:
+        unique_by_code = db.query(func.count(func.distinct(Response.participant_code_used))).filter(
+            Response.conversation_id == conversation.id,
+            Response.participant_code_used.isnot(None)
+        ).scalar() or 0
+        unique_participants = unique_by_code if unique_by_code > 0 else 0
+    else:
+        unique_participants = unique_by_id
+
+    response_count = db.query(func.count(Response.id)).filter(
+        Response.conversation_id == conversation.id
+    ).scalar() or 0
+
+    return {
+        "conversation_title": conversation.title,
+        "conversation_description": conversation.description,
+        "results_access": conversation.results_access,
+        "response_count": response_count,
+        "unique_participants": unique_participants,
+        "analysis_id": str(analysis.id),
+        "overall_summary": analysis.overall_summary,
+        "question_analyses": analysis.question_analyses,
+        "surprising_insights": analysis.surprising_insights,
+        "created_at": analysis.created_at.isoformat(),
+        "total_responses_analyzed": analysis.total_responses_analyzed,
+        "num_clusters_found": analysis.num_clusters_found,
+    }
 
 @router.get("/conversations/{conversation_id}/analyses", response_model=AnalysisListResponse)
 async def list_analyses(

@@ -260,6 +260,7 @@ class Conversation(ConversationBase):
     creator_id: UUID
     organization_id: Optional[UUID] = None
     access_code: str
+    share_token: Optional[UUID] = None
     state: ConversationState
     activated_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
