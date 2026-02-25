@@ -192,7 +192,8 @@ export default function SpaceSettingsPage() {
   const [space, setSpace] = useState<Space | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [purpose, setPurpose] = useState<SpacePurpose>('explore');
+  const [purposes, setPurposes] = useState<SpacePurpose[]>(['explore']);
+  const [lastToggledPurpose, setLastToggledPurpose] = useState<SpacePurpose>('explore');
   const [autoOrganize, setAutoOrganize] = useState(true);
   const [clusteringMode, setClusteringMode] = useState<'dbscan' | 'llm'>('llm');
   const [loading, setLoading] = useState(true);
@@ -211,7 +212,8 @@ export default function SpaceSettingsPage() {
         setSpace(data);
         setTitle(data.title);
         setDescription(data.description || '');
-        setPurpose(data.purpose || 'explore');
+        setPurposes(data.purposes || [data.purpose || 'explore']);
+        setLastToggledPurpose((data.purposes || [data.purpose || 'explore'])[0] as SpacePurpose);
         setAutoOrganize(data.auto_organize);
         setClusteringMode(data.clustering_mode || 'dbscan');
       })
@@ -230,7 +232,7 @@ export default function SpaceSettingsPage() {
       const updated = await api.updateSpace(id, {
         title: title.trim(),
         description: description.trim() || undefined,
-        purpose,
+        purposes,
         auto_organize: autoOrganize,
         clustering_mode: clusteringMode,
       });
@@ -314,34 +316,47 @@ export default function SpaceSettingsPage() {
             />
           </div>
           <div style={s.formGroup}>
-            <label style={s.label}>Purpose</label>
+            <label style={s.label}>Purposes (select one or more)</label>
             <span style={{ ...s.toggleDescription, display: 'block', marginBottom: spacing[3] }}>
-              What do you want to do with this space? This shapes how AI organizes your ideas.
+              What do you want to do with this space? This shapes how AI synthesizes your ideas.
+              Select multiple to switch between different synthesis perspectives.
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }}>
-              {(Object.keys(SPACE_PURPOSES) as SpacePurpose[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setPurpose(key)}
-                  style={{
-                    padding: `${spacing[2]} ${spacing[3]}`,
-                    fontSize: typography.fontSize.sm,
-                    fontWeight: typography.fontWeight.medium,
-                    borderRadius: borders.radius.md,
-                    border: purpose === key ? '1.5px solid var(--color-primary-900)' : '1px solid var(--color-primary-300)',
-                    backgroundColor: purpose === key ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
-                    color: purpose === key ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
-                    cursor: 'pointer',
-                    transition: transitions.duration.normal,
-                  }}
-                >
-                  {SPACE_PURPOSES[key].label}
-                </button>
-              ))}
+              {(Object.keys(SPACE_PURPOSES) as SpacePurpose[]).map((key) => {
+                const isSelected = purposes.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setLastToggledPurpose(key);
+                      setPurposes(prev => {
+                        if (prev.includes(key)) {
+                          if (prev.length <= 1) return prev;
+                          return prev.filter(p => p !== key);
+                        }
+                        return [...prev, key];
+                      });
+                    }}
+                    style={{
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      fontSize: typography.fontSize.sm,
+                      fontWeight: typography.fontWeight.medium,
+                      borderRadius: borders.radius.md,
+                      border: isSelected ? '1.5px solid var(--color-primary-900)' : '1px solid var(--color-primary-300)',
+                      backgroundColor: isSelected ? 'var(--color-primary-900)' : 'var(--color-primary-50)',
+                      color: isSelected ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+                      cursor: 'pointer',
+                      transition: transitions.duration.normal,
+                    }}
+                  >
+                    {SPACE_PURPOSES[key].label}
+                  </button>
+                );
+              })}
             </div>
             <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginTop: spacing[2] }}>
-              {SPACE_PURPOSES[purpose].description}
+              {SPACE_PURPOSES[lastToggledPurpose].description}
             </div>
           </div>
         </div>

@@ -1427,6 +1427,11 @@ class ApiService {
     return response.data;
   }
 
+  async resynthesizeSpace(spaceId: string, purpose: string): Promise<{ message: string; purpose: string }> {
+    const response = await this.client.post<{ message: string; purpose: string }>(`/spaces/${spaceId}/resynthesize`, { purpose });
+    return response.data;
+  }
+
   async getGraphData(spaceId: string): Promise<GraphData> {
     const response = await this.client.get<GraphData>(`/spaces/${spaceId}/graph`);
     return response.data;
@@ -1582,6 +1587,32 @@ class ApiService {
     } catch {
       return null;
     }
+  }
+
+  // Space sharing & snapshots
+
+  async updateSpaceSharing(spaceId: string, shareAccess: string | null): Promise<Space> {
+    const response = await this.client.patch<Space>(`/spaces/${spaceId}/sharing`, { share_access: shareAccess });
+    return response.data;
+  }
+
+  async getSpaceSnapshots(spaceId: string): Promise<Array<{ id: string; space_id: string; created_by_id?: string; title?: string; created_at: string }>> {
+    const response = await this.client.get(`/spaces/${spaceId}/snapshots`);
+    return response.data;
+  }
+
+  async createSpaceSnapshot(spaceId: string, title?: string): Promise<{ id: string; space_id: string; title?: string; created_at: string }> {
+    const response = await this.client.post(`/spaces/${spaceId}/snapshots`, { title: title || undefined });
+    return response.data;
+  }
+
+  async getSpaceSnapshot(spaceId: string, snapshotId: string): Promise<any> {
+    const response = await this.client.get(`/spaces/${spaceId}/snapshots/${snapshotId}`);
+    return response.data;
+  }
+
+  async deleteSpaceSnapshot(spaceId: string, snapshotId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/snapshots/${snapshotId}`);
   }
 
   async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30, since?: string): Promise<SpaceActivityLogPage> {

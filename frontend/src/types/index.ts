@@ -1827,6 +1827,8 @@ export interface SpaceListItem {
   title: string;
   description?: string;
   purpose?: SpacePurpose;
+  purposes?: SpacePurpose[];
+  synthesis_purpose?: SpacePurpose;
   purpose_synthesis?: PurposeSynthesis;
   synthesis_activity_log?: SynthesisActivityEntry[];
   idea_count: number;
@@ -1841,6 +1843,8 @@ export interface SpaceListItem {
   suggestion_count?: number;
   member_count?: number;
   members?: SpaceMember[];
+  share_access?: string | null;
+  is_shared_view?: boolean;
 }
 
 export interface Space {
@@ -1848,6 +1852,8 @@ export interface Space {
   title: string;
   description?: string;
   purpose?: SpacePurpose;
+  purposes?: SpacePurpose[];
+  synthesis_purpose?: SpacePurpose;
   purpose_synthesis?: PurposeSynthesis;
   synthesis_activity_log?: SynthesisActivityEntry[];
   idea_count: number;
@@ -1864,12 +1870,15 @@ export interface Space {
   suggestion_count?: number;
   member_count?: number;
   members?: SpaceMember[];
+  share_access?: string | null;
+  is_shared_view?: boolean;
 }
 
 export interface SpaceCreate {
   title: string;
   description?: string;
   purpose?: SpacePurpose;
+  purposes?: SpacePurpose[];
 }
 
 export interface SpaceUpdate {
@@ -1878,6 +1887,24 @@ export interface SpaceUpdate {
   auto_organize?: boolean;
   clustering_mode?: 'dbscan' | 'llm';
   purpose?: SpacePurpose;
+  purposes?: SpacePurpose[];
+}
+
+export interface SpaceSnapshot {
+  id: string;
+  space_id: string;
+  created_by_id?: string;
+  title?: string;
+  created_at: string;
+}
+
+export interface SpaceSnapshotDetail extends SpaceSnapshot {
+  snapshot_data: {
+    space: { title: string; description?: string; purposes: string[]; purpose_synthesis?: PurposeSynthesis; synthesis_purpose?: string };
+    themes: Array<{ id: string; name: string; summary?: string; color?: string; idea_count: number }>;
+    ideas: Array<{ id: string; text: string; image_url?: string; themes: string[] }>;
+    graph: GraphData;
+  };
 }
 
 export interface SpaceIdeaTheme {

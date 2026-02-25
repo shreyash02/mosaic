@@ -88,6 +88,7 @@ import SpacesPage from './pages/SpacesPage';
 import SpaceDetailPage from './pages/SpaceDetailPage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import SpaceActivityPage from './pages/SpaceActivityPage';
+import SpaceSnapshotPage from './pages/SpaceSnapshotPage';
 import AcceptSpaceInvitePage from './pages/AcceptSpaceInvitePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
@@ -508,6 +509,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SpaceActivityPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/spaces/:id/snapshots/:snapshotId"
+              element={
+                <ProtectedRoute>
+                  <SpaceSnapshotPage />
                 </ProtectedRoute>
               }
             />

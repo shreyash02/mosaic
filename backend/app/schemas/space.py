@@ -16,12 +16,24 @@ class SpaceCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
     purpose: Optional[str] = None
+    purposes: Optional[List[str]] = None
 
     @field_validator("purpose")
     @classmethod
     def validate_purpose(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and v not in VALID_PURPOSES:
             raise ValueError(f"purpose must be one of: {', '.join(VALID_PURPOSES)}")
+        return v
+
+    @field_validator("purposes")
+    @classmethod
+    def validate_purposes(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is not None:
+            if len(v) < 1:
+                raise ValueError("purposes must have at least 1 item")
+            for p in v:
+                if p not in VALID_PURPOSES:
+                    raise ValueError(f"each purpose must be one of: {', '.join(VALID_PURPOSES)}")
         return v
 
 
@@ -32,6 +44,7 @@ class SpaceUpdate(BaseModel):
     auto_organize: Optional[bool] = None
     clustering_mode: Optional[str] = None
     purpose: Optional[str] = None
+    purposes: Optional[List[str]] = None
 
     @field_validator("clustering_mode")
     @classmethod
@@ -44,6 +57,29 @@ class SpaceUpdate(BaseModel):
     @classmethod
     def validate_purpose(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and v not in VALID_PURPOSES:
+            raise ValueError(f"purpose must be one of: {', '.join(VALID_PURPOSES)}")
+        return v
+
+    @field_validator("purposes")
+    @classmethod
+    def validate_purposes(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is not None:
+            if len(v) < 1:
+                raise ValueError("purposes must have at least 1 item")
+            for p in v:
+                if p not in VALID_PURPOSES:
+                    raise ValueError(f"each purpose must be one of: {', '.join(VALID_PURPOSES)}")
+        return v
+
+
+class ResynthesizeRequest(BaseModel):
+    """Request to re-synthesize with a specific purpose lens."""
+    purpose: str
+
+    @field_validator("purpose")
+    @classmethod
+    def validate_purpose(cls, v: str) -> str:
+        if v not in VALID_PURPOSES:
             raise ValueError(f"purpose must be one of: {', '.join(VALID_PURPOSES)}")
         return v
 
@@ -99,6 +135,8 @@ class SpaceResponse(BaseModel):
     title: str
     description: Optional[str] = None
     purpose: str = "explore"
+    purposes: List[str] = ["explore"]
+    synthesis_purpose: Optional[str] = None
     purpose_synthesis: Optional[Dict[str, Any]] = None
     synthesis_activity_log: Optional[List[SynthesisActivityEntry]] = None
     idea_count: int = 0
@@ -115,6 +153,8 @@ class SpaceResponse(BaseModel):
     suggestion_count: int = 0
     member_count: int = 1
     members: Optional[List[SpaceMemberResponse]] = None
+    share_access: Optional[str] = None
+    is_shared_view: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -125,6 +165,8 @@ class SpaceListItem(BaseModel):
     title: str
     description: Optional[str] = None
     purpose: str = "explore"
+    purposes: List[str] = ["explore"]
+    synthesis_purpose: Optional[str] = None
     purpose_synthesis: Optional[Dict[str, Any]] = None
     synthesis_activity_log: Optional[List[SynthesisActivityEntry]] = None
     idea_count: int = 0
@@ -139,6 +181,8 @@ class SpaceListItem(BaseModel):
     suggestion_count: int = 0
     member_count: int = 1
     members: Optional[List[SpaceMemberResponse]] = None
+    share_access: Optional[str] = None
+    is_shared_view: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -330,3 +374,47 @@ class ActionOutcomeImageRequest(BaseModel):
 class ActionOutcomeImageResponse(BaseModel):
     """Response from action outcome image interpretation."""
     outcome_text: str
+
+
+# --- Sharing schemas ---
+
+class SpaceShareUpdate(BaseModel):
+    """Update sharing settings for a space."""
+    share_access: Optional[str] = None
+
+    @field_validator("share_access")
+    @classmethod
+    def validate_share_access(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("authenticated",):
+            raise ValueError("share_access must be 'authenticated' or null")
+        return v
+
+
+# --- Snapshot schemas ---
+
+class SpaceSnapshotCreate(BaseModel):
+    """Create a snapshot of the current space state."""
+    title: Optional[str] = Field(None, max_length=200)
+
+
+class SpaceSnapshotResponse(BaseModel):
+    """Snapshot summary for list views."""
+    id: UUID
+    space_id: UUID
+    created_by_id: Optional[UUID] = None
+    title: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SpaceSnapshotDetailResponse(BaseModel):
+    """Full snapshot with data."""
+    id: UUID
+    space_id: UUID
+    created_by_id: Optional[UUID] = None
+    title: Optional[str] = None
+    snapshot_data: Dict[str, Any]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

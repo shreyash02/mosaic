@@ -24,6 +24,7 @@ from app.models.theme_connection import ThemeConnection
 from app.models.user import User
 from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
+from app.models.space_snapshot import SpaceSnapshot
 from app.schemas.space import (
     SpaceCreate,
     SpaceUpdate,
@@ -52,6 +53,11 @@ from app.schemas.space import (
     SpaceActivityLogPage,
     ActionOutcomeImageRequest,
     ActionOutcomeImageResponse,
+    ResynthesizeRequest,
+    SpaceShareUpdate,
+    SpaceSnapshotCreate,
+    SpaceSnapshotResponse,
+    SpaceSnapshotDetailResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,6 +107,28 @@ def _get_space_or_404(space_id: UUID, current_user: User, db: Session) -> Space:
     if not member:
         raise HTTPException(status_code=404, detail="Space not found")
     return space
+
+
+def _get_space_with_sharing(space_id: UUID, current_user: User, db: Session) -> tuple:
+    """Get a space if user is owner, member, or has shared access.
+    Returns (space, is_shared_view: bool). Raises 404 if not accessible."""
+    space = db.query(Space).filter(Space.id == space_id).first()
+    if not space:
+        raise HTTPException(status_code=404, detail="Space not found")
+    # Owner always has full access
+    if space.owner_id == current_user.id:
+        return space, False
+    # Check membership
+    member = db.query(SpaceMember).filter(
+        SpaceMember.space_id == space_id,
+        SpaceMember.user_id == current_user.id,
+    ).first()
+    if member:
+        return space, False
+    # Check sharing
+    if space.share_access == "authenticated":
+        return space, True
+    raise HTTPException(status_code=404, detail="Space not found")
 
 
 def _require_space_owner(space: Space, current_user: User) -> None:
@@ -161,9 +189,30 @@ def _get_space_member_ids(db: Session, space_id: UUID) -> List[UUID]:
 
 
 def _get_space_purpose(space: Space) -> str:
-    """Read purpose from settings JSONB, defaulting to 'explore'."""
+    """Read the default (first) purpose from settings JSONB, defaulting to 'explore'."""
     if space.settings and isinstance(space.settings, dict):
+        purposes = space.settings.get("purposes")
+        if isinstance(purposes, list) and purposes:
+            return purposes[0]
         return space.settings.get("purpose", "explore")
+    return "explore"
+
+
+def _get_space_purposes(space: Space) -> list:
+    """Read purposes list from settings JSONB, with fallback to legacy single purpose."""
+    if space.settings and isinstance(space.settings, dict):
+        purposes = space.settings.get("purposes")
+        if isinstance(purposes, list) and purposes:
+            return purposes
+        legacy = space.settings.get("purpose", "explore")
+        return [legacy]
+    return ["explore"]
+
+
+def _get_synthesis_purpose(space: Space) -> str:
+    """Read which purpose was used for the current synthesis."""
+    if space.settings and isinstance(space.settings, dict):
+        return space.settings.get("synthesis_purpose") or _get_space_purpose(space)
     return "explore"
 
 
@@ -187,7 +236,7 @@ def _build_space_context(space: Space) -> str:
     return "\n".join(parts)
 
 
-def _build_space_response(space: Space, db: Session, current_user: Optional[User] = None) -> dict:
+def _build_space_response(space: Space, db: Session, current_user: Optional[User] = None, is_shared_view: bool = False) -> dict:
     """Build a SpaceResponse dict with counts and membership info."""
     idea_count = db.query(func.count(Idea.id)).filter(
         Idea.space_id == space.id, Idea.status == "active"
@@ -198,6 +247,35 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
     purpose_synthesis = None
     if space.settings and isinstance(space.settings, dict):
         purpose_synthesis = space.settings.get("purpose_synthesis")
+
+    # Shared viewers get limited data
+    if is_shared_view:
+        return {
+            "id": space.id,
+            "title": space.title,
+            "description": space.description,
+            "purpose": _get_space_purpose(space),
+            "purposes": _get_space_purposes(space),
+            "synthesis_purpose": _get_synthesis_purpose(space),
+            "purpose_synthesis": purpose_synthesis,
+            "synthesis_activity_log": None,
+            "idea_count": idea_count,
+            "theme_count": theme_count,
+            "auto_organize": space.auto_organize,
+            "clustering_mode": space.clustering_mode,
+            "last_organized_at": space.last_organized_at,
+            "created_at": space.created_at,
+            "updated_at": space.updated_at,
+            "owner_id": space.owner_id,
+            "is_owner": False,
+            "can_edit": False,
+            "can_suggest": False,
+            "suggestion_count": 0,
+            "member_count": 0,
+            "members": None,
+            "share_access": getattr(space, "share_access", None),
+            "is_shared_view": True,
+        }
 
     # Query persisted synthesis activity log
     activity_rows = (
@@ -274,6 +352,8 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "title": space.title,
         "description": space.description,
         "purpose": _get_space_purpose(space),
+        "purposes": _get_space_purposes(space),
+        "synthesis_purpose": _get_synthesis_purpose(space),
         "purpose_synthesis": purpose_synthesis,
         "synthesis_activity_log": activity_log,
         "idea_count": idea_count,
@@ -290,6 +370,8 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "suggestion_count": suggestion_count,
         "member_count": member_count,
         "members": members_data,
+        "share_access": getattr(space, "share_access", None),
+        "is_shared_view": False,
     }
 
 
@@ -454,6 +536,7 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
                 current_settings["purpose_synthesis"] = synthesis
             else:
                 current_settings.pop("purpose_synthesis", None)
+            current_settings["synthesis_purpose"] = purpose
             space.settings = current_settings
             flag_modified(space, "settings")
             db.commit()
@@ -536,6 +619,46 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
         engine.dispose()
 
 
+def run_resynthesize_task(space_id: UUID, purpose: str, owner_id: UUID, db_url: str, user_name: Optional[str] = None):
+    """Background task to regenerate synthesis with a different purpose lens (no re-clustering)."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.space_service import SpaceService
+    from app.services.platform_settings_service import get_llm_model
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        llm_model = get_llm_model(db)
+        service = SpaceService(model=llm_model)
+        space = db.query(Space).filter(Space.id == space_id).first()
+        if not space:
+            return
+
+        # Persist completed/dismissed notes before replacing synthesis
+        SpaceService.save_synthesis_actions(db, space)
+
+        synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
+        current_settings = dict(space.settings) if space.settings else {}
+        if synthesis:
+            current_settings["purpose_synthesis"] = synthesis
+        else:
+            current_settings.pop("purpose_synthesis", None)
+        current_settings["synthesis_purpose"] = purpose
+        space.settings = current_settings
+        flag_modified(space, "settings")
+        db.commit()
+
+        _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
+    except Exception as e:
+        logger.error(f"Error in resynthesize for space {space_id}: {e}", exc_info=True)
+    finally:
+        db.close()
+        engine.dispose()
+
+
 # --- Space CRUD ---
 
 @router.post("", response_model=SpaceResponse, status_code=status.HTTP_201_CREATED)
@@ -566,8 +689,10 @@ def create_space(
             )
 
     space_settings = {}
-    if data.purpose:
-        space_settings["purpose"] = data.purpose
+    if data.purposes:
+        space_settings["purposes"] = data.purposes
+    elif data.purpose:
+        space_settings["purposes"] = [data.purpose]
 
     space = Space(
         title=data.title,
@@ -626,9 +751,9 @@ def get_space(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get a space with counts."""
-    space = _get_space_or_404(space_id, current_user, db)
-    return _build_space_response(space, db, current_user)
+    """Get a space with counts. Supports shared viewing."""
+    space, is_shared_view = _get_space_with_sharing(space_id, current_user, db)
+    return _build_space_response(space, db, current_user, is_shared_view=is_shared_view)
 
 
 @router.patch("/{space_id}", response_model=SpaceResponse)
@@ -649,11 +774,22 @@ def update_space(
         space.auto_organize = data.auto_organize
     if data.clustering_mode is not None:
         space.clustering_mode = data.clustering_mode
-    if data.purpose is not None:
+    if data.purposes is not None:
         current_settings = dict(space.settings) if space.settings else {}
-        current_settings["purpose"] = data.purpose
+        old_purposes = set(current_settings.get("purposes", [current_settings.get("purpose", "explore")]))
+        current_settings["purposes"] = data.purposes
+        # Clear stale synthesis only if the set of purposes actually changed
+        if set(data.purposes) != old_purposes:
+            current_settings.pop("purpose_synthesis", None)
+            current_settings.pop("synthesis_purpose", None)
+        space.settings = current_settings
+        flag_modified(space, "settings")
+    elif data.purpose is not None:
+        current_settings = dict(space.settings) if space.settings else {}
+        current_settings["purposes"] = [data.purpose]
         # Clear stale synthesis when purpose changes
         current_settings.pop("purpose_synthesis", None)
+        current_settings.pop("synthesis_purpose", None)
         space.settings = current_settings
         flag_modified(space, "settings")
     db.commit()
@@ -771,8 +907,8 @@ def list_ideas(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List ideas in a space, optionally filtered by theme or unthemed."""
-    _get_space_or_404(space_id, current_user, db)
+    """List ideas in a space, optionally filtered by theme or unthemed. Supports shared viewing."""
+    _get_space_with_sharing(space_id, current_user, db)
 
     query = db.query(Idea).filter(Idea.space_id == space_id, Idea.status == "active")
 
@@ -1113,8 +1249,8 @@ def list_themes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List themes in a space with idea counts."""
-    _get_space_or_404(space_id, current_user, db)
+    """List themes in a space with idea counts. Supports shared viewing."""
+    _get_space_with_sharing(space_id, current_user, db)
 
     themes = db.query(Theme).filter(Theme.space_id == space_id).order_by(Theme.created_at).all()
     result = []
@@ -1309,14 +1445,57 @@ def organize_space(
     return {"message": "Organization started", "idea_count": idea_count}
 
 
+@router.post("/{space_id}/resynthesize", status_code=status.HTTP_202_ACCEPTED)
+def resynthesize_space(
+    space_id: UUID,
+    data: ResynthesizeRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Re-synthesize with a different purpose lens (no re-clustering)."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    # Validate purpose is in the space's configured purposes
+    configured_purposes = _get_space_purposes(space)
+    if data.purpose not in configured_purposes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Purpose '{data.purpose}' is not configured for this space",
+        )
+
+    # Check that themes exist
+    theme_count = db.query(func.count(Theme.id)).filter(Theme.space_id == space_id).scalar() or 0
+    if theme_count == 0:
+        raise HTTPException(status_code=400, detail="Organize the space first before re-synthesizing")
+
+    # Send organize_started to all members
+    from app.services.sse_service import sse_service
+    for uid in _get_space_member_ids(db, space_id):
+        sse_service.send_to_user_sync(uid, "space_organize_started", {"space_id": str(space_id), "triggered_by": current_user.full_name})
+
+    background_tasks.add_task(
+        run_resynthesize_task,
+        space_id=space.id,
+        purpose=data.purpose,
+        owner_id=space.owner_id,
+        db_url=str(settings.DATABASE_URL),
+        user_name=current_user.full_name,
+    )
+
+    return {"message": "Re-synthesis started", "purpose": data.purpose}
+
+
 @router.get("/{space_id}/graph", response_model=GraphData)
 def get_graph_data(
     space_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get network graph data for a space."""
-    _get_space_or_404(space_id, current_user, db)
+    """Get network graph data for a space. Supports shared viewing."""
+    _get_space_with_sharing(space_id, current_user, db)
 
     from app.services.space_service import SpaceService
     service = SpaceService()
@@ -1471,11 +1650,11 @@ def get_evolution(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get theme evolution timeline grouped by organize runs."""
+    """Get theme evolution timeline grouped by organize runs. Supports shared viewing."""
     from app.models.theme_event import ThemeEvent
     from collections import defaultdict
 
-    _get_space_or_404(space_id, current_user, db)
+    _get_space_with_sharing(space_id, current_user, db)
 
     events_query = (
         db.query(ThemeEvent)
@@ -1839,3 +2018,166 @@ def accept_space_invitation(
     db.commit()
 
     return {"space_id": str(invitation.space_id)}
+
+
+# --- Sharing ---
+
+@router.patch("/{space_id}/sharing")
+def update_space_sharing(
+    space_id: UUID,
+    data: SpaceShareUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update sharing settings for a space. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+    space.share_access = data.share_access
+    db.commit()
+    db.refresh(space)
+    return _build_space_response(space, db, current_user)
+
+
+# --- Snapshots ---
+
+@router.post("/{space_id}/snapshots", response_model=SpaceSnapshotResponse, status_code=status.HTTP_201_CREATED)
+def create_space_snapshot(
+    space_id: UUID,
+    data: SpaceSnapshotCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a point-in-time snapshot of the space. Editor+ only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    # Serialize current space state
+    from app.services.space_service import SpaceService
+    service = SpaceService()
+
+    # Get themes with idea counts
+    themes_data = []
+    themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+    for theme in themes:
+        idea_count = (
+            db.query(func.count(IdeaTheme.id))
+            .filter(IdeaTheme.theme_id == theme.id)
+            .scalar() or 0
+        )
+        themes_data.append({
+            "id": str(theme.id),
+            "name": theme.name,
+            "summary": theme.summary,
+            "color": theme.color,
+            "idea_count": idea_count,
+        })
+
+    # Get ideas with theme assignments
+    ideas = db.query(Idea).filter(Idea.space_id == space_id, Idea.status == "active").all()
+    ideas_data = []
+    for idea in ideas:
+        assignments = (
+            db.query(IdeaTheme, Theme)
+            .join(Theme, IdeaTheme.theme_id == Theme.id)
+            .filter(IdeaTheme.idea_id == idea.id)
+            .all()
+        )
+        ideas_data.append({
+            "id": str(idea.id),
+            "text": idea.text,
+            "image_url": idea.image_url,
+            "themes": [{"theme_id": str(t.id), "theme_name": t.name} for _, t in assignments],
+        })
+
+    # Get graph data
+    graph = service.get_graph_data(db, space_id)
+
+    # Get synthesis
+    purpose_synthesis = None
+    synthesis_purpose = None
+    if space.settings and isinstance(space.settings, dict):
+        purpose_synthesis = space.settings.get("purpose_synthesis")
+        synthesis_purpose = space.settings.get("synthesis_purpose")
+
+    snapshot_data = {
+        "space": {
+            "title": space.title,
+            "description": space.description,
+            "purposes": _get_space_purposes(space),
+            "purpose_synthesis": purpose_synthesis,
+            "synthesis_purpose": synthesis_purpose,
+        },
+        "themes": themes_data,
+        "ideas": ideas_data,
+        "graph": graph,
+    }
+
+    snapshot = SpaceSnapshot(
+        space_id=space_id,
+        created_by_id=current_user.id,
+        title=data.title,
+        snapshot_data=snapshot_data,
+    )
+    db.add(snapshot)
+    db.commit()
+    db.refresh(snapshot)
+
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, "snapshot_created", data.title)
+    db.commit()
+
+    return snapshot
+
+
+@router.get("/{space_id}/snapshots", response_model=list[SpaceSnapshotResponse])
+def list_space_snapshots(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List snapshots for a space. Members + shared viewers."""
+    _get_space_with_sharing(space_id, current_user, db)
+    snapshots = (
+        db.query(SpaceSnapshot)
+        .filter(SpaceSnapshot.space_id == space_id)
+        .order_by(SpaceSnapshot.created_at.desc())
+        .all()
+    )
+    return snapshots
+
+
+@router.get("/{space_id}/snapshots/{snapshot_id}", response_model=SpaceSnapshotDetailResponse)
+def get_space_snapshot(
+    space_id: UUID,
+    snapshot_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a snapshot with full data. Members + shared viewers."""
+    _get_space_with_sharing(space_id, current_user, db)
+    snapshot = db.query(SpaceSnapshot).filter(
+        SpaceSnapshot.id == snapshot_id,
+        SpaceSnapshot.space_id == space_id,
+    ).first()
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    return snapshot
+
+
+@router.delete("/{space_id}/snapshots/{snapshot_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_space_snapshot(
+    space_id: UUID,
+    snapshot_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a snapshot. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+    snapshot = db.query(SpaceSnapshot).filter(
+        SpaceSnapshot.id == snapshot_id,
+        SpaceSnapshot.space_id == space_id,
+    ).first()
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    db.delete(snapshot)
+    db.commit()

@@ -384,8 +384,11 @@ export default function SpaceDetailPage() {
   const [ideaText, setIdeaText] = useState('');
   const [loading, setLoading] = useState(true);
   const [organizing, setOrganizing] = useState(false);
+  const [resynthesizing, setResynthesizing] = useState(false);
   const [autoOrganizing, setAutoOrganizing] = useState(false);
   const [organizeTriggeredBy, setOrganizeTriggeredBy] = useState<string | null>(null);
+  const [organizeDropdownOpen, setOrganizeDropdownOpen] = useState(false);
+  const organizeDropdownRef = useRef<HTMLDivElement>(null);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(340);
@@ -428,6 +431,16 @@ export default function SpaceDetailPage() {
   const [outcomeModalNoteIndex, setOutcomeModalNoteIndex] = useState(0);
   const outcomeImageInputRef = useRef<HTMLInputElement>(null);
   const activityDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sharing
+  const [shareDropdownOpen, setShareDropdownOpen] = useState(false);
+  const [sharingToggling, setSharingToggling] = useState(false);
+  const [snapshotTitle, setSnapshotTitle] = useState('');
+  const [creatingSnapshot, setCreatingSnapshot] = useState(false);
+  const [snapshots, setSnapshots] = useState<Array<{ id: string; title?: string; created_at: string }>>([]);
+  const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const shareDropdownRef = useRef<HTMLDivElement>(null);
 
   // Idea search
   const [ideaSearch, setIdeaSearch] = useState('');
@@ -549,6 +562,7 @@ export default function SpaceDetailPage() {
     setAutoOrganizing(false);
     setOrganizeTriggeredBy(null);
     setOrganizing(false);
+    setResynthesizing(false);
     // Clear fallback poll timer since SSE delivered the event
     if (autoOrgPollRef.current) {
       clearTimeout(autoOrgPollRef.current);
@@ -655,6 +669,30 @@ export default function SpaceDetailPage() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [spaceActivityExpanded]);
+
+  // Close organize dropdown on click outside
+  useEffect(() => {
+    if (!organizeDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (organizeDropdownRef.current && !organizeDropdownRef.current.contains(e.target as Node)) {
+        setOrganizeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [organizeDropdownOpen]);
+
+  // Close share dropdown on click outside
+  useEffect(() => {
+    if (!shareDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (shareDropdownRef.current && !shareDropdownRef.current.contains(e.target as Node)) {
+        setShareDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [shareDropdownOpen]);
 
   // Load ideas filtered by theme when selection changes
   useEffect(() => {
@@ -782,6 +820,81 @@ export default function SpaceDetailPage() {
       setError(err.response?.data?.detail || 'Failed to organize');
       setOrganizing(false);
     }
+  }
+
+  async function handleResynthesize(purpose: string) {
+    if (!id) return;
+    try {
+      setResynthesizing(true);
+      setOrganizeDropdownOpen(false);
+      setError(null);
+      await api.resynthesizeSpace(id, purpose);
+      // SSE space_organize_completed event handles the rest
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to re-synthesize');
+      setResynthesizing(false);
+    }
+  }
+
+  async function handleToggleSharing() {
+    if (!id || !space) return;
+    try {
+      setSharingToggling(true);
+      const newAccess = space.share_access ? null : 'authenticated';
+      const updated = await api.updateSpaceSharing(id, newAccess);
+      setSpace(updated);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update sharing');
+    } finally {
+      setSharingToggling(false);
+    }
+  }
+
+  async function handleCreateSnapshot() {
+    if (!id) return;
+    try {
+      setCreatingSnapshot(true);
+      const snap = await api.createSpaceSnapshot(id, snapshotTitle.trim() || undefined);
+      setSnapshots(prev => [snap, ...prev]);
+      setSnapshotTitle('');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create snapshot');
+    } finally {
+      setCreatingSnapshot(false);
+    }
+  }
+
+  async function handleDeleteSnapshot(snapshotId: string) {
+    if (!id) return;
+    try {
+      await api.deleteSpaceSnapshot(id, snapshotId);
+      setSnapshots(prev => prev.filter(s => s.id !== snapshotId));
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete snapshot');
+    }
+  }
+
+  async function loadSnapshots() {
+    if (!id || snapshotsLoaded) return;
+    try {
+      const data = await api.getSpaceSnapshots(id);
+      setSnapshots(data);
+      setSnapshotsLoaded(true);
+    } catch {
+      // ignore
+    }
+  }
+
+  function copyShareLink() {
+    const url = `${window.location.origin}/spaces/${id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  }
+
+  function copySnapshotLink(snapshotId: string) {
+    const url = `${window.location.origin}/spaces/${id}/snapshots/${snapshotId}`;
+    navigator.clipboard.writeText(url);
   }
 
   function handleNodeClick(nodeId: string) {
@@ -993,6 +1106,20 @@ export default function SpaceDetailPage() {
               {SPACE_PURPOSES[purposeKey]?.label || 'Freely explore'}
             </span>
           )}
+          {space.is_shared_view && (
+            <span style={{
+              fontSize: typography.fontSize.xs,
+              color: 'var(--color-primary-600)',
+              backgroundColor: 'var(--color-primary-100)',
+              padding: `2px ${spacing[2]}`,
+              borderRadius: borders.radius.full,
+              fontWeight: typography.fontWeight.medium,
+              whiteSpace: 'nowrap',
+              border: '1px solid var(--color-primary-300)',
+            }}>
+              Shared view
+            </span>
+          )}
         </div>
         <div style={{
           ...s.topBarRight,
@@ -1007,7 +1134,8 @@ export default function SpaceDetailPage() {
               minWidth="180px"
             />
           )}
-          {/* Activity dropdown */}
+          {/* Activity dropdown — hidden for shared viewers */}
+          {!space.is_shared_view && (
           <div ref={activityDropdownRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setSpaceActivityExpanded(prev => !prev)}
@@ -1113,7 +1241,9 @@ export default function SpaceDetailPage() {
               </div>
             )}
           </div>
-          {/* Members button */}
+          )}
+          {/* Members button — hidden for shared viewers */}
+          {!space.is_shared_view && (
           <button
             onClick={() => setShowMembersModal(true)}
             style={{
@@ -1140,47 +1270,366 @@ export default function SpaceDetailPage() {
             </svg>
             {(space.member_count ?? 1) > 1 ? `${space.member_count}` : 'Members'}
           </button>
-          {space.can_edit !== false && (
-            <button
-              style={{
-                ...s.organizeButton,
-                opacity: organizing || space.idea_count < 2 ? 0.5 : 1,
-                cursor: organizing || space.idea_count < 2 ? 'not-allowed' : 'pointer',
-              }}
-              onClick={handleOrganize}
-              disabled={organizing || space.idea_count < 2}
-              title={space.idea_count < 2 ? 'Need at least 2 ideas to organize' : 'Re-organize all ideas into themes'}
-            >
-              {organizing ? (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-                    <path d="M21 12a9 9 0 11-6.219-8.56" />
-                  </svg>
-                  Organizing...
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-                  </svg>
-                  Organize
-                  {space.auto_organize && (
-                    <span style={{
-                      fontSize: typography.fontSize.xs,
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      padding: `0 ${spacing[1]}`,
-                      borderRadius: borders.radius.sm,
-                      fontWeight: typography.fontWeight.normal,
-                    }}>
-                      Auto
-                    </span>
-                  )}
-                </>
-              )}
-            </button>
           )}
-          {(space.is_owner !== false) && (
+          {/* Share button — owner only */}
+          {space.is_owner && !space.is_shared_view && (
+            <div ref={shareDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => { setShareDropdownOpen(!shareDropdownOpen); if (!snapshotsLoaded) loadSnapshots(); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spacing[1],
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  backgroundColor: space.share_access ? 'var(--color-primary-100)' : 'transparent',
+                  color: 'var(--color-primary-600)',
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  borderRadius: borders.radius.md,
+                  border: `1px solid ${space.share_access ? 'var(--color-primary-400)' : 'var(--color-primary-300)'}`,
+                  cursor: 'pointer',
+                  transition: transitions.duration.normal,
+                }}
+                title="Share space"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+                Share
+              </button>
+              {shareDropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: spacing[2],
+                  width: '320px',
+                  backgroundColor: 'var(--color-primary-50)',
+                  border: '1px solid var(--color-primary-200)',
+                  borderRadius: borders.radius.lg,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 50,
+                  padding: spacing[4],
+                }}>
+                  {/* Sharing toggle */}
+                  <div style={{ marginBottom: spacing[4] }}>
+                    <div style={{
+                      fontSize: typography.fontSize.sm,
+                      fontWeight: typography.fontWeight.semibold,
+                      color: 'var(--color-primary-700)',
+                      marginBottom: spacing[2],
+                    }}>
+                      Link sharing
+                    </div>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing[3],
+                      cursor: 'pointer',
+                    }}>
+                      <div
+                        onClick={handleToggleSharing}
+                        style={{
+                          width: '36px',
+                          height: '20px',
+                          borderRadius: '10px',
+                          backgroundColor: space.share_access ? 'var(--color-primary-900)' : 'var(--color-primary-300)',
+                          position: 'relative',
+                          transition: transitions.duration.normal,
+                          cursor: sharingToggling ? 'wait' : 'pointer',
+                          opacity: sharingToggling ? 0.6 : 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          backgroundColor: 'white',
+                          position: 'absolute',
+                          top: '2px',
+                          left: space.share_access ? '18px' : '2px',
+                          transition: transitions.duration.normal,
+                        }} />
+                      </div>
+                      <span style={{
+                        fontSize: typography.fontSize.sm,
+                        color: 'var(--color-primary-700)',
+                      }}>
+                        Anyone with the link can view
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Copy link */}
+                  {space.share_access && (
+                    <div style={{ marginBottom: spacing[4] }}>
+                      <button
+                        onClick={copyShareLink}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: spacing[2],
+                          width: '100%',
+                          padding: `${spacing[2]} ${spacing[3]}`,
+                          backgroundColor: 'var(--color-primary-100)',
+                          color: 'var(--color-primary-700)',
+                          fontSize: typography.fontSize.sm,
+                          border: '1px solid var(--color-primary-200)',
+                          borderRadius: borders.radius.md,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                        </svg>
+                        {copiedLink ? 'Copied!' : 'Copy link'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Snapshots */}
+                  <div style={{ borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3] }}>
+                    <div style={{
+                      fontSize: typography.fontSize.sm,
+                      fontWeight: typography.fontWeight.semibold,
+                      color: 'var(--color-primary-700)',
+                      marginBottom: spacing[2],
+                    }}>
+                      Snapshots
+                    </div>
+                    <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3] }}>
+                      <input
+                        style={{
+                          flex: 1,
+                          padding: `${spacing[1]} ${spacing[2]}`,
+                          fontSize: typography.fontSize.sm,
+                          border: '1px solid var(--color-primary-300)',
+                          borderRadius: borders.radius.md,
+                          backgroundColor: 'var(--color-primary-50)',
+                          color: 'var(--color-primary-900)',
+                          outline: 'none',
+                          boxSizing: 'border-box' as const,
+                        }}
+                        value={snapshotTitle}
+                        onChange={(e) => setSnapshotTitle(e.target.value)}
+                        placeholder="Snapshot title (optional)"
+                        maxLength={200}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCreateSnapshot()}
+                      />
+                      <button
+                        onClick={handleCreateSnapshot}
+                        disabled={creatingSnapshot}
+                        style={{
+                          padding: `${spacing[1]} ${spacing[3]}`,
+                          backgroundColor: 'var(--color-primary-900)',
+                          color: 'var(--color-primary-50)',
+                          fontSize: typography.fontSize.xs,
+                          fontWeight: typography.fontWeight.medium,
+                          borderRadius: borders.radius.md,
+                          border: 'none',
+                          cursor: creatingSnapshot ? 'wait' : 'pointer',
+                          opacity: creatingSnapshot ? 0.6 : 1,
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {creatingSnapshot ? 'Creating...' : 'Create'}
+                      </button>
+                    </div>
+                    {snapshots.length === 0 && snapshotsLoaded && (
+                      <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                        No snapshots yet
+                      </div>
+                    )}
+                    {snapshots.map(snap => (
+                      <div key={snap.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: spacing[2],
+                        padding: `${spacing[1]} 0`,
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-600)',
+                      }}>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                          {snap.title || formatRelativeTime(snap.created_at)}
+                        </span>
+                        <div style={{ display: 'flex', gap: spacing[1], flexShrink: 0 }}>
+                          <button
+                            onClick={() => copySnapshotLink(snap.id)}
+                            title="Copy snapshot link"
+                            style={{
+                              padding: '2px 6px',
+                              backgroundColor: 'transparent',
+                              color: 'var(--color-primary-500)',
+                              border: '1px solid var(--color-primary-200)',
+                              borderRadius: borders.radius.sm,
+                              cursor: 'pointer',
+                              fontSize: '10px',
+                            }}
+                          >
+                            Copy
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSnapshot(snap.id)}
+                            title="Delete snapshot"
+                            style={{
+                              padding: '2px 6px',
+                              backgroundColor: 'transparent',
+                              color: 'var(--color-error)',
+                              border: '1px solid var(--color-primary-200)',
+                              borderRadius: borders.radius.sm,
+                              cursor: 'pointer',
+                              fontSize: '10px',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {space.can_edit !== false && !space.is_shared_view && (() => {
+            const spacePurposes = space.purposes || [space.purpose || 'explore'];
+            const hasMultiplePurposes = spacePurposes.length > 1;
+            const isWorking = organizing || resynthesizing;
+            const isDisabled = isWorking || space.idea_count < 2;
+            return (
+              <div style={{ position: 'relative', display: 'inline-flex' }} ref={organizeDropdownRef}>
+                <button
+                  style={{
+                    ...s.organizeButton,
+                    opacity: isDisabled ? 0.5 : 1,
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    borderTopRightRadius: hasMultiplePurposes ? 0 : undefined,
+                    borderBottomRightRadius: hasMultiplePurposes ? 0 : undefined,
+                  }}
+                  onClick={handleOrganize}
+                  disabled={isDisabled}
+                  title={space.idea_count < 2 ? 'Need at least 2 ideas to organize' : 'Re-organize all ideas into themes'}
+                >
+                  {isWorking ? (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                        <path d="M21 12a9 9 0 11-6.219-8.56" />
+                      </svg>
+                      {resynthesizing ? 'Synthesizing...' : 'Organizing...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                      </svg>
+                      Organize
+                      {space.auto_organize && (
+                        <span style={{
+                          fontSize: typography.fontSize.xs,
+                          backgroundColor: 'rgba(255,255,255,0.2)',
+                          padding: `0 ${spacing[1]}`,
+                          borderRadius: borders.radius.sm,
+                          fontWeight: typography.fontWeight.normal,
+                        }}>
+                          Auto
+                        </span>
+                      )}
+                    </>
+                  )}
+                </button>
+                {hasMultiplePurposes && (
+                  <>
+                    <button
+                      style={{
+                        ...s.organizeButton,
+                        padding: `${spacing[2]} ${spacing[2]}`,
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        borderLeft: '1px solid rgba(255,255,255,0.3)',
+                        opacity: space.theme_count === 0 ? 0.5 : 1,
+                        cursor: space.theme_count === 0 ? 'not-allowed' : 'pointer',
+                      }}
+                      onClick={() => setOrganizeDropdownOpen(!organizeDropdownOpen)}
+                      disabled={space.theme_count === 0}
+                      title="Re-synthesize with a different purpose"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {organizeDropdownOpen && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        marginTop: spacing[1],
+                        backgroundColor: 'var(--color-primary-50)',
+                        border: '1px solid var(--color-primary-200)',
+                        borderRadius: borders.radius.md,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        minWidth: '200px',
+                        zIndex: 50,
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          padding: `${spacing[2]} ${spacing[3]}`,
+                          fontSize: typography.fontSize.xs,
+                          fontWeight: typography.fontWeight.semibold,
+                          color: 'var(--color-primary-500)',
+                          textTransform: 'uppercase' as const,
+                          letterSpacing: '0.5px',
+                          borderBottom: '1px solid var(--color-primary-200)',
+                        }}>
+                          Re-synthesize as...
+                        </div>
+                        {spacePurposes.map((p) => {
+                          const currentSynthPurpose = space.synthesis_purpose || spacePurposes[0];
+                          const isCurrent = p === currentSynthPurpose;
+                          return (
+                            <button
+                              key={p}
+                              onClick={() => handleResynthesize(p)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: spacing[2],
+                                width: '100%',
+                                padding: `${spacing[2]} ${spacing[3]}`,
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                color: 'var(--color-primary-800)',
+                                fontSize: typography.fontSize.sm,
+                                cursor: 'pointer',
+                                textAlign: 'left' as const,
+                              }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-100)'; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                            >
+                              <span style={{ flex: 1 }}>{SPACE_PURPOSES[p as SpacePurpose]?.label || p}</span>
+                              {isCurrent && (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-600)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
+          {(space.is_owner !== false) && !space.is_shared_view && (
             <Link to={`/spaces/${id}/settings`} style={s.settingsLink}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
@@ -1829,7 +2278,22 @@ export default function SpaceDetailPage() {
                 }}
                 onClick={() => setSynthesisExpanded(prev => !prev)}
               >
-                <span>{pc.synthesisHeader}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  {pc.synthesisHeader}
+                  {(space.purposes || []).length > 1 && space.synthesis_purpose && (
+                    <span style={{
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.normal,
+                      color: 'var(--color-primary-500)',
+                      backgroundColor: 'var(--color-primary-100)',
+                      padding: `1px ${spacing[2]}`,
+                      borderRadius: borders.radius.full,
+                      border: '1px solid var(--color-primary-200)',
+                    }}>
+                      {SPACE_PURPOSES[space.synthesis_purpose as SpacePurpose]?.label || space.synthesis_purpose}
+                    </span>
+                  )}
+                </span>
                 <svg
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"

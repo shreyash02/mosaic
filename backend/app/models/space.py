@@ -30,6 +30,7 @@ class Space(Base):
     settings = Column(JSONB, nullable=True, default=dict)
     auto_organize = Column(Boolean, default=True, nullable=False)
     clustering_mode = Column(String(20), default="llm", nullable=False)
+    share_access = Column(String(20), nullable=True, default=None)
     last_organized_at = Column(DateTime, nullable=True)
     ideas_at_last_organize = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

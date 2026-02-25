@@ -43,6 +43,7 @@ from app.models.theme_connection import ThemeConnection
 from app.models.theme_event import ThemeEvent
 from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
+from app.models.space_snapshot import SpaceSnapshot
 
 __all__ = [
     "User",
@@ -91,4 +92,5 @@ __all__ = [
     "ThemeEvent",
     "SynthesisAction",
     "SpaceActivityLog",
+    "SpaceSnapshot",
 ]
