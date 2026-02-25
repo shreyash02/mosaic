@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
+const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
 
 if (POSTHOG_KEY) {
   posthog.init(POSTHOG_KEY, {
@@ -11,7 +11,6 @@ if (POSTHOG_KEY) {
     capture_pageleave: true,
     autocapture: false,
     disable_session_recording: true,
-    respect_dnt: true,
     sanitize_properties(properties, _event) {
       // Strip sensitive params from URLs
       const sensitiveParams = ['access_token', 'refresh_token', 'token', 'email'];
@@ -43,25 +42,41 @@ if (POSTHOG_KEY) {
   // Override with VITE_POSTHOG_ENV for staging; defaults to Vite's mode.
   const environment = import.meta.env.VITE_POSTHOG_ENV || import.meta.env.MODE;
   posthog.register({ environment });
+
+  if (import.meta.env.DEV) {
+    console.log('[PostHog] initialized', { host: POSTHOG_HOST, environment });
+  }
 }
 
 function isActive(): boolean {
   return !!POSTHOG_KEY;
 }
 
+const isDev = import.meta.env.DEV;
+
+function capture(event: string, props?: Record<string, unknown>) {
+  if (isDev) {
+    console.log(`[PostHog] ${event}`, props ?? '');
+  }
+  posthog.capture(event, props);
+}
+
 export const analytics = {
   identify(userId: string) {
     if (!isActive()) return;
+    if (isDev) console.log('[PostHog] identify', userId);
     posthog.identify(userId);
   },
 
   reset() {
     if (!isActive()) return;
+    if (isDev) console.log('[PostHog] reset');
     posthog.reset();
   },
 
   setUserProperties(properties: Record<string, unknown>) {
     if (!isActive()) return;
+    if (isDev) console.log('[PostHog] setUserProperties', properties);
     posthog.people.set(properties);
   },
 
@@ -75,7 +90,7 @@ export const analytics = {
     isContinuous: boolean;
   }) {
     if (!isActive()) return;
-    posthog.capture('conversation_created', props);
+    capture('conversation_created', props);
   },
 
   conversationActivated(props: {
@@ -83,7 +98,7 @@ export const analytics = {
     isScheduled: boolean;
   }) {
     if (!isActive()) return;
-    posthog.capture('conversation_activated', props);
+    capture('conversation_activated', props);
   },
 
   conversationClosed(props: {
@@ -92,7 +107,7 @@ export const analytics = {
     responseCount: number;
   }) {
     if (!isActive()) return;
-    posthog.capture('conversation_closed', props);
+    capture('conversation_closed', props);
   },
 
   responseSubmitted(props: {
@@ -100,7 +115,7 @@ export const analytics = {
     anonymityLevel: string;
   }) {
     if (!isActive()) return;
-    posthog.capture('response_submitted', props);
+    capture('response_submitted', props);
   },
 
   analysisTriggered(props: {
@@ -108,7 +123,7 @@ export const analytics = {
     responseCount: number;
   }) {
     if (!isActive()) return;
-    posthog.capture('analysis_triggered', props);
+    capture('analysis_triggered', props);
   },
 
   analysisViewed(props: {
@@ -118,7 +133,7 @@ export const analytics = {
     hasSuggestedActions: boolean;
   }) {
     if (!isActive()) return;
-    posthog.capture('analysis_viewed', props);
+    capture('analysis_viewed', props);
   },
 
   insightAnnotated(props: {
@@ -126,7 +141,7 @@ export const analytics = {
     action: 'star' | 'unstar' | 'note';
   }) {
     if (!isActive()) return;
-    posthog.capture('insight_annotated', props);
+    capture('insight_annotated', props);
   },
 
   suggestedActionUpdated(props: {
@@ -134,7 +149,7 @@ export const analytics = {
     newStatus: string;
   }) {
     if (!isActive()) return;
-    posthog.capture('suggested_action_updated', props);
+    capture('suggested_action_updated', props);
   },
 
   invitationsSent(props: {
@@ -143,14 +158,14 @@ export const analytics = {
     method: string;
   }) {
     if (!isActive()) return;
-    posthog.capture('invitations_sent', props);
+    capture('invitations_sent', props);
   },
 
   organizationCreated(props: {
     orgId: string;
   }) {
     if (!isActive()) return;
-    posthog.capture('organization_created', props);
+    capture('organization_created', props);
   },
 
   spaceCreated(props: {
@@ -158,7 +173,7 @@ export const analytics = {
     orgId?: string | null;
   }) {
     if (!isActive()) return;
-    posthog.capture('space_created', props);
+    capture('space_created', props);
   },
 
   journalCreated(props: {
@@ -166,13 +181,13 @@ export const analytics = {
     templateId?: string | null;
   }) {
     if (!isActive()) return;
-    posthog.capture('journal_created', props);
+    capture('journal_created', props);
   },
 
   collectionCreated(props: {
     collectionId: string;
   }) {
     if (!isActive()) return;
-    posthog.capture('collection_created', props);
+    capture('collection_created', props);
   },
 };
