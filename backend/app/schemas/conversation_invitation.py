@@ -26,6 +26,7 @@ class ConversationInvitation(ConversationInvitationBase):
 
     id: UUID
     conversation_id: UUID
+    email: str  # Override EmailStr for response — DB may contain test/local emails
     invited_by_id: Optional[UUID] = None
     invited_user_id: Optional[UUID] = None
     invitation_token: Optional[str] = None

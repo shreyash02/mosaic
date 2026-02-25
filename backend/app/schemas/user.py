@@ -37,6 +37,7 @@ class User(UserBase):
     """User schema returned in responses."""
 
     id: UUID
+    email: str  # Override EmailStr for response — DB may contain test/local emails
     email_verified: bool = False
     created_at: datetime
     updated_at: datetime
