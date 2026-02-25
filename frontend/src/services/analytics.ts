@@ -43,9 +43,6 @@ if (POSTHOG_KEY) {
   const environment = import.meta.env.VITE_POSTHOG_ENV || import.meta.env.MODE;
   posthog.register({ environment });
 
-  if (import.meta.env.DEV) {
-    console.log('[PostHog] initialized', { host: POSTHOG_HOST, environment });
-  }
 }
 
 function isActive(): boolean {
@@ -64,19 +61,16 @@ function capture(event: string, props?: Record<string, unknown>) {
 export const analytics = {
   identify(userId: string) {
     if (!isActive()) return;
-    if (isDev) console.log('[PostHog] identify', userId);
     posthog.identify(userId);
   },
 
   reset() {
     if (!isActive()) return;
-    if (isDev) console.log('[PostHog] reset');
     posthog.reset();
   },
 
   setUserProperties(properties: Record<string, unknown>) {
     if (!isActive()) return;
-    if (isDev) console.log('[PostHog] setUserProperties', properties);
     posthog.people.set(properties);
   },
 
