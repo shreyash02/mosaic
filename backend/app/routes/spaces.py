@@ -25,6 +25,7 @@ from app.models.user import User
 from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
 from app.models.space_snapshot import SpaceSnapshot
+from app.models.space_synthesis import SpaceSynthesis
 from app.schemas.space import (
     SpaceCreate,
     SpaceUpdate,
@@ -209,11 +210,51 @@ def _get_space_purposes(space: Space) -> list:
     return ["explore"]
 
 
-def _get_synthesis_purpose(space: Space) -> str:
-    """Read which purpose was used for the current synthesis."""
-    if space.settings and isinstance(space.settings, dict):
-        return space.settings.get("synthesis_purpose") or _get_space_purpose(space)
-    return "explore"
+def _get_current_synthesis(db: Session, space_id: UUID, purpose: str = None) -> Optional[SpaceSynthesis]:
+    """Get current synthesis for a space, optionally filtered by purpose."""
+    query = db.query(SpaceSynthesis).filter(
+        SpaceSynthesis.space_id == space_id,
+        SpaceSynthesis.is_current == True,
+    )
+    if purpose:
+        query = query.filter(SpaceSynthesis.purpose == purpose)
+    return query.first()
+
+
+def _create_synthesis_row(db: Session, space_id: UUID, purpose: str, synthesis_dict: dict) -> SpaceSynthesis:
+    """Mark old is_current=False for space+purpose, then insert new row."""
+    from datetime import datetime as dt
+
+    db.query(SpaceSynthesis).filter(
+        SpaceSynthesis.space_id == space_id,
+        SpaceSynthesis.purpose == purpose,
+        SpaceSynthesis.is_current == True,
+    ).update({"is_current": False})
+
+    generated_at = None
+    if synthesis_dict.get("generated_at"):
+        try:
+            generated_at = dt.fromisoformat(synthesis_dict["generated_at"])
+        except (ValueError, TypeError):
+            generated_at = dt.utcnow()
+    else:
+        generated_at = dt.utcnow()
+
+    row = SpaceSynthesis(
+        space_id=space_id,
+        purpose=purpose,
+        space_summary=synthesis_dict.get("space_summary"),
+        theme_notes=synthesis_dict.get("theme_notes", {}),
+        note_states={},
+        dismiss_reasons={},
+        completion_outcomes={},
+        completion_outcome_images={},
+        is_current=True,
+        generated_at=generated_at,
+    )
+    db.add(row)
+    db.flush()
+    return row
 
 
 PURPOSE_DESCRIPTIONS = {
@@ -244,9 +285,21 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
     theme_count = db.query(func.count(Theme.id)).filter(
         Theme.space_id == space.id
     ).scalar() or 0
+    # Read synthesis from dedicated table
+    synthesis_row = _get_current_synthesis(db, space.id)
     purpose_synthesis = None
-    if space.settings and isinstance(space.settings, dict):
-        purpose_synthesis = space.settings.get("purpose_synthesis")
+    synthesis_purpose = _get_space_purpose(space)
+    if synthesis_row:
+        purpose_synthesis = {
+            "space_summary": synthesis_row.space_summary,
+            "theme_notes": synthesis_row.theme_notes or {},
+            "note_states": synthesis_row.note_states or {},
+            "dismiss_reasons": synthesis_row.dismiss_reasons or {},
+            "completion_outcomes": synthesis_row.completion_outcomes or {},
+            "completion_outcome_images": synthesis_row.completion_outcome_images or {},
+            "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+        }
+        synthesis_purpose = synthesis_row.purpose
 
     # Shared viewers get limited data
     if is_shared_view:
@@ -256,7 +309,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             "description": space.description,
             "purpose": _get_space_purpose(space),
             "purposes": _get_space_purposes(space),
-            "synthesis_purpose": _get_synthesis_purpose(space),
+            "synthesis_purpose": synthesis_purpose,
             "purpose_synthesis": purpose_synthesis,
             "synthesis_activity_log": None,
             "idea_count": idea_count,
@@ -353,7 +406,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "description": space.description,
         "purpose": _get_space_purpose(space),
         "purposes": _get_space_purposes(space),
-        "synthesis_purpose": _get_synthesis_purpose(space),
+        "synthesis_purpose": synthesis_purpose,
         "purpose_synthesis": purpose_synthesis,
         "synthesis_activity_log": activity_log,
         "idea_count": idea_count,
@@ -487,13 +540,8 @@ def run_classify_idea_task(idea_id: UUID, space_id: UUID, owner_id: UUID, db_url
             if space:
                 purpose = _get_space_purpose(space)
                 synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
-                current_settings = dict(space.settings) if space.settings else {}
                 if synthesis:
-                    current_settings["purpose_synthesis"] = synthesis
-                else:
-                    current_settings.pop("purpose_synthesis", None)
-                space.settings = current_settings
-                flag_modified(space, "settings")
+                    _create_synthesis_row(db, space_id, purpose, synthesis)
                 db.commit()
 
             _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
@@ -531,14 +579,8 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
         if space:
             purpose = _get_space_purpose(space)
             synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
-            current_settings = dict(space.settings) if space.settings else {}
             if synthesis:
-                current_settings["purpose_synthesis"] = synthesis
-            else:
-                current_settings.pop("purpose_synthesis", None)
-            current_settings["synthesis_purpose"] = purpose
-            space.settings = current_settings
-            flag_modified(space, "settings")
+                _create_synthesis_row(db, space_id, purpose, synthesis)
             db.commit()
 
         # Log organize_completed activity
@@ -591,13 +633,8 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
 
             purpose = _get_space_purpose(space)
             synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
-            current_settings = dict(space.settings) if space.settings else {}
             if synthesis:
-                current_settings["purpose_synthesis"] = synthesis
-            else:
-                current_settings.pop("purpose_synthesis", None)
-            space.settings = current_settings
-            flag_modified(space, "settings")
+                _create_synthesis_row(db, space_id, purpose, synthesis)
             db.commit()
             _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
         else:
@@ -606,10 +643,7 @@ def run_check_and_resynthesize_task(space_id: UUID, owner_id: UUID, db_url: str)
             purpose = _get_space_purpose(space)
             synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
             if synthesis:
-                current_settings = dict(space.settings) if space.settings else {}
-                current_settings["purpose_synthesis"] = synthesis
-                space.settings = current_settings
-                flag_modified(space, "settings")
+                _create_synthesis_row(db, space_id, purpose, synthesis)
                 db.commit()
                 _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
@@ -641,14 +675,8 @@ def run_resynthesize_task(space_id: UUID, purpose: str, owner_id: UUID, db_url: 
         SpaceService.save_synthesis_actions(db, space)
 
         synthesis = service.generate_purpose_synthesis(db, space_id, purpose)
-        current_settings = dict(space.settings) if space.settings else {}
         if synthesis:
-            current_settings["purpose_synthesis"] = synthesis
-        else:
-            current_settings.pop("purpose_synthesis", None)
-        current_settings["synthesis_purpose"] = purpose
-        space.settings = current_settings
-        flag_modified(space, "settings")
+            _create_synthesis_row(db, space_id, purpose, synthesis)
         db.commit()
 
         _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
@@ -778,18 +806,22 @@ def update_space(
         current_settings = dict(space.settings) if space.settings else {}
         old_purposes = set(current_settings.get("purposes", [current_settings.get("purpose", "explore")]))
         current_settings["purposes"] = data.purposes
-        # Clear stale synthesis only if the set of purposes actually changed
+        # Mark syntheses not current if the set of purposes actually changed
         if set(data.purposes) != old_purposes:
-            current_settings.pop("purpose_synthesis", None)
-            current_settings.pop("synthesis_purpose", None)
+            db.query(SpaceSynthesis).filter(
+                SpaceSynthesis.space_id == space.id,
+                SpaceSynthesis.is_current == True,
+            ).update({"is_current": False})
         space.settings = current_settings
         flag_modified(space, "settings")
     elif data.purpose is not None:
         current_settings = dict(space.settings) if space.settings else {}
         current_settings["purposes"] = [data.purpose]
-        # Clear stale synthesis when purpose changes
-        current_settings.pop("purpose_synthesis", None)
-        current_settings.pop("synthesis_purpose", None)
+        # Mark all syntheses not current when purpose changes
+        db.query(SpaceSynthesis).filter(
+            SpaceSynthesis.space_id == space.id,
+            SpaceSynthesis.is_current == True,
+        ).update({"is_current": False})
         space.settings = current_settings
         flag_modified(space, "settings")
     db.commit()
@@ -1565,14 +1597,11 @@ def update_synthesis_note_state(
     space = _get_space_or_404(space_id, current_user, db)
     _require_space_editor(space_id, current_user, db)
 
-    if not space.settings or not isinstance(space.settings, dict):
+    synthesis_row = _get_current_synthesis(db, space.id)
+    if not synthesis_row:
         raise HTTPException(status_code=400, detail="No synthesis data exists")
 
-    synthesis = space.settings.get("purpose_synthesis")
-    if not synthesis or not isinstance(synthesis, dict):
-        raise HTTPException(status_code=400, detail="No synthesis data exists")
-
-    theme_notes = synthesis.get("theme_notes", {})
+    theme_notes = synthesis_row.theme_notes or {}
     if data.theme_id not in theme_notes:
         raise HTTPException(status_code=404, detail="Theme not found in synthesis")
 
@@ -1581,10 +1610,10 @@ def update_synthesis_note_state(
         raise HTTPException(status_code=404, detail="Note index out of range")
 
     note_key = f"{data.theme_id}:{data.note_index}"
-    note_states = synthesis.get("note_states", {})
-    dismiss_reasons = synthesis.get("dismiss_reasons", {})
-    completion_outcomes = synthesis.get("completion_outcomes", {})
-    completion_outcome_images = synthesis.get("completion_outcome_images", {})
+    note_states = dict(synthesis_row.note_states or {})
+    dismiss_reasons = dict(synthesis_row.dismiss_reasons or {})
+    completion_outcomes = dict(synthesis_row.completion_outcomes or {})
+    completion_outcome_images = dict(synthesis_row.completion_outcome_images or {})
 
     if data.state is None:
         note_states.pop(note_key, None)
@@ -1606,14 +1635,14 @@ def update_synthesis_note_state(
         elif data.state != "completed":
             completion_outcome_images.pop(note_key, None)
 
-    synthesis["note_states"] = note_states
-    synthesis["dismiss_reasons"] = dismiss_reasons
-    synthesis["completion_outcomes"] = completion_outcomes
-    synthesis["completion_outcome_images"] = completion_outcome_images
-    current_settings = dict(space.settings)
-    current_settings["purpose_synthesis"] = synthesis
-    space.settings = current_settings
-    flag_modified(space, "settings")
+    synthesis_row.note_states = note_states
+    synthesis_row.dismiss_reasons = dismiss_reasons
+    synthesis_row.completion_outcomes = completion_outcomes
+    synthesis_row.completion_outcome_images = completion_outcome_images
+    flag_modified(synthesis_row, "note_states")
+    flag_modified(synthesis_row, "dismiss_reasons")
+    flag_modified(synthesis_row, "completion_outcomes")
+    flag_modified(synthesis_row, "completion_outcome_images")
     db.commit()
 
     # Log action state changes (not resets)
@@ -1639,7 +1668,16 @@ def update_synthesis_note_state(
             db_url=str(settings.DATABASE_URL),
         )
 
-    return synthesis
+    # Return same dict shape for API compatibility
+    return {
+        "space_summary": synthesis_row.space_summary,
+        "theme_notes": synthesis_row.theme_notes or {},
+        "note_states": note_states,
+        "dismiss_reasons": dismiss_reasons,
+        "completion_outcomes": completion_outcomes,
+        "completion_outcome_images": completion_outcome_images,
+        "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+    }
 
 
 @router.get("/{space_id}/evolution", response_model=list[OrganizeRunResponse])
@@ -2142,12 +2180,21 @@ def create_space_snapshot(
     # Get graph data
     graph = service.get_graph_data(db, space_id)
 
-    # Get synthesis
+    # Get synthesis from dedicated table
     purpose_synthesis = None
     synthesis_purpose = None
-    if space.settings and isinstance(space.settings, dict):
-        purpose_synthesis = space.settings.get("purpose_synthesis")
-        synthesis_purpose = space.settings.get("synthesis_purpose")
+    snapshot_synthesis_row = _get_current_synthesis(db, space.id)
+    if snapshot_synthesis_row:
+        purpose_synthesis = {
+            "space_summary": snapshot_synthesis_row.space_summary,
+            "theme_notes": snapshot_synthesis_row.theme_notes or {},
+            "note_states": snapshot_synthesis_row.note_states or {},
+            "dismiss_reasons": snapshot_synthesis_row.dismiss_reasons or {},
+            "completion_outcomes": snapshot_synthesis_row.completion_outcomes or {},
+            "completion_outcome_images": snapshot_synthesis_row.completion_outcome_images or {},
+            "generated_at": snapshot_synthesis_row.generated_at.isoformat() if snapshot_synthesis_row.generated_at else None,
+        }
+        synthesis_purpose = snapshot_synthesis_row.purpose
 
     snapshot_data = {
         "space": {

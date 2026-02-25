@@ -61,24 +61,30 @@ class SpaceService:
     def save_synthesis_actions(db: Session, space: "Space"):
         """Persist completed/dismissed synthesis notes before synthesis replacement.
 
-        Reads current purpose_synthesis from space.settings, finds notes with
-        completed or dismissed states, resolves theme names from current Theme
-        rows, and inserts SynthesisAction rows. Deduplicates by checking for
-        identical note_text + action + theme_name created within the last minute.
+        Reads current SpaceSynthesis row, finds notes with completed or
+        dismissed states, resolves theme names from current Theme rows, and
+        inserts SynthesisAction rows. Deduplicates by checking for identical
+        note_text + action + theme_name created within the last minute.
         """
         from datetime import datetime, timedelta
         from app.models.synthesis_action import SynthesisAction
+        from app.models.space_synthesis import SpaceSynthesis
 
-        if not space.settings or not isinstance(space.settings, dict):
-            return
-        synthesis = space.settings.get("purpose_synthesis")
-        if not synthesis or not isinstance(synthesis, dict):
+        synthesis_row = (
+            db.query(SpaceSynthesis)
+            .filter(
+                SpaceSynthesis.space_id == space.id,
+                SpaceSynthesis.is_current == True,
+            )
+            .first()
+        )
+        if not synthesis_row:
             return
 
-        theme_notes = synthesis.get("theme_notes", {})
-        note_states = synthesis.get("note_states", {})
-        dismiss_reasons = synthesis.get("dismiss_reasons", {})
-        completion_outcomes = synthesis.get("completion_outcomes", {})
+        theme_notes = synthesis_row.theme_notes or {}
+        note_states = synthesis_row.note_states or {}
+        dismiss_reasons = synthesis_row.dismiss_reasons or {}
+        completion_outcomes = synthesis_row.completion_outcomes or {}
 
         if not note_states:
             return
@@ -196,12 +202,19 @@ class SpaceService:
         # or completed-with-outcome) — signals the user engaged with suggestions
         # and the AI should regenerate with that context.
         note_feedback_count = 0
-        if space.settings and isinstance(space.settings, dict):
-            synthesis = space.settings.get("purpose_synthesis")
-            if synthesis and isinstance(synthesis, dict):
-                dismiss_reasons = synthesis.get("dismiss_reasons", {})
-                completion_outcomes = synthesis.get("completion_outcomes", {})
-                note_feedback_count = len(dismiss_reasons) + len(completion_outcomes)
+        from app.models.space_synthesis import SpaceSynthesis
+        synthesis_row = (
+            db.query(SpaceSynthesis)
+            .filter(
+                SpaceSynthesis.space_id == space_id,
+                SpaceSynthesis.is_current == True,
+            )
+            .first()
+        )
+        if synthesis_row:
+            dismiss_reasons = synthesis_row.dismiss_reasons or {}
+            completion_outcomes = synthesis_row.completion_outcomes or {}
+            note_feedback_count = len(dismiss_reasons) + len(completion_outcomes)
 
         score = (
             new_ideas * self.NEW_IDEA_WEIGHT
@@ -1042,41 +1055,47 @@ Ideas:
         # Collect previous user feedback (dismissed notes + reasons, completed outcomes)
         previous_feedback: List[str] = []
         completed_outcomes: List[str] = []
-        space = db.query(Space).filter(Space.id == space_id).first()
-        if space and space.settings and isinstance(space.settings, dict):
-            prev_synthesis = space.settings.get("purpose_synthesis")
-            if prev_synthesis and isinstance(prev_synthesis, dict):
-                prev_notes = prev_synthesis.get("theme_notes", {})
-                prev_states = prev_synthesis.get("note_states", {})
-                prev_reasons = prev_synthesis.get("dismiss_reasons", {})
-                prev_outcomes = prev_synthesis.get("completion_outcomes", {})
-                for key, state in prev_states.items():
-                    # Resolve the note text from theme_id:index
-                    parts = key.rsplit(":", 1)
-                    if len(parts) != 2:
+        from app.models.space_synthesis import SpaceSynthesis
+        prev_row = (
+            db.query(SpaceSynthesis)
+            .filter(
+                SpaceSynthesis.space_id == space_id,
+                SpaceSynthesis.is_current == True,
+            )
+            .first()
+        )
+        if prev_row:
+            prev_notes = prev_row.theme_notes or {}
+            prev_states = prev_row.note_states or {}
+            prev_reasons = prev_row.dismiss_reasons or {}
+            prev_outcomes = prev_row.completion_outcomes or {}
+            for key, state in prev_states.items():
+                # Resolve the note text from theme_id:index
+                parts = key.rsplit(":", 1)
+                if len(parts) != 2:
+                    continue
+                tid, idx_str = parts
+                try:
+                    idx = int(idx_str)
+                    notes_list = prev_notes.get(tid, [])
+                    if idx >= len(notes_list):
                         continue
-                    tid, idx_str = parts
-                    try:
-                        idx = int(idx_str)
-                        notes_list = prev_notes.get(tid, [])
-                        if idx >= len(notes_list):
-                            continue
-                        note_text = notes_list[idx]
-                    except (ValueError, IndexError):
-                        continue
+                    note_text = notes_list[idx]
+                except (ValueError, IndexError):
+                    continue
 
-                    if state == "dismissed":
-                        reason = prev_reasons.get(key, "")
-                        if reason:
-                            previous_feedback.append(f"- \"{note_text}\" (reason: {reason})")
-                        else:
-                            previous_feedback.append(f"- \"{note_text}\"")
-                    elif state == "completed":
-                        outcome = prev_outcomes.get(key, "")
-                        if outcome:
-                            completed_outcomes.append(f"- \"{note_text}\" => outcome: {outcome}")
-                        else:
-                            completed_outcomes.append(f"- \"{note_text}\" (completed, no outcome reported)")
+                if state == "dismissed":
+                    reason = prev_reasons.get(key, "")
+                    if reason:
+                        previous_feedback.append(f"- \"{note_text}\" (reason: {reason})")
+                    else:
+                        previous_feedback.append(f"- \"{note_text}\"")
+                elif state == "completed":
+                    outcome = prev_outcomes.get(key, "")
+                    if outcome:
+                        completed_outcomes.append(f"- \"{note_text}\" => outcome: {outcome}")
+                    else:
+                        completed_outcomes.append(f"- \"{note_text}\" (completed, no outcome reported)")
 
         # Build theme data with member ideas (cap 15 per theme)
         theme_data: List[Dict[str, Any]] = []
