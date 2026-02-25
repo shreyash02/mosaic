@@ -20,6 +20,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import FocusTrap from '../components/FocusTrap';
 import DateTimePicker from '../components/DateTimePicker';
 import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
+import FollowUpModal from '../components/FollowUpModal';
 
 // Design tokens based styles
 const s = {
@@ -686,10 +687,6 @@ export default function ConversationDetailPage() {
   const [showActivateModal, setShowActivateModal] = useState(false);
   const [scheduledActivateAt, setScheduledActivateAt] = useState('');
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
-  const [copyInvitations, setCopyInvitations] = useState(false);
-  const [copySettings, setCopySettings] = useState(true);
-  const [copyQuestions, setCopyQuestions] = useState(false);
-  const [addToSeries, setAddToSeries] = useState(false);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [showSeriesModal, setShowSeriesModal] = useState(false);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
@@ -1083,33 +1080,6 @@ export default function ConversationDetailPage() {
       }
     } finally {
       setTriggeringAnalysis(false);
-    }
-  };
-
-  const handleCreateFollowUp = async () => {
-    try {
-      const followUp = await api.createFollowUp(id!, {
-        copy_settings: copySettings,
-        copy_invitations: copyInvitations,
-        copy_questions: copyQuestions,
-        add_to_series: addToSeries,
-      });
-      setShowFollowUpModal(false);
-
-      // Navigate to edit flow - choose starting screen based on what was copied
-      let startScreen = 'details';
-      if (!copyQuestions) {
-        // No questions - go to questions screen
-        startScreen = 'questions';
-      } else if (copySettings) {
-        // Everything copied - go directly to review
-        startScreen = 'review';
-      }
-      // If questions copied but not settings, start at details
-
-      navigate(`/edit/conversation/${followUp.id}/${startScreen}`);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create follow-up');
     }
   };
 
@@ -2550,67 +2520,16 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Follow-up Modal */}
-      {showFollowUpModal && (
-        <FocusTrap isActive={showFollowUpModal} onEscape={() => setShowFollowUpModal(false)}>
-          <div style={s.modalOverlay} onClick={() => setShowFollowUpModal(false)} role="dialog" aria-modal="true" aria-labelledby="followup-modal-title">
-            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-              <h2 style={s.modalTitle} id="followup-modal-title">Create Follow-up</h2>
-              <p style={s.modalText}>Create a new conversation that follows up on this one.</p>
-
-              <div style={{ marginBottom: spacing[4] }}>
-                <label style={s.checkbox}>
-                  <input
-                    type="checkbox"
-                    checked={copySettings}
-                    onChange={(e) => setCopySettings(e.target.checked)}
-                  />
-                  <span>Keep the same settings</span>
-                </label>
-                <label style={s.checkbox}>
-                  <input
-                    type="checkbox"
-                    checked={copyQuestions}
-                    onChange={(e) => setCopyQuestions(e.target.checked)}
-                  />
-                  <span>Copy questions</span>
-                </label>
-                {conversation.invite_only && (
-                  <label style={s.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={copyInvitations}
-                      onChange={(e) => setCopyInvitations(e.target.checked)}
-                    />
-                    <span>Send invitations to the same users</span>
-                  </label>
-                )}
-                <label style={s.checkbox}>
-                  <input
-                    type="checkbox"
-                    checked={addToSeries}
-                    onChange={(e) => setAddToSeries(e.target.checked)}
-                  />
-                  <span>Add to collection</span>
-                </label>
-              </div>
-
-              {!copyQuestions && (
-                <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[6] }}>
-                  The follow-up will start with empty questions. You can add new questions after creation.
-                </p>
-              )}
-
-              <div style={s.modalActions}>
-                <button onClick={() => setShowFollowUpModal(false)} style={s.buttonSecondary}>
-                  Cancel
-                </button>
-                <button onClick={handleCreateFollowUp} style={s.buttonPrimary}>
-                  Create Follow-up
-                </button>
-              </div>
-            </div>
-          </div>
-        </FocusTrap>
+      {conversation && (
+        <FollowUpModal
+          isOpen={showFollowUpModal}
+          onClose={() => setShowFollowUpModal(false)}
+          conversationId={id!}
+          conversation={conversation}
+          onSuccess={(followUpId, startScreen) => {
+            navigate(`/edit/conversation/${followUpId}/${startScreen}`);
+          }}
+        />
       )}
 
       {/* QR Code Poster Modal */}
