@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { api } from '../services/api';
 import { SpaceMember, SpaceInvitation } from '../types';
 import { colors, typography, spacing, borders, transitions } from '../styles/tokens';
+import { useFeatures } from '../contexts/FeaturesContext';
 
 interface SpaceMembersModalProps {
   isOpen: boolean;
@@ -127,6 +128,15 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const { getConfig } = useFeatures();
+  const maxCollaborators = getConfig<number | null>('spaces', 'max_collaborators_per_space', null);
+  const collaboratorCount = members.filter((m) => m.role !== 'owner').length;
+  const pendingCount = invitations.filter((i) => !i.is_accepted).length;
+  const totalCollaborators = collaboratorCount + pendingCount;
+  const hasLimit = maxCollaborators !== null && maxCollaborators !== -1;
+  const atLimit = hasLimit && totalCollaborators >= maxCollaborators;
+  const isFreeNoCollaborators = maxCollaborators === 0;
+
   useEffect(() => {
     if (isOpen) {
       loadData();
@@ -247,6 +257,27 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
             fontSize: typography.fontSize.sm,
           }}>
             {successMessage}
+          </div>
+        )}
+
+        {/* Collaborator Counter */}
+        {isOwner && hasLimit && !loading && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: `${spacing[2]} ${spacing[3]}`,
+            background: atLimit ? colors.semantic.warning.light : colors.primary[100],
+            borderRadius: borders.radius.md,
+            fontSize: typography.fontSize.sm,
+            color: atLimit ? colors.semantic.warning.text : colors.primary[600],
+          }}>
+            <span>{totalCollaborators} / {maxCollaborators} collaborator{maxCollaborators !== 1 ? 's' : ''}</span>
+            {atLimit && (
+              <span style={{ fontWeight: typography.fontWeight.medium }}>
+                Limit reached
+              </span>
+            )}
           </div>
         )}
 
@@ -449,63 +480,85 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
             borderTop: `1px solid ${colors.primary[300]}`,
             paddingTop: spacing[4],
           }}>
-            <div style={{
-              fontSize: typography.fontSize.xs,
-              fontWeight: typography.fontWeight.medium,
-              color: colors.primary[500],
-              textTransform: 'uppercase',
-              letterSpacing: typography.letterSpacing.wide,
-              marginBottom: spacing[2],
-            }}>
-              Invite People
-            </div>
-            <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="Enter email addresses (comma-separated)"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleInvite();
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: `${spacing[2]} ${spacing[3]}`,
-                  border: `1px solid ${colors.primary[300]}`,
-                  borderRadius: borders.radius.md,
-                  fontSize: typography.fontSize.sm,
-                  outline: 'none',
-                  color: colors.primary[900],
-                  background: colors.primary[50],
-                  boxSizing: 'border-box' as const,
-                }}
-              />
-              <RoleDropdown
-                value={inviteRole}
-                onChange={setInviteRole}
-              />
-              <button
-                onClick={handleInvite}
-                disabled={inviting || !emailInput.trim()}
-                style={{
-                  padding: `${spacing[2]} ${spacing[4]}`,
-                  background: inviting || !emailInput.trim() ? colors.primary[400] : colors.primary[900],
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: borders.radius.md,
-                  fontSize: typography.fontSize.sm,
+            {isFreeNoCollaborators ? (
+              <div style={{
+                fontSize: typography.fontSize.sm,
+                color: colors.primary[500],
+                textAlign: 'center',
+                padding: `${spacing[3]} 0`,
+              }}>
+                Upgrade your plan to invite collaborators
+              </div>
+            ) : atLimit ? (
+              <div style={{
+                fontSize: typography.fontSize.sm,
+                color: colors.semantic.warning.text,
+                textAlign: 'center',
+                padding: `${spacing[3]} 0`,
+              }}>
+                Collaborator limit reached for your plan
+              </div>
+            ) : (
+              <>
+                <div style={{
+                  fontSize: typography.fontSize.xs,
                   fontWeight: typography.fontWeight.medium,
-                  cursor: inviting || !emailInput.trim() ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {inviting ? 'Sending...' : 'Invite'}
-              </button>
-            </div>
+                  color: colors.primary[500],
+                  textTransform: 'uppercase',
+                  letterSpacing: typography.letterSpacing.wide,
+                  marginBottom: spacing[2],
+                }}>
+                  Invite People
+                </div>
+                <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="Enter email addresses (comma-separated)"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleInvite();
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      border: `1px solid ${colors.primary[300]}`,
+                      borderRadius: borders.radius.md,
+                      fontSize: typography.fontSize.sm,
+                      outline: 'none',
+                      color: colors.primary[900],
+                      background: colors.primary[50],
+                      boxSizing: 'border-box' as const,
+                    }}
+                  />
+                  <RoleDropdown
+                    value={inviteRole}
+                    onChange={setInviteRole}
+                  />
+                  <button
+                    onClick={handleInvite}
+                    disabled={inviting || !emailInput.trim()}
+                    style={{
+                      padding: `${spacing[2]} ${spacing[4]}`,
+                      background: inviting || !emailInput.trim() ? colors.primary[400] : colors.primary[900],
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: borders.radius.md,
+                      fontSize: typography.fontSize.sm,
+                      fontWeight: typography.fontWeight.medium,
+                      cursor: inviting || !emailInput.trim() ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {inviting ? 'Sending...' : 'Invite'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

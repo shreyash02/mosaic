@@ -1835,6 +1835,33 @@ async def invite_to_space(
     space = _get_space_or_404(space_id, current_user, db)
     _require_space_owner(space, current_user)
 
+    # Check max_collaborators_per_space limit
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+
+    owner_tier = subscription_service.get_tier(db, user_id=space.owner_id)
+    max_collaborators = feature_flag_service.get_config_value(
+        db, "spaces", "max_collaborators_per_space",
+        tier=owner_tier,
+        user_id=space.owner_id,
+    )
+    if max_collaborators is not None and max_collaborators != -1:
+        current_members = db.query(func.count(SpaceMember.id)).filter(
+            SpaceMember.space_id == space_id,
+            SpaceMember.role != "owner",
+        ).scalar() or 0
+        pending_invitations = db.query(func.count(SpaceInvitation.id)).filter(
+            SpaceInvitation.space_id == space_id,
+            SpaceInvitation.is_accepted == False,
+        ).scalar() or 0
+        current_count = current_members + pending_invitations
+        new_emails = [e.strip().lower() for e in data.emails if e.strip()]
+        if current_count + len(new_emails) > max_collaborators:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Collaborator limit reached ({max_collaborators}) for your plan. You currently have {current_count} collaborator(s) and pending invite(s).",
+            )
+
     created_invitations = []
 
     for email in data.emails:
@@ -2001,6 +2028,29 @@ def accept_space_invitation(
         invitation.accepted_at = datetime.utcnow()
         db.commit()
         return {"space_id": str(invitation.space_id)}
+
+    # Re-check collaborator limit (owner may have downgraded since invite was sent)
+    from app.services.feature_flag_service import feature_flag_service
+    from app.services.subscription_service import subscription_service
+
+    space = db.query(Space).filter(Space.id == invitation.space_id).first()
+    if space:
+        owner_tier = subscription_service.get_tier(db, user_id=space.owner_id)
+        max_collaborators = feature_flag_service.get_config_value(
+            db, "spaces", "max_collaborators_per_space",
+            tier=owner_tier,
+            user_id=space.owner_id,
+        )
+        if max_collaborators is not None and max_collaborators != -1:
+            current_members = db.query(func.count(SpaceMember.id)).filter(
+                SpaceMember.space_id == invitation.space_id,
+                SpaceMember.role != "owner",
+            ).scalar() or 0
+            if current_members >= max_collaborators:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This space has reached its collaborator limit. The space owner may need to upgrade their plan.",
+                )
 
     # Create membership with the role specified in the invitation
     member = SpaceMember(
