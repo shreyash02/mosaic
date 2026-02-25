@@ -19,11 +19,20 @@ export default function PrivacyStep() {
         inviteEmails={formState.inviteEmails}
         resultsAccess={formState.resultsAccess}
         showVerbatimResponses={formState.showVerbatimResponses}
-        onAnonymityChange={(val) => updateFormState({ anonymityLevel: val })}
+        responseThreshold={formState.responseThreshold}
+        onAnonymityChange={(val) => {
+          const isAnonymous = val !== 'open';
+          updateFormState({
+            anonymityLevel: val,
+            // Auto-set threshold when switching anonymity levels
+            responseThreshold: isAnonymous ? (formState.responseThreshold ?? 3) : null,
+          });
+        }}
         onInviteOnlyChange={(val) => updateFormState({ inviteOnly: val })}
         onInviteEmailsChange={(val) => updateFormState({ inviteEmails: val })}
         onResultsAccessChange={(val) => updateFormState({ resultsAccess: val })}
         onShowVerbatimChange={(val) => updateFormState({ showVerbatimResponses: val })}
+        onResponseThresholdChange={(val) => updateFormState({ responseThreshold: val })}
       />
 
       {/* Navigation */}

@@ -160,6 +160,7 @@ export interface Conversation {
   show_verbatim_responses: boolean;
   invite_only: boolean;
   allow_response_editing: boolean;
+  response_threshold?: number | null;
   access_code: string;
   state: ConversationState;
   auto_analyze: boolean;
@@ -223,6 +224,7 @@ export interface ConversationCreate {
   show_verbatim_responses?: boolean;
   invite_only?: boolean;
   allow_response_editing?: boolean;
+  response_threshold?: number | null;
   questions: QuestionCreate[];
   auto_analyze?: boolean;
   max_response_length?: number;

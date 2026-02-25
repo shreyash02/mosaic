@@ -95,6 +95,7 @@ class AnalyzeRequest(BaseModel):
     # Optional parameters for future customization
     include_quotes: bool = False  # Future: include example quotes
     custom_prompt: Optional[str] = None  # Future: custom analysis prompt
+    override_threshold: bool = False  # If True, skip response threshold check (creator acknowledges privacy risk)
 
 
 # Analysis result

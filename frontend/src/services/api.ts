@@ -525,10 +525,10 @@ class ApiService {
   }
 
   // Analysis endpoints
-  async triggerAnalysis(conversationId: string): Promise<SuccessResponse> {
+  async triggerAnalysis(conversationId: string, options?: { override_threshold?: boolean }): Promise<SuccessResponse> {
     const response = await this.client.post<SuccessResponse>(
       `/conversations/${conversationId}/analyze`,
-      {}
+      options || {}
     );
     return response.data;
   }

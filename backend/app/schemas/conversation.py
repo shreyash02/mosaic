@@ -107,6 +107,7 @@ class ConversationBase(BaseModel):
     show_verbatim_responses: bool = False
     invite_only: bool = False
     allow_response_editing: bool = False
+    response_threshold: Optional[int] = Field(None, ge=2, le=100, description="Minimum responses required before analysis can run. Protects participant anonymity.")
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
@@ -182,6 +183,7 @@ class ConversationUpdate(BaseModel):
     show_verbatim_responses: Optional[bool] = None
     invite_only: Optional[bool] = None
     allow_response_editing: Optional[bool] = None
+    response_threshold: Optional[int] = Field(None, description="Minimum responses required before analysis can run. Set to null to disable. Must be 2-100 if set.")
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
@@ -217,6 +219,14 @@ class ConversationUpdate(BaseModel):
     slack_notify_on_activate: Optional[bool] = Field(None, description="Post to channel when conversation is activated")
     slack_notify_on_close: Optional[bool] = Field(None, description="Post to channel when conversation is closed")
     slack_notify_on_analysis: Optional[bool] = Field(None, description="Post to channel when analysis is complete")
+
+    @field_validator('response_threshold')
+    @classmethod
+    def validate_response_threshold(cls, v: Optional[int]) -> Optional[int]:
+        """Validate response_threshold: must be 2-100 if set, or None to disable."""
+        if v is not None and (v < 2 or v > 100):
+            raise ValueError("response_threshold must be between 2 and 100, or null to disable")
+        return v
 
     @field_validator('timezone')
     @classmethod

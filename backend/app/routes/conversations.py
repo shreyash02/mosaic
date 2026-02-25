@@ -335,6 +335,9 @@ async def create_conversation(
         recurrence_pattern=conversation_data.recurrence_pattern.value if conversation_data.recurrence_pattern else None,
         next_instance_date=next_instance_date_utc,
         recurrence_end_date=recurrence_end_date_utc,
+        # Response threshold for analysis (protects anonymity)
+        response_threshold=conversation_data.response_threshold if conversation_data.response_threshold is not None
+            else (3 if conversation_data.anonymity_level.value != "open" else None),
         # Continuous conversation fields - journals are always continuous
         is_continuous=conversation_data.is_continuous or False,
         analysis_interval=conversation_data.analysis_interval.value if conversation_data.analysis_interval else None,
@@ -1247,6 +1250,7 @@ async def duplicate_conversation(
         invite_only=original_conversation.invite_only,
         auto_analyze=original_conversation.auto_analyze,
         max_response_length=original_conversation.max_response_length,
+        response_threshold=original_conversation.response_threshold,
         duration_minutes=original_conversation.duration_minutes,
         # Don't copy scheduled_activate_at - new conversation starts fresh
         scheduled_activate_at=None,

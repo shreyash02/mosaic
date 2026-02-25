@@ -699,6 +699,8 @@ export default function ConversationDetailPage() {
   const [showAnalysisDropdown, setShowAnalysisDropdown] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [analysisLinkCopied, setAnalysisLinkCopied] = useState(false);
+  const [showThresholdModal, setShowThresholdModal] = useState(false);
+  const [thresholdInfo, setThresholdInfo] = useState<{ threshold: number; currentCount: number } | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const analysisDropdownRef = useRef<HTMLDivElement>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
@@ -953,30 +955,44 @@ export default function ConversationDetailPage() {
         responseCount: stats?.total_responses ?? 0,
       });
       if (andAnalyze) {
-        await api.triggerAnalysis(id!);
-        await loadConversation();
+        try {
+          await api.triggerAnalysis(id!);
+          await loadConversation();
+        } catch (analyzeErr: any) {
+          // Close succeeded, but analysis may fail due to threshold
+          const detail = analyzeErr.response?.data?.detail;
+          if (detail && typeof detail === 'object' && detail.code === 'THRESHOLD_NOT_MET') {
+            setThresholdInfo({ threshold: detail.threshold, currentCount: detail.current_count });
+            setShowThresholdModal(true);
+          } else {
+            const limitError = isLimitReachedError(analyzeErr);
+            if (limitError.isLimitReached) {
+              setLimitReached({
+                show: true,
+                feature: limitError.feature,
+                limit: limitError.limit,
+                usage: limitError.usage,
+              });
+            } else {
+              setError(typeof detail === 'string' ? detail : detail?.message || 'Failed to start analysis');
+            }
+          }
+          // Reload to reflect the closed state even though analysis failed
+          await loadConversation();
+        }
       }
     } catch (err: any) {
-      const limitError = isLimitReachedError(err);
-      if (andAnalyze && limitError.isLimitReached) {
-        setLimitReached({
-          show: true,
-          feature: limitError.feature,
-          limit: limitError.limit,
-          usage: limitError.usage,
-        });
-      } else {
-        setError(err.response?.data?.detail || 'Failed to close conversation');
-      }
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : detail?.message || 'Failed to close conversation');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (overrideThreshold = false) => {
     setActionLoading(true);
     try {
-      await api.triggerAnalysis(id!);
+      await api.triggerAnalysis(id!, overrideThreshold ? { override_threshold: true } : undefined);
       await loadConversation();
       analytics.analysisTriggered({ conversationId: id!, responseCount: stats?.total_responses ?? 0 });
       setShowAnalysisSuccess(true);
@@ -991,7 +1007,14 @@ export default function ConversationDetailPage() {
           usage: limitError.usage,
         });
       } else {
-        setError(err.response?.data?.detail || 'Failed to start analysis');
+        // Check for threshold not met error
+        const detail = err.response?.data?.detail;
+        if (detail && typeof detail === 'object' && detail.code === 'THRESHOLD_NOT_MET') {
+          setThresholdInfo({ threshold: detail.threshold, currentCount: detail.current_count });
+          setShowThresholdModal(true);
+        } else {
+          setError(typeof detail === 'string' ? detail : detail?.message || 'Failed to start analysis');
+        }
       }
     } finally {
       setActionLoading(false);
@@ -1412,6 +1435,35 @@ export default function ConversationDetailPage() {
       {/* Context Notes (editable by creator) */}
       <ContextNotesSection conversation={conversation} onUpdate={loadConversation} />
 
+      {/* Threshold warning banner */}
+      {conversation.response_threshold != null
+        && (stats?.total_responses ?? 0) < conversation.response_threshold
+        && [ConversationState.CLOSED, ConversationState.ANALYZED].includes(conversation.state as ConversationState) && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[3],
+          padding: spacing[4],
+          marginBottom: spacing[4],
+          backgroundColor: 'var(--color-primary-100)',
+          border: '1px solid var(--color-primary-300)',
+          borderRadius: borders.radius.lg,
+          fontSize: typography.fontSize.sm,
+          color: 'var(--color-primary-700)',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>
+            Analysis requires at least <strong>{conversation.response_threshold}</strong> responses to protect anonymity.
+            Currently <strong>{stats?.total_responses ?? 0}</strong> received.
+            You can override this when running analysis.
+          </span>
+        </div>
+      )}
+
       {/* Actions bar */}
       <div style={s.actionsBar} className="convo-detail-actions">
         {conversation.state === ConversationState.DRAFT && (
@@ -1537,7 +1589,7 @@ export default function ConversationDetailPage() {
                 delay={800}
               >
                 <button
-                  onClick={handleAnalyze}
+                  onClick={() => handleAnalyze()}
                   style={merge(s.buttonPrimary, actionLoading && s.buttonDisabled)}
                   disabled={actionLoading}
                 >
@@ -1594,7 +1646,7 @@ export default function ConversationDetailPage() {
                   {analysisLinkCopied ? 'Copied!' : 'Copy Analysis Link'}
                 </button>
                 <button
-                  onClick={handleAnalyze}
+                  onClick={() => handleAnalyze()}
                   style={s.buttonSecondary}
                   disabled={actionLoading}
                 >
@@ -2631,6 +2683,38 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Limit Reached Modal */}
+      {/* Response Threshold Override Modal */}
+      {showThresholdModal && thresholdInfo && (
+        <FocusTrap isActive={showThresholdModal} onEscape={() => setShowThresholdModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowThresholdModal(false)} role="dialog" aria-modal="true" aria-labelledby="threshold-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="threshold-modal-title">Response Threshold Not Met</h2>
+              <p style={s.modalText}>
+                This conversation has <strong>{thresholdInfo.currentCount}</strong> response{thresholdInfo.currentCount !== 1 ? 's' : ''}, below the minimum threshold of <strong>{thresholdInfo.threshold}</strong>.
+              </p>
+              <p style={{ ...s.modalText, marginTop: spacing[2], color: 'var(--color-primary-600)' }}>
+                Running analysis with few responses may compromise participant anonymity. Are you sure you want to continue?
+              </p>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowThresholdModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowThresholdModal(false);
+                    setThresholdInfo(null);
+                    handleAnalyze(true);
+                  }}
+                  style={{ ...s.buttonPrimary, backgroundColor: 'var(--color-error)' }}
+                >
+                  Analyze Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </FocusTrap>
+      )}
+
       <LimitReachedModal
         isOpen={limitReached.show}
         onClose={() => setLimitReached({ ...limitReached, show: false })}

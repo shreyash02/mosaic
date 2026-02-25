@@ -101,7 +101,7 @@ def _apply_free_tier_values(conn, values: dict) -> None:
                     SET config = jsonb_set(
                         COALESCE(config, '{}'::jsonb),
                         '{analyses_per_month}',
-                        :val::jsonb
+                        CAST(:val AS jsonb)
                     ),
                     updated_at = NOW()
                     WHERE slug = 'ai_analysis'

@@ -436,6 +436,24 @@ async def trigger_analysis(
             detail="No responses to analyze"
         )
 
+    # Check response threshold (protects participant anonymity)
+    override_threshold = analyze_request.override_threshold if analyze_request else False
+    if (
+        not override_threshold
+        and conversation.response_threshold is not None
+        and response_count < conversation.response_threshold
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "THRESHOLD_NOT_MET",
+                "message": f"This conversation requires at least {conversation.response_threshold} responses before analysis can run. Currently {response_count} received.",
+                "threshold": conversation.response_threshold,
+                "current_count": response_count,
+                "can_override": True,
+            }
+        )
+
     # Detect re-analysis (conversation already analyzed)
     is_reanalysis = conversation.state == ConversationState.ANALYZED.value
 

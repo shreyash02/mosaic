@@ -86,6 +86,11 @@ class Conversation(Base):
     allow_response_editing = Column(Boolean, default=False, nullable=False)
     # if true, participants can edit their submitted responses while conversation is active
 
+    response_threshold = Column(Integer, nullable=True)
+    # Minimum number of responses required before analysis can run.
+    # Protects participant anonymity for anonymous/semi-anonymous conversations.
+    # Auto-defaults to 3 for non-open conversations; None for open.
+
     auto_analyze = Column(Boolean, default=False, nullable=False)
     # if true, trigger analysis automatically when conversation closes
 

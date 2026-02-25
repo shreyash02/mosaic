@@ -308,8 +308,18 @@ async def check_scheduled_closures():
                     ).count()
 
                     # Collect conversations that need auto-analysis
-                    if conv.auto_analyze and response_count > 0:
+                    # Respect response threshold — skip auto-analysis if threshold not met
+                    threshold_met = (
+                        conv.response_threshold is None
+                        or response_count >= conv.response_threshold
+                    )
+                    if conv.auto_analyze and response_count > 0 and threshold_met:
                         conversations_to_analyze.append(conv.id)
+                    elif conv.auto_analyze and response_count > 0 and not threshold_met:
+                        logger.info(
+                            f"Auto-analysis skipped for conversation {conv.id}: "
+                            f"{response_count}/{conv.response_threshold} responses (threshold not met)"
+                        )
 
                     # Collect conversations for closed notifications
                     conversations_to_notify.append((conv, response_count))
@@ -1365,7 +1375,14 @@ async def check_periodic_analyses():
                             Response.submitted_at < period_end
                         ).count()
 
-                        if response_count > 0:
+                        if response_count == 0:
+                            logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
+                        elif conv.response_threshold is not None and response_count < conv.response_threshold:
+                            logger.info(
+                                f"Response threshold not met for conversation {conv.id}: "
+                                f"{response_count}/{conv.response_threshold} responses in period, skipping analysis"
+                            )
+                        else:
                             asyncio.create_task(
                                 asyncio.to_thread(
                                     run_periodic_analysis_task,
@@ -1376,8 +1393,6 @@ async def check_periodic_analyses():
                                     settings.DATABASE_URL
                                 )
                             )
-                        else:
-                            logger.info(f"No responses in period for conversation {conv.id}, skipping analysis")
 
                     # Update next_analysis_at using calendar-aware scheduling if fields are set
                     if conv.analysis_time_of_day is not None or conv.analysis_day_of_week is not None or conv.analysis_day_of_month is not None:

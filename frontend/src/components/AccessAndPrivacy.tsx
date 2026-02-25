@@ -7,11 +7,13 @@ interface AccessAndPrivacyProps {
   inviteEmails: string;
   resultsAccess: ResultsAccess;
   showVerbatimResponses: boolean;
+  responseThreshold: number | null;
   onAnonymityChange: (value: AnonymityLevel) => void;
   onInviteOnlyChange: (value: boolean) => void;
   onInviteEmailsChange: (value: string) => void;
   onResultsAccessChange: (value: ResultsAccess) => void;
   onShowVerbatimChange: (value: boolean) => void;
+  onResponseThresholdChange: (value: number | null) => void;
 }
 
 export default function AccessAndPrivacy({
@@ -20,11 +22,13 @@ export default function AccessAndPrivacy({
   inviteEmails,
   resultsAccess,
   showVerbatimResponses,
+  responseThreshold,
   onAnonymityChange,
   onInviteOnlyChange,
   onInviteEmailsChange,
   onResultsAccessChange,
   onShowVerbatimChange,
+  onResponseThresholdChange,
 }: AccessAndPrivacyProps) {
   const anonymousEnabled = useFeature('anonymous_responses');
   const isOpen = anonymityLevel === AnonymityLevel.OPEN;
@@ -280,6 +284,64 @@ export default function AccessAndPrivacy({
           </div>
         </label>
       </div>
+
+      {/* Section 4: Minimum responses for analysis (only for anonymous modes) */}
+      {!isOpen && (
+        <div style={sectionStyle}>
+          <div style={titleStyle}>Minimum responses for analysis</div>
+          <div style={descStyle}>
+            Prevents analysis from running until enough responses are collected, protecting participant anonymity.
+          </div>
+
+          <div style={{ marginTop: '0.75rem' }}>
+            <label style={optionStyle}>
+              <input
+                type="checkbox"
+                checked={responseThreshold !== null}
+                onChange={(e) => onResponseThresholdChange(e.target.checked ? 3 : null)}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Require minimum responses</div>
+                <div style={descStyle}>Analysis won't run until this many responses are collected.</div>
+              </div>
+            </label>
+
+            {responseThreshold !== null && (
+              <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="number"
+                    min={2}
+                    max={100}
+                    value={responseThreshold}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 2 && val <= 100) {
+                        onResponseThresholdChange(val);
+                      }
+                    }}
+                    style={{
+                      width: '70px',
+                      padding: '0.375rem 0.5rem',
+                      border: '1px solid var(--color-primary-300)',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontFamily: 'inherit',
+                      background: 'var(--color-primary-50)',
+                      color: 'var(--color-primary-900)',
+                      textAlign: 'center',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-primary-600)' }}>
+                    responses required
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

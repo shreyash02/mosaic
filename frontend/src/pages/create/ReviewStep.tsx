@@ -236,6 +236,7 @@ export default function ReviewStep() {
         show_verbatim_responses: formState.showVerbatimResponses,
         invite_only: formState.inviteOnly,
         allow_response_editing: formState.allowResponseEditing,
+        response_threshold: formState.responseThreshold,
         timezone: userTimezone,
         questions: questionsForApi,
         // Duration only applies to limited-time conversations

@@ -45,6 +45,7 @@ export interface ConversationFormState {
   showVerbatimResponses: boolean;
   inviteOnly: boolean;
   allowResponseEditing: boolean;
+  responseThreshold: number | null;
 
   // Step 3: Questions
   questions: (QuestionCreate & { id: string })[];
@@ -130,6 +131,7 @@ const getDefaultFormState = (): ConversationFormState => ({
   showVerbatimResponses: false,
   inviteOnly: false,
   allowResponseEditing: false,
+  responseThreshold: null,  // null for open; auto-set to 3 for anonymous levels
 
   // Questions
   questions: [
@@ -224,6 +226,7 @@ export function ConversationFormProvider({
     }
 
     const preset = INTENT_PRESETS[intent];
+    const isAnonymous = preset.settings.anonymity_level !== AnonymityLevel.OPEN;
     updateFormState({
       selectedIntent: intent,
       selectedUserPresetId: null,
@@ -232,10 +235,12 @@ export function ConversationFormProvider({
       resultsAccess: preset.settings.results_access,
       showVerbatimResponses: preset.settings.show_verbatim_responses,
       inviteOnly: preset.settings.invite_only,
+      responseThreshold: isAnonymous ? 3 : null,
     });
   };
 
   const applyUserPreset = (preset: ConversationPreset) => {
+    const isAnonymous = preset.anonymity_level !== AnonymityLevel.OPEN;
     updateFormState({
       selectedIntent: null,
       selectedUserPresetId: preset.id,
@@ -244,6 +249,7 @@ export function ConversationFormProvider({
       resultsAccess: preset.results_access,
       showVerbatimResponses: preset.show_verbatim_responses,
       inviteOnly: preset.invite_only,
+      responseThreshold: isAnonymous ? 3 : null,
     });
   };
 
@@ -293,6 +299,7 @@ export function ConversationFormProvider({
       showVerbatimResponses: conversation.show_verbatim_responses,
       inviteOnly: conversation.invite_only,
       allowResponseEditing: conversation.allow_response_editing,
+      responseThreshold: conversation.response_threshold ?? null,
       questions,
       expandedQuestions: new Set([0]), // Expand first question by default
       suggestionsDismissed: false,
