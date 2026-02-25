@@ -15,6 +15,7 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonAnalysis } from '../components/Skeleton';
 import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 import SuggestedActionsSection from '../components/SuggestedActions';
+import WhatsNextBar from '../components/WhatsNextBar';
 
 const styles = {
   page: {
@@ -630,6 +631,7 @@ export default function AnalysisPage() {
   const noteInputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const isCreator = !!(user && fullConversation && fullConversation.creator_id === user.id);
+  const [whatsNextVisible, setWhatsNextVisible] = useState(false);
 
   // Annotation helpers
   const sortedStringify = (obj: Record<string, string>) =>
@@ -1345,7 +1347,7 @@ export default function AnalysisPage() {
   return (
     <>
       <style>{hoverStyles}</style>
-      <div style={styles.page}>
+      <div style={{ ...styles.page, paddingBottom: whatsNextVisible ? '72px' : undefined }}>
         <div style={styles.container}>
           <header style={styles.header}>
             <div style={styles.headerInfo}>
@@ -2234,6 +2236,19 @@ export default function AnalysisPage() {
         limit={limitReached.limit}
         usage={limitReached.usage}
       />
+
+      {/* What's Next Bar */}
+      {analysis && fullConversation && isCreator && (
+        <WhatsNextBar
+          conversationId={id!}
+          conversation={fullConversation}
+          isCreator={isCreator}
+          onVisibilityChange={setWhatsNextVisible}
+          onConversationUpdate={(updates) => {
+            setFullConversation((prev) => prev ? { ...prev, ...updates } : prev);
+          }}
+        />
+      )}
     </>
   );
 }

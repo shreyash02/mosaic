@@ -184,4 +184,12 @@ export const analytics = {
     if (!isActive()) return;
     capture('collection_created', props);
   },
+
+  whatsNextAction(props: {
+    conversationId: string;
+    action: 'follow_up' | 'save_template' | 'add_collection' | 'dismiss';
+  }) {
+    if (!isActive()) return;
+    capture('whats_next_action', props);
+  },
 };
