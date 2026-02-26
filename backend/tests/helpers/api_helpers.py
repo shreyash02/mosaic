@@ -28,6 +28,7 @@ def create_test_conversation_payload(
     title: str = "Test Conversation",
     description: str = "Test description",
     anonymity_level: str = "platform_tracked",
+    results_access: str = "creator_only",
     invite_only: bool = False,
     questions: Optional[List[Dict]] = None,
     timezone: str = "UTC",
@@ -66,7 +67,7 @@ def create_test_conversation_payload(
             {
                 "question_type": "text",
                 "question_text": "What's on your mind?",
-                "order": 1,
+                "question_order": 1,
                 "is_required": True
             }
         ]
@@ -75,6 +76,7 @@ def create_test_conversation_payload(
         "title": title,
         "description": description,
         "anonymity_level": anonymity_level,
+        "results_access": results_access,
         "invite_only": invite_only,
         "questions": questions,
         "timezone": timezone
@@ -122,7 +124,7 @@ def create_test_question(
     question = {
         "question_type": question_type,
         "question_text": question_text,
-        "order": order,
+        "question_order": order,
         "is_required": is_required
     }
 

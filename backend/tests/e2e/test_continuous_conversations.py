@@ -16,7 +16,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
 
-from tests.conftest import (
+from tests.e2e.conftest import (
     APIClient,
     ConversationHelper,
     PeriodicAnalysisHelper,

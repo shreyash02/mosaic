@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 import pytest
 
-from tests.conftest import APIClient, BASE_URL
+from tests.e2e.conftest import APIClient, BASE_URL
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 

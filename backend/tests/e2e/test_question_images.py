@@ -13,7 +13,7 @@ Note: These tests require a running server at http://localhost:8000
 import pytest
 from typing import Dict, Any
 
-from tests.conftest import APIClient, ConversationHelper
+from tests.e2e.conftest import APIClient, ConversationHelper
 
 
 pytestmark = [pytest.mark.e2e]
