@@ -2218,7 +2218,13 @@ export default function SpaceDetailPage() {
                             idea_count: (prev.idea_count ?? 0) + 1,
                             suggestion_count: Math.max(0, (prev.suggestion_count ?? 1) - 1),
                           } : prev);
-                        } catch {}
+                        } catch (err: any) {
+                          addToast({
+                            type: 'error',
+                            title: 'Failed to approve suggestion',
+                            message: err.response?.data?.detail || err.message || 'Something went wrong',
+                          });
+                        }
                       }}
                       style={{
                         padding: `${spacing[1]} ${spacing[3]}`,
@@ -2242,7 +2248,13 @@ export default function SpaceDetailPage() {
                             ...prev,
                             suggestion_count: Math.max(0, (prev.suggestion_count ?? 1) - 1),
                           } : prev);
-                        } catch {}
+                        } catch (err: any) {
+                          addToast({
+                            type: 'error',
+                            title: 'Failed to dismiss suggestion',
+                            message: err.response?.data?.detail || err.message || 'Something went wrong',
+                          });
+                        }
                       }}
                       style={{
                         padding: `${spacing[1]} ${spacing[3]}`,
