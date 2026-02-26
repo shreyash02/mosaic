@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { api } from '../services/api';
 import { SpaceMember, SpaceInvitation } from '../types';
-import { colors, typography, spacing, borders, transitions } from '../styles/tokens';
+import { colors, typography, spacing, borders, transitions, getAvatarColor } from '../styles/tokens';
 import { useFeatures } from '../contexts/FeaturesContext';
 
 interface SpaceMembersModalProps {
@@ -231,8 +231,6 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
     return (email || '?')[0].toUpperCase();
   };
 
-  const avatarColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6'];
-  const getAvatarColor = (index: number) => avatarColors[index % avatarColors.length];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="People with access" maxWidth="520px">

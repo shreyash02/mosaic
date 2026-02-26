@@ -4,13 +4,11 @@ import { api } from '../services/api';
 import { analytics } from '../services/analytics';
 import type { SpaceListItem, SpacePurpose } from '../types';
 import { SPACE_PURPOSES } from '../types';
-import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions, getAvatarColor } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
 import Modal from '../components/Modal';
-
-const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6'];
 
 const s = {
   page: {
@@ -318,7 +316,7 @@ export default function SpacesPage() {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+                              backgroundColor: getAvatarColor(i),
                               color: '#fff',
                               fontSize: '10px',
                               fontWeight: typography.fontWeight.semibold,
