@@ -127,6 +127,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState<SpaceMember | null>(null);
 
   const { getConfig } = useFeatures();
   const maxCollaborators = getConfig<number | null>('spaces', 'max_collaborators_per_space', null);
@@ -373,7 +374,7 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
                 {/* Remove button (owner only, not for self) */}
                 {isOwner && member.role !== 'owner' && (
                   <button
-                    onClick={() => handleRemoveMember(member.user_id)}
+                    onClick={() => setConfirmRemove(member)}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -562,6 +563,56 @@ export default function SpaceMembersModal({ isOpen, onClose, spaceId, isOwner }:
           </div>
         )}
       </div>
+
+      {/* Remove member confirmation modal */}
+      <Modal
+        isOpen={!!confirmRemove}
+        onClose={() => setConfirmRemove(null)}
+        title="Remove member"
+        maxWidth="400px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
+          <p style={{ margin: 0, fontSize: typography.fontSize.sm, color: colors.primary[700] }}>
+            Remove <strong>{confirmRemove?.user_name || confirmRemove?.user_email}</strong> from this space? They will lose access immediately.
+          </p>
+          <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setConfirmRemove(null)}
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                background: 'transparent',
+                color: colors.primary[700],
+                border: `1px solid ${colors.primary[300]}`,
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.sm,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                if (confirmRemove) {
+                  await handleRemoveMember(confirmRemove.user_id);
+                  setConfirmRemove(null);
+                }
+              }}
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                background: colors.semantic.error.main,
+                color: '#fff',
+                border: 'none',
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                cursor: 'pointer',
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }
