@@ -415,6 +415,26 @@ export default function SharedAnalysisPage() {
           </div>
         </header>
 
+        {/* Context Notes */}
+        {data.context_notes_snapshot && (
+          <div style={{
+            ...styles.card,
+            backgroundColor: 'var(--color-primary-100)',
+            borderColor: 'var(--color-primary-300)',
+          }}>
+            <h2 style={{ ...styles.cardTitle, fontSize: typography.fontSize.base }}>Context provided by creator</h2>
+            <p style={{
+              ...styles.summaryText,
+              fontStyle: 'italic',
+            }}>
+              "{data.context_notes_snapshot}"
+            </p>
+            <small style={{ color: 'var(--color-primary-500)', marginTop: spacing[2], display: 'block' }}>
+              This context was used to inform the AI analysis.
+            </small>
+          </div>
+        )}
+
         {/* Overall Summary */}
         {data.overall_summary && (
           <div style={styles.card}>

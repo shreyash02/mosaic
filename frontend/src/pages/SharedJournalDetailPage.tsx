@@ -718,7 +718,18 @@ export default function SharedJournalDetailPage() {
           </>
         ) : (
           <div style={s.noAnalysis}>
-            No analysis available yet for this journal.
+            {analysisStatus?.needs_more_entries ? (
+              <>
+                <div style={{ fontWeight: typography.fontWeight.medium, marginBottom: spacing[2] }}>Analysis Pending</div>
+                <div>
+                  {analysisStatus.entries_until_analysis > 0
+                    ? `${analysisStatus.entries_until_analysis} more ${analysisStatus.entries_until_analysis === 1 ? 'entry' : 'entries'} needed before the first analysis can run.`
+                    : 'The first analysis will run automatically at the end of the current period.'}
+                </div>
+              </>
+            ) : (
+              'No analysis available yet for this journal.'
+            )}
           </div>
         )}
 
@@ -777,6 +788,35 @@ export default function SharedJournalDetailPage() {
                               <div style={s.entryRating}>{r.rating_value}</div>
                             ) : r.type === 'single_choice' ? (
                               <div style={s.entryChoice}>{r.choice_value}</div>
+                            ) : r.type === 'checkbox' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+                                {(r.choice_values || []).map((choice) => (
+                                  <span key={choice} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: spacing[2],
+                                    fontSize: typography.fontSize.sm,
+                                    color: 'var(--color-primary-700)',
+                                  }}>
+                                    <span style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: borders.radius.sm,
+                                      border: '1.5px solid var(--color-primary-900)',
+                                      backgroundColor: 'var(--color-primary-900)',
+                                      flexShrink: 0,
+                                    }}>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M20 6L9 17l-5-5" />
+                                      </svg>
+                                    </span>
+                                    {choice}
+                                  </span>
+                                ))}
+                              </div>
                             ) : (
                               <div style={s.entryText}>{displayText}</div>
                             )}

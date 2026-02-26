@@ -578,6 +578,7 @@ export interface SharedAnalysis {
   created_at: string;
   total_responses_analyzed?: number;
   num_clusters_found?: number;
+  context_notes_snapshot?: string;
 }
 
 export interface ConversationSharingResponse {

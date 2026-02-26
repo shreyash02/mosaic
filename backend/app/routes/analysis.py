@@ -751,6 +751,7 @@ async def get_shared_analysis(
         "created_at": analysis.created_at.isoformat(),
         "total_responses_analyzed": analysis.total_responses_analyzed,
         "num_clusters_found": analysis.num_clusters_found,
+        "context_notes_snapshot": analysis.context_notes_snapshot,
     }
 
 @router.get("/conversations/{conversation_id}/analyses", response_model=AnalysisListResponse)
