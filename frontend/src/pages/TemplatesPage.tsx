@@ -196,6 +196,9 @@ export default function TemplatesPage() {
   return (
     <div style={s.page} className="templates-page">
       <style>{`
+        .back-link:hover {
+          color: var(--color-primary-900) !important;
+        }
         .template-card:hover {
           border-color: var(--color-primary-500) !important;
           box-shadow: ${shadows.sm} !important;
@@ -233,6 +236,22 @@ export default function TemplatesPage() {
           }
         }
       `}</style>
+
+      {/* Back link */}
+      <Link to="/conversations" style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: spacing[1],
+        fontSize: typography.fontSize.sm,
+        color: 'var(--color-primary-600)',
+        textDecoration: 'none',
+        marginBottom: spacing[4],
+      }} className="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Conversations
+      </Link>
 
       {/* Header */}
       <header className="templates-header">

@@ -6,6 +6,7 @@ import type { ConversationListItem, ConversationInvitationWithConversation, Seri
 import { ConversationState } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
@@ -566,6 +567,8 @@ const merge = (...styles: (React.CSSProperties | false | undefined)[]) =>
 
 export default function ConversationsPage() {
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
+  const templatesEnabled = useFeature('templates');
+  const collectionsEnabled = useFeature('collections');
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [participatedConversations, setParticipatedConversations] = useState<ConversationListItem[]>([]);
   const [invitations, setInvitations] = useState<ConversationInvitationWithConversation[]>([]);
@@ -1004,7 +1007,13 @@ export default function ConversationsPage() {
           <h1 style={s.pageTitle} className="conversations-page-title">Conversations</h1>
           <p style={s.pageSubtitle}>Manage feedback collection across your {isPersonalWorkspace ? 'workspace' : 'organization'}</p>
         </div>
-        <div className="conversations-header-actions">
+        <div className="conversations-header-actions" style={{ display: 'flex', gap: spacing[3], alignItems: 'center', flexWrap: 'wrap' as const }}>
+          {templatesEnabled && (
+            <Link to="/templates" style={s.buttonSecondary}>Templates</Link>
+          )}
+          {collectionsEnabled && (
+            <Link to="/collections" style={s.buttonSecondary}>Collections</Link>
+          )}
           {activeTab === 'owned' && (
             <Link to="/conversations/new" style={s.buttonPrimary}>
               + New Conversation

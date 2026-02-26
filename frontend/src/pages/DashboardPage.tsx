@@ -2,10 +2,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { ConversationListItem } from '../types';
+import type { ConversationListItem, JournalListItem, SpaceListItem } from '../types';
 import { ConversationState } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { typography, spacing, borders, shadows, mediaQueries } from '../styles';
 import {
   MessageIcon,
@@ -47,7 +48,7 @@ const s = {
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: spacing[4],
     marginBottom: spacing[8],
   },
@@ -234,13 +235,17 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { currentOrgId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
   const { user } = useAuth();
+  const journalsEnabled = useFeature('journals');
+  const spacesEnabled = useFeature('spaces');
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const [journals, setJournals] = useState<JournalListItem[]>([]);
+  const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [welcomeKey, setWelcomeKey] = useState(0);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
   const { completeStep, isComplete, isDismissed, reset: resetOnboarding } = useOnboarding();
 
-  usePageTitle('Dashboard');
+  usePageTitle('Home');
 
   const copyLink = async (e: React.MouseEvent, conv: ConversationListItem) => {
     e.preventDefault();
@@ -313,15 +318,25 @@ export default function DashboardPage() {
         }
 
         setConversations(data);
+
+        // Fetch journals and spaces in parallel
+        const [journalData, spaceData] = await Promise.all([
+          journalsEnabled ? api.getJournals().catch(() => [] as JournalListItem[]) : Promise.resolve([] as JournalListItem[]),
+          spacesEnabled ? api.getSpaces().catch(() => [] as SpaceListItem[]) : Promise.resolve([] as SpaceListItem[]),
+        ]);
+
+        setJournals(journalData);
+        // In personal workspace, only show owned spaces
+        setSpaces(isPersonalWorkspace ? spaceData.filter(sp => sp.is_owner) : spaceData);
       } catch (err) {
-        console.error('Failed to load conversations:', err);
+        console.error('Failed to load dashboard data:', err);
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [currentOrgId, isPersonalWorkspace]);
+  }, [currentOrgId, isPersonalWorkspace, journalsEnabled, spacesEnabled]);
 
   const stats = useMemo(() => {
     const total = conversations.length;
@@ -356,6 +371,22 @@ export default function DashboardPage() {
       .sort((a, b) => (b.unique_participants || 0) - (a.unique_participants || 0))
       .slice(0, 5);
   }, [conversations]);
+
+  const recentJournals = useMemo(() => {
+    return [...journals]
+      .sort((a, b) => {
+        const aDate = a.last_entry_at || a.created_at;
+        const bDate = b.last_entry_at || b.created_at;
+        return new Date(bDate).getTime() - new Date(aDate).getTime();
+      })
+      .slice(0, 4);
+  }, [journals]);
+
+  const recentSpaces = useMemo(() => {
+    return [...spaces]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 4);
+  }, [spaces]);
 
   if (loading) {
     return (
@@ -442,7 +473,7 @@ export default function DashboardPage() {
         }
         .dashboard-stats-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
           gap: ${spacing[4]};
           margin-bottom: ${spacing[8]};
         }
@@ -505,9 +536,9 @@ export default function DashboardPage() {
 
       {/* Header */}
       <header style={s.header}>
-        <h1 style={s.pageTitle} className="dashboard-page-title">Dashboard</h1>
+        <h1 style={s.pageTitle} className="dashboard-page-title">Home</h1>
         <p style={s.pageSubtitle}>
-          Overview of your feedback activity in {isPersonalWorkspace ? 'your personal workspace' : currentWorkspaceName}
+          Welcome to your {isPersonalWorkspace ? 'personal workspace' : currentWorkspaceName} overview
         </p>
       </header>
 
@@ -541,6 +572,37 @@ export default function DashboardPage() {
             <div style={s.statLabel} className="stat-label">Response rate</div>
           </div>
         </div>
+        {journalsEnabled && (
+          <div style={s.statCard} className="dashboard-stat-card">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={s.statIcon}>
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            <div style={{ marginTop: spacing[3] }}>
+              <div style={s.statValue} className="stat-value">{journals.length}</div>
+              <div style={s.statLabel} className="stat-label">Journals</div>
+            </div>
+          </div>
+        )}
+        {spacesEnabled && (
+          <div style={s.statCard} className="dashboard-stat-card">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={s.statIcon}>
+              <circle cx="12" cy="12" r="3" />
+              <circle cx="4" cy="6" r="2" />
+              <circle cx="20" cy="6" r="2" />
+              <circle cx="4" cy="18" r="2" />
+              <circle cx="20" cy="18" r="2" />
+              <line x1="9.5" y1="10" x2="5.5" y2="7" />
+              <line x1="14.5" y1="10" x2="18.5" y2="7" />
+              <line x1="9.5" y1="14" x2="5.5" y2="17" />
+              <line x1="14.5" y1="14" x2="18.5" y2="17" />
+            </svg>
+            <div style={{ marginTop: spacing[3] }}>
+              <div style={s.statValue} className="stat-value">{spaces.length}</div>
+              <div style={s.statLabel} className="stat-label">Spaces</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Getting Started Checklist - show only if not complete and not dismissed */}
@@ -697,6 +759,72 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Recent Journals */}
+      {journalsEnabled && recentJournals.length > 0 && (
+        <div style={s.section}>
+          <div style={s.sectionHeader}>
+            <h3 style={s.sectionTitle}>Recent Journals</h3>
+            <Link to="/journals" className="view-all-link" style={s.viewAllLink}>
+              View all journals
+            </Link>
+          </div>
+          <div style={s.recentGrid}>
+            {recentJournals.map((journal) => (
+              <div
+                key={journal.id}
+                className="dashboard-card"
+                style={{ ...s.conversationCard, cursor: 'pointer' }}
+                onClick={() => navigate(`/journals/${journal.id}`)}
+              >
+                <div style={s.cardTitle}>{journal.title}</div>
+                <div style={s.cardFooter}>
+                  <span style={s.cardMeta}>
+                    {journal.total_entries} {journal.total_entries === 1 ? 'entry' : 'entries'}
+                  </span>
+                  {journal.current_streak > 0 && (
+                    <span style={s.cardMeta}>
+                      {journal.current_streak} day streak
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Spaces */}
+      {spacesEnabled && recentSpaces.length > 0 && (
+        <div style={s.section}>
+          <div style={s.sectionHeader}>
+            <h3 style={s.sectionTitle}>Recent Spaces</h3>
+            <Link to="/spaces" className="view-all-link" style={s.viewAllLink}>
+              View all spaces
+            </Link>
+          </div>
+          <div style={s.recentGrid}>
+            {recentSpaces.map((space) => (
+              <div
+                key={space.id}
+                className="dashboard-card"
+                style={{ ...s.conversationCard, cursor: 'pointer' }}
+                onClick={() => navigate(`/spaces/${space.id}`)}
+              >
+                <div style={s.cardTitle}>{space.title}</div>
+                <div style={s.cardFooter}>
+                  <span style={s.cardMeta}>
+                    {space.idea_count} {space.idea_count === 1 ? 'idea' : 'ideas'}
+                  </span>
+                  <span style={s.cardMeta}>
+                    {space.theme_count} {space.theme_count === 1 ? 'theme' : 'themes'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div style={s.section}>
         <h3 style={{ ...s.sectionTitle, marginBottom: spacing[4] }}>Quick Actions</h3>
@@ -730,6 +858,40 @@ export default function DashboardPage() {
           }}>
             View Templates
           </Link>
+          {journalsEnabled && (
+            <Link to="/journals" className="btn-secondary-action" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-900)',
+              padding: `${spacing[3]} ${spacing[6]}`,
+              borderRadius: borders.radius.md,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              textDecoration: 'none',
+              border: '1px solid var(--color-primary-400)',
+            }}>
+              + New Journal
+            </Link>
+          )}
+          {spacesEnabled && (
+            <Link to="/spaces/new" className="btn-secondary-action" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-900)',
+              padding: `${spacing[3]} ${spacing[6]}`,
+              borderRadius: borders.radius.md,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              textDecoration: 'none',
+              border: '1px solid var(--color-primary-400)',
+            }}>
+              + New Space
+            </Link>
+          )}
         </div>
       </div>
 

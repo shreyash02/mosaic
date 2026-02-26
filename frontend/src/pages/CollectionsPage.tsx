@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { analytics } from '../services/analytics';
 import type { Series, SeriesWithConversations, SeriesCreate } from '../types';
@@ -326,6 +326,9 @@ export default function CollectionsPage() {
   return (
     <div style={styles.page} className="collections-page">
       <style>{`
+        .back-link:hover {
+          color: var(--color-primary-900) !important;
+        }
         .collections-header {
           display: flex;
           justify-content: space-between;
@@ -364,6 +367,22 @@ export default function CollectionsPage() {
         }
       `}</style>
       <div style={styles.container}>
+        {/* Back link */}
+        <Link to="/conversations" style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: spacing[1],
+          fontSize: typography.fontSize.sm,
+          color: 'var(--color-primary-600)',
+          textDecoration: 'none',
+          marginBottom: spacing[4],
+        }} className="back-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Conversations
+        </Link>
+
         <header className="collections-header">
           <div>
             <h1 style={styles.title} className="collections-page-title">Collections</h1>
