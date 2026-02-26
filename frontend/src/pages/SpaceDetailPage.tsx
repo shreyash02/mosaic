@@ -19,6 +19,7 @@ import CustomSelect from '../components/CustomSelect';
 import ImageIdeaModal from '../components/ImageIdeaModal';
 import ActionOutcomeModal from '../components/ActionOutcomeModal';
 import ImageLightbox from '../components/ImageLightbox';
+import Modal from '../components/Modal';
 import { getActivityVerb, getActivityIcon } from '../utils/spaceActivity';
 
 const s = {
@@ -440,6 +441,7 @@ export default function SpaceDetailPage() {
   const [snapshots, setSnapshots] = useState<Array<{ id: string; title?: string; created_at: string }>>([]);
   const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [confirmDeleteSnapshot, setConfirmDeleteSnapshot] = useState<{ id: string; title?: string } | null>(null);
   const shareDropdownRef = useRef<HTMLDivElement>(null);
 
   // Idea search
@@ -1482,7 +1484,7 @@ export default function SpaceDetailPage() {
                             Copy
                           </button>
                           <button
-                            onClick={() => handleDeleteSnapshot(snap.id)}
+                            onClick={() => setConfirmDeleteSnapshot({ id: snap.id, title: snap.title })}
                             title="Delete snapshot"
                             style={{
                               padding: '2px 6px',
@@ -3502,6 +3504,56 @@ export default function SpaceDetailPage() {
         spaceId={id!}
         isOwner={space.is_owner !== false}
       />
+
+      {/* Delete snapshot confirmation modal */}
+      <Modal
+        isOpen={!!confirmDeleteSnapshot}
+        onClose={() => setConfirmDeleteSnapshot(null)}
+        title="Delete snapshot"
+        maxWidth="400px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
+          <p style={{ margin: 0, fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>
+            Delete {confirmDeleteSnapshot?.title ? `"${confirmDeleteSnapshot.title}"` : 'this snapshot'}? This cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setConfirmDeleteSnapshot(null)}
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                background: 'transparent',
+                color: 'var(--color-primary-700)',
+                border: '1px solid var(--color-primary-300)',
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.sm,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                if (confirmDeleteSnapshot) {
+                  await handleDeleteSnapshot(confirmDeleteSnapshot.id);
+                  setConfirmDeleteSnapshot(null);
+                }
+              }}
+              style={{
+                padding: `${spacing[2]} ${spacing[4]}`,
+                background: 'var(--color-error)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: borders.radius.md,
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                cursor: 'pointer',
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
