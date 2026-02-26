@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { colors, typography, spacing, borders } from '../styles/tokens';
+import { colors, typography, spacing, borders, shadows } from '../styles/tokens';
 import type {
   SearchResponse,
   SearchResult,
@@ -100,7 +100,7 @@ const s = {
   },
   resultCardHover: {
     borderColor: 'var(--color-primary-600)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    boxShadow: shadows.md,
   },
   resultHeader: {
     display: 'flex',

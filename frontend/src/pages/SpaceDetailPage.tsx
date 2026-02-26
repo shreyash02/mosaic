@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry, SpaceActivityLogEntry } from '../types';
 import { SPACE_PURPOSES } from '../types';
-import { typography, spacing, borders, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatRelativeTime } from '../utils/formatting';
 import { useSSEEvent } from '../hooks/useSSEEvent';
@@ -1180,7 +1180,7 @@ export default function SpaceDetailPage() {
                 backgroundColor: 'var(--color-primary-50)',
                 border: '1px solid var(--color-primary-200)',
                 borderRadius: borders.radius.lg,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                boxShadow: shadows.lg,
                 zIndex: 50,
                 padding: spacing[3],
               }}>
@@ -1319,7 +1319,7 @@ export default function SpaceDetailPage() {
                   backgroundColor: 'var(--color-primary-50)',
                   border: '1px solid var(--color-primary-200)',
                   borderRadius: borders.radius.lg,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  boxShadow: shadows.lg,
                   zIndex: 50,
                   padding: spacing[4],
                 }}>
@@ -1582,7 +1582,7 @@ export default function SpaceDetailPage() {
                         backgroundColor: 'var(--color-primary-50)',
                         border: '1px solid var(--color-primary-200)',
                         borderRadius: borders.radius.md,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        boxShadow: shadows.lg,
                         minWidth: '200px',
                         zIndex: 50,
                         overflow: 'hidden',

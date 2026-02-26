@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { colors, typography, spacing, borders } from '../styles/tokens';
+import { colors, typography, spacing, borders, shadows } from '../styles/tokens';
 
 const s = {
   container: {
@@ -19,7 +19,7 @@ const s = {
     padding: spacing[8],
     backgroundColor: 'var(--color-primary-50)',
     borderRadius: borders.radius.xl,
-    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+    boxShadow: shadows.md,
     textAlign: 'center' as const,
   },
   icon: {
