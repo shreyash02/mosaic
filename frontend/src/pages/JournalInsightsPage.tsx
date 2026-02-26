@@ -251,6 +251,8 @@ export default function JournalInsightsPage() {
   const [analysisStatus, setAnalysisStatus] = useState<JournalAnalysisStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [runningAnalysis, setRunningAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   usePageTitle(journal ? `Insights - ${journal.title}` : 'Insights');
 
@@ -341,6 +343,43 @@ export default function JournalInsightsPage() {
                   weekday: 'short', month: 'short', day: 'numeric',
                   hour: 'numeric', minute: '2-digit',
                 })}
+              </p>
+            )}
+            <button
+              onClick={async () => {
+                if (!id || runningAnalysis) return;
+                setRunningAnalysis(true);
+                setAnalysisError(null);
+                try {
+                  await api.triggerJournalAnalysis(id);
+                  // Reload to pick up the new analysis
+                  loadData();
+                } catch (err: any) {
+                  setAnalysisError(err.response?.data?.detail || 'Failed to run analysis');
+                } finally {
+                  setRunningAnalysis(false);
+                }
+              }}
+              disabled={runningAnalysis}
+              style={{
+                marginTop: spacing[3],
+                padding: `${spacing[2]} ${spacing[4]}`,
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                backgroundColor: 'var(--color-primary-900)',
+                color: 'var(--color-primary-50)',
+                border: 'none',
+                borderRadius: borders.radius.md,
+                cursor: runningAnalysis ? 'not-allowed' : 'pointer',
+                opacity: runningAnalysis ? 0.6 : 1,
+                transition: transitions.duration.fast,
+              }}
+            >
+              {runningAnalysis ? 'Running...' : 'Run Analysis Now'}
+            </button>
+            {analysisError && (
+              <p style={{ color: 'var(--color-error)', fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>
+                {analysisError}
               </p>
             )}
           </div>

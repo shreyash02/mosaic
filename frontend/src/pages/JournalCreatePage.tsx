@@ -6,6 +6,7 @@ import type { JournalPromptCreate, AnalysisInterval, EntryFrequency, JournalTemp
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import CustomSelect from '../components/CustomSelect';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 const PROMPT_TYPES = [
   { value: 'text', label: 'Text' },
@@ -356,6 +357,7 @@ export default function JournalCreatePage() {
   const [analysisTimeOfDay, setAnalysisTimeOfDay] = useState('09:00');
   const [analysisDayOfWeek, setAnalysisDayOfWeek] = useState<number>(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [analysisDayOfMonth, setAnalysisDayOfMonth] = useState<number>(1);
+  const [strictFrequency, setStrictFrequency] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -442,7 +444,7 @@ export default function JournalCreatePage() {
         prompts: promptsData,
         analysis_interval: analysisInterval,
         entry_frequency: entryFrequency !== 'unlimited' ? entryFrequency : undefined,
-        strict_frequency: true,
+        strict_frequency: strictFrequency,
         ...(!isDevInterval ? {
           analysis_time_of_day: analysisTimeOfDay,
           ...((['weekly', 'biweekly'].includes(analysisInterval)) ? { analysis_day_of_week: analysisDayOfWeek } : {}),
@@ -646,6 +648,15 @@ export default function JournalCreatePage() {
                 How often you plan to write entries
                 {entryFrequency !== 'unlimited' && ` (next entry: ${nextDateLabel(entryFrequency)})`}
               </span>
+              {entryFrequency !== 'unlimited' && (
+                <CustomCheckbox
+                  id="strict-frequency"
+                  checked={strictFrequency}
+                  onChange={setStrictFrequency}
+                  label="Enforce frequency"
+                  description="Only allow one entry per period"
+                />
+              )}
             </div>
 
             <div style={s.formGroup}>

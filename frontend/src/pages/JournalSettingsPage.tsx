@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useFeatureConfig, useCurrentTier } from '../contexts/FeaturesContext';
 import { formatRelativeTime } from '../utils/formatting';
 import CustomSelect from '../components/CustomSelect';
+import CustomCheckbox from '../components/CustomCheckbox';
 import DateOnlyPicker from '../components/DateOnlyPicker';
 import Modal from '../components/Modal';
 
@@ -327,6 +328,7 @@ export default function JournalSettingsPage() {
   const [analysisTimeOfDay, setAnalysisTimeOfDay] = useState('09:00');
   const [analysisDayOfWeek, setAnalysisDayOfWeek] = useState<number>(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [analysisDayOfMonth, setAnalysisDayOfMonth] = useState<number>(1);
+  const [strictFrequency, setStrictFrequency] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -384,6 +386,7 @@ export default function JournalSettingsPage() {
         })));
         setAnalysisInterval(data.analysis_interval || 'weekly');
         setEntryFrequency(data.entry_frequency || 'unlimited');
+        setStrictFrequency(data.strict_frequency ?? false);
         if (data.analysis_time_of_day) setAnalysisTimeOfDay(data.analysis_time_of_day);
         if (data.analysis_day_of_week !== undefined && data.analysis_day_of_week !== null) setAnalysisDayOfWeek(data.analysis_day_of_week);
         if (data.analysis_day_of_month !== undefined && data.analysis_day_of_month !== null) setAnalysisDayOfMonth(data.analysis_day_of_month);
@@ -442,6 +445,7 @@ export default function JournalSettingsPage() {
         prompts: promptsData,
         analysis_interval: analysisInterval,
         entry_frequency: entryFrequency !== 'unlimited' ? entryFrequency : undefined,
+        strict_frequency: entryFrequency !== 'unlimited' ? strictFrequency : false,
         ...(!isDevInterval ? {
           analysis_time_of_day: analysisTimeOfDay,
           ...((['weekly', 'biweekly'].includes(analysisInterval)) ? { analysis_day_of_week: analysisDayOfWeek } : {}),
@@ -665,6 +669,15 @@ export default function JournalSettingsPage() {
                 minWidth="200px"
               />
               <span style={s.hint}>How often you plan to write entries</span>
+              {entryFrequency !== 'unlimited' && (
+                <CustomCheckbox
+                  id="strict-frequency"
+                  checked={strictFrequency}
+                  onChange={setStrictFrequency}
+                  label="Enforce frequency"
+                  description="Only allow one entry per period"
+                />
+              )}
             </div>
 
             <div style={s.formGroup}>
