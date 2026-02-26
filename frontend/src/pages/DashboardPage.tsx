@@ -403,7 +403,11 @@ export default function DashboardPage() {
   if (conversations.length === 0) {
     return (
       <div style={s.page} className="dashboard-page">
-        <EmptyDashboard userName={user?.full_name?.split(' ')[0]} />
+        <EmptyDashboard
+          userName={user?.full_name?.split(' ')[0]}
+          isPersonalWorkspace={isPersonalWorkspace}
+          workspaceName={currentWorkspaceName}
+        />
 
         {/* Welcome Modal for first-time users */}
         <WelcomeModal key={welcomeKey} userName={user?.full_name?.split(' ')[0]} />
@@ -538,7 +542,9 @@ export default function DashboardPage() {
       <header style={s.header}>
         <h1 style={s.pageTitle} className="dashboard-page-title">Home</h1>
         <p style={s.pageSubtitle}>
-          Welcome to your {isPersonalWorkspace ? 'personal workspace' : currentWorkspaceName} overview
+          {isPersonalWorkspace
+            ? 'Your private workspace — only you can see items here'
+            : `${currentWorkspaceName} — a shared workspace for your group`}
         </p>
       </header>
 

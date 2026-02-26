@@ -258,7 +258,9 @@ export default function TemplatesPage() {
         <div style={s.headerLeft}>
           <h1 style={s.pageTitle} className="templates-page-title">Templates</h1>
           <p style={s.pageSubtitle}>
-            Reusable conversation configurations for {isPersonalWorkspace ? 'your workspace' : currentWorkspaceName}
+            {isPersonalWorkspace
+              ? 'Your private templates — only visible to you'
+              : `Templates for ${currentWorkspaceName}`}
           </p>
         </div>
         <button onClick={handleCreateTemplate} style={s.buttonPrimary}>

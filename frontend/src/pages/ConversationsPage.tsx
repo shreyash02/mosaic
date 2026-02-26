@@ -1005,7 +1005,11 @@ export default function ConversationsPage() {
       <header className="conversations-header">
         <div style={s.headerLeft}>
           <h1 style={s.pageTitle} className="conversations-page-title">Conversations</h1>
-          <p style={s.pageSubtitle}>Manage feedback collection across your {isPersonalWorkspace ? 'workspace' : 'organization'}</p>
+          <p style={s.pageSubtitle}>
+            {isPersonalWorkspace
+              ? 'Your private conversations — only visible to you'
+              : `Conversations managed by ${currentWorkspaceName} admins`}
+          </p>
         </div>
         <div className="conversations-header-actions" style={{ display: 'flex', gap: spacing[3], alignItems: 'center', flexWrap: 'wrap' as const }}>
           {templatesEnabled && (

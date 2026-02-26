@@ -285,9 +285,16 @@
   overflow-x: visible;
 }
 
+.org-switcher-item-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-500);
+  font-weight: 400;
+  line-height: 1.3;
+}
+
 .org-switcher-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--spacing-3);
   width: 100%;
   padding: var(--spacing-3) var(--spacing-4);
@@ -984,6 +991,10 @@ html.dark .org-settings-btn {
 html.dark .org-settings-btn:hover {
   background-color: #374151;
   color: #e5e7eb;
+}
+
+html.dark .org-switcher-item-desc {
+  color: #9ca3af;
 }
 
 html.dark .org-switcher-divider {

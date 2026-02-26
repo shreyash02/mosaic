@@ -249,8 +249,8 @@ export default function JournalsPage() {
             <h1 style={s.title}>Journals</h1>
             <p style={s.subtitle}>
               {journals.length > 0
-                ? `${journals.length} journal${journals.length !== 1 ? 's' : ''}`
-                : 'Your personal reflection space'}
+                ? `${journals.length} journal${journals.length !== 1 ? 's' : ''} — private to you`
+                : 'Your private reflection space'}
             </p>
           </div>
           <Link to="/journals/new" style={s.newButton}>

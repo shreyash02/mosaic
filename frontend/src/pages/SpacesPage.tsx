@@ -241,7 +241,7 @@ export default function SpacesPage() {
         <div style={s.header}>
           <div style={s.headerLeft}>
             <h1 style={s.title}>Spaces</h1>
-            <p style={s.subtitle}>Your second brain for ideas and themes</p>
+            <p style={s.subtitle}>Your spaces — private unless you share them</p>
           </div>
           <button style={s.newButton} onClick={() => setShowCreateModal(true)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

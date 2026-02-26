@@ -5,6 +5,8 @@ import GettingStartedChecklist from './GettingStartedChecklist';
 
 interface EmptyDashboardProps {
   userName?: string;
+  isPersonalWorkspace?: boolean;
+  workspaceName?: string;
 }
 
 // Feature card icons
@@ -201,8 +203,10 @@ const styles = {
   },
 };
 
-export default function EmptyDashboard({ userName }: EmptyDashboardProps) {
+export default function EmptyDashboard({ userName, isPersonalWorkspace = true, workspaceName = 'Personal' }: EmptyDashboardProps) {
   const templatesEnabled = useFeature('templates');
+  const journalsEnabled = useFeature('journals');
+  const spacesEnabled = useFeature('spaces');
   const greeting = userName ? `Welcome, ${userName}!` : 'Welcome to Mosaic!';
 
   return (
@@ -234,7 +238,9 @@ export default function EmptyDashboard({ userName }: EmptyDashboardProps) {
       <div style={styles.hero}>
         <h1 style={styles.greeting}>{greeting}</h1>
         <p style={styles.subtitle}>
-          Collect anonymous feedback and let AI uncover the insights that matter most.
+          {isPersonalWorkspace
+            ? 'This is your private workspace. Collect feedback, reflect, and let AI uncover insights.'
+            : `You're in ${workspaceName}. Admins create and manage conversations here for the group.`}
         </p>
         <Link to="/conversations/new" style={styles.primaryCTA} className="primary-cta">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -310,6 +316,35 @@ export default function EmptyDashboard({ userName }: EmptyDashboardProps) {
               </div>
               <div style={styles.quickStartLabel}>Browse Templates</div>
               <div style={styles.quickStartHint}>Use a pre-built template</div>
+            </Link>
+          )}
+
+          {journalsEnabled && isPersonalWorkspace && (
+            <Link to="/journals/new" style={styles.quickStartCard} className="quick-start-card">
+              <div style={styles.quickStartIcon}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M8 27.5A3.5 3.5 0 0 1 11.5 24H28" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M11.5 4H28v24H11.5A3.5 3.5 0 0 1 8 24.5v-17A3.5 3.5 0 0 1 11.5 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div style={styles.quickStartLabel}>New Journal</div>
+              <div style={styles.quickStartHint}>Private self-reflection</div>
+            </Link>
+          )}
+
+          {spacesEnabled && (
+            <Link to="/spaces" style={styles.quickStartCard} className="quick-start-card">
+              <div style={styles.quickStartIcon}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <circle cx="16" cy="16" r="4" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="7" cy="9" r="3" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="25" cy="9" r="3" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="7" cy="23" r="3" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="25" cy="23" r="3" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              </div>
+              <div style={styles.quickStartLabel}>New Space</div>
+              <div style={styles.quickStartHint}>Gather and organize ideas</div>
             </Link>
           )}
 
