@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mosaic — Three Surfaces</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-dark: #0f0f1a;
+      --bg-card: #1a1a2e;
+      --bg-card-hover: #22223a;
+      --text-primary: #f1f1f4;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --blue: #3b82f6;
+      --blue-light: #60a5fa;
+      --blue-glow: rgba(59, 130, 246, 0.15);
+      --purple: #8b5cf6;
+      --purple-light: #a78bfa;
+      --purple-glow: rgba(139, 92, 246, 0.15);
+      --green: #10b981;
+      --green-light: #34d399;
+      --green-glow: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 40px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .hero-brand {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 6px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 540px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+    }
+
+    .hero-tagline {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-tagline span {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 16px;
+      border-radius: 100px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-muted);
+    }
+
+    .hero-tagline span:nth-child(1) { border-color: rgba(59, 130, 246, 0.3); color: var(--blue-light); }
+    .hero-tagline span:nth-child(2) { border-color: rgba(139, 92, 246, 0.3); color: var(--purple-light); }
+    .hero-tagline span:nth-child(3) { border-color: rgba(16, 185, 129, 0.3); color: var(--green-light); }
+
+    /* ===== SHARED PRINCIPLE ===== */
+    .principle {
+      text-align: center;
+      padding: 40px 24px 60px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .principle-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .principle-flow .step {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      padding: 8px 20px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .principle-flow .arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    .principle p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    /* ===== FEATURE SECTIONS ===== */
+    .features {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 80px;
+    }
+
+    .feature {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .feature:nth-child(even) {
+      direction: rtl;
+    }
+
+    .feature:nth-child(even) > * {
+      direction: ltr;
+    }
+
+    .feature-info {
+      padding: 20px 0;
+    }
+
+    .feature-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 16px;
+    }
+
+    .feature-badge.blue { background: var(--blue-glow); color: var(--blue-light); }
+    .feature-badge.purple { background: var(--purple-glow); color: var(--purple-light); }
+    .feature-badge.green { background: var(--green-glow); color: var(--green-light); }
+
+    .feature-info h2 {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+      line-height: 1.15;
+    }
+
+    .feature-info .subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.7;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .feature-list li .icon {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      margin-top: 1px;
+    }
+
+    .feature-list li .icon.blue { background: var(--blue-glow); }
+    .feature-list li .icon.purple { background: var(--purple-glow); }
+    .feature-list li .icon.green { background: var(--green-glow); }
+
+    .feature-list li strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* ===== VISUAL PANELS ===== */
+    .feature-visual {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--bg-card);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .feature-visual:hover {
+      transform: translateY(-4px);
+    }
+
+    .feature-visual.blue:hover { box-shadow: 0 20px 60px rgba(59, 130, 246, 0.15); }
+    .feature-visual.purple:hover { box-shadow: 0 20px 60px rgba(139, 92, 246, 0.15); }
+    .feature-visual.green:hover { box-shadow: 0 20px 60px rgba(16, 185, 129, 0.15); }
+
+    .visual-content {
+      padding: 32px;
+    }
+
+    .visual-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .visual-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .visual-header span {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* Conversation visual */
+    .conv-exchange {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .conv-bubble {
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      max-width: 80%;
+      line-height: 1.5;
+    }
+
+    .conv-bubble.question {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--blue-light);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      align-self: flex-start;
+    }
+
+    .conv-bubble.response {
+      background: rgba(255,255,255,0.04);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255,255,255,0.06);
+      align-self: flex-end;
+      font-size: 12px;
+    }
+
+    .conv-bubble .label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .conv-bubble.question .label { color: var(--blue); }
+    .conv-bubble.response .label { color: var(--text-muted); }
+
+    .conv-analysis {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+      border-radius: 10px;
+    }
+
+    .conv-analysis .label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--amber);
+      margin-bottom: 6px;
+    }
+
+    .conv-analysis p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Journal visual */
+    .journal-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .journal-entry {
+      padding: 12px 16px;
+      border-radius: 10px;
+      border-left: 3px solid;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .journal-entry:nth-child(1) { border-color: var(--purple); opacity: 1; }
+    .journal-entry:nth-child(2) { border-color: var(--purple-light); opacity: 0.7; }
+    .journal-entry:nth-child(3) { border-color: rgba(139, 92, 246, 0.4); opacity: 0.45; }
+
+    .journal-entry .date {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--purple-light);
+      margin-bottom: 4px;
+    }
+
+    .journal-entry p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .journal-insight {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: rgba(139, 92, 246, 0.08);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+      border-radius: 10px;
+    }
+
+    .journal-insight .label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--purple);
+      margin-bottom: 6px;
+    }
+
+    .journal-insight p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Space visual */
+    .space-board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .space-card {
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+
+    .space-card .avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .space-card .anon {
+      font-size: 10px;
+      color: var(--text-muted);
+      vertical-align: middle;
+    }
+
+    .space-card p {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .space-card.incoming {
+      border-style: dashed;
+      border-color: rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--green);
+      font-size: 12px;
+      min-height: 64px;
+    }
+
+    .space-status {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .space-status .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .space-status span {
+      font-size: 11px;
+      color: var(--green-light);
+      font-weight: 500;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    }
+
+    /* ===== COMPARISON TABLE ===== */
+    .comparison {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      text-align: center;
+    }
+
+    .comparison h3 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .comparison .sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .comparison-table thead th {
+      background: var(--bg-card);
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .comparison-table thead th:nth-child(2) { color: var(--blue-light); }
+    .comparison-table thead th:nth-child(3) { color: var(--purple-light); }
+    .comparison-table thead th:nth-child(4) { color: var(--green-light); }
+
+    .comparison-table tbody td {
+      background: rgba(255,255,255,0.01);
+      color: var(--text-secondary);
+    }
+
+    .comparison-table tbody td:first-child {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .comparison-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      text-align: center;
+      padding: 40px 24px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .footer p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .footer .brand {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      opacity: 0.5;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .feature {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+      .feature:nth-child(even) { direction: ltr; }
+      .hero { padding: 48px 20px 32px; }
+      .features { padding: 0 20px 60px; gap: 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-brand">Mosaic</div>
+    <h1>Three surfaces.<br>One insight loop.</h1>
+    <p>Human input in. AI structure out. Act on what you learn.</p>
+    <div class="hero-tagline">
+      <span>Conversations &mdash; Ask</span>
+      <span>Journals &mdash; Reflect</span>
+      <span>Spaces &mdash; Gather</span>
+    </div>
+  </section>
+
+  <!-- Shared principle -->
+  <section class="principle">
+    <div class="principle-flow">
+      <div class="step">Collect</div>
+      <span class="arrow">&rarr;</span>
+      <div class="step">Analyze</div>
+      <span class="arrow">&rarr;</span>
+      <div class="step">Annotate</div>
+      <span class="arrow">&rarr;</span>
+      <div class="step">Act</div>
+    </div>
+    <p>Every surface follows the same insight-to-action loop.</p>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+
+    <!-- CONVERSATIONS -->
+    <div class="feature">
+      <div class="feature-info">
+        <span class="feature-badge blue">Ask</span>
+        <h2>Conversations</h2>
+        <p class="subtitle">Start a dialogue. Collect anonymous responses. AI reveals what matters most.</p>
+        <ul class="feature-list">
+          <li>
+            <div class="icon blue">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg>
+            </div>
+            <div><strong>Templates</strong> &mdash; Reusable conversation starters. Set up once, launch again.</div>
+          </li>
+          <li>
+            <div class="icon blue">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+            </div>
+            <div><strong>Recurring</strong> &mdash; Scheduled repeats. Weekly retros, monthly check-ins.</div>
+          </li>
+          <li>
+            <div class="icon blue">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div><strong>Follow-ups</strong> &mdash; Chain conversations. Dig deeper on what surfaces.</div>
+          </li>
+          <li>
+            <div class="icon blue">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div><strong>Anonymity modes</strong> &mdash; 4 privacy levels. From fully open to fully anonymous.</div>
+          </li>
+        </ul>
+      </div>
+      <div class="feature-visual blue">
+        <div class="visual-content">
+          <div class="visual-header">
+            <div class="visual-dot" style="background: var(--blue)"></div>
+            <span>Live conversation</span>
+          </div>
+          <div class="conv-exchange">
+            <div class="conv-bubble question">
+              <span class="label">Creator asks</span>
+              What's one thing we should change about how we work together?
+            </div>
+            <div class="conv-bubble response">
+              <span class="label">Anonymous</span>
+              Meetings could have tighter agendas.
+            </div>
+            <div class="conv-bubble response">
+              <span class="label">Anonymous</span>
+              More async communication, fewer syncs.
+            </div>
+            <div class="conv-bubble response">
+              <span class="label">Anonymous</span>
+              Decisions take too long to finalize.
+            </div>
+          </div>
+          <div class="conv-analysis">
+            <div class="label">AI Analysis</div>
+            <p><strong>Core theme:</strong> Participants want more efficient decision-making with fewer meetings and clearer outcomes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOURNALS -->
+    <div class="feature">
+      <div class="feature-info">
+        <span class="feature-badge purple">Reflect</span>
+        <h2>Journals</h2>
+        <p class="subtitle">Your private thinking space. Write freely. AI finds patterns you missed.</p>
+        <ul class="feature-list">
+          <li>
+            <div class="icon purple">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="12" y2="14"/></svg>
+            </div>
+            <div><strong>Completely private</strong> &mdash; Only you see your entries. No exceptions.</div>
+          </li>
+          <li>
+            <div class="icon purple">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="#a78bfa"/></svg>
+            </div>
+            <div><strong>Guided prompts</strong> &mdash; Structured cues to deepen your reflection.</div>
+          </li>
+          <li>
+            <div class="icon purple">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div><strong>Streaks</strong> &mdash; Build a reflection habit with consistent entries.</div>
+          </li>
+          <li>
+            <div class="icon purple">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+            </div>
+            <div><strong>Pattern detection</strong> &mdash; AI connects themes across entries over time.</div>
+          </li>
+        </ul>
+      </div>
+      <div class="feature-visual purple">
+        <div class="visual-content">
+          <div class="visual-header">
+            <div class="visual-dot" style="background: var(--purple)"></div>
+            <span>Your journal</span>
+          </div>
+          <div class="journal-entries">
+            <div class="journal-entry">
+              <div class="date">TODAY</div>
+              <p>Feeling good about the new direction. The group seems more aligned now. I think the key was being more transparent about the reasoning.</p>
+            </div>
+            <div class="journal-entry">
+              <div class="date">YESTERDAY</div>
+              <p>Had a tough meeting. Need to think about how to approach this differently next time.</p>
+            </div>
+            <div class="journal-entry">
+              <div class="date">3 DAYS AGO</div>
+              <p>Started the week with clarity. Focused on three key priorities...</p>
+            </div>
+          </div>
+          <div class="journal-insight">
+            <div class="label">Pattern Detected</div>
+            <p>You mention "alignment" 3 times this week. Your approach to setbacks is shifting from reactive to strategic.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPACES -->
+    <div class="feature">
+      <div class="feature-info">
+        <span class="feature-badge green">Gather</span>
+        <h2>Spaces</h2>
+        <p class="subtitle">A persistent place to gather thoughts &mdash; yours, or from others. Always open.</p>
+        <ul class="feature-list">
+          <li>
+            <div class="icon green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div><strong>Persistent</strong> &mdash; No close date. Always accepting new thoughts.</div>
+          </li>
+          <li>
+            <div class="icon green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            </div>
+            <div><strong>Drop-in</strong> &mdash; Add a thought whenever it strikes. Low friction.</div>
+          </li>
+          <li>
+            <div class="icon green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div><strong>Solo or shared</strong> &mdash; Gather your own ideas, or collect from a group.</div>
+          </li>
+          <li>
+            <div class="icon green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <div><strong>Periodic digests</strong> &mdash; AI summarizes contributions on your schedule.</div>
+          </li>
+        </ul>
+      </div>
+      <div class="feature-visual green">
+        <div class="visual-content">
+          <div class="visual-header">
+            <div class="visual-dot" style="background: var(--green)"></div>
+            <span>Product Feedback</span>
+          </div>
+          <div class="space-board">
+            <div class="space-card">
+              <span class="avatar" style="background: #10b981"></span>
+              <span class="anon">Anonymous</span>
+              <p>The search feature needs better filters for tags.</p>
+            </div>
+            <div class="space-card">
+              <span class="avatar" style="background: #60a5fa"></span>
+              <span class="anon">Anonymous</span>
+              <p>Love the new dashboard! Really clean design.</p>
+            </div>
+            <div class="space-card">
+              <span class="avatar" style="background: #f59e0b"></span>
+              <span class="anon">Anonymous</span>
+              <p>Can we get dark mode? My eyes at 2am...</p>
+            </div>
+            <div class="space-card incoming">+ new thoughts arrive anytime</div>
+          </div>
+          <div class="space-status">
+            <div class="pulse"></div>
+            <span>Always open &middot; 23 contributors &middot; 47 responses</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Comparison -->
+  <section class="comparison">
+    <h3>At a glance</h3>
+    <p class="sub">Same insight loop, different collection modes.</p>
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Conversations</th>
+          <th>Journals</th>
+          <th>Spaces</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Verb</td>
+          <td>Ask</td>
+          <td>Reflect</td>
+          <td>Gather</td>
+        </tr>
+        <tr>
+          <td>Participants</td>
+          <td>Many</td>
+          <td>Just you</td>
+          <td>You, or many</td>
+        </tr>
+        <tr>
+          <td>Duration</td>
+          <td>Bounded window</td>
+          <td>Ongoing</td>
+          <td>Always open</td>
+        </tr>
+        <tr>
+          <td>Analysis</td>
+          <td>After close</td>
+          <td>Continuous</td>
+          <td>Periodic digests</td>
+        </tr>
+        <tr>
+          <td>Privacy</td>
+          <td>4 anonymity levels</td>
+          <td>Completely private</td>
+          <td>Anonymous</td>
+        </tr>
+        <tr>
+          <td>Best for</td>
+          <td>Getting answers</td>
+          <td>Self-discovery</td>
+          <td>Collecting ideas over time</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Footer -->
+  <section class="footer">
+    <p>Human input in. AI structure out. Act on what you learn.</p>
+    <div class="brand">MOSAIC</div>
+  </section>
+
+</body>
+</html>
