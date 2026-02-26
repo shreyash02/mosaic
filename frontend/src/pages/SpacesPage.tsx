@@ -174,6 +174,7 @@ export default function SpacesPage() {
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createDescription, setCreateDescription] = useState('');
@@ -225,7 +226,7 @@ export default function SpacesPage() {
       setLastToggledPurpose('explore');
       navigate(`/spaces/${space.id}`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create space');
+      setCreateError(err.response?.data?.detail || 'Failed to create space');
     } finally {
       setCreating(false);
     }
@@ -369,9 +370,14 @@ export default function SpacesPage() {
 
       <Modal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => { setShowCreateModal(false); setCreateError(null); }}
         title="New Space"
       >
+        {createError && (
+          <div style={{ color: 'var(--color-error)', fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>
+            {createError}
+          </div>
+        )}
         <div style={s.formGroup}>
           <label style={s.label}>Title</label>
           <input

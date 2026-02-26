@@ -497,6 +497,7 @@ export default function JournalSettingsPage() {
       ));
       setRevokeTarget(null);
     } catch {
+      setRevokeTarget(null);
       setShareError('Failed to revoke share');
     } finally {
       setRevoking(false);

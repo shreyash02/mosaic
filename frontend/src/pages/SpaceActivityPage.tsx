@@ -100,20 +100,24 @@ export default function SpaceActivityPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   usePageTitle(spaceName ? `Activity - ${spaceName}` : 'Activity');
 
   useEffect(() => {
     if (!id) return;
-    api.getSpace(id).then(space => setSpaceName(space.title));
+    api.getSpace(id).then(space => setSpaceName(space.title)).catch(() => {});
   }, [id]);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+    setError(null);
     api.getSpaceActivity(id, 0, PAGE_SIZE).then(res => {
       setEntries(res.items);
       setHasMore(res.has_more);
+    }).catch(() => {
+      setError('Failed to load activity');
     }).finally(() => setLoading(false));
   }, [id]);
 
@@ -124,6 +128,8 @@ export default function SpaceActivityPage() {
       const res = await api.getSpaceActivity(id, entries.length, PAGE_SIZE);
       setEntries(prev => [...prev, ...res.items]);
       setHasMore(res.has_more);
+    } catch {
+      setError('Failed to load more activity');
     } finally {
       setLoadingMore(false);
     }
@@ -141,10 +147,16 @@ export default function SpaceActivityPage() {
 
         <h1 style={s.title}>Activity</h1>
 
+        {error && (
+          <div style={{ color: 'var(--color-error)', fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>
+            {error}
+          </div>
+        )}
+
         <div style={s.card}>
           {loading ? (
             <div style={s.loading}>Loading activity...</div>
-          ) : entries.length === 0 ? (
+          ) : entries.length === 0 && !error ? (
             <div style={s.empty}>No activity yet</div>
           ) : (
             entries.map((entry, i) => (
