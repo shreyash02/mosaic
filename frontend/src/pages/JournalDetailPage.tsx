@@ -717,7 +717,7 @@ export default function JournalDetailPage() {
     if (!id) return;
     try {
       if (!append) setLoadingEntries(true);
-      const data = await api.getJournalEntries(id, { skip, limit: ENTRIES_PER_PAGE, sort: 'desc' });
+      const data = await api.getJournalEntries(id, { skip, limit: ENTRIES_PER_PAGE });
       if (append) {
         setEntries(prev => [...prev, ...data.entries]);
       } else {
@@ -1081,7 +1081,7 @@ export default function JournalDetailPage() {
     } else if (entries.length < totalEntries) {
       // Entry not loaded yet — load all entries then scroll
       try {
-        const data = await api.getJournalEntries(id, { skip: 0, limit: totalEntries, sort: 'desc' });
+        const data = await api.getJournalEntries(id, { skip: 0, limit: totalEntries });
         setEntries(data.entries);
         setTotalEntries(data.total_entries);
         // Wait for DOM to update, then scroll

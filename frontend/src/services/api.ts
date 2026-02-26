@@ -1145,12 +1145,11 @@ class ApiService {
 
   async getJournalEntries(
     journalId: string,
-    options?: { skip?: number; limit?: number; sort?: 'asc' | 'desc' }
+    options?: { skip?: number; limit?: number }
   ): Promise<JournalEntryList> {
     const params = new URLSearchParams();
     if (options?.skip !== undefined) params.append('skip', String(options.skip));
     if (options?.limit !== undefined) params.append('limit', String(options.limit));
-    if (options?.sort) params.append('sort', options.sort);
     const queryString = params.toString();
     const url = `/journals/${journalId}/entries${queryString ? `?${queryString}` : ''}`;
     const response = await this.client.get<JournalEntryList>(url);

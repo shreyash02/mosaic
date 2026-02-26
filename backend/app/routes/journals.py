@@ -461,7 +461,12 @@ def _response_to_entry(
                 text=response.response_text,
             ))
 
-    word_count = len((response.response_text or "").split())
+    # Count words from text-type responses only (exclude rating/choice labels)
+    word_count = sum(
+        len((r.text or "").split())
+        for r in entry_responses
+        if r.type == "text" and r.text
+    )
 
     analysis_data = None
     if entry_analysis:
@@ -872,34 +877,61 @@ async def list_journals(
         joinedload(JournalModel.conversation),
     ).order_by(Conversation.updated_at.desc()).offset(skip).limit(limit).all()
 
+    if not journals:
+        return []
+
+    conv_ids = [j.conversation.id for j in journals]
+
+    # Batch: entry counts per conversation
+    entry_counts_rows = db.query(
+        Response.conversation_id,
+        func.count(Response.id),
+    ).filter(
+        Response.conversation_id.in_(conv_ids),
+        Response.status == "submitted",
+    ).group_by(Response.conversation_id).all()
+    entry_counts = {cid: cnt for cid, cnt in entry_counts_rows}
+
+    # Batch: last entry timestamp per conversation
+    last_entries_rows = db.query(
+        Response.conversation_id,
+        func.max(Response.submitted_at),
+    ).filter(
+        Response.conversation_id.in_(conv_ids),
+        Response.status == "submitted",
+    ).group_by(Response.conversation_id).all()
+    last_entries = {cid: ts for cid, ts in last_entries_rows}
+
+    # Batch: prompt counts per conversation
+    prompt_counts_rows = db.query(
+        Question.conversation_id,
+        func.count(Question.id),
+    ).filter(
+        Question.conversation_id.in_(conv_ids),
+    ).group_by(Question.conversation_id).all()
+    prompt_counts = {cid: cnt for cid, cnt in prompt_counts_rows}
+
+    # Batch: has_analysis per conversation
+    analysis_conv_ids = {row[0] for row in db.query(
+        JournalAnalysis.conversation_id,
+    ).filter(
+        JournalAnalysis.conversation_id.in_(conv_ids),
+    ).distinct().all()}
+
     results = []
     for j in journals:
         conv = j.conversation
-        entry_count = _get_entry_count(conv.id, db)
-
-        # Get last entry timestamp
-        last_entry = db.query(Response.submitted_at).filter(
-            Response.conversation_id == conv.id,
-            Response.status == "submitted",
-        ).order_by(Response.submitted_at.desc()).first()
-
-        # Get prompt count
-        prompt_count = db.query(func.count(Question.id)).filter(
-            Question.conversation_id == conv.id,
-        ).scalar() or 0
-
-        # Get streak (lightweight — just current_streak for list)
         streak = _get_streak(j, db)
 
         results.append(JournalListItem(
             id=j.id,
             title=conv.title,
             description=conv.description,
-            prompt_count=prompt_count,
-            total_entries=entry_count,
+            prompt_count=prompt_counts.get(conv.id, 0),
+            total_entries=entry_counts.get(conv.id, 0),
             current_streak=streak.current_streak,
-            last_entry_at=last_entry[0] if last_entry else None,
-            has_analysis=_has_analysis(conv.id, db),
+            last_entry_at=last_entries.get(conv.id),
+            has_analysis=conv.id in analysis_conv_ids,
             analysis_interval=conv.analysis_interval,
             entry_frequency=j.entry_frequency,
             strict_frequency=j.strict_frequency,
