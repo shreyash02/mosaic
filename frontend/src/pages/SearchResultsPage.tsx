@@ -24,12 +24,12 @@ const s = {
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.semibold,
-    color: 'var(--text-primary)',
+    color: 'var(--color-primary-900)',
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: 'var(--text-secondary)',
+    color: 'var(--color-primary-600)',
   },
   searchBox: {
     marginBottom: spacing[6],
@@ -41,7 +41,7 @@ const s = {
     border: `2px solid ${colors.primary[400]}`,
     borderRadius: borders.radius.lg,
     backgroundColor: colors.primary[50],
-    color: 'var(--text-primary)',
+    color: 'var(--color-primary-900)',
     outline: 'none',
     boxSizing: 'border-box' as const,
   },
@@ -58,10 +58,10 @@ const s = {
     padding: `${spacing[2]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    border: `1px solid var(--border-color)`,
+    border: `1px solid var(--color-primary-300)`,
     borderRadius: borders.radius.full,
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-secondary)',
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-600)',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -75,7 +75,7 @@ const s = {
     gap: spacing[4],
     marginBottom: spacing[4],
     fontSize: typography.fontSize.sm,
-    color: 'var(--text-secondary)',
+    color: 'var(--color-primary-600)',
   },
   statItem: {
     display: 'flex',
@@ -89,9 +89,9 @@ const s = {
   },
   resultCard: {
     padding: spacing[4],
-    border: `1px solid var(--border-color)`,
+    border: `1px solid var(--color-primary-300)`,
     borderRadius: borders.radius.lg,
-    backgroundColor: 'var(--bg-primary)',
+    backgroundColor: 'var(--color-primary-50)',
     transition: 'all 0.15s ease',
     cursor: 'pointer',
     textDecoration: 'none',
@@ -99,7 +99,7 @@ const s = {
     color: 'inherit',
   },
   resultCardHover: {
-    borderColor: 'var(--text-secondary)',
+    borderColor: 'var(--color-primary-600)',
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
   },
   resultHeader: {
@@ -111,7 +111,7 @@ const s = {
   resultTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.medium,
-    color: 'var(--text-primary)',
+    color: 'var(--color-primary-900)',
     margin: 0,
   },
   resultBadge: {
@@ -135,12 +135,12 @@ const s = {
   },
   resultMeta: {
     fontSize: typography.fontSize.sm,
-    color: 'var(--text-secondary)',
+    color: 'var(--color-primary-600)',
     marginBottom: spacing[2],
   },
   resultHeadline: {
     fontSize: typography.fontSize.sm,
-    color: 'var(--text-secondary)',
+    color: 'var(--color-primary-600)',
     lineHeight: typography.lineHeight.relaxed,
   },
   highlight: {
@@ -151,18 +151,18 @@ const s = {
   empty: {
     textAlign: 'center' as const,
     padding: spacing[12],
-    color: 'var(--text-secondary)',
+    color: 'var(--color-primary-600)',
   },
   emptyTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.medium,
     marginBottom: spacing[2],
-    color: 'var(--text-primary)',
+    color: 'var(--color-primary-900)',
   },
   loading: {
     textAlign: 'center' as const,
     padding: spacing[12],
-    color: 'var(--text-secondary)',
+    color: 'var(--color-primary-600)',
   },
   pagination: {
     display: 'flex',
@@ -172,10 +172,10 @@ const s = {
   },
   pageBtn: {
     padding: `${spacing[2]} ${spacing[3]}`,
-    border: `1px solid var(--border-color)`,
+    border: `1px solid var(--color-primary-300)`,
     borderRadius: borders.radius.md,
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
+    backgroundColor: 'var(--color-primary-50)',
+    color: 'var(--color-primary-900)',
     cursor: 'pointer',
   },
   pageBtnDisabled: {
@@ -479,7 +479,7 @@ export default function SearchResultsPage() {
               >
                 Previous
               </button>
-              <span style={{ padding: spacing[2], color: 'var(--text-secondary)' }}>
+              <span style={{ padding: spacing[2], color: 'var(--color-primary-600)' }}>
                 Page {page} of {results.total_pages}
               </span>
               <button
