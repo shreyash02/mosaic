@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { typography, spacing, borders } from '../../styles';
 import type { EmailPreferences } from '../../types';
+import CustomCheckbox from '../../components/CustomCheckbox';
 
 const styles = {
   card: {
@@ -200,18 +201,14 @@ export default function SettingsNotificationsPage() {
                 ...(idx === items.length - 1 ? styles.preferenceItemLast : {}),
               }}
             >
-              <input
-                type="checkbox"
+              <CustomCheckbox
                 id={`pref-${item.key}`}
                 checked={emailPrefs[item.key]}
-                onChange={(e) => handlePreferenceChange(item.key, e.target.checked)}
-                style={styles.checkbox}
+                onChange={(checked) => handlePreferenceChange(item.key, checked)}
+                label={item.name}
+                description={item.description}
                 disabled={savingPrefs}
               />
-              <label htmlFor={`pref-${item.key}`} style={styles.preferenceContent}>
-                <div style={styles.preferenceName}>{item.name}</div>
-                <div style={styles.preferenceDescription}>{item.description}</div>
-              </label>
             </div>
           ))}
         </div>

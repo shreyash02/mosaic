@@ -9,6 +9,7 @@ import QuestionTypeSelector from '../../components/QuestionTypeSelector';
 import QuestionSuggestions from '../../components/QuestionSuggestions';
 import { ChatBubbleIcon, StarRatingIcon, CheckCircleIcon, CheckListIcon } from '../../components/icons';
 import { typography, spacing, borders } from '../../styles/tokens';
+import CustomCheckbox from '../../components/CustomCheckbox';
 
 // Map question types to icons
 const QUESTION_TYPE_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -562,18 +563,17 @@ export default function QuestionsStep() {
                           </div>
                         </div>
                         {/* Required checkbox */}
-                        <label onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <CustomCheckbox
                             checked={question.is_required || false}
-                            onChange={(e) => {
+                            onChange={(checked) => {
                               const newQuestions = [...formState.questions];
-                              newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked };
+                              newQuestions[index] = { ...newQuestions[index], is_required: checked };
                               updateFormState({ questions: newQuestions });
                             }}
+                            label="Required"
                           />
-                          <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Required</span>
-                        </label>
+                        </div>
                         {/* Delete button */}
                         {formState.questions.length > 1 && (
                           <button
@@ -624,10 +624,13 @@ export default function QuestionsStep() {
                             <div style={{ fontWeight: 500, color: 'var(--color-primary-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{questionText}</div>
                             <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)' }}>{questionType}{question.is_required && ' • Required'}</div>
                           </div>
-                          <label onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer' }}>
-                            <input type="checkbox" checked={question.is_required || false} onChange={(e) => { const newQuestions = [...formState.questions]; newQuestions[index] = { ...newQuestions[index], is_required: e.target.checked }; updateFormState({ questions: newQuestions }); }} />
-                            <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Required</span>
-                          </label>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <CustomCheckbox
+                              checked={question.is_required || false}
+                              onChange={(checked) => { const newQuestions = [...formState.questions]; newQuestions[index] = { ...newQuestions[index], is_required: checked }; updateFormState({ questions: newQuestions }); }}
+                              label="Required"
+                            />
+                          </div>
                         </div>
 
                         {/* Question Type Cards - Full Width */}

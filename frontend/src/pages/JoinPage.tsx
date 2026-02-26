@@ -15,6 +15,7 @@ import AnnouncementBanner from '../components/AnnouncementBanner';
 import RatingButtons from '../components/RatingButtons';
 import MobileQuestionCarousel from '../components/MobileQuestionCarousel';
 import FocusTrap from '../components/FocusTrap';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 const styles = {
   page: {
@@ -1930,16 +1931,12 @@ export default function JoinPage() {
 
             {conversation.anonymity_level === 'revealable' && (
               <div style={styles.checkboxGroup}>
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   id="revealConsent"
                   checked={revealConsent}
-                  onChange={(e) => setRevealConsent(e.target.checked)}
-                  style={styles.checkbox}
+                  onChange={setRevealConsent}
+                  label="I consent to revealing my identity with my responses"
                 />
-                <label htmlFor="revealConsent" style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)' }}>
-                  I consent to revealing my identity with my responses
-                </label>
               </div>
             )}
 
