@@ -920,7 +920,13 @@ export default function SpaceDetailPage() {
       await api.deleteIdea(id, ideaId);
       setIdeas(prev => prev.filter(i => i.id !== ideaId));
       setSpace(prev => prev ? { ...prev, idea_count: Math.max(0, prev.idea_count - 1) } : prev);
-    } catch {}
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Failed to delete idea',
+        message: err.response?.data?.detail || err.message || 'Something went wrong',
+      });
+    }
   }
 
   async function handleNoteStateChange(themeId: string, noteIndex: number, newState: 'accepted' | 'completed' | 'dismissed' | null, reason?: string, outcome?: string, outcomeImageUrl?: string) {

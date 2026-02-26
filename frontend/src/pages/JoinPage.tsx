@@ -1328,7 +1328,9 @@ export default function JoinPage() {
                             try {
                               await navigator.clipboard.writeText(window.location.href);
                               setLinkCopied(true);
-                            } catch (err) {}
+                            } catch {
+                              // Clipboard API unavailable (e.g. incognito iframe) — ignore gracefully
+                            }
                           }}
                           style={styles.buttonSecondary}
                           className="join-btn-secondary"

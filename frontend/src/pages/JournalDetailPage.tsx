@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useJournalDraft } from '../hooks/useJournalDraft';
 import { formatDate, formatRelativeTime } from '../utils/formatting';
 import Modal from '../components/Modal';
+import { useNotifications } from '../contexts/NotificationContext';
 import JournalCalendar from '../components/JournalCalendar';
 
 const ENTRIES_PER_PAGE = 20;
@@ -671,6 +672,7 @@ export default function JournalDetailPage() {
   const [expandedInsights, setExpandedInsights] = useState<Set<string>>(new Set());
 
   const [error, setError] = useState('');
+  const { addToast } = useNotifications();
 
   // Delete journal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -995,8 +997,12 @@ export default function JournalDetailPage() {
       setEditRatingResponses({});
       setEditChoiceResponses({});
       setEditCheckboxResponses({});
-    } catch {
-      // Keep edit mode open on error
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Failed to save entry',
+        message: err.response?.data?.detail || err.message || 'Something went wrong',
+      });
     } finally {
       setEditSaving(false);
     }
