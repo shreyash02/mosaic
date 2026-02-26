@@ -10,13 +10,17 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.conversation_preset import ConversationPreset
-from app.models.organization import OrganizationMember
 from app.schemas.preset import (
     PresetCreate,
     PresetUpdate,
     Preset as PresetSchema,
 )
-from app.services.organization_service import check_organization_membership
+from app.services.workspace_service import (
+    resolve_workspace_id,
+    check_workspace_membership,
+    require_workspace_membership,
+    get_user_workspace_ids,
+)
 
 router = APIRouter()
 
@@ -36,20 +40,16 @@ def get_preset_or_404(db: Session, preset_id: UUID) -> ConversationPreset:
 
 
 def require_preset_access(db: Session, preset_id: UUID, current_user: User) -> ConversationPreset:
-    """Check user has access to preset (creator or org member)."""
+    """Check user has access to preset (creator or workspace member)."""
     preset = get_preset_or_404(db, preset_id)
 
     # Creator always has access
     if preset.creator_id == current_user.id:
         return preset
 
-    # If preset belongs to organization, check membership
-    if preset.organization_id:
-        membership = check_organization_membership(
-            db, preset.organization_id, current_user.id
-        )
-        if membership:
-            return preset
+    # Check workspace membership
+    if check_workspace_membership(db, preset.workspace_id, current_user.id):
+        return preset
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -58,20 +58,17 @@ def require_preset_access(db: Session, preset_id: UUID, current_user: User) -> C
 
 
 def require_preset_edit_access(db: Session, preset_id: UUID, current_user: User) -> ConversationPreset:
-    """Check user can edit preset (creator or org admin)."""
+    """Check user can edit preset (creator or workspace admin)."""
     preset = get_preset_or_404(db, preset_id)
 
     # Creator always has edit access
     if preset.creator_id == current_user.id:
         return preset
 
-    # If preset belongs to organization, check admin role
-    if preset.organization_id:
-        membership = check_organization_membership(
-            db, preset.organization_id, current_user.id
-        )
-        if membership and membership.role == "admin":
-            return preset
+    # Check workspace admin role
+    membership = check_workspace_membership(db, preset.workspace_id, current_user.id)
+    if membership and membership.role == "admin":
+        return preset
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -91,16 +88,14 @@ async def create_preset(
     If organization_id is provided, the preset will be shared with org members.
     Otherwise, it's a personal preset visible only to the creator.
     """
-    # If organization_id is provided, verify user is member
-    if preset_data.organization_id:
-        membership = check_organization_membership(
-            db, preset_data.organization_id, current_user.id
-        )
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You must be a member of this organization to create presets in it"
-            )
+    # Resolve workspace (supports workspace_id, organization_id, or personal fallback)
+    workspace_id = resolve_workspace_id(
+        db,
+        workspace_id=preset_data.workspace_id,
+        organization_id=preset_data.organization_id,
+        user_id=current_user.id,
+    )
+    require_workspace_membership(db, workspace_id, current_user)
 
     # Create preset
     preset = ConversationPreset(
@@ -109,6 +104,7 @@ async def create_preset(
         icon=preset_data.icon,
         creator_id=current_user.id,
         organization_id=preset_data.organization_id,
+        workspace_id=workspace_id,
         anonymity_level=preset_data.anonymity_level.value,
         results_access=preset_data.results_access.value,
         show_verbatim_responses=preset_data.show_verbatim_responses,
@@ -124,7 +120,8 @@ async def create_preset(
 
 @router.get("", response_model=List[PresetSchema])
 async def list_presets(
-    organization_id: Optional[UUID] = Query(None, description="Filter by organization"),
+    workspace_id: Optional[UUID] = Query(None, description="Filter by workspace"),
+    organization_id: Optional[UUID] = Query(None, description="Filter by organization (backward compat)"),
     include_personal: bool = Query(True, description="Include personal presets"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -132,40 +129,28 @@ async def list_presets(
     """
     List presets accessible to the user.
 
-    Returns personal presets and presets from organizations the user belongs to.
+    Returns presets from workspaces the user is a member of.
     """
-    # Get user's organization IDs
-    user_org_ids = db.query(OrganizationMember.organization_id).filter(
-        OrganizationMember.user_id == current_user.id
-    ).subquery()
+    # Get user's workspace IDs
+    user_ws_ids = get_user_workspace_ids(db, current_user.id)
 
     # Build query
     query = db.query(ConversationPreset).filter(
         ConversationPreset.is_archived == False
     )
 
-    if organization_id:
-        # Filter to specific organization (user must be member)
-        membership = check_organization_membership(db, organization_id, current_user.id)
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this organization"
-            )
-        query = query.filter(ConversationPreset.organization_id == organization_id)
+    if workspace_id:
+        # Filter to specific workspace (user must be member)
+        require_workspace_membership(db, workspace_id, current_user)
+        query = query.filter(ConversationPreset.workspace_id == workspace_id)
+    elif organization_id:
+        # Backward compat: resolve org to default workspace
+        resolved_ws_id = resolve_workspace_id(db, organization_id=organization_id)
+        require_workspace_membership(db, resolved_ws_id, current_user)
+        query = query.filter(ConversationPreset.workspace_id == resolved_ws_id)
     else:
-        # Show personal presets and/or org presets
-        conditions = []
-        if include_personal:
-            conditions.append(
-                (ConversationPreset.creator_id == current_user.id) &
-                (ConversationPreset.organization_id == None)
-            )
-        # Always include org presets the user has access to
-        conditions.append(ConversationPreset.organization_id.in_(user_org_ids))
-
-        if conditions:
-            query = query.filter(or_(*conditions))
+        # Show presets from all user's workspaces
+        query = query.filter(ConversationPreset.workspace_id.in_(user_ws_ids))
 
     presets = query.order_by(ConversationPreset.created_at.desc()).all()
     return presets

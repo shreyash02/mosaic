@@ -19,6 +19,7 @@ class SeriesCreate(SeriesBase):
     """Schema for creating a series."""
 
     organization_id: Optional[UUID] = None
+    workspace_id: Optional[UUID] = None
 
 
 class SeriesUpdate(BaseModel):
@@ -34,6 +35,7 @@ class Series(SeriesBase):
     id: UUID
     creator_id: UUID
     organization_id: Optional[UUID]
+    workspace_id: UUID
     created_at: datetime
     updated_at: datetime
 

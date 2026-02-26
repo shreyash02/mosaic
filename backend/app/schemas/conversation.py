@@ -167,6 +167,7 @@ class ConversationCreate(ConversationBase):
     """Schema for creating a conversation."""
 
     organization_id: Optional[UUID] = None
+    workspace_id: Optional[UUID] = None
     questions: List[QuestionCreate] = Field(..., min_items=1)
     series_id: Optional[UUID] = None  # Set when creating an instance from a template
 
@@ -259,6 +260,7 @@ class Conversation(ConversationBase):
     id: UUID
     creator_id: UUID
     organization_id: Optional[UUID] = None
+    workspace_id: UUID
     access_code: str
     share_token: Optional[UUID] = None
     state: ConversationState
@@ -371,6 +373,7 @@ class ConversationListItem(BaseModel):
     is_follow_up: bool = False
     parent_conversation_id: Optional[UUID] = None
     organization_id: Optional[UUID] = None
+    workspace_id: Optional[UUID] = None
 
     # Template fields
     is_template: bool = False

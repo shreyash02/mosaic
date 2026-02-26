@@ -10,7 +10,6 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.series import Series
-from app.models.organization import OrganizationMember
 from app.models.conversation import Conversation
 from app.models.analysis import Analysis
 from app.models.collection_analysis import CollectionAnalysis
@@ -22,7 +21,7 @@ from app.schemas.series import (
 )
 from app.schemas.conversation import ConversationListItem, ConversationState
 from app.schemas.collection_analysis import CollectionAnalysis as CollectionAnalysisSchema
-from app.services.organization_service import check_organization_membership
+from app.services.workspace_service import resolve_workspace_id, check_workspace_membership, get_user_workspace_ids
 from app.services.collection_analysis_service import CollectionAnalysisService
 from app.services.platform_settings_service import get_llm_model
 from datetime import datetime
@@ -42,24 +41,20 @@ def get_series_or_404(db: Session, series_id: UUID) -> Series:
 
 
 def require_series_access(db: Session, series_id: UUID, current_user: User):
-    """Check user has access to series (creator or org member)."""
+    """Check user has access to series (creator or workspace member)."""
     series = get_series_or_404(db, series_id)
-    
+
     # Creator always has access
     if series.creator_id == current_user.id:
         return series
-    
-    # If series belongs to organization, check membership
-    if series.organization_id:
-        membership = check_organization_membership(
-            db, series.organization_id, current_user.id
+
+    # Check workspace membership
+    if not check_workspace_membership(db, series.workspace_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this series"
         )
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this series"
-            )
-    
+
     return series
 
 
@@ -83,16 +78,15 @@ async def create_series(
     Raises:
         HTTPException: If organization_id provided and user is not a member
     """
-    # If organization_id is provided, verify user is member
-    if series_data.organization_id:
-        membership = check_organization_membership(
-            db, series_data.organization_id, current_user.id
-        )
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You must be a member of this organization to create series in it"
-            )
+    # Resolve workspace (supports workspace_id, organization_id, or personal fallback)
+    workspace_id = resolve_workspace_id(
+        db,
+        workspace_id=series_data.workspace_id,
+        organization_id=series_data.organization_id,
+        user_id=current_user.id,
+    )
+    from app.services.workspace_service import require_workspace_membership
+    require_workspace_membership(db, workspace_id, current_user)
 
     # Create series
     series = Series(
@@ -100,6 +94,7 @@ async def create_series(
         description=series_data.description,
         creator_id=current_user.id,
         organization_id=series_data.organization_id,
+        workspace_id=workspace_id,
     )
     db.add(series)
     db.commit()
@@ -112,6 +107,7 @@ async def create_series(
 async def list_series(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    workspace_id: Optional[UUID] = None,
     organization_id: Optional[UUID] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -119,34 +115,32 @@ async def list_series(
     """
     List series accessible to the user.
 
-    Includes:
-    - Series created by the user
-    - Series in organizations where the user is a member
+    Includes series in workspaces where the user is a member.
 
     Args:
         skip: Number of series to skip
         limit: Maximum number of series to return
-        organization_id: Optional filter by organization
+        workspace_id: Optional filter by workspace
+        organization_id: Optional filter by organization (backward compat, resolves to default workspace)
         current_user: Current authenticated user
         db: Database session
 
     Returns:
         List of series
     """
-    # Get user's organizations
-    user_org_ids = db.query(OrganizationMember.organization_id).filter(
-        OrganizationMember.user_id == current_user.id
-    ).subquery()
+    # Get user's workspaces
+    user_ws_ids = get_user_workspace_ids(db, current_user.id)
 
     query = db.query(Series).filter(
-        or_(
-            Series.creator_id == current_user.id,
-            Series.organization_id.in_(user_org_ids)
-        )
+        Series.workspace_id.in_(user_ws_ids)
     )
 
-    if organization_id:
-        query = query.filter(Series.organization_id == organization_id)
+    if workspace_id:
+        query = query.filter(Series.workspace_id == workspace_id)
+    elif organization_id:
+        # Backward compat: resolve org to default workspace
+        resolved_ws_id = resolve_workspace_id(db, organization_id=organization_id)
+        query = query.filter(Series.workspace_id == resolved_ws_id)
 
     query = query.order_by(Series.created_at.desc())
     query = query.offset(skip).limit(limit)
@@ -199,6 +193,7 @@ async def get_series(
             "closed_at": conv.closed_at.isoformat() if conv.closed_at else None,
             "timezone": conv.timezone,
             "organization_id": str(conv.organization_id) if conv.organization_id else None,
+            "workspace_id": str(conv.workspace_id) if conv.workspace_id else None,
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": str(conv.parent_conversation_id) if conv.parent_conversation_id else None,
             "series_id": str(conv.series_id) if conv.series_id else None,
@@ -214,6 +209,7 @@ async def get_series(
         "description": series.description,
         "creator_id": str(series.creator_id),
         "organization_id": str(series.organization_id) if series.organization_id else None,
+        "workspace_id": str(series.workspace_id),
         "created_at": series.created_at,
         "updated_at": series.updated_at,
         "conversations": conversations,

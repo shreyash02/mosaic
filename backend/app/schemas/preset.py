@@ -36,6 +36,7 @@ class PresetCreate(PresetBase):
     """Schema for creating a preset."""
 
     organization_id: Optional[UUID] = None
+    workspace_id: Optional[UUID] = None
 
 
 class PresetUpdate(BaseModel):
@@ -59,6 +60,7 @@ class Preset(PresetBase):
     id: UUID
     creator_id: UUID
     organization_id: Optional[UUID]
+    workspace_id: UUID
     is_archived: bool
     created_at: datetime
     updated_at: datetime

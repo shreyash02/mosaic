@@ -707,18 +707,18 @@ def create_space(
 ):
     """Create a new space."""
     from app.services.feature_flag_service import feature_flag_service
-    from app.services.organization_service import check_organization_membership
+    from app.services.workspace_service import resolve_workspace_id, require_workspace_membership
 
     tier = _require_spaces_flag(current_user, db)
 
-    # Validate org membership if organization_id provided
-    if data.organization_id:
-        membership = check_organization_membership(db, data.organization_id, current_user.id)
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You must be a member of this organization to create spaces in it",
-            )
+    # Resolve workspace (supports workspace_id, organization_id, or personal fallback)
+    workspace_id = resolve_workspace_id(
+        db,
+        workspace_id=data.workspace_id,
+        organization_id=data.organization_id,
+        user_id=current_user.id,
+    )
+    require_workspace_membership(db, workspace_id, current_user)
 
     # Check max_spaces limit
     max_spaces = feature_flag_service.get_config_value(
@@ -747,6 +747,7 @@ def create_space(
         description=data.description,
         owner_id=current_user.id,
         organization_id=data.organization_id,
+        workspace_id=workspace_id,
         settings=space_settings if space_settings else None,
     )
     db.add(space)
@@ -769,12 +770,13 @@ def create_space(
 def list_spaces(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    workspace_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
     personal: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List spaces the current user owns or is a member of, scoped by organization context."""
+    """List spaces the current user owns or is a member of, scoped by workspace context."""
     member_space_ids = (
         db.query(SpaceMember.space_id)
         .filter(SpaceMember.user_id == current_user.id)
@@ -790,9 +792,14 @@ def list_spaces(
         )
     )
 
-    # Scope by organization
-    if org_id:
-        query = query.filter(Space.organization_id == org_id)
+    # Scope by workspace or organization (backward compat)
+    if workspace_id:
+        query = query.filter(Space.workspace_id == workspace_id)
+    elif org_id:
+        # Backward compat: resolve org to default workspace
+        from app.services.workspace_service import resolve_workspace_id
+        resolved_ws_id = resolve_workspace_id(db, organization_id=org_id)
+        query = query.filter(Space.workspace_id == resolved_ws_id)
     else:
         query = query.filter(Space.organization_id.is_(None))
 

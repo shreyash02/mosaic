@@ -18,6 +18,7 @@ class SpaceCreate(BaseModel):
     purpose: Optional[str] = None
     purposes: Optional[List[str]] = None
     organization_id: Optional[str] = None
+    workspace_id: Optional[str] = None
 
     @field_validator("purpose")
     @classmethod

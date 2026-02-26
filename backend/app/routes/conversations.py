@@ -23,7 +23,7 @@ from app.models.question import Question
 from app.models.participant_code import ParticipantCode
 from app.models.response import Response
 from app.models.conversation_invitation import ConversationInvitation
-from app.models.organization import OrganizationMember
+from app.services.workspace_service import resolve_workspace_id, check_workspace_membership, require_workspace_membership, get_user_workspace_ids
 from app.utils.timezone_utils import parse_datetime_with_timezone, convert_local_to_utc
 from app.schemas.conversation import (
     ConversationCreate,
@@ -65,7 +65,6 @@ from app.schemas.common import DeleteResponse
 from app.schemas.periodic_analysis import EnableContinuousRequest
 from app.routes.upload import delete_image_file
 from app.services.email_service import email_service
-from app.services.organization_service import check_organization_membership
 from app.services.scheduler_service import calculate_next_analysis_time
 from app.services.notification_service import notification_service
 from app.services.in_app_notification_service import in_app_notification_service
@@ -236,18 +235,14 @@ async def create_conversation(
             conversation_timezone
         )
 
-    # If organization_id is provided, verify user is member
-    if conversation_data.organization_id:
-        membership = check_organization_membership(
-            db,
-            conversation_data.organization_id,
-            current_user.id
-        )
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You must be a member of this organization to create conversations in it"
-            )
+    # Resolve workspace (supports workspace_id, organization_id, or personal fallback)
+    workspace_id = resolve_workspace_id(
+        db,
+        workspace_id=conversation_data.workspace_id,
+        organization_id=conversation_data.organization_id,
+        user_id=current_user.id,
+    )
+    require_workspace_membership(db, workspace_id, current_user)
 
     # If series_id is provided, verify series exists and user has access
     if conversation_data.series_id:
@@ -258,18 +253,9 @@ async def create_conversation(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Series not found"
             )
-        # Check access: creator or org member
+        # Check access: creator or workspace member
         if series.creator_id != current_user.id:
-            if series.organization_id:
-                membership = check_organization_membership(
-                    db, series.organization_id, current_user.id
-                )
-                if not membership:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You don't have access to this series"
-                    )
-            else:
+            if not check_workspace_membership(db, series.workspace_id, current_user.id):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You don't have access to this series"
@@ -284,18 +270,9 @@ async def create_conversation(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Template series not found"
             )
-        # Check access: creator or org member
+        # Check access: creator or workspace member
         if series.creator_id != current_user.id:
-            if series.organization_id:
-                membership = check_organization_membership(
-                    db, series.organization_id, current_user.id
-                )
-                if not membership:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You don't have access to this series"
-                    )
-            else:
+            if not check_workspace_membership(db, series.workspace_id, current_user.id):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You don't have access to this series"
@@ -305,6 +282,7 @@ async def create_conversation(
     conversation = Conversation(
         creator_id=current_user.id,
         organization_id=conversation_data.organization_id,
+        workspace_id=workspace_id,
         parent_conversation_id=conversation_data.parent_conversation_id,
         title=conversation_data.title,
         participant_title=conversation_data.participant_title,
@@ -399,10 +377,8 @@ async def list_conversations(
     Returns:
         List of conversations
     """
-    # Get user's organizations
-    user_org_ids = db.query(OrganizationMember.organization_id).filter(
-        OrganizationMember.user_id == current_user.id
-    ).subquery()
+    # Get user's workspaces
+    user_ws_ids = get_user_workspace_ids(db, current_user.id)
 
     query = db.query(
         Conversation,
@@ -414,10 +390,7 @@ async def list_conversations(
             Response.status == "submitted"
         )
     ).filter(
-        or_(
-            Conversation.creator_id == current_user.id,
-            Conversation.organization_id.in_(user_org_ids)
-        ),
+        Conversation.workspace_id.in_(user_ws_ids),
         Conversation.state != ConversationState.DELETED
     ).group_by(Conversation.id)
 
@@ -482,6 +455,7 @@ async def list_conversations(
             "is_follow_up": conv.parent_conversation_id is not None,
             "parent_conversation_id": conv.parent_conversation_id,
             "organization_id": conv.organization_id,
+            "workspace_id": conv.workspace_id,
             # Template fields
             "is_template": conv.is_template or False,
             "template_series_id": conv.template_series_id,
@@ -728,23 +702,14 @@ async def preview_conversation(
             detail="Conversation not found"
         )
 
-    # Check if user is creator
+    # Check if user is creator or workspace member
     is_creator = conversation.creator_id == current_user.id
+    is_workspace_member = check_workspace_membership(db, conversation.workspace_id, current_user.id) is not None
 
-    # Check if user is org admin
-    is_org_admin = False
-    if conversation.organization_id:
-        membership = db.query(OrganizationMember).filter(
-            OrganizationMember.organization_id == conversation.organization_id,
-            OrganizationMember.user_id == current_user.id,
-            OrganizationMember.role == "admin"
-        ).first()
-        is_org_admin = membership is not None
-
-    if not is_creator and not is_org_admin:
+    if not is_creator and not is_workspace_member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the creator or organization admin can preview this conversation"
+            detail="Only the creator or workspace members can preview this conversation"
         )
 
     return conversation
@@ -1024,22 +989,23 @@ async def bulk_operation(
     succeeded = 0
     failed = 0
 
-    # Get user's organizations for permission check
-    user_org_ids = set(
-        m.organization_id for m in db.query(OrganizationMember).filter(
-            OrganizationMember.user_id == current_user.id
+    # Get user's workspace IDs for permission check
+    from app.models.workspace import WorkspaceMember
+    user_ws_id_set = set(
+        m.workspace_id for m in db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == current_user.id
         ).all()
     )
 
     for conv_id in request.conversation_ids:
         try:
-            # Get conversation with ownership/org membership check
+            # Get conversation with ownership/workspace membership check
             conversation = db.query(Conversation).filter(
                 Conversation.id == conv_id,
                 Conversation.state != ConversationState.DELETED.value,
                 or_(
                     Conversation.creator_id == current_user.id,
-                    Conversation.organization_id.in_(user_org_ids) if user_org_ids else False
+                    Conversation.workspace_id.in_(user_ws_id_set) if user_ws_id_set else False
                 )
             ).first()
 
@@ -1237,6 +1203,7 @@ async def duplicate_conversation(
     duplicate_conversation = Conversation(
         creator_id=current_user.id,
         organization_id=original_conversation.organization_id,
+        workspace_id=original_conversation.workspace_id,
         # Don't copy parent_conversation_id - this is a standalone duplicate
         parent_conversation_id=None,
         title=duplicate_title,
@@ -2248,6 +2215,7 @@ async def create_follow_up_conversation(
                 description=f"Series for {parent_conversation.title} and its follow-ups",
                 creator_id=current_user.id,
                 organization_id=parent_conversation.organization_id,
+                workspace_id=parent_conversation.workspace_id,
             )
             db.add(series)
             db.flush()  # Get series ID
@@ -2259,6 +2227,7 @@ async def create_follow_up_conversation(
     follow_up = Conversation(
         creator_id=current_user.id,
         organization_id=parent_conversation.organization_id,
+        workspace_id=parent_conversation.workspace_id,
         parent_conversation_id=parent_conversation.id,
         series_id=series_id_to_assign,
         title=f"{parent_conversation.title} (Follow-up)",
