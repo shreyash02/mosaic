@@ -1053,6 +1053,7 @@ export default function JournalDetailPage() {
       setEntries(prev => prev.filter(e => e.id !== deletingEntryId));
       setTotalEntries(prev => prev - 1);
       setDeletingEntryId(null);
+      loadCalendarData();
     } catch {
       setError('Failed to delete entry.');
     } finally {
@@ -1071,14 +1072,28 @@ export default function JournalDetailPage() {
     [analysesData],
   );
 
-  const handleCalendarDateClick = useCallback((_date: string, entryId?: string) => {
-    if (!entryId) return;
+  const handleCalendarDateClick = useCallback(async (_date: string, entryId?: string) => {
+    if (!entryId || !id) return;
     // Find the entry card in the DOM and scroll to it
     const entryEl = document.querySelector(`[data-entry-id="${entryId}"]`);
     if (entryEl) {
       entryEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (entries.length < totalEntries) {
+      // Entry not loaded yet — load all entries then scroll
+      try {
+        const data = await api.getJournalEntries(id, { skip: 0, limit: totalEntries, sort: 'desc' });
+        setEntries(data.entries);
+        setTotalEntries(data.total_entries);
+        // Wait for DOM to update, then scroll
+        requestAnimationFrame(() => {
+          const el = document.querySelector(`[data-entry-id="${entryId}"]`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      } catch {
+        addToast({ type: 'error', title: 'Failed to load entry', message: 'Could not scroll to the selected entry.' });
+      }
     }
-  }, []);
+  }, [id, entries.length, totalEntries, addToast]);
 
   const hasMore = entries.length < totalEntries;
 
@@ -1231,7 +1246,7 @@ export default function JournalDetailPage() {
             {availablePeriods.length > 0 && (
               <div style={s.periodSelector}>
                 {availablePeriods.map((period) => {
-                  const isSelected = selectedPeriod === period.date;
+                  const isSelected = period.date === null ? selectedPeriod === null : selectedPeriod === period.date;
                   return (
                     <button
                       key={period.date ?? 'current'}

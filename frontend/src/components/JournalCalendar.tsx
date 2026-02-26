@@ -379,6 +379,24 @@ export default function JournalCalendar({
         }
         periodStart = periodEnd;
       }
+    } else if (entryFrequency === 'biweekly') {
+      let periodStart = getWeekStart(start);
+      const currentWeekStart = getWeekStart(end);
+      while (periodStart < currentWeekStart) {
+        const periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodEnd.getDate() + 14);
+        let found = false;
+        const d = new Date(Math.max(periodStart.getTime(), start.getTime()));
+        while (d < periodEnd && d < end) {
+          if (entryDateMap.has(toDateStr(d))) { found = true; break; }
+          d.setDate(d.getDate() + 1);
+        }
+        if (!found) {
+          const markDate = new Date(Math.max(periodStart.getTime(), start.getTime()));
+          missed.add(toDateStr(markDate));
+        }
+        periodStart = periodEnd;
+      }
     } else if (entryFrequency === 'monthly') {
       let periodStart = getMonthStart(start);
       const currentMonthStart = getMonthStart(end);
