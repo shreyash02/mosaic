@@ -164,6 +164,7 @@ export interface Conversation {
   access_code: string;
   state: ConversationState;
   auto_analyze: boolean;
+  auto_analyze_skipped?: boolean;
   max_response_length: number;
   duration_minutes?: number;
   scheduled_activate_at?: string;

@@ -94,6 +94,8 @@ class Conversation(Base):
 
     auto_analyze = Column(Boolean, default=False, nullable=False)
     # if true, trigger analysis automatically when conversation closes
+    auto_analyze_skipped = Column(Boolean, default=False, nullable=False)
+    # if true, auto-analyze was skipped due to usage limit
 
     # Continuous conversation mode
     is_continuous = Column(Boolean, default=False, nullable=False)

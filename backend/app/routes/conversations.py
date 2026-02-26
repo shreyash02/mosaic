@@ -1460,8 +1460,52 @@ async def close_conversation(
         Response.conversation_id == conversation_id
     ).count()
     if conversation.auto_analyze and response_count > 0:
-        should_auto_analyze = True
-        conversation.state = ConversationState.ANALYZING.value
+        # Check usage limit before allowing auto-analysis
+        from app.services.feature_flag_service import feature_flag_service
+        from app.services.subscription_service import subscription_service
+        from app.services.usage_service import usage_service
+
+        tier = subscription_service.get_tier(
+            db,
+            user_id=current_user.id,
+            org_id=conversation.organization_id
+        )
+
+        analysis_enabled = feature_flag_service.is_enabled(
+            db, "ai_analysis",
+            tier=tier,
+            org_id=conversation.organization_id,
+            user_id=current_user.id
+        )
+
+        if analysis_enabled:
+            limit = feature_flag_service.get_config_value(
+                db, "ai_analysis", "analyses_per_month",
+                tier=tier,
+                org_id=conversation.organization_id,
+                user_id=current_user.id
+            )
+            usage_user_id = None if conversation.organization_id else current_user.id
+            usage_org_id = conversation.organization_id
+
+            is_allowed, _ = usage_service.check_limit(
+                db, "ai_analysis", limit,
+                user_id=usage_user_id,
+                org_id=usage_org_id
+            )
+
+            if is_allowed:
+                should_auto_analyze = True
+                conversation.state = ConversationState.ANALYZING.value
+                usage_service.increment_usage(
+                    db, "ai_analysis",
+                    user_id=usage_user_id,
+                    org_id=usage_org_id
+                )
+            else:
+                conversation.auto_analyze_skipped = True
+        else:
+            conversation.auto_analyze_skipped = True
 
     db.commit()
     db.refresh(conversation)

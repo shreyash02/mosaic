@@ -1579,6 +1579,30 @@ export default function ConversationDetailPage() {
 
         {conversation.state === ConversationState.CLOSED && (
           <>
+            {conversation.auto_analyze_skipped && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: spacing[3],
+                padding: spacing[4],
+                backgroundColor: 'var(--color-warning-light, #FEF3C7)',
+                borderLeft: '4px solid var(--color-warning, #F59E0B)',
+                borderRadius: `0 ${borders.radius.md} ${borders.radius.md} 0`,
+                fontSize: typography.fontSize.sm,
+                color: 'var(--color-primary-800)',
+                lineHeight: typography.lineHeight.relaxed,
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning, #F59E0B)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <span>
+                  Auto-analysis was skipped because you've reached your monthly analysis limit. You can still run analysis manually after your limits reset.
+                  {' '}<Link to="/settings/usage" style={{ color: 'var(--color-primary-700)', fontWeight: typography.fontWeight.medium }}>View Usage</Link>
+                </span>
+              </div>
+            )}
             {aiAnalysisEnabled && (
               <ContextualHint
                 hintId="run-analysis"

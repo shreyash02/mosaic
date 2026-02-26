@@ -291,6 +291,9 @@ class Conversation(ConversationBase):
     # Context notes
     context_notes_updated_at: Optional[datetime] = None
 
+    # Auto-analyze skipped
+    auto_analyze_skipped: bool = False
+
     # Archiving
     is_archived: bool = False
     archived_at: Optional[datetime] = None
