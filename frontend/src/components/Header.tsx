@@ -10,7 +10,6 @@ import './Header.css';
 export default function Header() {
   const location = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
-  const organizationsEnabled = useFeature('organizations');
   const journalsEnabled = useFeature('journals');
   const spacesEnabled = useFeature('spaces');
 
@@ -132,7 +131,7 @@ export default function Header() {
             </button>
 
             {/* Organization Switcher */}
-            {organizationsEnabled && (
+            {organizations.length > 0 && (
             <div className="org-switcher" ref={dropdownRef}>
               <button
                 className="org-switcher-trigger"
