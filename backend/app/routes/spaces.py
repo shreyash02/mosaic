@@ -147,12 +147,17 @@ def _require_space_editor(space_id: UUID, current_user: User, db: Session) -> No
         SpaceMember.space_id == space_id,
         SpaceMember.user_id == current_user.id,
     ).first()
-    if member and member.role == "viewer":
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this space",
+        )
+    if member.role == "viewer":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You have view-only access to this space",
         )
-    if member and member.role == "suggester":
+    if member.role == "suggester":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can suggest ideas but cannot edit this space directly",
@@ -165,7 +170,12 @@ def _require_space_suggester(space_id: UUID, current_user: User, db: Session) ->
         SpaceMember.space_id == space_id,
         SpaceMember.user_id == current_user.id,
     ).first()
-    if member and member.role == "viewer":
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this space",
+        )
+    if member.role == "viewer":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You have view-only access to this space",
