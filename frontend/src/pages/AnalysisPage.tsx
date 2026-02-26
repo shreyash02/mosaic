@@ -778,7 +778,7 @@ export default function AnalysisPage() {
         const convData = await api.getConversation(id);
         setFullConversation(convData);
         if (convData.state === 'analyzed') {
-          loadAnalysis();
+          loadAnalysisRef.current();
         }
       } catch (err) {
         console.error('Error polling for re-analysis:', err);
@@ -888,6 +888,9 @@ export default function AnalysisPage() {
       setLoading(false);
     }
   };
+
+  const loadAnalysisRef = useRef(loadAnalysis);
+  loadAnalysisRef.current = loadAnalysis;
 
   const groupResponsesByQuestion = () => {
     const grouped: Record<string, ResponseWithQuestion[]> = {};
@@ -1514,8 +1517,8 @@ export default function AnalysisPage() {
             </div>
           </header>
 
-          {/* Tab bar */}
-          {suggestedActions.length > 0 && (
+          {/* Tab bar — show when actions exist or when creator navigated with activeTab */}
+          {(suggestedActions.length > 0 || (isCreator && activeTab === 'actions')) && (
             <div style={{
               display: 'flex',
               gap: spacing[1],
