@@ -432,7 +432,7 @@ export default function JournalCreatePage() {
         type: p.type,
         order_index: i,
         ...(p.type === 'rating' ? { rating_min: 1, rating_max: 10 } : {}),
-        ...(p.type === 'single_choice' && p.choices ? { choices: p.choices } : {}),
+        ...((p.type === 'single_choice' || p.type === 'checkbox') && p.choices ? { choices: p.choices } : {}),
       }));
 
       const isDevInterval = analysisInterval === 'every_10_minutes';
