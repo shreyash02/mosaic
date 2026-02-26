@@ -16,6 +16,7 @@ import { SkeletonAnalysis } from '../components/Skeleton';
 import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 import SuggestedActionsSection from '../components/SuggestedActions';
 import WhatsNextBar from '../components/WhatsNextBar';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const styles = {
   page: {
@@ -629,6 +630,7 @@ export default function AnalysisPage() {
   const [sharingEnabled, setSharingEnabled] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [togglingShare, setTogglingShare] = useState(false);
+  const { addToast } = useNotifications();
   const [annotations, setAnnotations] = useState<InsightAnnotation[]>([]);
   const [savingAnnotation, setSavingAnnotation] = useState<string | null>(null);
   const noteInputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
@@ -1405,8 +1407,12 @@ export default function AnalysisPage() {
                             setSharingEnabled(result.sharing_enabled);
                             setShareUrl(result.share_url);
                             analytics.analysisShared({ conversationId: id!, action: 'disable' });
-                          } catch (err) {
-                            console.error('Failed to disable sharing:', err);
+                          } catch (err: any) {
+                            addToast({
+                              type: 'error',
+                              title: 'Failed to disable sharing',
+                              message: err.response?.data?.detail || err.message || 'Something went wrong',
+                            });
                           } finally {
                             setTogglingShare(false);
                           }
@@ -1439,8 +1445,12 @@ export default function AnalysisPage() {
                             setTimeout(() => setLinkCopied(false), 2000);
                           }
                           analytics.analysisShared({ conversationId: id!, action: 'enable' });
-                        } catch (err) {
-                          console.error('Failed to enable sharing:', err);
+                        } catch (err: any) {
+                          addToast({
+                            type: 'error',
+                            title: 'Failed to enable sharing',
+                            message: err.response?.data?.detail || err.message || 'Something went wrong',
+                          });
                         } finally {
                           setTogglingShare(false);
                         }
