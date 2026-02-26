@@ -17,6 +17,7 @@ import LimitReachedModal, { isLimitReachedError } from '../components/LimitReach
 import SuggestedActionsSection from '../components/SuggestedActions';
 import WhatsNextBar from '../components/WhatsNextBar';
 import { useNotifications } from '../contexts/NotificationContext';
+import CustomSelect from '../components/CustomSelect';
 
 const styles = {
   page: {
@@ -2105,15 +2106,16 @@ export default function AnalysisPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                   <label htmlFor="groupBy" style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Group by:</label>
-                  <select
+                  <CustomSelect
                     id="groupBy"
                     value={groupBy}
-                    onChange={(e) => setGroupBy(e.target.value as 'question' | 'responder')}
-                    style={styles.groupSelect}
-                  >
-                    <option value="question">Question</option>
-                    <option value="responder">Responder</option>
-                  </select>
+                    onChange={(val) => setGroupBy(val as 'question' | 'responder')}
+                    options={[
+                      { value: 'question', label: 'Question' },
+                      { value: 'responder', label: 'Responder' },
+                    ]}
+                    minWidth="120px"
+                  />
                 </div>
               </div>
 

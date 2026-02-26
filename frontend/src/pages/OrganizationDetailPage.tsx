@@ -5,6 +5,7 @@ import type { OrganizationWithMembers } from '../types';
 import { formatDateShort } from '../utils/formatting';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { useOrganization } from '../contexts/OrganizationContext';
+import CustomSelect from '../components/CustomSelect';
 
 export default function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -421,21 +422,15 @@ export default function OrganizationDetailPage() {
                                   <span style={{ color: 'var(--color-primary-500)' }}>Updating...</span>
                                 ) : (
                                   <>
-                                    <select
+                                    <CustomSelect
                                       value={member.role}
-                                      onChange={(e) => handleUpdateRole(member.user_id, e.target.value as 'admin' | 'member')}
-                                      disabled={updatingMemberId !== null}
-                                      style={{
-                                        padding: `${spacing[1]} ${spacing[2]}`,
-                                        fontSize: typography.fontSize.sm,
-                                        border: `${borders.width.thin} solid ${'var(--color-primary-400)'}`,
-                                        borderRadius: borders.radius.sm,
-                                        backgroundColor: 'var(--color-primary-50)',
-                                      }}
-                                    >
-                                      <option value="member">Member</option>
-                                      <option value="admin">Admin</option>
-                                    </select>
+                                      onChange={(val) => handleUpdateRole(member.user_id, val as 'admin' | 'member')}
+                                      options={[
+                                        { value: 'member', label: 'Member' },
+                                        { value: 'admin', label: 'Admin' },
+                                      ]}
+                                      minWidth="100px"
+                                    />
                                     <button
                                       onClick={() => handleRemoveMember(member.user_id)}
                                       disabled={updatingMemberId !== null}

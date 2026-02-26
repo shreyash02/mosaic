@@ -21,6 +21,7 @@ import FocusTrap from '../components/FocusTrap';
 import DateTimePicker from '../components/DateTimePicker';
 import LimitReachedModal, { isLimitReachedError } from '../components/LimitReachedModal';
 import FollowUpModal from '../components/FollowUpModal';
+import CustomSelect from '../components/CustomSelect';
 
 // Design tokens based styles
 const s = {
@@ -2637,18 +2638,14 @@ export default function ConversationDetailPage() {
               </p>
               <div style={s.formGroup}>
                 <label style={s.formLabel}>Select Collection</label>
-                <select
+                <CustomSelect
                   value={selectedSeriesId}
-                  onChange={(e) => setSelectedSeriesId(e.target.value)}
-                  style={s.select}
-                >
-                  <option value="">No collection</option>
-                  {seriesList.map((series) => (
-                    <option key={series.id} value={series.id}>
-                      {series.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedSeriesId(String(val))}
+                  options={[
+                    { value: '', label: 'No collection' },
+                    ...seriesList.map((series) => ({ value: series.id, label: series.name })),
+                  ]}
+                />
               </div>
               <div style={s.modalActions}>
                 <button onClick={() => setShowSeriesModal(false)} style={s.buttonSecondary}>
@@ -2678,16 +2675,16 @@ export default function ConversationDetailPage() {
               </p>
               <div style={s.formGroup}>
                 <label style={s.formLabel}>Analysis Frequency</label>
-                <select
+                <CustomSelect
                   value={selectedAnalysisInterval}
-                  onChange={(e) => setSelectedAnalysisInterval(e.target.value)}
-                  style={s.select}
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Biweekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
+                  onChange={(val) => setSelectedAnalysisInterval(String(val))}
+                  options={[
+                    { value: 'daily', label: 'Daily' },
+                    { value: 'weekly', label: 'Weekly' },
+                    { value: 'biweekly', label: 'Biweekly' },
+                    { value: 'monthly', label: 'Monthly' },
+                  ]}
+                />
               </div>
               <div style={s.modalActions}>
                 <button onClick={() => setShowAnalysisScheduleModal(false)} style={s.buttonSecondary}>

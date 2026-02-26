@@ -5,6 +5,7 @@ import type { OrganizationWithMembers, OrganizationInvitationListResponse } from
 import { formatRelativeTime } from '../utils/formatting';
 import { typography, spacing, borders, transitions } from '../styles';
 import { SkeletonInvitationPage } from '../components/Skeleton';
+import CustomSelect from '../components/CustomSelect';
 
 const styles = {
   page: {
@@ -419,17 +420,15 @@ export default function InviteMembersPage() {
                 <label htmlFor="role-select" style={styles.label}>
                   Role
                 </label>
-                <select
+                <CustomSelect
                   id="role-select"
                   value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'member')}
-                  disabled={inviting}
-                  style={styles.select}
-                  className="invite-input"
-                >
-                  <option value="member">Member - Can create conversations and view organization content</option>
-                  <option value="admin">Admin - Can manage members and organization settings</option>
-                </select>
+                  onChange={(val) => setSelectedRole(val as 'admin' | 'member')}
+                  options={[
+                    { value: 'member', label: 'Member - Can create conversations and view organization content' },
+                    { value: 'admin', label: 'Admin - Can manage members and organization settings' },
+                  ]}
+                />
               </div>
 
               <button

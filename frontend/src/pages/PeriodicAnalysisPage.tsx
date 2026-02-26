@@ -7,6 +7,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { useFeature } from '../contexts/FeaturesContext';
 import { generateAnalysisPDF, sanitizeFilename } from '../utils/pdf';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
+import CustomSelect from '../components/CustomSelect';
 
 const styles = {
   page: {
@@ -714,15 +715,16 @@ export default function PeriodicAnalysisPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                   <label htmlFor="groupBy" style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>Group by:</label>
-                  <select
+                  <CustomSelect
                     id="groupBy"
                     value={groupBy}
-                    onChange={(e) => setGroupBy(e.target.value as 'question' | 'responder')}
-                    style={styles.groupSelect}
-                  >
-                    <option value="question">Question</option>
-                    <option value="responder">Responder</option>
-                  </select>
+                    onChange={(val) => setGroupBy(val as 'question' | 'responder')}
+                    options={[
+                      { value: 'question', label: 'Question' },
+                      { value: 'responder', label: 'Responder' },
+                    ]}
+                    minWidth="120px"
+                  />
                 </div>
               </div>
 
