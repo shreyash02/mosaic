@@ -19,6 +19,7 @@ class ConversationPreset(Base):
     # Ownership (personal or org-level)
     creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="SET NULL"), nullable=False, index=True)
 
     # Preset info
     name = Column(String(255), nullable=False)
@@ -47,6 +48,7 @@ class ConversationPreset(Base):
     # Relationships
     creator = relationship("User", back_populates="conversation_presets")
     organization = relationship("Organization", back_populates="conversation_presets")
+    workspace = relationship("Workspace")
 
     def __repr__(self):
         return f"<ConversationPreset(id={self.id}, name={self.name})>"

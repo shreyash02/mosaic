@@ -27,6 +27,11 @@ class Space(Base):
         ForeignKey("organizations.id", ondelete="SET NULL"),
         nullable=True,
     )
+    workspace_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=False,
+    )
     settings = Column(JSONB, nullable=True, default=dict)
     auto_organize = Column(Boolean, default=True, nullable=False)
     clustering_mode = Column(String(20), default="llm", nullable=False)
@@ -39,6 +44,7 @@ class Space(Base):
     # Relationships
     owner = relationship("User", foreign_keys=[owner_id])
     organization = relationship("Organization", foreign_keys=[organization_id])
+    workspace = relationship("Workspace", foreign_keys=[workspace_id])
     ideas = relationship("Idea", back_populates="space", cascade="all, delete-orphan")
     themes = relationship("Theme", back_populates="space", cascade="all, delete-orphan")
     theme_connections = relationship("ThemeConnection", back_populates="space", cascade="all, delete-orphan")

@@ -21,6 +21,7 @@ class Series(Base):
     # Ownership
     creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="SET NULL"), nullable=False, index=True)
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -32,6 +33,7 @@ class Series(Base):
     # Relationships
     creator = relationship("User", back_populates="series")
     organization = relationship("Organization", back_populates="series")
+    workspace = relationship("Workspace")
     conversations = relationship("Conversation", back_populates="series", foreign_keys="Conversation.series_id")
     templates = relationship("Conversation", back_populates="series_template_rel", foreign_keys="Conversation.template_series_id")
     analysis = relationship("CollectionAnalysis", back_populates="series", uselist=False)

@@ -19,6 +19,7 @@ class Conversation(Base):
     # Ownership
     creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="SET NULL"), nullable=False, index=True)
 
     # Follow-up relationship
     parent_conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -167,6 +168,7 @@ class Conversation(Base):
     # Relationships
     creator = relationship("User", back_populates="conversations", foreign_keys=[creator_id])
     organization = relationship("Organization", back_populates="conversations")
+    workspace = relationship("Workspace")
     questions = relationship("Question", back_populates="conversation", cascade="all, delete-orphan", order_by="Question.question_order")
     responses = relationship("Response", back_populates="conversation", cascade="all, delete-orphan")
     analyses = relationship("Analysis", back_populates="conversation", cascade="all, delete-orphan")
