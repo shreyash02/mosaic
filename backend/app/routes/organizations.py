@@ -37,6 +37,7 @@ from app.services.organization_service import (
     check_organization_membership,
 )
 from app.services.email_service import email_service
+from app.services.workspace_service import create_default_org_workspace, add_user_to_default_org_workspace
 from app.utils.email_preferences import should_send_email
 
 router = APIRouter()
@@ -70,6 +71,10 @@ async def create_organization(
         role="admin"
     )
     db.add(member)
+
+    # Create default organization workspace with creator as admin
+    create_default_org_workspace(db, organization.id, organization.name, current_user.id)
+
     db.commit()
 
     # Eagerly load members with user data
@@ -236,6 +241,10 @@ async def add_member(
         role=member_data.role
     )
     db.add(member)
+
+    # Also add to default org workspace
+    add_user_to_default_org_workspace(db, organization_id, member_data.user_id, member_data.role)
+
     db.commit()
     db.refresh(member)
 
@@ -593,6 +602,9 @@ async def accept_organization_invitation(
         role=invitation.role
     )
     db.add(member)
+
+    # Also add to default org workspace
+    add_user_to_default_org_workspace(db, invitation.organization_id, current_user.id, invitation.role)
 
     # Mark invitation as accepted
     invitation.is_accepted = True
