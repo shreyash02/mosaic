@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { JournalListItem, SharedJournalListItem } from '../types';
 import { useFeature } from '../contexts/FeaturesContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatRelativeTime } from '../utils/formatting';
@@ -174,6 +175,7 @@ const s = {
 export default function JournalsPage() {
   const navigate = useNavigate();
   const journalsEnabled = useFeature('journals');
+  const { currentOrgId } = useOrganization();
   usePageTitle('Journals');
 
   const [journals, setJournals] = useState<JournalListItem[]>([]);
@@ -193,7 +195,7 @@ export default function JournalsPage() {
       try {
         setLoading(true);
         const [ownJournals, shared] = await Promise.all([
-          api.getJournals(),
+          api.getJournals({ orgId: currentOrgId }),
           api.getSharedJournals().catch(() => [] as SharedJournalListItem[]),
         ]);
         setJournals(ownJournals);
@@ -207,7 +209,7 @@ export default function JournalsPage() {
     };
 
     loadJournals();
-  }, [journalsEnabled, navigate]);
+  }, [journalsEnabled, navigate, currentOrgId]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;

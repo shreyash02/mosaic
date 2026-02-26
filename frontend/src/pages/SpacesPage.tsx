@@ -5,6 +5,7 @@ import { analytics } from '../services/analytics';
 import type { SpaceListItem, SpacePurpose } from '../types';
 import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, shadows, transitions, getAvatarColor } from '../styles/tokens';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
@@ -171,6 +172,7 @@ const s = {
 export default function SpacesPage() {
   usePageTitle('Spaces');
   const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -184,12 +186,12 @@ export default function SpacesPage() {
 
   useEffect(() => {
     loadSpaces();
-  }, []);
+  }, [currentOrgId]);
 
   async function loadSpaces() {
     try {
       setLoading(true);
-      const data = await api.getSpaces();
+      const data = await api.getSpaces({ orgId: currentOrgId });
       setSpaces(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load spaces');
@@ -217,6 +219,7 @@ export default function SpacesPage() {
         title: createTitle.trim(),
         description: createDescription.trim() || undefined,
         purposes: createPurposes,
+        ...(currentOrgId ? { organization_id: currentOrgId } : {}),
       });
       analytics.spaceCreated({ spaceId: space.id });
       setShowCreateModal(false);

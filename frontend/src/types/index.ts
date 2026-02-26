@@ -1415,6 +1415,7 @@ export interface JournalCreate {
   analysis_day_of_week?: number;
   analysis_day_of_month?: number;
   timezone?: string;
+  organization_id?: string;
 }
 
 export interface JournalUpdate {
@@ -1907,6 +1908,7 @@ export interface SpaceCreate {
   description?: string;
   purpose?: SpacePurpose;
   purposes?: SpacePurpose[];
+  organization_id?: string;
 }
 
 export interface SpaceUpdate {

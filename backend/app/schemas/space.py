@@ -17,6 +17,7 @@ class SpaceCreate(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     purpose: Optional[str] = None
     purposes: Optional[List[str]] = None
+    organization_id: Optional[str] = None
 
     @field_validator("purpose")
     @classmethod

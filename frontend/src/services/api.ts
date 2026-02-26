@@ -1117,10 +1117,15 @@ class ApiService {
     return response.data;
   }
 
-  async getJournals(options?: { skip?: number; limit?: number }): Promise<JournalListItem[]> {
+  async getJournals(options?: { skip?: number; limit?: number; orgId?: string | null }): Promise<JournalListItem[]> {
     const params = new URLSearchParams();
     if (options?.skip !== undefined) params.append('skip', String(options.skip));
     if (options?.limit !== undefined) params.append('limit', String(options.limit));
+    if (options?.orgId) {
+      params.append('org_id', options.orgId);
+    } else {
+      params.append('personal', 'true');
+    }
     const queryString = params.toString();
     const url = `/journals${queryString ? `?${queryString}` : ''}`;
     const response = await this.client.get<JournalListItem[]>(url);
@@ -1368,8 +1373,15 @@ class ApiService {
 
   // Spaces endpoints
 
-  async getSpaces(): Promise<SpaceListItem[]> {
-    const response = await this.client.get<SpaceListItem[]>('/spaces');
+  async getSpaces(options?: { orgId?: string | null }): Promise<SpaceListItem[]> {
+    const params = new URLSearchParams();
+    if (options?.orgId) {
+      params.append('org_id', options.orgId);
+    } else {
+      params.append('personal', 'true');
+    }
+    const queryString = params.toString();
+    const response = await this.client.get<SpaceListItem[]>(`/spaces${queryString ? `?${queryString}` : ''}`);
     return response.data;
   }
 

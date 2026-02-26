@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { analytics } from '../services/analytics';
 import type { JournalPromptCreate, AnalysisInterval, EntryFrequency, JournalTemplate } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import CustomSelect from '../components/CustomSelect';
 import CustomCheckbox from '../components/CustomCheckbox';
@@ -341,6 +342,7 @@ function nextDateLabel(freq?: string): string {
 
 export default function JournalCreatePage() {
   const navigate = useNavigate();
+  const { currentOrgId } = useOrganization();
   usePageTitle('New Journal');
 
   const [templates, setTemplates] = useState<JournalTemplate[]>([]);
@@ -451,6 +453,7 @@ export default function JournalCreatePage() {
           ...(analysisInterval === 'monthly' ? { analysis_day_of_month: analysisDayOfMonth } : {}),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         } : {}),
+        ...(currentOrgId ? { organization_id: currentOrgId } : {}),
       });
 
       analytics.journalCreated({ journalId: journal.id, templateId: selectedTemplate });

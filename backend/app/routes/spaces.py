@@ -707,8 +707,18 @@ def create_space(
 ):
     """Create a new space."""
     from app.services.feature_flag_service import feature_flag_service
+    from app.services.organization_service import check_organization_membership
 
     tier = _require_spaces_flag(current_user, db)
+
+    # Validate org membership if organization_id provided
+    if data.organization_id:
+        membership = check_organization_membership(db, data.organization_id, current_user.id)
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You must be a member of this organization to create spaces in it",
+            )
 
     # Check max_spaces limit
     max_spaces = feature_flag_service.get_config_value(
@@ -736,6 +746,7 @@ def create_space(
         title=data.title,
         description=data.description,
         owner_id=current_user.id,
+        organization_id=data.organization_id,
         settings=space_settings if space_settings else None,
     )
     db.add(space)
@@ -758,16 +769,18 @@ def create_space(
 def list_spaces(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    org_id: Optional[str] = Query(None),
+    personal: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List spaces the current user owns or is a member of."""
+    """List spaces the current user owns or is a member of, scoped by organization context."""
     member_space_ids = (
         db.query(SpaceMember.space_id)
         .filter(SpaceMember.user_id == current_user.id)
         .subquery()
     )
-    spaces = (
+    query = (
         db.query(Space)
         .filter(
             or_(
@@ -775,6 +788,16 @@ def list_spaces(
                 Space.id.in_(db.query(member_space_ids)),
             )
         )
+    )
+
+    # Scope by organization
+    if org_id:
+        query = query.filter(Space.organization_id == org_id)
+    else:
+        query = query.filter(Space.organization_id.is_(None))
+
+    spaces = (
+        query
         .order_by(Space.updated_at.desc())
         .offset(skip)
         .limit(limit)

@@ -749,8 +749,18 @@ async def create_journal(
     Creates a backing Conversation with forced defaults, then a Journal record.
     """
     from app.services.feature_flag_service import feature_flag_service
+    from app.services.organization_service import check_organization_membership
 
     tier = _require_journals_flag(current_user, db)
+
+    # Validate org membership if organization_id provided
+    if data.organization_id:
+        membership = check_organization_membership(db, data.organization_id, current_user.id)
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You must be a member of this organization to create journals in it",
+            )
 
     # Check max_journals limit
     max_journals = feature_flag_service.get_config_value(
@@ -812,6 +822,8 @@ async def create_journal(
         analysis_time_of_day=data.analysis_time_of_day,
         analysis_day_of_week=data.analysis_day_of_week,
         analysis_day_of_month=data.analysis_day_of_month,
+        # Organization scoping
+        organization_id=data.organization_id,
     )
 
     db.add(conversation)
@@ -864,16 +876,26 @@ async def create_journal(
 async def list_journals(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    org_id: Optional[str] = Query(None),
+    personal: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List the current user's journals."""
+    """List the current user's journals, scoped by organization context."""
     _require_journals_flag(current_user, db)
 
-    journals = db.query(JournalModel).join(Conversation).filter(
+    query = db.query(JournalModel).join(Conversation).filter(
         JournalModel.owner_id == current_user.id,
         Conversation.state != "deleted",
-    ).options(
+    )
+
+    # Scope by organization
+    if org_id:
+        query = query.filter(Conversation.organization_id == org_id)
+    else:
+        query = query.filter(Conversation.organization_id.is_(None))
+
+    journals = query.options(
         joinedload(JournalModel.conversation),
     ).order_by(Conversation.updated_at.desc()).offset(skip).limit(limit).all()
 

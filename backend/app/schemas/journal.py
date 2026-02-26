@@ -100,6 +100,8 @@ class JournalCreate(BaseModel):
     analysis_day_of_week: Optional[int] = Field(None, ge=0, le=6, description="0=Mon..6=Sun")
     analysis_day_of_month: Optional[int] = Field(None, ge=1, le=28)
     timezone: Optional[str] = None
+    # Organization scoping
+    organization_id: Optional[str] = None
 
     @field_validator("analysis_time_of_day")
     @classmethod
