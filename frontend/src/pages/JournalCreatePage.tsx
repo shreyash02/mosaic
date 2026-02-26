@@ -342,7 +342,7 @@ function nextDateLabel(freq?: string): string {
 
 export default function JournalCreatePage() {
   const navigate = useNavigate();
-  const { currentOrgId } = useOrganization();
+  const { currentWorkspaceId } = useOrganization();
   usePageTitle('New Journal');
 
   const [templates, setTemplates] = useState<JournalTemplate[]>([]);
@@ -453,7 +453,7 @@ export default function JournalCreatePage() {
           ...(analysisInterval === 'monthly' ? { analysis_day_of_month: analysisDayOfMonth } : {}),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         } : {}),
-        ...(currentOrgId ? { organization_id: currentOrgId } : {}),
+        ...(currentWorkspaceId ? { workspace_id: currentWorkspaceId } : {}),
       });
 
       analytics.journalCreated({ journalId: journal.id, templateId: selectedTemplate });

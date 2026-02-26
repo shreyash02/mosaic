@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AnonymityLevel, ResultsAccess, PresetCreate, PresetIcon, ConversationPreset } from '../types';
 import { api } from '../services/api';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { typography, spacing, borders } from '../styles/tokens';
 import CustomSelect from './CustomSelect';
 import Modal from './Modal';
@@ -35,6 +36,7 @@ const ICON_OPTIONS: { id: PresetIcon; label: string; component: React.ComponentT
 ];
 
 export default function PresetModal({ preset, onClose, onSaved }: PresetModalProps) {
+  const { currentWorkspaceId } = useOrganization();
   const isEditMode = !!preset;
   const [name, setName] = useState(preset?.name || '');
   const [description, setDescription] = useState(preset?.description || '');
@@ -65,6 +67,7 @@ export default function PresetModal({ preset, onClose, onSaved }: PresetModalPro
         results_access: resultsAccess,
         show_verbatim_responses: showVerbatimResponses,
         invite_only: inviteOnly,
+        ...(currentWorkspaceId ? { workspace_id: currentWorkspaceId } : {}),
       };
 
       if (isEditMode) {

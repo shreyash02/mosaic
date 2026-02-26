@@ -66,6 +66,15 @@ export interface OnboardingProgress {
   started_at?: string;
 }
 
+// Workspace types
+export interface Workspace {
+  id: string;
+  type: 'personal' | 'organization';
+  name: string;
+  organization_id?: string;
+  is_default: boolean;
+}
+
 // Conversation types
 export enum AnonymityLevel {
   OPEN = 'open',  // Anyone can respond, identity recorded if logged in
@@ -150,6 +159,7 @@ export interface Conversation {
   id: string;
   creator_id: string;
   organization_id?: string;
+  workspace_id?: string;
   parent_conversation_id?: string;
   title: string;
   participant_title?: string;
@@ -238,6 +248,7 @@ export interface ConversationCreate {
   time_extension_enabled?: boolean;
   timezone?: string;
   organization_id?: string;
+  workspace_id?: string;
   parent_conversation_id?: string;
   // Template fields
   is_template?: boolean;
@@ -278,6 +289,7 @@ export interface ConversationListItem {
   unique_participants?: number;
   timezone?: string;
   organization_id?: string;
+  workspace_id?: string;
   is_follow_up?: boolean;
   parent_conversation_id?: string;
   is_template?: boolean;
@@ -919,6 +931,7 @@ export interface Series {
   description?: string;
   creator_id: string;
   organization_id?: string;
+  workspace_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -931,6 +944,7 @@ export interface SeriesCreate {
   name: string;
   description?: string;
   organization_id?: string;
+  workspace_id?: string;
 }
 
 export interface SeriesUpdate {
@@ -1370,6 +1384,7 @@ export interface ConversationPreset {
   id: string;
   creator_id: string;
   organization_id?: string;
+  workspace_id?: string;
   name: string;
   description?: string;
   icon: PresetIcon;
@@ -1416,6 +1431,7 @@ export interface JournalCreate {
   analysis_day_of_month?: number;
   timezone?: string;
   organization_id?: string;
+  workspace_id?: string;
 }
 
 export interface JournalUpdate {
@@ -1683,6 +1699,7 @@ export interface PresetCreate {
   description?: string;
   icon?: PresetIcon;
   organization_id?: string;
+  workspace_id?: string;
   anonymity_level: AnonymityLevel;
   results_access: ResultsAccess;
   show_verbatim_responses?: boolean;
@@ -1909,6 +1926,7 @@ export interface SpaceCreate {
   purpose?: SpacePurpose;
   purposes?: SpacePurpose[];
   organization_id?: string;
+  workspace_id?: string;
 }
 
 export interface SpaceUpdate {

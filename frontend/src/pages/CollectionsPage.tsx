@@ -15,7 +15,7 @@ interface CollectionWithCount extends Series {
 }
 
 export default function CollectionsPage() {
-  const { currentOrgId } = useOrganization();
+  const { currentWorkspaceId } = useOrganization();
   const navigate = useNavigate();
   const [collections, setCollections] = useState<CollectionWithCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,7 +195,7 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     loadCollections();
-  }, [currentOrgId]);
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -214,7 +214,7 @@ export default function CollectionsPage() {
 
   const loadCollections = async () => {
     try {
-      const data = await api.listSeries(currentOrgId || undefined);
+      const data = await api.listSeries(undefined, currentWorkspaceId || undefined);
       const collectionsWithCounts = await Promise.all(
         data.map(async (collection) => {
           try {
@@ -245,7 +245,7 @@ export default function CollectionsPage() {
       const collectionData: SeriesCreate = {
         name: collectionName.trim(),
         description: collectionDescription.trim() || undefined,
-        organization_id: currentOrgId || undefined,
+        workspace_id: currentWorkspaceId || undefined,
       };
       const newCollection = await api.createSeries(collectionData);
       analytics.collectionCreated({ collectionId: newCollection.id });

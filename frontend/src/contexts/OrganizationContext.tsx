@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Organization } from '../types';
+import type { Organization, Workspace } from '../types';
 import { useAuth } from './AuthContext';
 
 interface OrganizationContextType {
@@ -17,7 +17,9 @@ interface OrganizationContextType {
   // Computed properties
   isPersonalWorkspace: boolean;
   currentOrgId: string | null;
+  currentWorkspaceId: string | null;
   currentWorkspaceName: string;
+  workspaces: Workspace[];
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -27,6 +29,7 @@ const STORAGE_KEY = 'current_organization_id';
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [currentOrganization, setCurrentOrganizationState] = useState<Organization | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -38,6 +41,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     } else {
       // User logged out - reset state
       setOrganizations([]);
+      setWorkspaces([]);
       setCurrentOrganizationState(null);
       setLoading(false);
     }
@@ -46,13 +50,18 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const loadOrganizations = async () => {
     try {
       setLoading(true);
-      const orgs = await api.listOrganizations();
+      // Fetch orgs and workspaces in parallel
+      const [orgs, ws] = await Promise.all([
+        api.listOrganizations(),
+        api.getMyWorkspaces().catch(() => [] as Workspace[]),
+      ]);
 
       // Check if current organization still exists in the updated list
       const currentOrgId = currentOrganization?.id;
       const currentOrgStillExists = currentOrgId ? orgs.find(o => o.id === currentOrgId) : true;
 
       setOrganizations(orgs);
+      setWorkspaces(ws);
 
       // If user was removed from their current organization, switch to Personal
       if (currentOrgId && !currentOrgStillExists) {
@@ -150,6 +159,25 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const currentOrgId = currentOrganization?.id || null;
   const currentWorkspaceName = currentOrganization?.name || 'Personal';
 
+  // Derive currentWorkspaceId from the workspace list
+  const currentWorkspaceId = useMemo(() => {
+    if (workspaces.length === 0) return null;
+
+    if (currentOrgId) {
+      // Find the default workspace for this org
+      const orgWorkspace = workspaces.find(
+        w => w.organization_id === currentOrgId && w.is_default
+      );
+      return orgWorkspace?.id ?? null;
+    }
+
+    // Personal workspace — type='personal', no org
+    const personalWorkspace = workspaces.find(
+      w => w.type === 'personal' && !w.organization_id
+    );
+    return personalWorkspace?.id ?? null;
+  }, [workspaces, currentOrgId]);
+
   const value: OrganizationContextType = {
     currentOrganization,
     organizations,
@@ -158,7 +186,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     refreshOrganizations,
     isPersonalWorkspace,
     currentOrgId,
+    currentWorkspaceId,
     currentWorkspaceName,
+    workspaces,
   };
 
   return (

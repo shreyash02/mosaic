@@ -172,7 +172,7 @@ const s = {
 export default function SpacesPage() {
   usePageTitle('Spaces');
   const navigate = useNavigate();
-  const { currentOrgId } = useOrganization();
+  const { currentWorkspaceId } = useOrganization();
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -186,12 +186,12 @@ export default function SpacesPage() {
 
   useEffect(() => {
     loadSpaces();
-  }, [currentOrgId]);
+  }, [currentWorkspaceId]);
 
   async function loadSpaces() {
     try {
       setLoading(true);
-      const data = await api.getSpaces({ orgId: currentOrgId });
+      const data = await api.getSpaces({ workspaceId: currentWorkspaceId || undefined });
       setSpaces(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load spaces');
@@ -219,7 +219,7 @@ export default function SpacesPage() {
         title: createTitle.trim(),
         description: createDescription.trim() || undefined,
         purposes: createPurposes,
-        ...(currentOrgId ? { organization_id: currentOrgId } : {}),
+        ...(currentWorkspaceId ? { workspace_id: currentWorkspaceId } : {}),
       });
       analytics.spaceCreated({ spaceId: space.id });
       setShowCreateModal(false);

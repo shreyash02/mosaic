@@ -233,7 +233,7 @@ const getStatusColor = (state: ConversationState): string => {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { currentOrgId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
+  const { currentWorkspaceId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
   const { user } = useAuth();
   const journalsEnabled = useFeature('journals');
   const spacesEnabled = useFeature('spaces');
@@ -307,22 +307,18 @@ export default function DashboardPage() {
     const loadData = async () => {
       try {
         setLoading(true);
-        let data: ConversationListItem[];
-
-        if (isPersonalWorkspace) {
-          const allConversations = await api.getConversations();
-          data = allConversations.filter(c => !c.organization_id && !c.is_template && !c.is_individual);
-        } else {
-          const allConversations = await api.listOrganizationConversations(currentOrgId!);
-          data = allConversations.filter(c => !c.is_template);
-        }
+        const allConversations = await api.getConversations();
+        // Filter by current workspace
+        const data = allConversations.filter(c =>
+          !c.is_template && !c.is_individual && c.workspace_id === currentWorkspaceId
+        );
 
         setConversations(data);
 
-        // Fetch journals and spaces in parallel
+        // Fetch journals and spaces in parallel (scoped to current workspace)
         const [journalData, spaceData] = await Promise.all([
-          journalsEnabled ? api.getJournals().catch(() => [] as JournalListItem[]) : Promise.resolve([] as JournalListItem[]),
-          spacesEnabled ? api.getSpaces().catch(() => [] as SpaceListItem[]) : Promise.resolve([] as SpaceListItem[]),
+          journalsEnabled ? api.getJournals({ workspaceId: currentWorkspaceId || undefined }).catch(() => [] as JournalListItem[]) : Promise.resolve([] as JournalListItem[]),
+          spacesEnabled ? api.getSpaces({ workspaceId: currentWorkspaceId || undefined }).catch(() => [] as SpaceListItem[]) : Promise.resolve([] as SpaceListItem[]),
         ]);
 
         setJournals(journalData);
@@ -336,7 +332,7 @@ export default function DashboardPage() {
     };
 
     loadData();
-  }, [currentOrgId, isPersonalWorkspace, journalsEnabled, spacesEnabled]);
+  }, [currentWorkspaceId, isPersonalWorkspace, journalsEnabled, spacesEnabled]);
 
   const stats = useMemo(() => {
     const total = conversations.length;

@@ -155,7 +155,7 @@ const s = {
 
 export default function TemplatesPage() {
   const navigate = useNavigate();
-  const { currentOrgId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
+  const { currentWorkspaceId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
   const [templates, setTemplates] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -167,13 +167,10 @@ export default function TemplatesPage() {
       setLoading(true);
       let data: ConversationListItem[];
 
-      if (isPersonalWorkspace) {
-        const allConversations = await api.getConversations();
-        data = allConversations.filter(c => c.is_template === true && !c.organization_id);
-      } else {
-        const allConversations = await api.listOrganizationConversations(currentOrgId!);
-        data = allConversations.filter(c => c.is_template === true);
-      }
+      const allConversations = await api.getConversations();
+      data = allConversations.filter(c =>
+        c.is_template === true && c.workspace_id === currentWorkspaceId
+      );
 
       setTemplates(data);
       setError('');
@@ -183,7 +180,7 @@ export default function TemplatesPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentOrgId, isPersonalWorkspace]);
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     loadTemplates();

@@ -46,6 +46,7 @@ import type {
   InviteToOrganizationRequest,
   InviteToOrganizationResponse,
   OrganizationInvitationListResponse,
+  Workspace,
   Series,
   SeriesCreate,
   SeriesUpdate,
@@ -894,15 +895,24 @@ class ApiService {
     return response.data;
   }
 
+  // Workspace endpoints
+  async getMyWorkspaces(): Promise<Workspace[]> {
+    const response = await this.client.get<Workspace[]>('/workspaces/me');
+    return response.data;
+  }
+
   // Series endpoints
   async createSeries(data: SeriesCreate): Promise<Series> {
     const response = await this.client.post<Series>('/series', data);
     return response.data;
   }
 
-  async listSeries(organizationId?: string): Promise<Series[]> {
-    const params = organizationId ? `?organization_id=${organizationId}` : '';
-    const response = await this.client.get<Series[]>(`/series${params}`);
+  async listSeries(organizationId?: string, workspaceId?: string): Promise<Series[]> {
+    const params = new URLSearchParams();
+    if (workspaceId) params.append('workspace_id', workspaceId);
+    else if (organizationId) params.append('organization_id', organizationId);
+    const qs = params.toString();
+    const response = await this.client.get<Series[]>(`/series${qs ? `?${qs}` : ''}`);
     return response.data;
   }
 
@@ -1117,11 +1127,13 @@ class ApiService {
     return response.data;
   }
 
-  async getJournals(options?: { skip?: number; limit?: number; orgId?: string | null }): Promise<JournalListItem[]> {
+  async getJournals(options?: { skip?: number; limit?: number; orgId?: string | null; workspaceId?: string | null }): Promise<JournalListItem[]> {
     const params = new URLSearchParams();
     if (options?.skip !== undefined) params.append('skip', String(options.skip));
     if (options?.limit !== undefined) params.append('limit', String(options.limit));
-    if (options?.orgId) {
+    if (options?.workspaceId) {
+      params.append('workspace_id', options.workspaceId);
+    } else if (options?.orgId) {
       params.append('org_id', options.orgId);
     } else {
       params.append('personal', 'true');
@@ -1271,9 +1283,10 @@ class ApiService {
   }
 
   // Conversation preset endpoints
-  async listPresets(options?: { organizationId?: string; includePersonal?: boolean }): Promise<ConversationPreset[]> {
+  async listPresets(options?: { organizationId?: string; workspaceId?: string; includePersonal?: boolean }): Promise<ConversationPreset[]> {
     const params = new URLSearchParams();
-    if (options?.organizationId) params.append('organization_id', options.organizationId);
+    if (options?.workspaceId) params.append('workspace_id', options.workspaceId);
+    else if (options?.organizationId) params.append('organization_id', options.organizationId);
     if (options?.includePersonal !== undefined) params.append('include_personal', String(options.includePersonal));
     const queryString = params.toString();
     const url = queryString ? `/presets?${queryString}` : '/presets';
@@ -1373,9 +1386,11 @@ class ApiService {
 
   // Spaces endpoints
 
-  async getSpaces(options?: { orgId?: string | null }): Promise<SpaceListItem[]> {
+  async getSpaces(options?: { orgId?: string | null; workspaceId?: string | null }): Promise<SpaceListItem[]> {
     const params = new URLSearchParams();
-    if (options?.orgId) {
+    if (options?.workspaceId) {
+      params.append('workspace_id', options.workspaceId);
+    } else if (options?.orgId) {
       params.append('org_id', options.orgId);
     } else {
       params.append('personal', 'true');

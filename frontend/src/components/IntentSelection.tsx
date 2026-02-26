@@ -7,6 +7,7 @@ import { INTENT_PRESETS, IntentType } from '../types/intentPresets';
 import { GearIcon, PlusIcon } from './icons';
 import { typography, spacing, borders, transitions } from '../styles/tokens';
 import { useFeature } from '../contexts/FeaturesContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { api } from '../services/api';
 import { ConversationPreset } from '../types';
 
@@ -28,6 +29,7 @@ export default function IntentSelection({
   onSwitchToManual,
 }: IntentSelectionProps) {
   const presetsEnabled = useFeature('conversation_presets');
+  const { currentWorkspaceId } = useOrganization();
   const [userPresets, setUserPresets] = useState<ConversationPreset[]>([]);
   const [showPresetModal, setShowPresetModal] = useState(false);
   const [editingPreset, setEditingPreset] = useState<ConversationPreset | undefined>();
@@ -35,7 +37,7 @@ export default function IntentSelection({
   // Fetch user presets when feature is enabled
   const fetchPresets = () => {
     if (presetsEnabled) {
-      api.listPresets()
+      api.listPresets({ workspaceId: currentWorkspaceId || undefined })
         .then(presets => setUserPresets(presets))
         .catch(err => console.error('Failed to load presets:', err));
     }
@@ -43,7 +45,7 @@ export default function IntentSelection({
 
   useEffect(() => {
     fetchPresets();
-  }, [presetsEnabled]);
+  }, [presetsEnabled, currentWorkspaceId]);
 
   const handleCreatePreset = () => {
     setEditingPreset(undefined);

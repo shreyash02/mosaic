@@ -566,7 +566,7 @@ const merge = (...styles: (React.CSSProperties | false | undefined)[]) =>
   Object.assign({}, ...styles.filter(Boolean));
 
 export default function ConversationsPage() {
-  const { currentOrgId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
+  const { currentWorkspaceId, isPersonalWorkspace, currentWorkspaceName, refreshOrganizations } = useOrganization();
   const templatesEnabled = useFeature('templates');
   const collectionsEnabled = useFeature('collections');
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
@@ -610,12 +610,10 @@ export default function ConversationsPage() {
     try {
       setArchivedLoading(true);
       const data = await api.getConversations({ archivedOnly: true });
-      // Filter by organization if not in personal workspace
-      if (isPersonalWorkspace) {
-        setArchivedConversations(data.filter(c => !c.organization_id && !c.is_individual));
-      } else {
-        setArchivedConversations(data.filter(c => c.organization_id === currentOrgId && !c.is_individual));
-      }
+      // Filter by current workspace
+      setArchivedConversations(data.filter(c =>
+        !c.is_individual && c.workspace_id === currentWorkspaceId
+      ));
       setArchivedLoaded(true);
     } catch (err: any) {
       console.error('Failed to load archived conversations:', err);
@@ -624,17 +622,18 @@ export default function ConversationsPage() {
     } finally {
       setArchivedLoading(false);
     }
-  }, [isPersonalWorkspace, currentOrgId]);
+  }, [currentWorkspaceId]);
 
   const loadConversations = async () => {
     try {
       setLoading(true);
-      let data: ConversationListItem[];
+      const allConversations = await api.getConversations();
+      // Filter by current workspace
+      const data = allConversations.filter(c =>
+        !c.is_individual && c.workspace_id === currentWorkspaceId
+      );
 
       if (isPersonalWorkspace) {
-        const allConversations = await api.getConversations();
-        data = allConversations.filter(c => !c.organization_id && !c.is_individual);
-
         try {
           const participatedData = await api.getParticipatedConversations();
           setParticipatedConversations(participatedData);
@@ -643,7 +642,6 @@ export default function ConversationsPage() {
           setParticipatedConversations([]);
         }
       } else {
-        data = await api.listOrganizationConversations(currentOrgId!);
         setParticipatedConversations([]);
       }
 
@@ -666,7 +664,7 @@ export default function ConversationsPage() {
 
   const loadSeries = async () => {
     try {
-      const series = await api.listSeries(currentOrgId || undefined);
+      const series = await api.listSeries(undefined, currentWorkspaceId || undefined);
       setSeriesList(series);
     } catch (err) {
       console.error('Failed to load series:', err);
@@ -682,7 +680,7 @@ export default function ConversationsPage() {
       setInvitations([]);
       setInvitationsLoaded(false);
     }
-  }, [currentOrgId, isPersonalWorkspace, loadInvitations]);
+  }, [currentWorkspaceId, isPersonalWorkspace, loadInvitations]);
 
   useEffect(() => {
     if (activeTab === 'invitations' && !invitationsLoaded && !invitationsLoading && isPersonalWorkspace) {
@@ -700,7 +698,7 @@ export default function ConversationsPage() {
     if (activeTab === 'owned') {
       loadSeries();
     }
-  }, [currentOrgId, activeTab]);
+  }, [currentWorkspaceId, activeTab]);
 
 
   useEffect(() => {

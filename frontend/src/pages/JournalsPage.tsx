@@ -175,7 +175,7 @@ const s = {
 export default function JournalsPage() {
   const navigate = useNavigate();
   const journalsEnabled = useFeature('journals');
-  const { currentOrgId } = useOrganization();
+  const { currentWorkspaceId } = useOrganization();
   usePageTitle('Journals');
 
   const [journals, setJournals] = useState<JournalListItem[]>([]);
@@ -195,7 +195,7 @@ export default function JournalsPage() {
       try {
         setLoading(true);
         const [ownJournals, shared] = await Promise.all([
-          api.getJournals({ orgId: currentOrgId }),
+          api.getJournals({ workspaceId: currentWorkspaceId || undefined }),
           api.getSharedJournals().catch(() => [] as SharedJournalListItem[]),
         ]);
         setJournals(ownJournals);
@@ -209,7 +209,7 @@ export default function JournalsPage() {
     };
 
     loadJournals();
-  }, [journalsEnabled, navigate, currentOrgId]);
+  }, [journalsEnabled, navigate, currentWorkspaceId]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;

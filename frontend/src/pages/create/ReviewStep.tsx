@@ -84,7 +84,7 @@ const formatScheduleDate = (dateString: string) => {
 export default function ReviewStep() {
   const navigate = useNavigate();
   const { formState, updateFormState, resetForm, getStepPath } = useConversationForm();
-  const { currentOrgId } = useOrganization();
+  const { currentOrgId, currentWorkspaceId } = useOrganization();
   const slackEnabled = useFeature('slack_integration');
   const showNotificationsStep = slackEnabled && !!currentOrgId;
 
@@ -114,14 +114,14 @@ export default function ReviewStep() {
   useEffect(() => {
     const loadSeries = async () => {
       try {
-        const series = await api.listSeries(currentOrgId || undefined);
+        const series = await api.listSeries(undefined, currentWorkspaceId || undefined);
         setSeriesList(series);
       } catch (err) {
         console.error('Failed to load series:', err);
       }
     };
     loadSeries();
-  }, [currentOrgId]);
+  }, [currentWorkspaceId]);
 
   const handleCreateSeries = async () => {
     if (!newSeriesName.trim()) {
@@ -135,10 +135,10 @@ export default function ReviewStep() {
       const newSeries = await api.createSeries({
         name: newSeriesName.trim(),
         description: newSeriesDescription.trim() || undefined,
-        organization_id: currentOrgId || undefined,
+        workspace_id: currentWorkspaceId || undefined,
       });
 
-      const updatedSeries = await api.listSeries(currentOrgId || undefined);
+      const updatedSeries = await api.listSeries(undefined, currentWorkspaceId || undefined);
       setSeriesList(updatedSeries);
 
       updateFormState({ selectedSeriesId: newSeries.id, addToSeries: true });
@@ -255,7 +255,7 @@ export default function ReviewStep() {
         ...(formState.addToSeries && formState.selectedSeriesId && !formState.createTemplate && {
           series_id: formState.selectedSeriesId
         }),
-        ...(currentOrgId && { organization_id: currentOrgId }),
+        ...(currentWorkspaceId && { workspace_id: currentWorkspaceId }),
         ...(formState.createTemplate && formState.enableRecurring && {
           recurrence_pattern: formState.recurrencePattern,
           ...(formState.nextInstanceDate && { next_instance_date: formState.nextInstanceDate + ':00' }),
