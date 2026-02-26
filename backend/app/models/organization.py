@@ -33,6 +33,7 @@ class Organization(Base):
     series = relationship("Series", back_populates="organization", cascade="all, delete-orphan")
     conversation_presets = relationship("ConversationPreset", back_populates="organization", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="organization", uselist=False, cascade="all, delete-orphan")
+    workspaces = relationship("Workspace", back_populates="organization", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Organization(id={self.id}, name={self.name})>"

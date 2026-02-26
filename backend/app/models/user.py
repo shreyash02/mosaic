@@ -48,6 +48,8 @@ class User(Base):
     series = relationship("Series", back_populates="creator", cascade="all, delete-orphan")
     conversation_presets = relationship("ConversationPreset", back_populates="creator", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    workspaces_owned = relationship("Workspace", back_populates="owner", cascade="all, delete-orphan")
+    workspace_memberships = relationship("WorkspaceMember", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

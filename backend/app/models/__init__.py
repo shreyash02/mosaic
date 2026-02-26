@@ -45,6 +45,7 @@ from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
 from app.models.space_snapshot import SpaceSnapshot
 from app.models.space_synthesis import SpaceSynthesis
+from app.models.workspace import Workspace, WorkspaceMember
 
 __all__ = [
     "User",
@@ -95,4 +96,6 @@ __all__ = [
     "SpaceActivityLog",
     "SpaceSnapshot",
     "SpaceSynthesis",
+    "Workspace",
+    "WorkspaceMember",
 ]

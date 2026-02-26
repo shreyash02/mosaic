@@ -23,6 +23,8 @@ from app.models import (
     Admin,
     Series,
     CollectionAnalysis,
+    Workspace,
+    WorkspaceMember,
 )
 
 # this is the Alembic Config object
