@@ -128,6 +128,12 @@ async def register(
     )
 
     db.add(user)
+    db.flush()  # Get user.id without committing
+
+    # Auto-create global personal workspace
+    from app.services.workspace_service import create_personal_workspace
+    create_personal_workspace(db, user.id)
+
     db.commit()
     db.refresh(user)
 
@@ -558,6 +564,11 @@ async def google_callback(
                 email_verified=True,  # Google verified the email
             )
             db.add(user)
+            db.flush()  # Get user.id for workspace creation
+
+            # Auto-create global personal workspace
+            from app.services.workspace_service import create_personal_workspace
+            create_personal_workspace(db, user.id)
 
         db.commit()
         db.refresh(user)
