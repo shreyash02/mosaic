@@ -2010,6 +2010,7 @@ export interface OrganizeRun {
 // Space Activity Log types
 export type SpaceActivityEventType =
   | 'idea_added'
+  | 'idea_edited'
   | 'idea_removed'
   | 'organize_started'
   | 'organize_completed'

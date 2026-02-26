@@ -3,6 +3,7 @@ import type { SpaceActivityEventType } from '../types';
 export function getActivityVerb(eventType: SpaceActivityEventType): string {
   switch (eventType) {
     case 'idea_added': return 'added an idea:';
+    case 'idea_edited': return 'edited an idea:';
     case 'idea_removed': return 'removed an idea:';
     case 'organize_started': return 'started organizing';
     case 'organize_completed': return 'finished organizing:';
@@ -22,6 +23,8 @@ export function getActivityIcon(eventType: SpaceActivityEventType) {
   switch (eventType) {
     case 'idea_added':
       return <svg {...base} stroke="var(--color-primary-500)"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+    case 'idea_edited':
+      return <svg {...base} stroke="var(--color-primary-500)"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
     case 'idea_removed':
       return <svg {...base} stroke="var(--color-primary-400)"><line x1="5" y1="12" x2="19" y2="12" /></svg>;
     case 'organize_started':

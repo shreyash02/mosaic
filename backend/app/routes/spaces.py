@@ -1015,6 +1015,9 @@ def update_idea(
     db.commit()
     db.refresh(idea)
 
+    log_space_activity(db, space_id, current_user.id, current_user.full_name, "idea_edited", detail=data.text[:80])
+    db.commit()
+
     # Re-classify in background
     background_tasks.add_task(
         run_classify_idea_task,

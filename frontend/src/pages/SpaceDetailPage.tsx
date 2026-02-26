@@ -441,6 +441,7 @@ export default function SpaceDetailPage() {
   const [snapshots, setSnapshots] = useState<Array<{ id: string; title?: string; created_at: string }>>([]);
   const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
   const [confirmDeleteSnapshot, setConfirmDeleteSnapshot] = useState<{ id: string; title?: string } | null>(null);
   const shareDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -512,27 +513,31 @@ export default function SpaceDetailPage() {
   // Refresh only sidebar + graph content without touching input or page state
   const refreshContent = useCallback(async (themeFilter?: string | null) => {
     if (!id) return;
-    const since = sinceDateRef.current;
-    const [spaceData, themesData, graph, evoData] = await Promise.all([
-      api.getSpace(id),
-      api.getThemes(id),
-      api.getGraphData(id),
-      api.getEvolution(id, undefined, since),
-    ]);
-    // Refresh ideas respecting current theme filter
-    const filter = themeFilter !== undefined ? themeFilter : selectedThemeIdRef.current;
-    let ideasData: SpaceIdea[];
-    if (filter === '__unthemed') {
-      ideasData = await api.getIdeas(id, undefined, true, since);
-    } else {
-      ideasData = await api.getIdeas(id, filter || undefined, undefined, since);
+    try {
+      const since = sinceDateRef.current;
+      const [spaceData, themesData, graph, evoData] = await Promise.all([
+        api.getSpace(id),
+        api.getThemes(id),
+        api.getGraphData(id),
+        api.getEvolution(id, undefined, since),
+      ]);
+      // Refresh ideas respecting current theme filter
+      const filter = themeFilter !== undefined ? themeFilter : selectedThemeIdRef.current;
+      let ideasData: SpaceIdea[];
+      if (filter === '__unthemed') {
+        ideasData = await api.getIdeas(id, undefined, true, since);
+      } else {
+        ideasData = await api.getIdeas(id, filter || undefined, undefined, since);
+      }
+      setSpace(spaceData);
+      setThemes(themesData);
+      setIdeas(ideasData);
+      setGraphData(graph);
+      setEvolution(evoData);
+    } catch {
+      addToast({ type: 'error', title: 'Refresh failed', message: 'Could not refresh space data. Try reloading the page.' });
     }
-    setSpace(spaceData);
-    setThemes(themesData);
-    setIdeas(ideasData);
-    setGraphData(graph);
-    setEvolution(evoData);
-  }, [id]);
+  }, [id, addToast]);
 
   // --- SSE-driven updates (replace polling) ---
   // Use refs to access latest values in SSE callbacks without re-subscribing
@@ -897,6 +902,8 @@ export default function SpaceDetailPage() {
   function copySnapshotLink(snapshotId: string) {
     const url = `${window.location.origin}/spaces/${id}/snapshots/${snapshotId}`;
     navigator.clipboard.writeText(url);
+    setCopiedSnapshotId(snapshotId);
+    setTimeout(() => setCopiedSnapshotId(null), 2000);
   }
 
   function handleNodeClick(nodeId: string) {
@@ -1133,15 +1140,13 @@ export default function SpaceDetailPage() {
           ...s.topBarRight,
           ...(isMobile ? { width: '100%', justifyContent: 'flex-end' } : {}),
         }}>
-          {/* Time filter — only relevant for evolution view */}
-          {mainView === 'evolution' && (
-            <CustomSelect
-              value={timeFilterDays}
-              options={TIME_FILTER_OPTIONS}
-              onChange={(v) => setTimeFilterDays(Number(v))}
-              minWidth="180px"
-            />
-          )}
+          {/* Time filter — affects ideas, activity, and evolution data */}
+          <CustomSelect
+            value={timeFilterDays}
+            options={TIME_FILTER_OPTIONS}
+            onChange={(v) => setTimeFilterDays(Number(v))}
+            minWidth="180px"
+          />
           {/* Activity dropdown — hidden for shared viewers */}
           {!space.is_shared_view && (
           <div ref={activityDropdownRef} style={{ position: 'relative' }}>
@@ -1481,7 +1486,7 @@ export default function SpaceDetailPage() {
                               fontSize: '10px',
                             }}
                           >
-                            Copy
+                            {copiedSnapshotId === snap.id ? 'Copied!' : 'Copy'}
                           </button>
                           <button
                             onClick={() => setConfirmDeleteSnapshot({ id: snap.id, title: snap.title })}
