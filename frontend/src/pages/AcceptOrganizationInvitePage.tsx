@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import { typography } from '../styles/tokens';
 import { SkeletonPageLoading } from '../components/Skeleton';
 
 export default function AcceptOrganizationInvitePage() {
@@ -97,12 +98,12 @@ export default function AcceptOrganizationInvitePage() {
     return (
       <div className="page-container">
         <div className="card" style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
+          <div style={{ fontSize: typography.fontSize['4xl'], marginBottom: '1rem' }}>✓</div>
           <h1 style={{ marginBottom: '1rem', color: 'var(--color-success)' }}>Invitation Accepted!</h1>
-          <p style={{ color: 'var(--color-primary-500)', marginBottom: '2rem', fontSize: '1rem' }}>
+          <p style={{ color: 'var(--color-primary-500)', marginBottom: '2rem', fontSize: typography.fontSize.base }}>
             You have successfully joined the organization.
           </p>
-          <p style={{ color: 'var(--color-primary-500)', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--color-primary-500)', fontSize: typography.fontSize.sm }}>
             Redirecting to organization page...
           </p>
           <Link to={`/organizations/${organizationId}`} className="btn btn-primary" style={{ marginTop: '1rem' }}>
@@ -118,7 +119,7 @@ export default function AcceptOrganizationInvitePage() {
     return (
       <div className="page-container">
         <div className="card" style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem', color: 'var(--color-error)' }}>✕</div>
+          <div style={{ fontSize: typography.fontSize['4xl'], marginBottom: '1rem', color: 'var(--color-error)' }}>✕</div>
           <h1 style={{ marginBottom: '1rem', color: 'var(--color-error)' }}>Invitation Error</h1>
           <div className="error-message" style={{ textAlign: 'left' }}>
             {error}

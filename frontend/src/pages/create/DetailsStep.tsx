@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useConversationForm } from '../../contexts/ConversationFormContext';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { api } from '../../services/api';
-import { spacing } from '../../styles';
+import { spacing, typography } from '../../styles';
 import CustomFileInput, { CustomFileInputRef } from '../../components/CustomFileInput';
 
 export default function DetailsStep() {
@@ -89,10 +89,10 @@ export default function DetailsStep() {
           borderRadius: '6px',
           border: '1px solid var(--color-primary-300)'
         }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-primary-600)', marginBottom: '0.25rem' }}>
+          <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: '0.25rem' }}>
             Creating conversation in:
           </div>
-          <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-primary-900)' }}>
+          <div style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-900)' }}>
             {currentWorkspaceName}
           </div>
           <small style={{ color: 'var(--color-primary-600)' }}>
@@ -175,7 +175,7 @@ export default function DetailsStep() {
               background: 'none',
               border: 'none',
               padding: 0,
-              fontSize: '0.875rem',
+              fontSize: typography.fontSize.sm,
               color: 'var(--color-primary-600)',
               cursor: 'pointer',
               display: 'inline-flex',
@@ -202,7 +202,7 @@ export default function DetailsStep() {
                     background: 'none',
                     border: 'none',
                     padding: 0,
-                    fontSize: '0.875rem',
+                    fontSize: typography.fontSize.sm,
                     color: 'var(--color-primary-500)',
                     cursor: 'pointer',
                   }}

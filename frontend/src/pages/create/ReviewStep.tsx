@@ -693,7 +693,7 @@ export default function ReviewStep() {
         {/* Privacy & Access Settings Card */}
         <Card style={{ marginBottom: spacing[4] }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)' }}>
+            <h3 style={{ margin: 0, fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-900)' }}>
               Privacy & Access Settings
             </h3>
             <button
@@ -999,7 +999,7 @@ export default function ReviewStep() {
 
         {/* Collection Card */}
         <Card style={{ marginBottom: spacing[4] }}>
-          <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)', marginBottom: spacing[2] }}>
+          <h3 style={{ margin: 0, fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-900)', marginBottom: spacing[2] }}>
             Collection (Optional)
           </h3>
           <p style={{ margin: 0, fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', marginBottom: spacing[3] }}>
@@ -1023,7 +1023,7 @@ export default function ReviewStep() {
                 <line x1="20" y1="8" x2="20" y2="14" />
                 <line x1="23" y1="11" x2="17" y2="11" />
               </svg>
-              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-primary-900)' }}>
+              <h3 style={{ margin: 0, fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-900)' }}>
                 Invite Participants
               </h3>
             </div>
