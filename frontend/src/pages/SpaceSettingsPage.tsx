@@ -162,7 +162,7 @@ const s = {
     position: 'absolute' as const,
     top: '3px',
     transition: transitions.duration.normal,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+    boxShadow: shadows.sm,
   },
   toggleDescription: {
     fontSize: typography.fontSize.xs,

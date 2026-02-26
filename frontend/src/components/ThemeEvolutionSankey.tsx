@@ -332,7 +332,7 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
           top: tooltip.y,
           transform: 'translate(-50%, -100%)',
           backgroundColor: 'rgba(26, 26, 46, 0.92)',
-          color: '#fff',
+          color: 'var(--color-primary-50)',
           padding: `${spacing[1]} ${spacing[3]}`,
           borderRadius: borders.radius.md,
           fontSize: typography.fontSize.xs,
@@ -342,7 +342,7 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
           zIndex: 10,
         }}>
           {tooltip.lines.map((line, i) => (
-            <div key={i} style={i === 0 ? { fontWeight: typography.fontWeight.medium } : { color: '#d1d5db' }}>
+            <div key={i} style={i === 0 ? { fontWeight: typography.fontWeight.medium } : { color: 'var(--color-primary-400)' }}>
               {line}
             </div>
           ))}

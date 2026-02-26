@@ -972,9 +972,9 @@ export default function SpaceDetailPage() {
     setCompletionOutcome('');
     try {
       await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason, outcome, outcomeImageUrl);
-    } catch {
-      // Revert on failure
+    } catch (err: any) {
       setSpace(prev => prev ? { ...prev, purpose_synthesis: synthesis } : prev);
+      addToast({ type: 'error', title: 'Failed to update note', message: err.response?.data?.detail || err.message || 'Something went wrong' });
     }
   }
 

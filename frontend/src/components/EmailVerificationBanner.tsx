@@ -35,7 +35,7 @@ const s = {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     backgroundColor: colors.semantic.warning.main,
-    color: '#ffffff',
+    color: 'var(--color-primary-50)',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',

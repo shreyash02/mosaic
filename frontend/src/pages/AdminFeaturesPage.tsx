@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../contexts/NotificationContext';
 import AdminHeader from '../components/AdminHeader';
+import { shadows } from '../styles/tokens';
 import type {
   FeatureFlag,
   FeatureFlagOverride,
@@ -667,7 +668,7 @@ export default function AdminFeaturesPage() {
                             borderRadius: '50%',
                             backgroundColor: 'white',
                             transition: 'left 0.2s',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                            boxShadow: shadows.sm,
                           }} />
                         </button>
                         <span className={`flag-status-inline ${selectedFlag.enabled ? 'enabled' : 'disabled'}`}>

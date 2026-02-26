@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../services/api';
 import { typography, spacing } from '../styles';
 import Modal from './Modal';
+import CustomCheckbox from './CustomCheckbox';
 import type { Conversation } from '../types';
 
 interface FollowUpModalProps {
@@ -65,41 +66,29 @@ export default function FollowUpModal({
         Create a new conversation that follows up on this one.
       </p>
 
-      <div style={{ marginBottom: spacing[4] }}>
-        <label style={checkboxStyle}>
-          <input
-            type="checkbox"
-            checked={copySettings}
-            onChange={(e) => setCopySettings(e.target.checked)}
-          />
-          <span>Keep the same settings</span>
-        </label>
-        <label style={checkboxStyle}>
-          <input
-            type="checkbox"
-            checked={copyQuestions}
-            onChange={(e) => setCopyQuestions(e.target.checked)}
-          />
-          <span>Copy questions</span>
-        </label>
+      <div style={{ marginBottom: spacing[4], display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+        <CustomCheckbox
+          checked={copySettings}
+          onChange={setCopySettings}
+          label="Keep the same settings"
+        />
+        <CustomCheckbox
+          checked={copyQuestions}
+          onChange={setCopyQuestions}
+          label="Copy questions"
+        />
         {conversation.invite_only && (
-          <label style={checkboxStyle}>
-            <input
-              type="checkbox"
-              checked={copyInvitations}
-              onChange={(e) => setCopyInvitations(e.target.checked)}
-            />
-            <span>Send invitations to the same users</span>
-          </label>
-        )}
-        <label style={checkboxStyle}>
-          <input
-            type="checkbox"
-            checked={addToSeries}
-            onChange={(e) => setAddToSeries(e.target.checked)}
+          <CustomCheckbox
+            checked={copyInvitations}
+            onChange={setCopyInvitations}
+            label="Send invitations to the same users"
           />
-          <span>Add to collection</span>
-        </label>
+        )}
+        <CustomCheckbox
+          checked={addToSeries}
+          onChange={setAddToSeries}
+          label="Add to collection"
+        />
       </div>
 
       {!copyQuestions && (
@@ -149,16 +138,6 @@ export default function FollowUpModal({
     </Modal>
   );
 }
-
-const checkboxStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: spacing[2],
-  marginBottom: spacing[3],
-  fontSize: typography.fontSize.sm,
-  color: 'var(--color-primary-800)',
-  cursor: 'pointer',
-};
 
 const buttonPrimaryStyle: React.CSSProperties = {
   display: 'inline-flex',

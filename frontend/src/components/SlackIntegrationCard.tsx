@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { SlackWorkspaceStatus } from '../types';
-import { colors, spacing, typography, borders } from '../styles/tokens';
+import { colors, spacing, typography, borders, shadows } from '../styles/tokens';
 import { SkeletonText } from './Skeleton';
 import FocusTrap from './FocusTrap';
 
@@ -183,7 +183,7 @@ export function SlackIntegrationCard({ organizationId, isAdmin }: SlackIntegrati
       padding: spacing[6],
       maxWidth: '400px',
       width: '90%',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+      boxShadow: shadows.lg,
     },
     modalTitle: {
       fontSize: typography.fontSize.lg,

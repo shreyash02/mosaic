@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { api } from '../services/api';
 import { SpaceMember, SpaceInvitation } from '../types';
-import { colors, typography, spacing, borders, transitions, getAvatarColor } from '../styles/tokens';
+import { colors, typography, spacing, borders, shadows, transitions, getAvatarColor } from '../styles/tokens';
 import { useFeatures } from '../contexts/FeaturesContext';
 
 interface SpaceMembersModalProps {
@@ -80,10 +80,10 @@ function RoleDropdown({
           right: 0,
           zIndex: 50,
           minWidth: '120px',
-          background: '#fff',
+          background: 'var(--color-primary-50)',
           border: `1px solid ${colors.primary[200]}`,
           borderRadius: borders.radius.md,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
+          boxShadow: shadows.md,
           padding: spacing[1],
         }}>
           {ROLE_OPTIONS.map((opt) => (

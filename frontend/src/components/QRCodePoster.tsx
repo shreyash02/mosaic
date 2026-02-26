@@ -616,7 +616,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#FFFFFF',
     padding: '40px',
     borderRadius: '12px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+    boxShadow: shadows.lg,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

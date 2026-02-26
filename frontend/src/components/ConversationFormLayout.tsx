@@ -5,7 +5,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { useFeature } from '../contexts/FeaturesContext';
 import SetupModeToggle from './SetupModeToggle';
 import { api } from '../services/api';
-import { typography, spacing, borders, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 
 interface Step {
   id: string;
@@ -306,7 +306,7 @@ export default function ConversationFormLayout() {
             display: 'flex',
             alignItems: 'center',
             gap: spacing[2],
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            boxShadow: shadows.md,
             zIndex: 1000,
             animation: 'slideInRight 0.3s ease-out',
           }}>

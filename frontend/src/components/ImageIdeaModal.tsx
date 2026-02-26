@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
+import CustomCheckbox from './CustomCheckbox';
 import { api } from '../services/api';
 import type { SpaceIdea, ImageExtractionResult } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
@@ -110,14 +111,6 @@ const s = {
     gap: spacing[3],
     alignItems: 'flex-start',
     marginBottom: spacing[3],
-  },
-  checkbox: {
-    marginTop: '4px',
-    flexShrink: 0,
-    accentColor: 'var(--color-primary-900)',
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer',
   },
   reviewTextarea: {
     flex: 1,
@@ -409,16 +402,16 @@ export default function ImageIdeaModal({
           </div>
           {reviewIdeas.map((idea, idx) => (
             <div key={idx} style={s.reviewItem}>
-              <input
-                type="checkbox"
-                checked={idea.selected}
-                onChange={(e) => {
-                  const next = [...reviewIdeas];
-                  next[idx] = { ...next[idx], selected: e.target.checked };
-                  setReviewIdeas(next);
-                }}
-                style={s.checkbox}
-              />
+              <div style={{ marginTop: '4px', flexShrink: 0 }}>
+                <CustomCheckbox
+                  checked={idea.selected}
+                  onChange={(checked) => {
+                    const next = [...reviewIdeas];
+                    next[idx] = { ...next[idx], selected: checked };
+                    setReviewIdeas(next);
+                  }}
+                />
+              </div>
               <textarea
                 style={s.reviewTextarea}
                 value={idea.text}

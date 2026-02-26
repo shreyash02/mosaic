@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { IntentPreset } from '../types/intentPresets';
-import { typography, spacing, borders, transitions } from '../styles/tokens';
+import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { GearIcon } from './icons';
 
 // Custom Select Component
@@ -82,7 +82,7 @@ function CustomSelect({ value, options, onChange, id }: CustomSelectProps) {
           backgroundColor: 'var(--color-primary-50)',
           border: `${borders.width.thin} solid var(--color-primary-300)`,
           borderRadius: borders.radius.md,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          boxShadow: shadows.md,
           zIndex: 100,
           overflow: 'hidden',
         }}>

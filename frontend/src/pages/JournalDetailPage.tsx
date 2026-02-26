@@ -604,7 +604,7 @@ function formatDuration(createdAt: string): string {
 
 function getMoodColor(score: number): { bg: string; color: string } {
   if (score >= 0.3) return { bg: 'var(--color-primary-200)', color: 'var(--color-primary-800)' };
-  if (score <= -0.3) return { bg: '#fecaca', color: '#991b1b' };
+  if (score <= -0.3) return { bg: 'var(--color-error-light)', color: 'var(--color-error)' };
   return { bg: 'var(--color-primary-150, var(--color-primary-200))', color: 'var(--color-primary-600)' };
 }
 
