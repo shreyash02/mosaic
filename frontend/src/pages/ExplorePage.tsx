@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeature } from '../contexts/FeaturesContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { EXPLORE_SCENARIOS } from '../data/exploreScenarios';
@@ -116,6 +117,26 @@ const styles = {
     textDecoration: 'none',
     boxShadow: shadows.md,
   },
+  ctaButtonSecondary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-900)',
+    padding: `${spacing[3]} ${spacing[6]}`,
+    borderRadius: borders.radius.md,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textDecoration: 'none',
+    border: '1px solid var(--color-primary-400)',
+  },
+  ctaButtons: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing[3],
+    flexWrap: 'wrap' as const,
+  },
 };
 
 const hoverStyles = `
@@ -131,11 +152,17 @@ const hoverStyles = `
     transform: translateY(-1px);
     box-shadow: ${shadows.lg};
   }
+  .explore-cta-secondary:hover {
+    border-color: var(--color-primary-900);
+    background-color: var(--color-primary-100);
+  }
 `;
 
 export default function ExplorePage() {
   usePageTitle('Explore');
   const { isAuthenticated } = useAuth();
+  const journalsEnabled = useFeature('journals');
+  const spacesEnabled = useFeature('spaces');
 
   return (
     <>
@@ -183,19 +210,52 @@ export default function ExplorePage() {
             </h3>
             <p style={styles.ctaSubtext}>
               {isAuthenticated
-                ? 'Create a conversation, collect responses, and get AI-powered analysis.'
+                ? 'Collect feedback, reflect on your thinking, or organize ideas — all with AI-powered analysis.'
                 : 'Sign up free and start collecting feedback with AI-powered insights.'}
             </p>
-            <Link
-              to={isAuthenticated ? '/create/conversation/intent' : '/register'}
-              style={styles.ctaButton}
-              className="explore-cta"
-            >
-              {isAuthenticated ? 'Create a Conversation' : 'Sign Up Free'}
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-              </svg>
-            </Link>
+            {isAuthenticated ? (
+              <div style={styles.ctaButtons}>
+                <Link
+                  to="/create/conversation/intent"
+                  style={styles.ctaButton}
+                  className="explore-cta"
+                >
+                  Create a Conversation
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                  </svg>
+                </Link>
+                {journalsEnabled && (
+                  <Link
+                    to="/journals"
+                    style={styles.ctaButtonSecondary}
+                    className="explore-cta-secondary"
+                  >
+                    Start a Journal
+                  </Link>
+                )}
+                {spacesEnabled && (
+                  <Link
+                    to="/spaces/new"
+                    style={styles.ctaButtonSecondary}
+                    className="explore-cta-secondary"
+                  >
+                    Create a Space
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/register"
+                style={styles.ctaButton}
+                className="explore-cta"
+              >
+                Sign Up Free
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                </svg>
+              </Link>
+            )}
           </div>
         </div>
       </div>
