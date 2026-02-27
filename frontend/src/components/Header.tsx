@@ -101,7 +101,7 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="header-content">
-        <Link to="/dashboard" className="logo-link">
+        <Link to={isAuthenticated ? '/dashboard' : '/'} className="logo-link">
           <div className="logo">
             <svg className="logo-icon" width="28" height="28" viewBox="0 0 100 100">
               <rect width="100" height="100" rx="8" fill="#1a1a1a"/>
@@ -113,6 +113,13 @@ export default function Header() {
 
         {!isAuthenticated && (
           <div className="header-auth-buttons">
+            <button
+              onClick={toggleTheme}
+              className="btn-header-theme-toggle"
+              aria-label={resolvedTheme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            >
+              {resolvedTheme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
+            </button>
             <Link to="/explore" className="btn-header-login">
               Explore
             </Link>

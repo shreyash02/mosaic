@@ -7,6 +7,7 @@ interface ThemeContextType {
   resolvedTheme: 'light' | 'dark';
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
+  forceTheme: (theme: 'light' | 'dark' | null) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -32,6 +33,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
+  const [forcedTheme, setForcedTheme] = useState<'light' | 'dark' | null>(null);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -46,7 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const resolvedTheme: 'light' | 'dark' = theme === 'system' ? systemTheme : theme;
+  const resolvedTheme: 'light' | 'dark' = forcedTheme ?? (theme === 'system' ? systemTheme : theme);
 
   // Apply theme class to document
   useEffect(() => {
@@ -66,7 +68,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme, forceTheme: setForcedTheme }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -191,10 +191,10 @@ const styles = {
     padding: `${spacing[12]} ${spacing[6]}`,
   },
   aiBanner: {
-    backgroundColor: 'var(--color-primary-900)',
+    backgroundColor: '#1a1a2e',
     borderRadius: borders.radius.lg,
     padding: `${spacing[8]} ${spacing[8]}`,
-    color: 'var(--color-primary-50)',
+    color: '#ffffff',
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: spacing[8],
@@ -212,7 +212,7 @@ const styles = {
   },
   aiBannerSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: 'var(--color-primary-400)',
+    color: '#9ca3af',
     lineHeight: typography.lineHeight.relaxed,
   },
   aiFeatureList: {
@@ -234,7 +234,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    color: 'var(--color-primary-300)',
+    color: '#d1d5db',
   },
   aiFeatureText: {
     display: 'flex',
@@ -244,11 +244,11 @@ const styles = {
   aiFeatureTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: 'var(--color-primary-50)',
+    color: '#ffffff',
   },
   aiFeatureDesc: {
     fontSize: typography.fontSize.xs,
-    color: 'var(--color-primary-400)',
+    color: '#9ca3af',
     lineHeight: typography.lineHeight.relaxed,
   },
 
@@ -475,7 +475,7 @@ export default function HomePage() {
         {/* Hero Section */}
         <section style={styles.hero}>
           <h1 style={styles.heroTitle} className="hero-title-new">
-            Think clearer. Together or alone.
+            Think more clearly. Together or alone.
           </h1>
           <p style={styles.heroSubtitle}>
             Three surfaces for gathering input, reflecting, and organizing ideas — all with AI that
@@ -606,7 +606,7 @@ export default function HomePage() {
 
         {/* Bottom CTA */}
         <section style={styles.ctaSection}>
-          <h2 style={styles.ctaTitle}>Start thinking clearer</h2>
+          <h2 style={styles.ctaTitle}>Start thinking more clearly</h2>
           <p style={styles.ctaSubtitle}>
             Create your first conversation, journal, or space in under a minute.
           </p>
