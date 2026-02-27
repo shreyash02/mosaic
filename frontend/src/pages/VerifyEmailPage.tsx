@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { colors, typography, spacing, borders, shadows } from '../styles/tokens';
@@ -83,6 +84,7 @@ type VerificationState = 'loading' | 'success' | 'error' | 'expired';
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
+  const { refreshUser } = useAuth();
   const token = searchParams.get('token');
   const [state, setState] = useState<VerificationState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -105,7 +107,10 @@ export default function VerifyEmailPage() {
     const verifyEmail = async () => {
       try {
         await api.verifyEmail(token);
+        await refreshUser();
         setState('success');
+        // Replace URL so refreshing goes to dashboard instead of retrying the consumed token
+        window.history.replaceState(null, '', '/dashboard');
       } catch (err: unknown) {
         const error = err as { response?: { data?: { detail?: string } } };
         const detail = error.response?.data?.detail || 'Verification failed';
