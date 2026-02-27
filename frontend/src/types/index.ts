@@ -1324,6 +1324,8 @@ export interface Notification {
   data?: {
     action_url?: string;
     conversation_id?: string;
+    workspace_id?: string;
+    organization_id?: string;
     [key: string]: unknown;
   };
   read: boolean;

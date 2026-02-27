@@ -2010,6 +2010,8 @@ async def invite_to_space(
                     space_id=space_id,
                     invitation_token=invitation.invitation_token,
                     inviter_name=current_user.full_name,
+                    workspace_id=space.workspace_id,
+                    organization_id=space.organization_id,
                 )
             except Exception as e:
                 logger.error(f"Failed to send space invitation notification: {e}", exc_info=True)

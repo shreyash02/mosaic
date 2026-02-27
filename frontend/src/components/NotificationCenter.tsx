@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import type { Notification } from '../types';
 import './NotificationCenter.css';
 
@@ -118,6 +119,7 @@ function NotificationItem({
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
+  const [filterMode, setFilterMode] = useState<'all' | 'workspace'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const {
     notifications,
@@ -127,6 +129,19 @@ export function NotificationCenter() {
     markAllAsRead,
     loadMoreNotifications,
   } = useNotifications();
+  const { currentWorkspaceId } = useOrganization();
+
+  const filteredNotifications = useMemo(() => {
+    if (filterMode === 'workspace' && currentWorkspaceId) {
+      return notifications.filter(n => n.data?.workspace_id === currentWorkspaceId);
+    }
+    return notifications;
+  }, [notifications, filterMode, currentWorkspaceId]);
+
+  const workspaceCount = useMemo(() => {
+    if (!currentWorkspaceId) return 0;
+    return notifications.filter(n => n.data?.workspace_id === currentWorkspaceId).length;
+  }, [notifications, currentWorkspaceId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -174,24 +189,44 @@ export function NotificationCenter() {
         <div className="notification-dropdown">
           <div className="notification-header">
             <h3>Notifications</h3>
-            {unreadCount > 0 && (
-              <button
-                className="mark-all-read"
-                onClick={handleMarkAllRead}
-              >
-                Mark all read
-              </button>
-            )}
+            <div className="notification-header-actions">
+              {currentWorkspaceId && (
+                <div className="notification-filter-toggle">
+                  <button
+                    className={`filter-toggle-btn ${filterMode === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilterMode('all')}
+                  >
+                    All
+                  </button>
+                  <button
+                    className={`filter-toggle-btn ${filterMode === 'workspace' ? 'active' : ''}`}
+                    onClick={() => setFilterMode('workspace')}
+                  >
+                    This workspace{workspaceCount > 0 ? ` (${workspaceCount})` : ''}
+                  </button>
+                </div>
+              )}
+              {unreadCount > 0 && (
+                <button
+                  className="mark-all-read"
+                  onClick={handleMarkAllRead}
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="notification-list">
             {loading && notifications.length === 0 ? (
               <div className="notification-empty">Loading...</div>
-            ) : notifications.length === 0 ? (
-              <div className="notification-empty">No notifications yet</div>
+            ) : filteredNotifications.length === 0 ? (
+              <div className="notification-empty">
+                {filterMode === 'workspace' ? 'No notifications in this workspace' : 'No notifications yet'}
+              </div>
             ) : (
               <>
-                {notifications.map((notification) => (
+                {filteredNotifications.map((notification) => (
                   <NotificationItem
                     key={notification.id}
                     notification={notification}

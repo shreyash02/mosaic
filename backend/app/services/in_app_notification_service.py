@@ -93,7 +93,11 @@ class InAppNotificationService:
             message=f"Someone responded to \"{conversation.title}\" ({response_count} total)",
             entity_type="conversation",
             entity_id=conversation.id,
-            data={"action_url": action_url},
+            data={
+                "action_url": action_url,
+                "workspace_id": str(conversation.workspace_id) if conversation.workspace_id else None,
+                "organization_id": str(conversation.organization_id) if conversation.organization_id else None,
+            },
         )
 
     async def notify_analysis_ready(
@@ -114,7 +118,12 @@ class InAppNotificationService:
             message=f"Analysis for \"{conversation.title}\" is ready to view",
             entity_type="analysis",
             entity_id=analysis_id,
-            data={"action_url": action_url, "conversation_id": str(conversation.id)},
+            data={
+                "action_url": action_url,
+                "conversation_id": str(conversation.id),
+                "workspace_id": str(conversation.workspace_id) if conversation.workspace_id else None,
+                "organization_id": str(conversation.organization_id) if conversation.organization_id else None,
+            },
         )
 
     async def notify_announcement(
@@ -138,7 +147,11 @@ class InAppNotificationService:
             message=truncated_message,
             entity_type="conversation",
             entity_id=conversation.id,
-            data={"action_url": action_url},
+            data={
+                "action_url": action_url,
+                "workspace_id": str(conversation.workspace_id) if conversation.workspace_id else None,
+                "organization_id": str(conversation.organization_id) if conversation.organization_id else None,
+            },
         )
 
     async def notify_closing_soon(
@@ -161,7 +174,11 @@ class InAppNotificationService:
             message=f"\"{conversation.title}\" closes in {time_str}",
             entity_type="conversation",
             entity_id=conversation.id,
-            data={"action_url": action_url},
+            data={
+                "action_url": action_url,
+                "workspace_id": str(conversation.workspace_id) if conversation.workspace_id else None,
+                "organization_id": str(conversation.organization_id) if conversation.organization_id else None,
+            },
         )
 
     async def notify_invitation(
@@ -187,7 +204,11 @@ class InAppNotificationService:
             message=message,
             entity_type="conversation",
             entity_id=conversation.id,
-            data={"action_url": action_url},
+            data={
+                "action_url": action_url,
+                "workspace_id": str(conversation.workspace_id) if conversation.workspace_id else None,
+                "organization_id": str(conversation.organization_id) if conversation.organization_id else None,
+            },
         )
 
     async def notify_space_invitation(
@@ -198,6 +219,8 @@ class InAppNotificationService:
         space_id: UUID,
         invitation_token: str,
         inviter_name: Optional[str] = None,
+        workspace_id: Optional[UUID] = None,
+        organization_id: Optional[UUID] = None,
     ) -> Optional[Notification]:
         """Notify user when they're invited to a space."""
         action_url = f"/spaces/accept-invite/{invitation_token}"
@@ -215,7 +238,11 @@ class InAppNotificationService:
             message=message,
             entity_type="space",
             entity_id=space_id,
-            data={"action_url": action_url},
+            data={
+                "action_url": action_url,
+                "workspace_id": str(workspace_id) if workspace_id else None,
+                "organization_id": str(organization_id) if organization_id else None,
+            },
         )
 
     async def notify_journal_shared(
