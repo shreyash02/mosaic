@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
-import { useOnboarding, OnboardingStep } from '../hooks/useOnboarding';
+import { useChecklist, stepLinks as checklistStepLinks } from '../hooks/useChecklist';
+import type { ChecklistId, ChecklistStep } from '../hooks/useChecklist';
 
 interface GettingStartedChecklistProps {
+  /** Which checklist to display */
+  checklistId?: ChecklistId;
   /** Variant of the checklist */
   variant?: 'card' | 'compact' | 'floating';
   /** Whether to show the dismiss button */
@@ -11,14 +14,6 @@ interface GettingStartedChecklistProps {
   /** Callback when a step is clicked */
   onStepClick?: (stepId: string) => void;
 }
-
-const stepLinks: Record<string, string> = {
-  'create-conversation': '/conversations/new',
-  'share-link': '/conversations',
-  'receive-response': '/conversations',
-  'run-analysis': '/conversations',
-  'view-insights': '/conversations',
-};
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -67,17 +62,21 @@ const ProgressBar = ({ progress }: { progress: number }) => (
 );
 
 export default function GettingStartedChecklist({
+  checklistId = 'conversation',
   variant = 'card',
   showDismiss = true,
   onStepClick,
 }: GettingStartedChecklistProps) {
-  const { getSteps, getProgress, isComplete, dismiss, isDismissed, isLoading } = useOnboarding();
+  const { getSteps, getProgress, isComplete, dismiss, isDismissed, isLoading } = useChecklist(checklistId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [celebrateComplete, setCelebrateComplete] = useState(false);
 
   const steps = getSteps();
   const progress = getProgress();
   const complete = isComplete();
+
+  // Get step links for this checklist
+  const links = checklistStepLinks[checklistId];
 
   useEffect(() => {
     if (complete && !celebrateComplete) {
@@ -124,7 +123,7 @@ export default function GettingStartedChecklist({
   const containerStyle =
     variant === 'floating' ? floatingStyles : variant === 'compact' ? compactStyles : cardStyles;
 
-  const renderStepItem = (step: OnboardingStep, index: number) => {
+  const renderStepItem = (step: ChecklistStep, index: number) => {
     const stepStyle: React.CSSProperties = {
       display: 'flex',
       alignItems: 'flex-start',
@@ -201,7 +200,7 @@ export default function GettingStartedChecklist({
     return (
       <Link
         key={step.id}
-        to={stepLinks[step.id] || '/conversations'}
+        to={links[step.id] || '/dashboard'}
         onClick={() => onStepClick?.(step.id)}
         style={stepStyle}
         className="checklist-step-hover"
@@ -379,7 +378,7 @@ export default function GettingStartedChecklist({
  * Minimal inline version for header/nav
  */
 export function OnboardingProgress() {
-  const { getProgress, isComplete, isDismissed, isLoading } = useOnboarding();
+  const { getProgress, isComplete, isDismissed, isLoading } = useChecklist('conversation');
 
   if (isLoading || isDismissed() || isComplete()) {
     return null;

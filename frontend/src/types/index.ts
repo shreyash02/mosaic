@@ -59,6 +59,17 @@ export interface EmailPreferences {
   recurring_instances: boolean;
 }
 
+export interface ChecklistProgressData {
+  steps: Record<string, boolean>;
+  completed_at: Record<string, string>;
+  dismissed: boolean;
+  started_at?: string | null;
+}
+
+export interface OnboardingProgressResponse {
+  checklists: Record<string, ChecklistProgressData>;
+}
+
 // Workspace types
 export interface Workspace {
   id: string;

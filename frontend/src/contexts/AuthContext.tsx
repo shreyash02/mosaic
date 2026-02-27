@@ -83,10 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    // Clear legacy onboarding data (now stored server-side)
+    // Clear legacy onboarding data
     localStorage.removeItem('mosaic_onboarding');
     // Clear organization selection (user-specific)
     localStorage.removeItem('current_organization_id');
+    // Checklist progress is stored in DB; localStorage is only a cache
+    // scoped by user ID (checklist_cache_{userId}_{type}), so no leak risk.
     setUser(null);
     analytics.reset();
   };

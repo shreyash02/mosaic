@@ -115,6 +115,7 @@ import type {
   GraphData,
   OrganizeRun,
   ImageExtractionResult,
+  OnboardingProgressResponse,
 } from '../types';
 
 // Use relative URL when served from same origin, or env var for different origin
@@ -302,6 +303,17 @@ class ApiService {
 
   async updateEmailPreferences(data: EmailPreferences): Promise<EmailPreferences> {
     const response = await this.client.put<EmailPreferences>('/auth/email-preferences', data);
+    return response.data;
+  }
+
+  // Checklist / onboarding endpoints
+  async getOnboardingProgress(): Promise<OnboardingProgressResponse> {
+    const response = await this.client.get<OnboardingProgressResponse>('/auth/onboarding');
+    return response.data;
+  }
+
+  async updateOnboardingProgress(data: OnboardingProgressResponse): Promise<OnboardingProgressResponse> {
+    const response = await this.client.put<OnboardingProgressResponse>('/auth/onboarding', data);
     return response.data;
   }
 

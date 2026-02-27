@@ -9,6 +9,8 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
+import GettingStartedChecklist from '../components/GettingStartedChecklist';
+import { useChecklist } from '../hooks/useChecklist';
 import Modal from '../components/Modal';
 
 const s = {
@@ -176,6 +178,7 @@ export default function SpacesPage() {
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { completeStep: completeSpaceStep, isComplete: isSpaceChecklistComplete, isDismissed: isSpaceChecklistDismissed } = useChecklist('space');
   const [createError, setCreateError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
@@ -187,6 +190,22 @@ export default function SpacesPage() {
   useEffect(() => {
     loadSpaces();
   }, [currentWorkspaceId]);
+
+  // Auto-complete space checklist steps
+  useEffect(() => {
+    if (spaces.length > 0) {
+      completeSpaceStep('create-space');
+      const totalIdeas = spaces.reduce((sum, sp) => sum + sp.idea_count, 0);
+      if (totalIdeas > 0) {
+        completeSpaceStep('add-ideas');
+      }
+      const hasThemes = spaces.some(sp => sp.theme_count > 0);
+      if (hasThemes) {
+        completeSpaceStep('run-analysis');
+        completeSpaceStep('review-themes');
+      }
+    }
+  }, [spaces, completeSpaceStep]);
 
   async function loadSpaces() {
     try {
@@ -257,16 +276,23 @@ export default function SpacesPage() {
         {loading ? (
           <SkeletonConversationGrid count={3} />
         ) : spaces.length === 0 ? (
-          <EmptyState
-            type="default"
-            title="No spaces yet"
-            description="Create a space to start dropping ideas. The system will organize them into themes and show connections."
-            action={
-              <button style={s.newButton} onClick={() => setShowCreateModal(true)}>
-                Create your first space
-              </button>
-            }
-          />
+          <>
+            {!isSpaceChecklistComplete() && !isSpaceChecklistDismissed() && (
+              <div style={{ maxWidth: '560px', margin: `0 auto ${spacing[6]}` }}>
+                <GettingStartedChecklist checklistId="space" variant="card" showDismiss />
+              </div>
+            )}
+            <EmptyState
+              type="default"
+              title="No spaces yet"
+              description="Create a space to start dropping ideas. The system will organize them into themes and show connections."
+              action={
+                <button style={s.newButton} onClick={() => setShowCreateModal(true)}>
+                  Create your first space
+                </button>
+              }
+            />
+          </>
         ) : (
           <div style={s.grid}>
             {spaces.map((space) => (

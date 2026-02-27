@@ -9,6 +9,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { formatRelativeTime } from '../utils/formatting';
 import EmptyState from '../components/EmptyState';
 import { SkeletonConversationGrid } from '../components/Skeleton';
+import GettingStartedChecklist from '../components/GettingStartedChecklist';
+import { useChecklist } from '../hooks/useChecklist';
 import Modal from '../components/Modal';
 
 function formatDuration(createdAt: string): string {
@@ -184,6 +186,7 @@ export default function JournalsPage() {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<JournalListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { completeStep: completeJournalStep, isComplete: isJournalChecklistComplete, isDismissed: isJournalChecklistDismissed } = useChecklist('journal');
 
   useEffect(() => {
     if (!journalsEnabled) {
@@ -210,6 +213,17 @@ export default function JournalsPage() {
 
     loadJournals();
   }, [journalsEnabled, navigate, currentWorkspaceId]);
+
+  // Auto-complete journal checklist steps
+  useEffect(() => {
+    if (journals.length > 0) {
+      completeJournalStep('write-first');
+      const totalEntries = journals.reduce((sum, j) => sum + j.total_entries, 0);
+      if (totalEntries >= 3) {
+        completeJournalStep('write-few');
+      }
+    }
+  }, [journals, completeJournalStep]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -265,16 +279,23 @@ export default function JournalsPage() {
         {error && <div style={s.error}>{error}</div>}
 
         {journals.length === 0 ? (
-          <EmptyState
-            type="journals"
-            title="No journals yet"
-            description="Start a journal to track your reflections over time. Choose from templates or create your own."
-            action={
-              <Link to="/journals/new" style={s.newButton}>
-                Create Your First Journal
-              </Link>
-            }
-          />
+          <>
+            {!isJournalChecklistComplete() && !isJournalChecklistDismissed() && (
+              <div style={{ maxWidth: '560px', margin: `0 auto ${spacing[6]}` }}>
+                <GettingStartedChecklist checklistId="journal" variant="card" showDismiss />
+              </div>
+            )}
+            <EmptyState
+              type="journals"
+              title="No journals yet"
+              description="Start a journal to track your reflections over time. Choose from templates or create your own."
+              action={
+                <Link to="/journals/new" style={s.newButton}>
+                  Create Your First Journal
+                </Link>
+              }
+            />
+          </>
         ) : (
           <div style={s.grid}>
             {journals.map(journal => (

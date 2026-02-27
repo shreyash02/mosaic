@@ -21,6 +21,7 @@ import { SkeletonDashboard } from '../components/Skeleton';
 import WelcomeModal, { resetWelcomeState } from '../components/WelcomeModal';
 import GettingStartedChecklist from '../components/GettingStartedChecklist';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { useChecklist, resetChecklistApiState } from '../hooks/useChecklist';
 
 // Use CSS custom properties for dark mode support
 const s = {
@@ -243,7 +244,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [welcomeKey, setWelcomeKey] = useState(0);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
-  const { completeStep, isComplete, isDismissed, reset: resetOnboarding, hasEverOnboarded } = useOnboarding();
+  const { completeStep, isComplete, isDismissed, reset: resetOnboarding } = useOnboarding();
+  const { completeStep: completeDashboardStep, hasEverStarted: hasDashboardProgress, reset: resetDashboardChecklist } = useChecklist('dashboard');
 
   usePageTitle('Home');
 
@@ -279,23 +281,31 @@ export default function DashboardPage() {
   // Auto-complete onboarding steps based on user activity
   useEffect(() => {
     if (conversations.length > 0) {
-      // User has created at least one conversation
+      // Conversation checklist
       completeStep('create-conversation');
+      // Dashboard checklist
+      completeDashboardStep('start-conversation');
 
-      // Check if any conversation has responses
       const hasResponses = conversations.some((c) => (c.unique_participants || 0) > 0);
       if (hasResponses) {
         completeStep('receive-response');
       }
 
-      // Check if any conversation is analyzed
       const hasAnalysis = conversations.some((c) => c.state === ConversationState.ANALYZED);
       if (hasAnalysis) {
         completeStep('run-analysis');
         completeStep('view-insights');
       }
     }
-  }, [conversations, completeStep]);
+
+    // Dashboard checklist: journal and space steps
+    if (journals.length > 0) {
+      completeDashboardStep('write-journal');
+    }
+    if (spaces.length > 0) {
+      completeDashboardStep('create-space');
+    }
+  }, [conversations, journals, spaces, completeStep, completeDashboardStep]);
 
   // Debug function to show welcome modal again
   const handleShowWelcome = () => {
@@ -403,7 +413,7 @@ export default function DashboardPage() {
           userName={user?.full_name?.split(' ')[0]}
           isPersonalWorkspace={isPersonalWorkspace}
           workspaceName={currentWorkspaceName}
-          isReturningUser={hasEverOnboarded()}
+          isReturningUser={hasDashboardProgress()}
         />
 
         {/* Welcome Modal for first-time users */}
@@ -422,6 +432,8 @@ export default function DashboardPage() {
             <button
               onClick={() => {
                 resetOnboarding();
+                resetDashboardChecklist();
+                resetChecklistApiState();
                 window.location.reload();
               }}
               style={{
@@ -611,7 +623,7 @@ export default function DashboardPage() {
       {/* Getting Started Checklist - show only if not complete and not dismissed */}
       {!isComplete() && !isDismissed() && (
         <div style={{ marginBottom: spacing[6] }}>
-          <GettingStartedChecklist variant="card" />
+          <GettingStartedChecklist checklistId="conversation" variant="card" />
         </div>
       )}
 
@@ -914,6 +926,8 @@ export default function DashboardPage() {
           <button
             onClick={() => {
               resetOnboarding();
+              resetDashboardChecklist();
+              resetChecklistApiState();
             }}
             style={{
               padding: `${spacing[2]} ${spacing[4]}`,

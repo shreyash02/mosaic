@@ -162,29 +162,42 @@ def get_email_preferences(prefs_dict: Optional[dict]) -> EmailPreferences:
     return EmailPreferences(**{**DEFAULT_EMAIL_PREFERENCES.model_dump(), **prefs_dict})
 
 
-# Onboarding progress
-class OnboardingProgress(BaseModel):
-    """User onboarding progress for the getting started checklist."""
-
-    # Step completion status: step_id -> completed
+# Checklist progress — one entry per checklist (dashboard, conversation, journal, space)
+class ChecklistProgress(BaseModel):
+    """Progress for a single checklist."""
     steps: dict[str, bool] = {}
-
-    # Step completion timestamps: step_id -> ISO timestamp
     completed_at: dict[str, str] = {}
-
-    # Whether the checklist has been dismissed
     dismissed: bool = False
-
-    # When the user started onboarding
     started_at: Optional[str] = None
 
 
-# Default onboarding progress (all steps incomplete)
+class OnboardingProgress(BaseModel):
+    """All checklist progress, keyed by checklist ID."""
+    checklists: dict[str, ChecklistProgress] = {}
+
+
 DEFAULT_ONBOARDING_PROGRESS = OnboardingProgress()
 
 
 def get_onboarding_progress(progress_dict: Optional[dict]) -> OnboardingProgress:
-    """Get onboarding progress from dict, using defaults for missing values."""
+    """
+    Get onboarding progress from DB dict.
+    Handles backward compat: if the stored dict has a flat 'steps' key
+    (old format), migrate it into the 'conversation' checklist.
+    """
     if progress_dict is None:
         return DEFAULT_ONBOARDING_PROGRESS
+
+    # Old flat format: { steps: {...}, completed_at: {...}, dismissed, started_at }
+    # New format: { checklists: { conversation: {...}, dashboard: {...} } }
+    if 'steps' in progress_dict and 'checklists' not in progress_dict:
+        # Migrate old flat format into conversation checklist
+        conv = ChecklistProgress(
+            steps=progress_dict.get('steps', {}),
+            completed_at=progress_dict.get('completed_at', {}),
+            dismissed=progress_dict.get('dismissed', False),
+            started_at=progress_dict.get('started_at'),
+        )
+        return OnboardingProgress(checklists={'conversation': conv})
+
     return OnboardingProgress(**{**DEFAULT_ONBOARDING_PROGRESS.model_dump(), **progress_dict})

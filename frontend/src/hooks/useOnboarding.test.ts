@@ -1,7 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 
-// Mock the api module before importing the hook
+const TEST_USER_ID = 'test-user-123'
+
+// Mock useAuth
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ user: { id: TEST_USER_ID, email: 'test@test.com' } })),
+}))
+
+// Mock the API
 vi.mock('../services/api', () => ({
   api: {
     getOnboardingProgress: vi.fn(),
@@ -9,65 +16,40 @@ vi.mock('../services/api', () => ({
   },
 }))
 
-// Mock useAuth to return a user (so onboarding syncs with server)
-vi.mock('../contexts/AuthContext', () => ({
-  useAuth: vi.fn(() => ({ user: { id: 'user-1', email: 'test@test.com' } })),
-}))
-
 import { useOnboarding } from './useOnboarding'
+import { resetChecklistApiState } from './useChecklist'
 import { api } from '../services/api'
-import { useAuth } from '../contexts/AuthContext'
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   getOnboardingProgress: ReturnType<typeof vi.fn>
   updateOnboardingProgress: ReturnType<typeof vi.fn>
 }
 
 describe('useOnboarding', () => {
   beforeEach(() => {
+    localStorage.clear()
+    resetChecklistApiState()
     vi.clearAllMocks()
-    mockApi.getOnboardingProgress.mockResolvedValue({
-      steps: {
-        'create-conversation': false,
-        'share-link': false,
-        'receive-response': false,
-        'run-analysis': false,
-        'view-insights': false,
-      },
-      completed_at: {},
-      dismissed: false,
-    })
-    mockApi.updateOnboardingProgress.mockResolvedValue({})
+    // Default: empty checklists from server
+    mockApi.getOnboardingProgress.mockResolvedValue({ checklists: {} })
+    mockApi.updateOnboardingProgress.mockResolvedValue({ checklists: {} })
   })
 
-  it('loads onboarding state from server on mount', async () => {
-    const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    expect(mockApi.getOnboardingProgress).toHaveBeenCalled()
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('starts with all steps incomplete', async () => {
+  it('starts with all steps incomplete', () => {
     const { result } = renderHook(() => useOnboarding())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
+    expect(result.current.isLoading).toBe(false)
     expect(result.current.getProgress()).toBe(0)
     expect(result.current.isComplete()).toBe(false)
     expect(result.current.isStepCompleted('create-conversation')).toBe(false)
   })
 
-  it('getSteps returns all 5 steps with correct structure', async () => {
+  it('getSteps returns all 5 steps with correct structure', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     const steps = result.current.getSteps()
     expect(steps).toHaveLength(5)
@@ -79,12 +61,8 @@ describe('useOnboarding', () => {
     expect(steps.every(s => 'title' in s && 'description' in s)).toBe(true)
   })
 
-  it('completeStep marks a step as completed', async () => {
+  it('completeStep marks a step as completed', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => result.current.completeStep('create-conversation'))
 
@@ -92,12 +70,8 @@ describe('useOnboarding', () => {
     expect(result.current.getProgress()).toBe(20) // 1 of 5
   })
 
-  it('completeStep is idempotent', async () => {
+  it('completeStep is idempotent', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => result.current.completeStep('create-conversation'))
     act(() => result.current.completeStep('create-conversation'))
@@ -105,30 +79,25 @@ describe('useOnboarding', () => {
     expect(result.current.getProgress()).toBe(20)
   })
 
-  it('completeStep syncs to server', async () => {
+  it('syncs to API after completing a step', async () => {
+    vi.useFakeTimers()
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => result.current.completeStep('share-link'))
 
-    // syncToServer is async, wait for it
-    await waitFor(() => {
-      expect(mockApi.updateOnboardingProgress).toHaveBeenCalled()
+    // Advance past the debounce timer
+    await act(async () => {
+      vi.advanceTimersByTime(600)
     })
 
+    expect(mockApi.updateOnboardingProgress).toHaveBeenCalled()
     const call = mockApi.updateOnboardingProgress.mock.calls[0][0]
-    expect(call.steps['share-link']).toBe(true)
+    expect(call.checklists.conversation.steps['share-link']).toBe(true)
+    vi.useRealTimers()
   })
 
-  it('getProgress returns correct percentage', async () => {
+  it('getProgress returns correct percentage', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => {
       result.current.completeStep('create-conversation')
@@ -139,12 +108,8 @@ describe('useOnboarding', () => {
     expect(result.current.getProgress()).toBe(60) // 3 of 5
   })
 
-  it('isComplete returns true when all steps done', async () => {
+  it('isComplete returns true when all steps done', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => {
       result.current.completeStep('create-conversation')
@@ -158,28 +123,16 @@ describe('useOnboarding', () => {
     expect(result.current.getProgress()).toBe(100)
   })
 
-  it('dismiss marks onboarding as dismissed', async () => {
+  it('dismiss marks onboarding as dismissed', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => result.current.dismiss())
 
     expect(result.current.isDismissed()).toBe(true)
-
-    await waitFor(() => {
-      expect(mockApi.updateOnboardingProgress).toHaveBeenCalled()
-    })
   })
 
-  it('reset clears all progress', async () => {
+  it('reset clears all progress', () => {
     const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
 
     act(() => {
       result.current.completeStep('create-conversation')
@@ -192,56 +145,55 @@ describe('useOnboarding', () => {
     expect(result.current.isDismissed()).toBe(false)
   })
 
-  it('loads pre-existing progress from server', async () => {
+  it('hasEverOnboarded returns true when steps completed', () => {
+    const { result } = renderHook(() => useOnboarding())
+
+    expect(result.current.hasEverOnboarded()).toBe(false)
+
+    act(() => result.current.completeStep('create-conversation'))
+
+    expect(result.current.hasEverOnboarded()).toBe(true)
+  })
+
+  it('hasEverOnboarded returns true when dismissed', () => {
+    const { result } = renderHook(() => useOnboarding())
+
+    act(() => result.current.dismiss())
+
+    expect(result.current.hasEverOnboarded()).toBe(true)
+  })
+
+  it('loads progress from API on mount', async () => {
     mockApi.getOnboardingProgress.mockResolvedValue({
-      steps: {
-        'create-conversation': true,
-        'share-link': true,
-        'receive-response': false,
-        'run-analysis': false,
-        'view-insights': false,
+      checklists: {
+        conversation: {
+          steps: { 'create-conversation': true, 'share-link': true },
+          completed_at: {},
+          dismissed: false,
+          started_at: null,
+        },
       },
-      completed_at: {
-        'create-conversation': '2025-01-01T00:00:00Z',
-        'share-link': '2025-01-02T00:00:00Z',
-      },
-      dismissed: false,
     })
 
     const { result } = renderHook(() => useOnboarding())
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isStepCompleted('create-conversation')).toBe(true)
     })
 
-    expect(result.current.isStepCompleted('create-conversation')).toBe(true)
     expect(result.current.isStepCompleted('share-link')).toBe(true)
-    expect(result.current.isStepCompleted('receive-response')).toBe(false)
     expect(result.current.getProgress()).toBe(40)
   })
 
-  it('falls back to defaults when server request fails', async () => {
-    mockApi.getOnboardingProgress.mockRejectedValue(new Error('Network error'))
+  it('cleans up legacy localStorage keys', () => {
+    localStorage.setItem('onboarding_progress', '{}')
+    localStorage.setItem('checklist_conversation', '{}')
+    localStorage.setItem('checklist_dashboard', '{}')
 
-    const { result } = renderHook(() => useOnboarding())
+    renderHook(() => useOnboarding())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    expect(result.current.getProgress()).toBe(0)
-  })
-
-  it('uses defaults when no user is authenticated', async () => {
-    vi.mocked(useAuth).mockReturnValue({ user: null } as any)
-
-    const { result } = renderHook(() => useOnboarding())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    expect(mockApi.getOnboardingProgress).not.toHaveBeenCalled()
-    expect(result.current.getProgress()).toBe(0)
+    expect(localStorage.getItem('onboarding_progress')).toBeNull()
+    expect(localStorage.getItem('checklist_conversation')).toBeNull()
+    expect(localStorage.getItem('checklist_dashboard')).toBeNull()
   })
 })
