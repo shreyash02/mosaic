@@ -152,8 +152,10 @@ const styles = {
   },
   quickStartGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: spacing[4],
+    maxWidth: '720px',
+    margin: '0 auto',
   },
   quickStartCard: {
     display: 'flex',
@@ -217,10 +219,6 @@ export default function EmptyDashboard({ userName, isPersonalWorkspace = true, w
     return (
       <div style={styles.container} className="empty-dashboard">
         <style>{`
-          .empty-dashboard .primary-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: ${shadows.lg};
-          }
           .empty-dashboard .quick-start-card:hover {
             border-color: var(--color-primary-400);
             transform: translateY(-2px);
@@ -248,14 +246,8 @@ export default function EmptyDashboard({ userName, isPersonalWorkspace = true, w
           }}>
             {showChecklist
               ? 'This workspace is empty. Complete the steps below to get started.'
-              : 'This workspace is empty. Create a conversation to get started.'}
+              : 'This workspace is empty. Pick one of the options below to get started.'}
           </p>
-          <Link to="/conversations/new" style={styles.primaryCTA} className="primary-cta">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
-            </svg>
-            Create a Conversation
-          </Link>
         </div>
 
         {/* Single column: fresh checklist centered (only if not dismissed/completed) */}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -89,12 +89,18 @@ export default function VerifyEmailPage() {
 
   usePageTitle('Verify Email');
 
+  const verifyAttempted = useRef(false);
+
   useEffect(() => {
     if (!token) {
       setState('error');
       setErrorMessage('No verification token provided.');
       return;
     }
+
+    // Guard against StrictMode double-mount consuming the token twice
+    if (verifyAttempted.current) return;
+    verifyAttempted.current = true;
 
     const verifyEmail = async () => {
       try {
