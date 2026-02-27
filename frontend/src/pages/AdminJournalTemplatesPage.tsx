@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import AdminHeader from '../components/AdminHeader';
 import type { JournalTemplate, JournalTemplatePrompt } from '../types';
+import { getErrorMessage } from '../utils/errorMessages';
 import './AdminPortalPage.css';
 
 interface TemplateFormData {
@@ -87,8 +88,7 @@ export default function AdminJournalTemplatesPage() {
       setTemplates(response.data);
       setError('');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load templates';
-      if (message !== '__network_error__') setError(message);
+      setError(getErrorMessage(err, 'load templates'));
     } finally {
       setLoading(false);
     }
@@ -167,8 +167,7 @@ export default function AdminJournalTemplatesPage() {
       setEditingId(null);
       await loadTemplates();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save template';
-      if (message !== '__network_error__') setError(message);
+      setError(getErrorMessage(err, 'save template'));
     } finally {
       setSaving(false);
     }
@@ -182,8 +181,7 @@ export default function AdminJournalTemplatesPage() {
       setSuccessMessage('Template deleted');
       await loadTemplates();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to delete template';
-      if (message !== '__network_error__') setError(message);
+      setError(getErrorMessage(err, 'delete template'));
     }
   };
 

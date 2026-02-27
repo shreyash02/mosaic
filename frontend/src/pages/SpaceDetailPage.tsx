@@ -21,6 +21,7 @@ import ActionOutcomeModal from '../components/ActionOutcomeModal';
 import ImageLightbox from '../components/ImageLightbox';
 import Modal from '../components/Modal';
 import { getActivityVerb, getActivityIcon } from '../utils/spaceActivity';
+import { getErrorMessage } from '../utils/errorMessages';
 
 const s = {
   page: {
@@ -809,7 +810,7 @@ export default function SpaceDetailPage() {
       addToast({
         type: 'error',
         title: 'Failed to add idea',
-        message: err.response?.data?.detail || err.message || 'Something went wrong',
+        message: getErrorMessage(err, 'add idea'),
       });
     } finally {
       setDropping(false);
@@ -933,7 +934,7 @@ export default function SpaceDetailPage() {
       addToast({
         type: 'error',
         title: 'Failed to delete idea',
-        message: err.response?.data?.detail || err.message || 'Something went wrong',
+        message: getErrorMessage(err, 'delete idea'),
       });
     }
   }
@@ -981,7 +982,7 @@ export default function SpaceDetailPage() {
       await api.updateSynthesisNoteState(id, themeId, noteIndex, newState, reason, outcome, outcomeImageUrl);
     } catch (err: any) {
       setSpace(prev => prev ? { ...prev, purpose_synthesis: synthesis } : prev);
-      addToast({ type: 'error', title: 'Failed to update note', message: err.response?.data?.detail || err.message || 'Something went wrong' });
+      addToast({ type: 'error', title: 'Failed to update note', message: getErrorMessage(err, 'update note') });
     }
   }
 
@@ -2235,7 +2236,7 @@ export default function SpaceDetailPage() {
                           addToast({
                             type: 'error',
                             title: 'Failed to approve suggestion',
-                            message: err.response?.data?.detail || err.message || 'Something went wrong',
+                            message: getErrorMessage(err, 'approve suggestion'),
                           });
                         }
                       }}
@@ -2265,7 +2266,7 @@ export default function SpaceDetailPage() {
                           addToast({
                             type: 'error',
                             title: 'Failed to dismiss suggestion',
-                            message: err.response?.data?.detail || err.message || 'Something went wrong',
+                            message: getErrorMessage(err, 'dismiss suggestion'),
                           });
                         }
                       }}

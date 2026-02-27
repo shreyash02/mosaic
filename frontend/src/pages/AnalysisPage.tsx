@@ -18,6 +18,7 @@ import SuggestedActionsSection from '../components/SuggestedActions';
 import WhatsNextBar from '../components/WhatsNextBar';
 import { useNotifications } from '../contexts/NotificationContext';
 import CustomSelect from '../components/CustomSelect';
+import { getErrorMessage } from '../utils/errorMessages';
 
 const styles = {
   page: {
@@ -1415,7 +1416,7 @@ export default function AnalysisPage() {
                             addToast({
                               type: 'error',
                               title: 'Failed to disable sharing',
-                              message: err.response?.data?.detail || err.message || 'Something went wrong',
+                              message: getErrorMessage(err, 'update sharing'),
                             });
                           } finally {
                             setTogglingShare(false);
@@ -1453,7 +1454,7 @@ export default function AnalysisPage() {
                           addToast({
                             type: 'error',
                             title: 'Failed to enable sharing',
-                            message: err.response?.data?.detail || err.message || 'Something went wrong',
+                            message: getErrorMessage(err, 'update sharing'),
                           });
                         } finally {
                           setTogglingShare(false);

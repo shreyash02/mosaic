@@ -5,6 +5,7 @@ import { analytics } from '../services/analytics';
 import type { JournalPromptCreate, AnalysisInterval, EntryFrequency, JournalTemplate } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { getErrorMessage } from '../utils/errorMessages';
 import { usePageTitle } from '../hooks/usePageTitle';
 import CustomSelect from '../components/CustomSelect';
 import CustomCheckbox from '../components/CustomCheckbox';
@@ -459,11 +460,7 @@ export default function JournalCreatePage() {
       analytics.journalCreated({ journalId: journal.id, templateId: selectedTemplate });
       navigate(`/journals/${journal.id}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create journal';
-      // Network errors are shown as toasts by the API interceptor
-      if (message !== '__network_error__') {
-        setError(message);
-      }
+      setError(getErrorMessage(err, 'create journal'));
       setCreating(false);
     }
   };

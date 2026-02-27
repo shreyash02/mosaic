@@ -5,6 +5,7 @@ import type { Journal, JournalPromptCreate, AnalysisInterval, EntryFrequency, Jo
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useFeatureConfig, useCurrentTier } from '../contexts/FeaturesContext';
+import { getErrorMessage } from '../utils/errorMessages';
 import { formatRelativeTime } from '../utils/formatting';
 import CustomSelect from '../components/CustomSelect';
 import CustomCheckbox from '../components/CustomCheckbox';
@@ -458,10 +459,7 @@ export default function JournalSettingsPage() {
       setSuccessMsg('Settings saved');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save settings';
-      if (message !== '__network_error__') {
-        setError(message);
-      }
+      setError(getErrorMessage(err, 'save settings'));
     } finally {
       setSaving(false);
     }
@@ -483,9 +481,8 @@ export default function JournalSettingsPage() {
       setShareExpiry('');
       setShareSuccess('Invitation sent');
       setTimeout(() => setShareSuccess(''), 3000);
-    } catch (err: any) {
-      const detail = err.response?.data?.detail || 'Failed to send invitation';
-      setShareError(typeof detail === 'string' ? detail : detail.message || 'Failed to send invitation');
+    } catch (err: unknown) {
+      setShareError(getErrorMessage(err, 'send invitation'));
     } finally {
       setShareSending(false);
     }

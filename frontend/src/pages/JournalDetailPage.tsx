@@ -9,6 +9,7 @@ import { formatDate, formatRelativeTime } from '../utils/formatting';
 import Modal from '../components/Modal';
 import { useNotifications } from '../contexts/NotificationContext';
 import JournalCalendar from '../components/JournalCalendar';
+import { getErrorMessage } from '../utils/errorMessages';
 
 const ENTRIES_PER_PAGE = 20;
 const TRUNCATE_LENGTH = 400;
@@ -1001,7 +1002,7 @@ export default function JournalDetailPage() {
       addToast({
         type: 'error',
         title: 'Failed to save entry',
-        message: err.response?.data?.detail || err.message || 'Something went wrong',
+        message: getErrorMessage(err, 'save entry'),
       });
     } finally {
       setEditSaving(false);

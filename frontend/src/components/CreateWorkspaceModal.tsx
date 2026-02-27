@@ -3,6 +3,7 @@ import Modal from './Modal';
 import { api } from '../services/api';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { spacing, typography, borders, colors } from '../styles/tokens';
+import { getErrorMessage } from '../utils/errorMessages';
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean;
@@ -35,8 +36,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
       setCurrentWorkspace(workspace.id);
       handleClose();
     } catch (err: any) {
-      const message = err.message || 'Failed to create workspace';
-      setError(message === '__network_error__' ? 'Failed to create workspace. Please try again.' : message);
+      setError(getErrorMessage(err, 'create workspace'));
     } finally {
       setCreating(false);
     }
