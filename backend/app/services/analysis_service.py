@@ -1,5 +1,6 @@
 """Analysis service for LLM-powered response analysis."""
 
+import logging
 import time
 from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
@@ -12,6 +13,8 @@ from app.core.config import settings
 from app.models.response import Response
 from app.models.question import Question
 from app.services.llm_usage_service import log_llm_usage
+
+logger = logging.getLogger(__name__)
 
 
 class AnalysisService:
@@ -776,10 +779,8 @@ IMPORTANT: Write in plain text only. Do not use any markdown formatting (no **bo
             List of surprising insights with title and description, or None if insufficient data
         """
         if not question_analyses or not responses:
-            print(f"DEBUG: _generate_surprising_insights - insufficient data: question_analyses={len(question_analyses) if question_analyses else 0}, responses={len(responses) if responses else 0}")
+            logger.debug(f"Surprising insights: insufficient data (question_analyses={len(question_analyses) if question_analyses else 0}, responses={len(responses) if responses else 0})")
             return None
-        
-        print(f"DEBUG: _generate_surprising_insights - starting generation with {len(question_analyses)} question analyses and {len(responses)} responses")
 
         # Group responses by question
         responses_by_question = {}
@@ -911,8 +912,6 @@ Focus on the most interesting and actionable insights. If there are no particula
 
             # Extract JSON from response
             response_text = message.content[0].text
-            print(f"DEBUG: _generate_surprising_insights - LLM response received, length: {len(response_text)}")
-            print(f"DEBUG: _generate_surprising_insights - Response preview: {response_text[:200]}")
             
             # Try to parse JSON from the response
             import json
@@ -949,18 +948,13 @@ Focus on the most interesting and actionable insights. If there are no particula
                     json_text = json_text.strip()
                 
                 if not json_text:
-                    print(f"DEBUG: _generate_surprising_insights - Could not extract JSON from response")
+                    logger.warning("Surprising insights: could not extract JSON from LLM response")
                     return None
-                
-                print(f"DEBUG: _generate_surprising_insights - Extracted JSON text length: {len(json_text)}")
-                print(f"DEBUG: _generate_surprising_insights - JSON preview: {json_text[:200]}")
-                
+
                 result = json.loads(json_text)
-                print(f"DEBUG: _generate_surprising_insights - JSON parsed successfully")
-                
+
                 # Extract insights array
                 insights = result.get("insights", [])
-                print(f"DEBUG: _generate_surprising_insights - Found {len(insights) if insights else 0} insights in response")
                 
                 # Validate and return
                 if insights and isinstance(insights, list):
@@ -981,20 +975,11 @@ Focus on the most interesting and actionable insights. If there are no particula
                                         "description": desc_str
                                     })
                     
-                    # Return the list (even if empty, let the schema handle None conversion)
-                    print(f"DEBUG: _generate_surprising_insights - Returning {len(validated_insights)} validated insights")
                     return validated_insights if validated_insights else None
-                print(f"DEBUG: _generate_surprising_insights - No insights found or not a list")
                 return None
             except json.JSONDecodeError as e:
-                print(f"Error parsing JSON from surprising insights response: {str(e)}")
-                print(f"Response text: {response_text[:500]}")
-                import traceback
-                traceback.print_exc()
+                logger.warning(f"Failed to parse surprising insights JSON: {e}")
                 return None
         except Exception as e:
-            # Return None on error rather than failing the entire analysis
-            print(f"Error generating surprising insights: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error generating surprising insights: {e}", exc_info=True)
             return None
