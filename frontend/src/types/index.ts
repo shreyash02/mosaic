@@ -69,7 +69,7 @@ export interface OnboardingProgress {
 // Workspace types
 export interface Workspace {
   id: string;
-  type: 'personal' | 'organization' | 'user';
+  type: 'personal' | 'organization';
   name: string;
   description?: string;
   organization_id?: string;

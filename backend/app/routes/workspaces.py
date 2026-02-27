@@ -85,10 +85,8 @@ async def create_workspace(
             )
         ws_type = "organization"
     else:
-        # User-created personal workspace — always allowed, visibility forced to private
-        # Note: type='personal' is reserved for the single auto-created default workspace
-        # (enforced by uq_one_global_personal_workspace constraint)
-        ws_type = "user"
+        # Personal workspace — always allowed, visibility forced to private
+        ws_type = "personal"
         data.visibility = "private"
 
     workspace = Workspace(
