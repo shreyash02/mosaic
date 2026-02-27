@@ -233,7 +233,7 @@ const getStatusColor = (state: ConversationState): string => {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { currentWorkspaceId, isPersonalWorkspace, currentWorkspaceName } = useOrganization();
+  const { currentWorkspaceId, isPersonalWorkspace, currentWorkspaceName, loading: orgLoading } = useOrganization();
   const { user } = useAuth();
   const journalsEnabled = useFeature('journals');
   const spacesEnabled = useFeature('spaces');
@@ -384,7 +384,7 @@ export default function DashboardPage() {
       .slice(0, 4);
   }, [spaces]);
 
-  if (loading) {
+  if (loading || orgLoading) {
     return (
       <div style={s.page}>
         <div style={s.header}>

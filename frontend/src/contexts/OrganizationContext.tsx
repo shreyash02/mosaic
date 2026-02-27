@@ -34,7 +34,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [currentOrganization, setCurrentOrganizationState] = useState<Organization | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
+    () => localStorage.getItem(WORKSPACE_STORAGE_KEY)
+  );
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -115,9 +117,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         setCurrentOrganizationState(null);
         const savedWsId = localStorage.getItem(WORKSPACE_STORAGE_KEY);
         const personalWs = ws.find(w => w.type === 'personal' && !w.organization_id);
-        // Only use saved workspace if it's the personal workspace
-        if (savedWsId && personalWs && savedWsId === personalWs.id) {
-          setSelectedWorkspaceId(savedWsId);
+        // Restore saved workspace if it belongs to the personal context (no org)
+        const savedPersonalWs = savedWsId ? ws.find(w => w.id === savedWsId && !w.organization_id) : null;
+        if (savedPersonalWs) {
+          setSelectedWorkspaceId(savedPersonalWs.id);
         } else {
           setSelectedWorkspaceId(personalWs?.id ?? null);
           if (personalWs) localStorage.setItem(WORKSPACE_STORAGE_KEY, personalWs.id);

@@ -6,7 +6,7 @@ import type {
   PasswordChangeRequest,
   PasswordSetRequest,
   EmailPreferences,
-  OnboardingProgress,
+
   LoginRequest,
   RegisterRequest,
   AuthResponse,
@@ -302,17 +302,6 @@ class ApiService {
 
   async updateEmailPreferences(data: EmailPreferences): Promise<EmailPreferences> {
     const response = await this.client.put<EmailPreferences>('/auth/email-preferences', data);
-    return response.data;
-  }
-
-  // Onboarding endpoints
-  async getOnboardingProgress(): Promise<OnboardingProgress> {
-    const response = await this.client.get<OnboardingProgress>('/auth/onboarding');
-    return response.data;
-  }
-
-  async updateOnboardingProgress(data: OnboardingProgress): Promise<OnboardingProgress> {
-    const response = await this.client.put<OnboardingProgress>('/auth/onboarding', data);
     return response.data;
   }
 

@@ -163,26 +163,20 @@ def get_email_preferences(prefs_dict: Optional[dict]) -> EmailPreferences:
 
 
 # Onboarding progress
-class WorkspaceOnboardingProgress(BaseModel):
-    """Per-workspace onboarding progress."""
-
-    steps: dict[str, bool] = {}
-    completed_at: dict[str, str] = {}
-    dismissed: bool = False
-    started_at: Optional[str] = None
-
-
 class OnboardingProgress(BaseModel):
     """User onboarding progress for the getting started checklist."""
 
-    # Legacy top-level fields (backward compat)
+    # Step completion status: step_id -> completed
     steps: dict[str, bool] = {}
-    completed_at: dict[str, str] = {}
-    dismissed: bool = False
-    started_at: Optional[str] = None
 
-    # Per-workspace progress
-    workspaces: dict[str, WorkspaceOnboardingProgress] = {}
+    # Step completion timestamps: step_id -> ISO timestamp
+    completed_at: dict[str, str] = {}
+
+    # Whether the checklist has been dismissed
+    dismissed: bool = False
+
+    # When the user started onboarding
+    started_at: Optional[str] = None
 
 
 # Default onboarding progress (all steps incomplete)
