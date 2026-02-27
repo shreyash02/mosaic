@@ -47,6 +47,7 @@ import type {
   InviteToOrganizationResponse,
   OrganizationInvitationListResponse,
   Workspace,
+  WorkspaceCreate,
   Series,
   SeriesCreate,
   SeriesUpdate,
@@ -899,6 +900,33 @@ class ApiService {
   async getMyWorkspaces(): Promise<Workspace[]> {
     const response = await this.client.get<Workspace[]>('/workspaces/me');
     return response.data;
+  }
+
+  async getOrgWorkspaces(orgId: string): Promise<Workspace[]> {
+    const response = await this.client.get<Workspace[]>(`/workspaces/org/${orgId}`);
+    return response.data;
+  }
+
+  async createWorkspace(data: WorkspaceCreate): Promise<Workspace> {
+    const response = await this.client.post<Workspace>('/workspaces', data);
+    return response.data;
+  }
+
+  async updateWorkspace(id: string, data: Partial<WorkspaceCreate>): Promise<Workspace> {
+    const response = await this.client.patch<Workspace>(`/workspaces/${id}`, data);
+    return response.data;
+  }
+
+  async deleteWorkspace(id: string): Promise<void> {
+    await this.client.delete(`/workspaces/${id}`);
+  }
+
+  async addWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+    await this.client.post(`/workspaces/${workspaceId}/members?user_id=${userId}`);
+  }
+
+  async removeWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+    await this.client.delete(`/workspaces/${workspaceId}/members/${userId}`);
   }
 
   // Series endpoints

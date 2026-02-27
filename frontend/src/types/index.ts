@@ -69,10 +69,20 @@ export interface OnboardingProgress {
 // Workspace types
 export interface Workspace {
   id: string;
-  type: 'personal' | 'organization';
+  type: 'personal' | 'organization' | 'user';
   name: string;
+  description?: string;
   organization_id?: string;
+  owner_id: string;
   is_default: boolean;
+  visibility: 'open' | 'private';
+}
+
+export interface WorkspaceCreate {
+  name: string;
+  description?: string;
+  organization_id?: string;  // omit for personal workspace
+  visibility: 'open' | 'private';
 }
 
 // Conversation types

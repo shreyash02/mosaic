@@ -5,7 +5,10 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from sqlalchemy import union
+
 from app.models.workspace import Workspace, WorkspaceMember
+from app.models.organization import OrganizationMember
 from app.models.user import User
 
 
@@ -88,6 +91,27 @@ def check_workspace_membership(
     )
 
 
+def check_workspace_access(db: Session, workspace_id: UUID, user_id: UUID) -> bool:
+    """Check if user can access a workspace (explicit member or open org member)."""
+    member = check_workspace_membership(db, workspace_id, user_id)
+    if member:
+        return True
+
+    # Check if it's an open org workspace and user is an org member
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if workspace and workspace.visibility == "open" and workspace.organization_id:
+        org_member = (
+            db.query(OrganizationMember)
+            .filter(
+                OrganizationMember.organization_id == workspace.organization_id,
+                OrganizationMember.user_id == user_id,
+            )
+            .first()
+        )
+        return org_member is not None
+    return False
+
+
 def require_workspace_membership(
     db: Session, workspace_id: UUID, user: User
 ) -> WorkspaceMember:
@@ -102,12 +126,25 @@ def require_workspace_membership(
 
 
 def get_user_workspace_ids(db: Session, user_id: UUID):
-    """Return a subquery of workspace IDs the user is a member of."""
-    return (
+    """Return a subquery of workspace IDs the user can access.
+
+    This is the union of:
+    1. Workspaces where the user is an explicit WorkspaceMember
+    2. Open org workspaces where the user is an org member
+    """
+    explicit = (
         db.query(WorkspaceMember.workspace_id)
         .filter(WorkspaceMember.user_id == user_id)
-        .subquery()
     )
+    open_org = (
+        db.query(Workspace.id)
+        .join(OrganizationMember, OrganizationMember.organization_id == Workspace.organization_id)
+        .filter(
+            Workspace.visibility == "open",
+            OrganizationMember.user_id == user_id,
+        )
+    )
+    return explicit.union(open_org).subquery()
 
 
 def create_personal_workspace(

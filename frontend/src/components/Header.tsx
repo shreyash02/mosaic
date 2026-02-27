@@ -5,6 +5,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { useFeature } from '../contexts/FeaturesContext';
 import { useTheme, SunIcon, MoonIcon } from '../contexts/ThemeContext';
 import { NotificationCenter } from './NotificationCenter';
+import CreateWorkspaceModal from './CreateWorkspaceModal';
 import './Header.css';
 
 export default function Header() {
@@ -22,15 +23,19 @@ export default function Header() {
     isPersonalWorkspace,
     organizations,
     currentOrgId,
-    setCurrentOrganization
+    currentWorkspaceId,
+    setCurrentOrganization,
+    setCurrentWorkspace,
+    orgWorkspaces,
   } = useOrganization();
   const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const workspaceDropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileProfileRef = useRef<HTMLDivElement>(null);
   const mobileMenuBtnRef = useRef<HTMLButtonElement>(null);
@@ -41,16 +46,22 @@ export default function Header() {
     navigate('/');
   };
 
-  const handleSwitchWorkspace = (orgId: string | null) => {
+  const handleSwitchOrg = (orgId: string | null) => {
     setCurrentOrganization(orgId);
-    setShowOrgDropdown(false);
+    setShowUserDropdown(false);
+    setMobileProfileOpen(false);
+  };
+
+  const handleSwitchWorkspace = (workspaceId: string) => {
+    setCurrentWorkspace(workspaceId);
+    setShowWorkspaceDropdown(false);
   };
 
   // Click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowOrgDropdown(false);
+      if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(event.target as Node)) {
+        setShowWorkspaceDropdown(false);
       }
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node) &&
           mobileMenuBtnRef.current && !mobileMenuBtnRef.current.contains(event.target as Node)) {
@@ -64,21 +75,28 @@ export default function Header() {
       }
     };
 
-    if (showOrgDropdown || mobileMenuOpen || mobileProfileOpen || showUserDropdown) {
+    if (showWorkspaceDropdown || mobileMenuOpen || mobileProfileOpen || showUserDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showOrgDropdown, mobileMenuOpen, mobileProfileOpen, showUserDropdown]);
+  }, [showWorkspaceDropdown, mobileMenuOpen, mobileProfileOpen, showUserDropdown]);
 
   // Close menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
     setMobileProfileOpen(false);
     setShowUserDropdown(false);
+    setShowWorkspaceDropdown(false);
   }, [location.pathname]);
+
+  // Show workspace switcher when there are multiple workspaces in the current context,
+  // or always in org context (to allow creating new ones)
+  const showWorkspaceSwitcher = !isPersonalWorkspace
+    ? orgWorkspaces.length > 0
+    : orgWorkspaces.length > 1;  // personal: show if more than just the default
 
   return (
     <header className="app-header">
@@ -130,107 +148,117 @@ export default function Header() {
               )}
             </button>
 
-            {/* Organization Switcher */}
-            {organizations.length > 0 && (
-            <div className="org-switcher" ref={dropdownRef}>
-              <button
-                className="org-switcher-trigger"
-                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-                aria-expanded={showOrgDropdown}
-                aria-haspopup="listbox"
-                aria-label={`Switch workspace. Current: ${currentWorkspaceName}`}
-              >
-                <span className="org-icon" aria-hidden="true">
-                  {isPersonalWorkspace ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            {/* Workspace Switcher (top-left, after logo) */}
+            {showWorkspaceSwitcher ? (
+              <div className="workspace-switcher" ref={workspaceDropdownRef}>
+                <button
+                  className="workspace-switcher-trigger"
+                  onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
+                  aria-expanded={showWorkspaceDropdown}
+                  aria-haspopup="listbox"
+                  aria-label={`Switch workspace. Current: ${currentWorkspaceName}`}
+                >
+                  <span className="workspace-icon" aria-hidden="true">
+                    {orgWorkspaces.find(w => w.id === currentWorkspaceId)?.visibility === 'private' ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="workspace-name">{currentWorkspaceName}</span>
+                  <span className="dropdown-arrow">&#x25BC;</span>
+                </button>
+
+                {showWorkspaceDropdown && (
+                  <div className="workspace-switcher-dropdown">
+                    <div className="workspace-switcher-label">Workspaces</div>
+                    {orgWorkspaces.map(ws => (
+                      <button
+                        key={ws.id}
+                        onClick={() => handleSwitchWorkspace(ws.id)}
+                        className={`workspace-switcher-item ${currentWorkspaceId === ws.id ? 'active' : ''}`}
+                      >
+                        <span className="workspace-item-icon">
+                          {ws.visibility === 'private' ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="workspace-item-name">
+                          {ws.name}
+                          {ws.is_default && <span className="workspace-default-badge">Default</span>}
+                        </span>
+                        {currentWorkspaceId === ws.id && (
+                          <span className="workspace-check">&#x2713;</span>
+                        )}
+                      </button>
+                    ))}
+
+                    <div className="workspace-switcher-divider" />
+                    <button
+                      className="workspace-switcher-create"
+                      onClick={() => {
+                        setShowWorkspaceDropdown(false);
+                        setShowCreateModal(true);
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      New Workspace
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Single-workspace context — show label with "New Workspace" dropdown */
+              <div className="workspace-switcher" ref={workspaceDropdownRef}>
+                <button
+                  className="workspace-switcher-trigger"
+                  onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
+                  aria-expanded={showWorkspaceDropdown}
+                  aria-haspopup="listbox"
+                  aria-label={`Current workspace: ${currentWorkspaceName}`}
+                >
+                  <span className="workspace-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                       <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
                     </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm2-2a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6zm1 0v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1z"/>
-                    </svg>
-                  )}
-                </span>
-                <span className="org-name">{currentWorkspaceName}</span>
-                <span className="dropdown-arrow">▼</span>
-              </button>
+                  </span>
+                  <span className="workspace-name">{currentWorkspaceName}</span>
+                  <span className="dropdown-arrow">&#x25BC;</span>
+                </button>
 
-              {showOrgDropdown && (
-                <div className="org-switcher-dropdown">
-                  {/* Personal workspace option */}
-                  <button
-                    onClick={() => handleSwitchWorkspace(null)}
-                    className={`org-switcher-item ${isPersonalWorkspace ? 'active' : ''}`}
-                  >
-                    <span className="org-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                {showWorkspaceDropdown && (
+                  <div className="workspace-switcher-dropdown">
+                    <button
+                      className="workspace-switcher-create"
+                      onClick={() => {
+                        setShowWorkspaceDropdown(false);
+                        setShowCreateModal(true);
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                       </svg>
-                    </span>
-                    <span style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span>Personal</span>
-                      <span className="org-switcher-item-desc">Private to you</span>
-                    </span>
-                  </button>
-
-                  {/* Divider */}
-                  {organizations.length > 0 && (
-                    <div className="org-switcher-divider" />
-                  )}
-
-                  {/* Organizations list */}
-                  {organizations.length > 0 && (
-                    <>
-                      <div className="org-switcher-label">Organizations</div>
-                      {organizations.map(org => (
-                        <button
-                          key={org.id}
-                          onClick={() => handleSwitchWorkspace(org.id)}
-                          className={`org-switcher-item ${currentOrgId === org.id ? 'active' : ''}`}
-                        >
-                          <span className="org-icon">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                              <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm2-2a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6zm1 0v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1z"/>
-                            </svg>
-                          </span>
-                          <span style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span>{org.name}</span>
-                            <span className="org-switcher-item-desc">Shared workspace</span>
-                          </span>
-                          {currentOrgId === org.id && (
-                            <span className="org-check">✓</span>
-                          )}
-                        </button>
-                      ))}
-                    </>
-                  )}
-
-                  {/* Organization Settings - only when in org context */}
-                  {currentOrgId && (
-                    <>
-                      <div className="org-switcher-divider" />
-                      <Link
-                        to={`/organizations/${currentOrgId}/settings`}
-                        className="org-switcher-manage"
-                        onClick={() => setShowOrgDropdown(false)}
-                      >
-                        Organization Settings
-                      </Link>
-                    </>
-                  )}
-
-                  {/* Manage link */}
-                  <div className="org-switcher-divider" />
-                  <Link
-                    to="/organizations"
-                    className="org-switcher-manage"
-                    onClick={() => setShowOrgDropdown(false)}
-                  >
-                    Manage Organizations
-                  </Link>
-                </div>
-              )}
-            </div>
+                      New Workspace
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Desktop Navigation */}
@@ -272,7 +300,7 @@ export default function Header() {
             {/* Notifications - Desktop */}
             <NotificationCenter />
 
-            {/* Desktop User Menu */}
+            {/* Desktop User Menu (with org switcher) */}
             <div className="user-dropdown-container desktop-user-dropdown" ref={userDropdownRef}>
               <button
                 className="user-dropdown-trigger"
@@ -296,6 +324,39 @@ export default function Header() {
                     <span className="user-dropdown-name">{user.full_name}</span>
                     <span className="user-dropdown-email">{user.email}</span>
                   </div>
+
+                  {/* Organization Switcher Section */}
+                  {organizations.length > 0 && (
+                    <>
+                      <div className="user-dropdown-divider" />
+                      <div className="user-dropdown-org-section">
+                        <button
+                          onClick={() => handleSwitchOrg(null)}
+                          className={`user-dropdown-org-item ${isPersonalWorkspace ? 'active' : ''}`}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                          </svg>
+                          <span>Personal</span>
+                          {isPersonalWorkspace && <span className="user-dropdown-org-check">&#x2713;</span>}
+                        </button>
+                        {organizations.map(org => (
+                          <button
+                            key={org.id}
+                            onClick={() => handleSwitchOrg(org.id)}
+                            className={`user-dropdown-org-item ${currentOrgId === org.id ? 'active' : ''}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                              <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm2-2a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6zm1 0v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1z"/>
+                            </svg>
+                            <span>{org.name}</span>
+                            {currentOrgId === org.id && <span className="user-dropdown-org-check">&#x2713;</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
                   <div className="user-dropdown-divider" />
                   <Link
                     to="/profile"
@@ -378,6 +439,33 @@ export default function Header() {
                     <span className="mobile-profile-name">{user.full_name}</span>
                     <span className="mobile-profile-email">{user.email}</span>
                   </div>
+
+                  {/* Organization switcher in mobile profile */}
+                  {organizations.length > 0 && (
+                    <>
+                      <div className="mobile-profile-divider" />
+                      <div className="mobile-org-section">
+                        <button
+                          onClick={() => handleSwitchOrg(null)}
+                          className={`mobile-org-item ${isPersonalWorkspace ? 'active' : ''}`}
+                        >
+                          <span>Personal</span>
+                          {isPersonalWorkspace && <span className="mobile-org-check">&#x2713;</span>}
+                        </button>
+                        {organizations.map(org => (
+                          <button
+                            key={org.id}
+                            onClick={() => handleSwitchOrg(org.id)}
+                            className={`mobile-org-item ${currentOrgId === org.id ? 'active' : ''}`}
+                          >
+                            <span>{org.name}</span>
+                            {currentOrgId === org.id && <span className="mobile-org-check">&#x2713;</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
                   <div className="mobile-profile-divider" />
                   <Link to="/profile" className="mobile-profile-link" onClick={() => setMobileProfileOpen(false)}>
                     Profile
@@ -412,6 +500,42 @@ export default function Header() {
               className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
               ref={mobileMenuRef}
             >
+              {/* Mobile workspace switcher */}
+              {showWorkspaceSwitcher && (
+                <div className="mobile-workspace-section">
+                  <div className="mobile-workspace-label">Workspaces</div>
+                  {orgWorkspaces.map(ws => (
+                    <button
+                      key={ws.id}
+                      onClick={() => {
+                        handleSwitchWorkspace(ws.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`mobile-workspace-item ${currentWorkspaceId === ws.id ? 'active' : ''}`}
+                    >
+                      {ws.visibility === 'private' && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      )}
+                      <span>{ws.name}</span>
+                      {currentWorkspaceId === ws.id && <span className="mobile-org-check">&#x2713;</span>}
+                    </button>
+                  ))}
+                  <button
+                    className="mobile-workspace-create"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setShowCreateModal(true);
+                    }}
+                  >
+                    + New Workspace
+                  </button>
+                  <div className="mobile-menu-divider" />
+                </div>
+              )}
+
               <nav className="mobile-nav">
                 <Link
                   to="/dashboard"
@@ -479,10 +603,15 @@ export default function Header() {
                 </Link>
               </nav>
             </div>
+
+            {/* Create Workspace Modal */}
+            <CreateWorkspaceModal
+              isOpen={showCreateModal}
+              onClose={() => setShowCreateModal(false)}
+            />
           </>
         )}
       </div>
     </header>
   );
 }
-
