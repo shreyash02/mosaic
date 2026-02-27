@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -133,10 +133,6 @@ const styles = {
     color: 'var(--color-primary-600)',
     textDecoration: 'none',
   },
-  footerSeparator: {
-    margin: `0 ${spacing[3]}`,
-    color: 'var(--color-primary-300)',
-  },
   errorMessage: {
     backgroundColor: 'var(--color-primary-100)',
     border: `1px solid ${'var(--color-primary-300)'}`,
@@ -175,7 +171,7 @@ export default function RegisterPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [inviteRequired, setInviteRequired] = useState(false);
   const [checkingRequired, setCheckingRequired] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ReactNode>('');
   const [loading, setLoading] = useState(false);
 
   usePageTitle('Register');
@@ -244,7 +240,19 @@ export default function RegisterPage() {
       });
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      const detail = err.response?.data?.detail || 'Registration failed. Please try again.';
+      if (detail === 'Email already registered') {
+        setError(
+          <>
+            Email already registered.{' '}
+            <Link to="/login" style={{ color: 'var(--color-primary-900)', fontWeight: 500 }}>
+              Log in instead
+            </Link>
+          </>
+        );
+      } else {
+        setError(detail);
+      }
     } finally {
       setLoading(false);
     }
@@ -423,15 +431,16 @@ export default function RegisterPage() {
             </Link>
           </p>
 
-          <div style={styles.footerLinks}>
+          <p style={styles.footerLinks}>
+            By signing up, you agree to our{' '}
             <Link to="/terms" style={styles.footerLink} className="register-link-new">
               Terms of Service
             </Link>
-            <span style={styles.footerSeparator}>•</span>
+            {' '}and{' '}
             <Link to="/privacy" style={styles.footerLink} className="register-link-new">
               Privacy Policy
             </Link>
-          </div>
+          </p>
         </div>
       </div>
     </>

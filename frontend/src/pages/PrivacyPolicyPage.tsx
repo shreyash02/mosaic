@@ -13,14 +13,15 @@ export default function PrivacyPolicyPage() {
         
         <div className="legal-content">
           <h1>Privacy Policy</h1>
-          <p className="last-updated">Last updated: February 20, 2026</p>
+          <p className="last-updated">Last updated: February 27, 2026</p>
 
           <section>
             <h2>1. Introduction</h2>
             <p>
               Mosaic ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy
               explains how we collect, use, disclose, and safeguard your information when you use our
-              platform for anonymous opinions or responses to questions/polls.
+              platform. Mosaic provides three surfaces — Conversations for collecting structured feedback,
+              Journals for personal reflection, and Spaces for organizing ideas — all with AI-powered analysis.
             </p>
           </section>
 
@@ -35,16 +36,22 @@ export default function PrivacyPolicyPage() {
               <li>Organization affiliation (if applicable)</li>
             </ul>
 
-            <h3>2.2 Feedback Responses</h3>
+            <h3>2.2 User Content</h3>
             <p>
-              We collect feedback responses submitted through the Service. The level of anonymity associated
-              with each response depends on the anonymity level selected by the conversation creator:
+              We collect content you submit through the Service, including conversation responses,
+              journal entries, and ideas added to spaces. For conversations, the level of anonymity
+              associated with each response depends on the anonymity level selected by the creator:
             </p>
             <ul>
+              <li><strong>Open:</strong> Responses are attributed to participants and visible to the conversation creator</li>
               <li><strong>Fully Anonymous:</strong> Responses are not linked to any user account or identifiable information</li>
               <li><strong>Platform-Tracked:</strong> Responses may be associated with user accounts but are not disclosed to conversation creators</li>
-              <li><strong>Revealable:</strong> Responses may be associated with user accounts and may be disclosed under certain circumstances</li>
+              <li><strong>Revealable:</strong> Responses are anonymous by default, but participants may choose to reveal their identity</li>
             </ul>
+            <p>
+              Journal entries are private to the individual user. Spaces may be personal or shared,
+              depending on the access settings configured by the creator.
+            </p>
 
             <h3>2.3 Usage Data</h3>
             <p>
@@ -64,8 +71,8 @@ export default function PrivacyPolicyPage() {
             <ul>
               <li>Provide, maintain, and improve the Service</li>
               <li>Process and manage your account</li>
-              <li>Enable feedback collection and analysis</li>
-              <li>Generate AI-powered insights and analysis</li>
+              <li>Enable content collection across conversations, journals, and spaces</li>
+              <li>Generate AI-powered insights, themes, and analysis from your content</li>
               <li>Send you service-related communications</li>
               <li>Detect, prevent, and address technical issues</li>
               <li>Comply with legal obligations</li>
@@ -99,29 +106,46 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2>5. Anonymity Levels</h2>
             <p>
-              Mosaic offers three levels of anonymity for feedback responses. The level selected by the
-              conversation creator determines how responses are handled:
+              Mosaic offers four levels of anonymity for conversation responses. The level is selected by the
+              conversation creator and determines how responses are handled:
             </p>
             <ul>
+              <li>
+                <strong>Open:</strong> Responses are attributed to participants. The conversation creator
+                and other participants (if permitted) can see who submitted each response.
+              </li>
               <li>
                 <strong>Fully Anonymous:</strong> Responses are completely anonymized and cannot be traced
                 back to individual users. We do not store any identifying information with these responses.
               </li>
               <li>
-                <strong>Platform-Tracked:</strong> Responses may be associated with user accounts for
-                platform analytics purposes, but this information is not disclosed to conversation creators
+                <strong>Platform-Tracked:</strong> Responses are associated with user accounts for
+                platform integrity purposes, but this information is not disclosed to conversation creators
                 or other users.
               </li>
               <li>
-                <strong>Revealable:</strong> Responses may be associated with user accounts, and this
-                association may be disclosed to conversation creators or administrators under certain
-                circumstances as specified in the conversation settings.
+                <strong>Revealable:</strong> Responses are anonymous by default. Participants may
+                choose to reveal their identity to the conversation creator at their own discretion.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2>6. Data Security</h2>
+            <h2>6. AI Processing</h2>
+            <p>
+              Mosaic uses artificial intelligence to analyze content submitted through the Service.
+              This includes extracting themes, identifying patterns, analyzing sentiment, and generating
+              suggested actions. AI analysis operates on aggregate data — individual identity is not
+              exposed in analysis results for anonymous content.
+            </p>
+            <p>
+              Your content is not used to train third-party AI models. AI processing is performed solely
+              for the purpose of providing insights and analysis within the Service.
+            </p>
+          </section>
+
+          <section>
+            <h2>7. Data Security</h2>
             <p>
               We implement appropriate technical and organizational security measures to protect your
               information against unauthorized access, alteration, disclosure, or destruction. However, no
@@ -131,7 +155,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>7. Data Retention</h2>
+            <h2>8. Data Retention</h2>
             <p>
               We retain your personal information for as long as necessary to provide the Service and
               fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is
@@ -140,7 +164,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>8. Your Rights</h2>
+            <h2>9. Your Rights</h2>
             <p>Depending on your location, you may have the following rights regarding your personal information:</p>
             <ul>
               <li><strong>Access:</strong> Request access to your personal information</li>
@@ -156,7 +180,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>9. Cookies and Tracking Technologies</h2>
+            <h2>10. Cookies and Tracking Technologies</h2>
             <p>
               We use cookies and similar tracking technologies to track activity on our Service and hold
               certain information. You can instruct your browser to refuse all cookies or to indicate when
@@ -165,7 +189,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>10. Children's Privacy</h2>
+            <h2>11. Children's Privacy</h2>
             <p>
               Our Service is not intended for children under the age of 13. We do not knowingly collect
               personal information from children under 13. If you are a parent or guardian and believe your
@@ -174,7 +198,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>11. International Data Transfers</h2>
+            <h2>12. International Data Transfers</h2>
             <p>
               Your information may be transferred to and maintained on computers located outside of your
               state, province, country, or other governmental jurisdiction where data protection laws may
@@ -183,7 +207,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>12. Changes to This Privacy Policy</h2>
+            <h2>13. Changes to This Privacy Policy</h2>
             <p>
               We may update our Privacy Policy from time to time. We will notify you of any changes by
               posting the new Privacy Policy on this page and updating the "Last updated" date. You are
@@ -192,7 +216,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2>13. Contact Us</h2>
+            <h2>14. Contact Us</h2>
             <p>
               If you have any questions about this Privacy Policy, please contact us through the Service
               or via the contact information provided on our website.

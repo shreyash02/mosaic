@@ -128,10 +128,6 @@ const styles = {
     color: 'var(--color-primary-600)',
     textDecoration: 'none',
   },
-  footerSeparator: {
-    margin: `0 ${spacing[3]}`,
-    color: 'var(--color-primary-300)',
-  },
   errorMessage: {
     backgroundColor: 'var(--color-primary-100)',
     border: `1px solid ${'var(--color-primary-300)'}`,
@@ -311,15 +307,16 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div style={styles.footerLinks}>
+          <p style={styles.footerLinks}>
+            By signing in, you agree to our{' '}
             <Link to="/terms" style={styles.footerLink} className="login-link-new">
               Terms of Service
             </Link>
-            <span style={styles.footerSeparator}>•</span>
+            {' '}and{' '}
             <Link to="/privacy" style={styles.footerLink} className="login-link-new">
               Privacy Policy
             </Link>
-          </div>
+          </p>
         </div>
       </div>
     </>

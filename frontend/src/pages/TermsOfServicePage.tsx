@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
         
         <div className="legal-content">
           <h1>Terms of Service</h1>
-          <p className="last-updated">Last updated: February 20, 2026</p>
+          <p className="last-updated">Last updated: February 27, 2026</p>
 
           <section>
             <h2>1. Acceptance of Terms</h2>
@@ -27,14 +27,15 @@ export default function TermsOfServicePage() {
           <section>
             <h2>2. Use License</h2>
             <p>
-              Permission is granted to temporarily use Mosaic for personal and commercial purposes. This
-              is the grant of a license, not a transfer of title, and under this license you may not:
+              Permission is granted to use Mosaic for personal and commercial purposes in accordance with
+              your subscription plan. This is the grant of a license, not a transfer of title, and under
+              this license you may not:
             </p>
             <ul>
-              <li>Modify or copy the materials</li>
-              <li>Use the materials for any commercial purpose or for any public display</li>
+              <li>Copy, modify, or create derivative works of the Service's software or design</li>
               <li>Attempt to reverse engineer any software contained in the Service</li>
               <li>Remove any copyright or other proprietary notations from the materials</li>
+              <li>Resell, sublicense, or redistribute access to the Service</li>
             </ul>
           </section>
 
@@ -47,25 +48,38 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2>4. User Content</h2>
+            <h2>4. User Content and AI Processing</h2>
             <p>
-              You retain ownership of any content you submit, post, or display on or through the Service.
+              You retain ownership of any content you submit, post, or display on or through the Service,
+              including conversation responses, journal entries, and ideas added to spaces.
               By submitting content, you grant us a worldwide, non-exclusive, royalty-free license to use,
-              reproduce, and distribute such content solely for the purpose of providing and improving the Service.
+              reproduce, and process such content solely for the purpose of providing and improving the Service.
+            </p>
+            <p>
+              Content you submit may be processed by artificial intelligence to generate insights, extract
+              themes, identify patterns, and produce analysis. AI analysis operates on aggregate data and
+              respects the anonymity level configured for each conversation. Your content is not used to
+              train third-party AI models.
             </p>
           </section>
 
           <section>
             <h2>5. Privacy and Anonymity</h2>
             <p>
-              Mosaic offers different levels of anonymity for feedback collection. While we strive to protect
-              user privacy, you acknowledge that:
+              Mosaic offers four levels of anonymity for conversation responses. By using the Service,
+              you acknowledge that:
             </p>
             <ul>
+              <li>Open responses are attributed to participants and visible to the conversation creator</li>
               <li>Fully anonymous responses cannot be traced back to individual users</li>
-              <li>Platform-tracked responses may be associated with user accounts</li>
-              <li>Revealable responses may be disclosed under certain circumstances</li>
+              <li>Platform-tracked responses may be associated with user accounts for integrity purposes but are not disclosed to creators</li>
+              <li>Revealable responses are anonymous by default, but participants may choose to reveal their identity</li>
             </ul>
+            <p>
+              Journal entries are private to the individual user. Spaces may be personal or shared
+              depending on the access settings configured by the creator. Please refer to our{' '}
+              <Link to="/privacy">Privacy Policy</Link> for full details on how your data is handled.
+            </p>
           </section>
 
           <section>
