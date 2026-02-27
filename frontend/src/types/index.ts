@@ -59,11 +59,19 @@ export interface EmailPreferences {
   recurring_instances: boolean;
 }
 
+export interface WorkspaceOnboardingProgress {
+  steps: Record<string, boolean>;
+  completed_at: Record<string, string>;
+  dismissed: boolean;
+  started_at?: string;
+}
+
 export interface OnboardingProgress {
   steps: Record<string, boolean>;
   completed_at: Record<string, string>;
   dismissed: boolean;
   started_at?: string;
+  workspaces?: Record<string, WorkspaceOnboardingProgress>;
 }
 
 // Workspace types

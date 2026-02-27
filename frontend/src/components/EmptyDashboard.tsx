@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { typography, spacing, borders, shadows } from '../styles/tokens';
 import { useFeature } from '../contexts/FeaturesContext';
+import { useOnboarding } from '../hooks/useOnboarding';
 import GettingStartedChecklist from './GettingStartedChecklist';
 
 interface EmptyDashboardProps {
   userName?: string;
   isPersonalWorkspace?: boolean;
   workspaceName?: string;
+  isReturningUser?: boolean;
 }
 
 // Feature card icons
@@ -203,10 +205,123 @@ const styles = {
   },
 };
 
-export default function EmptyDashboard({ userName, isPersonalWorkspace = true, workspaceName = 'Personal' }: EmptyDashboardProps) {
+export default function EmptyDashboard({ userName, isPersonalWorkspace = true, workspaceName = 'Personal', isReturningUser = false }: EmptyDashboardProps) {
   const templatesEnabled = useFeature('templates');
   const journalsEnabled = useFeature('journals');
   const spacesEnabled = useFeature('spaces');
+
+  const { isComplete: isOnboardingComplete, isDismissed: isOnboardingDismissed } = useOnboarding();
+  const showChecklist = isReturningUser && !isOnboardingComplete() && !isOnboardingDismissed();
+
+  if (isReturningUser) {
+    return (
+      <div style={styles.container} className="empty-dashboard">
+        <style>{`
+          .empty-dashboard .primary-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: ${shadows.lg};
+          }
+          .empty-dashboard .quick-start-card:hover {
+            border-color: var(--color-primary-400);
+            transform: translateY(-2px);
+          }
+          @media (max-width: 768px) {
+            .empty-dashboard .quick-start-grid {
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}</style>
+
+        {/* Shorter hero for returning users */}
+        <div style={{ textAlign: 'center' as const, marginBottom: spacing[6], padding: `${spacing[6]} ${spacing[4]} ${spacing[4]}` }}>
+          <h2 style={{
+            fontSize: typography.fontSize['2xl'],
+            fontWeight: typography.fontWeight.semibold,
+            color: 'var(--color-primary-900)',
+            marginBottom: spacing[2],
+          }}>{workspaceName}</h2>
+          <p style={{
+            fontSize: typography.fontSize.base,
+            color: 'var(--color-primary-500)',
+            marginBottom: spacing[4],
+            lineHeight: typography.lineHeight.relaxed,
+          }}>
+            {showChecklist
+              ? 'This workspace is empty. Complete the steps below to get started.'
+              : 'This workspace is empty. Create a conversation to get started.'}
+          </p>
+          <Link to="/conversations/new" style={styles.primaryCTA} className="primary-cta">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+            </svg>
+            Create a Conversation
+          </Link>
+        </div>
+
+        {/* Single column: fresh checklist centered (only if not dismissed/completed) */}
+        {showChecklist && (
+          <div style={{ maxWidth: '560px', margin: '0 auto', marginBottom: spacing[8] }}>
+            <GettingStartedChecklist variant="card" showDismiss />
+          </div>
+        )}
+
+        {/* Quick start grid (still useful for navigation) */}
+        <div style={styles.quickStart}>
+          <h2 style={styles.quickStartTitle}>Quick Start</h2>
+          <div style={styles.quickStartGrid} className="quick-start-grid">
+            <Link to="/conversations/new" style={styles.quickStartCard} className="quick-start-card">
+              <div style={styles.quickStartIcon}>
+                <FeedbackIcon />
+              </div>
+              <div style={styles.quickStartLabel}>New Conversation</div>
+              <div style={styles.quickStartHint}>Start from scratch</div>
+            </Link>
+
+            {templatesEnabled && (
+              <Link to="/templates" style={styles.quickStartCard} className="quick-start-card">
+                <div style={styles.quickStartIcon}>
+                  <TemplatesIcon />
+                </div>
+                <div style={styles.quickStartLabel}>Browse Templates</div>
+                <div style={styles.quickStartHint}>Use a pre-built template</div>
+              </Link>
+            )}
+
+            {journalsEnabled && isPersonalWorkspace && (
+              <Link to="/journals/new" style={styles.quickStartCard} className="quick-start-card">
+                <div style={styles.quickStartIcon}>
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <path d="M8 27.5A3.5 3.5 0 0 1 11.5 24H28" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M11.5 4H28v24H11.5A3.5 3.5 0 0 1 8 24.5v-17A3.5 3.5 0 0 1 11.5 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div style={styles.quickStartLabel}>New Journal</div>
+                <div style={styles.quickStartHint}>Private self-reflection</div>
+              </Link>
+            )}
+
+            {spacesEnabled && (
+              <Link to="/spaces" style={styles.quickStartCard} className="quick-start-card">
+                <div style={styles.quickStartIcon}>
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="16" r="4" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="7" cy="9" r="3" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="25" cy="9" r="3" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="7" cy="23" r="3" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="25" cy="23" r="3" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                </div>
+                <div style={styles.quickStartLabel}>New Space</div>
+                <div style={styles.quickStartHint}>Gather and organize ideas</div>
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // First-time user: full layout with hero + two-column (checklist + feature cards) + Quick Start + help footer
   const greeting = userName ? `Welcome, ${userName}!` : 'Welcome to Mosaic!';
 
   return (

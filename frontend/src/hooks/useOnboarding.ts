@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { api } from '../services/api';
 import type { OnboardingProgress } from '../types';
 
@@ -18,7 +19,7 @@ export type OnboardingStepId =
   | 'run-analysis'
   | 'view-insights';
 
-interface OnboardingState {
+interface WorkspaceOnboardingState {
   steps: Record<OnboardingStepId, boolean>;
   completedAt: Partial<Record<OnboardingStepId, string>>;
   dismissed: boolean;
@@ -33,7 +34,7 @@ const defaultSteps: Record<OnboardingStepId, boolean> = {
   'view-insights': false,
 };
 
-const defaultState: OnboardingState = {
+const defaultWorkspaceState: WorkspaceOnboardingState = {
   steps: { ...defaultSteps },
   completedAt: {},
   dismissed: false,
@@ -64,76 +65,112 @@ const stepDefinitions: Record<OnboardingStepId, { title: string; description: st
 };
 
 /**
- * Convert API response to internal state format
+ * Extract workspace-specific state from the full server payload.
+ * Falls back to fresh/empty state if no entry exists for this workspace.
  */
-function apiToState(apiData: OnboardingProgress): OnboardingState {
+function getWorkspaceState(
+  payload: OnboardingProgress | null,
+  workspaceId: string
+): WorkspaceOnboardingState {
+  const wsData = payload?.workspaces?.[workspaceId];
+  if (!wsData) return { ...defaultWorkspaceState, steps: { ...defaultSteps } };
   return {
     steps: {
-      'create-conversation': apiData.steps['create-conversation'] || false,
-      'share-link': apiData.steps['share-link'] || false,
-      'receive-response': apiData.steps['receive-response'] || false,
-      'run-analysis': apiData.steps['run-analysis'] || false,
-      'view-insights': apiData.steps['view-insights'] || false,
+      'create-conversation': wsData.steps['create-conversation'] || false,
+      'share-link': wsData.steps['share-link'] || false,
+      'receive-response': wsData.steps['receive-response'] || false,
+      'run-analysis': wsData.steps['run-analysis'] || false,
+      'view-insights': wsData.steps['view-insights'] || false,
     },
-    completedAt: apiData.completed_at as Partial<Record<OnboardingStepId, string>>,
-    dismissed: apiData.dismissed,
-    startedAt: apiData.started_at,
+    completedAt: wsData.completed_at as Partial<Record<OnboardingStepId, string>>,
+    dismissed: wsData.dismissed,
+    startedAt: wsData.started_at,
   };
 }
 
 /**
- * Convert internal state to API format
+ * Build the full API payload with the updated workspace state merged in.
  */
-function stateToApi(state: OnboardingState): OnboardingProgress {
+function buildFullPayload(
+  existing: OnboardingProgress | null,
+  workspaceId: string,
+  wsState: WorkspaceOnboardingState
+): OnboardingProgress {
+  const base = existing || {
+    steps: {},
+    completed_at: {},
+    dismissed: false,
+    started_at: undefined,
+    workspaces: {},
+  };
   return {
-    steps: state.steps,
-    completed_at: state.completedAt,
-    dismissed: state.dismissed,
-    started_at: state.startedAt,
+    // Preserve legacy top-level fields
+    steps: base.steps,
+    completed_at: base.completed_at,
+    dismissed: base.dismissed,
+    started_at: base.started_at,
+    workspaces: {
+      ...base.workspaces,
+      [workspaceId]: {
+        steps: wsState.steps,
+        completed_at: wsState.completedAt,
+        dismissed: wsState.dismissed,
+        started_at: wsState.startedAt,
+      },
+    },
   };
 }
 
 /**
- * Hook to manage onboarding checklist state
- * Syncs with server for authenticated users
+ * Hook to manage onboarding checklist state.
+ * Workspace-aware: each workspace gets independent progress.
+ * Uses useOrganization() internally — no args needed, zero call-site changes.
  */
 export function useOnboarding() {
   const { user } = useAuth();
-  const [state, setState] = useState<OnboardingState>(defaultState);
-  const [isLoading, setIsLoading] = useState(true);
+  const { currentWorkspaceId } = useOrganization();
+  const [fullPayload, setFullPayload] = useState<OnboardingProgress | null>(null);
+  const [serverLoaded, setServerLoaded] = useState(false);
   const isSyncing = useRef(false);
 
-  // Load onboarding state from server on mount (when user is authenticated)
+  // Loading until both server response AND workspace ID are resolved
+  const isLoading = !serverLoaded || currentWorkspaceId === null;
+
+  // Load onboarding state from server on mount
   useEffect(() => {
     if (!user) {
-      setState(defaultState);
-      setIsLoading(false);
+      setFullPayload(null);
+      setServerLoaded(true);
       return;
     }
 
     const loadFromServer = async () => {
       try {
         const data = await api.getOnboardingProgress();
-        setState(apiToState(data));
+        setFullPayload(data);
       } catch (error) {
         console.error('Failed to load onboarding progress:', error);
-        // Use defaults on error
-        setState(defaultState);
+        setFullPayload(null);
       } finally {
-        setIsLoading(false);
+        setServerLoaded(true);
       }
     };
 
     loadFromServer();
   }, [user]);
 
-  // Sync state to server (debounced)
-  const syncToServer = useCallback(async (newState: OnboardingState) => {
+  // Current workspace state (derived)
+  const wsState = currentWorkspaceId
+    ? getWorkspaceState(fullPayload, currentWorkspaceId)
+    : defaultWorkspaceState;
+
+  // Sync full payload to server
+  const syncToServer = useCallback(async (payload: OnboardingProgress) => {
     if (!user || isSyncing.current) return;
 
     isSyncing.current = true;
     try {
-      await api.updateOnboardingProgress(stateToApi(newState));
+      await api.updateOnboardingProgress(payload);
     } catch (error) {
       console.error('Failed to sync onboarding progress:', error);
     } finally {
@@ -156,97 +193,120 @@ export function useOnboarding() {
     return stepIds.map((id) => ({
       id,
       ...stepDefinitions[id],
-      completed: state.steps[id] || false,
-      completedAt: state.completedAt[id],
+      completed: wsState.steps[id] || false,
+      completedAt: wsState.completedAt[id],
     }));
-  }, [state.steps, state.completedAt]);
+  }, [wsState.steps, wsState.completedAt]);
 
   /**
-   * Mark a step as completed
+   * Mark a step as completed (in the current workspace)
    */
   const completeStep = useCallback((stepId: OnboardingStepId) => {
-    setState((prev) => {
-      if (prev.steps[stepId]) {
-        return prev; // Already completed
-      }
-      const newState = {
-        ...prev,
-        steps: {
-          ...prev.steps,
-          [stepId]: true,
-        },
-        completedAt: {
-          ...prev.completedAt,
-          [stepId]: new Date().toISOString(),
-        },
-        startedAt: prev.startedAt || new Date().toISOString(),
+    if (!currentWorkspaceId) return;
+
+    setFullPayload((prev) => {
+      const currentWs = getWorkspaceState(prev, currentWorkspaceId);
+      if (currentWs.steps[stepId]) return prev; // Already completed
+
+      const updatedWs: WorkspaceOnboardingState = {
+        ...currentWs,
+        steps: { ...currentWs.steps, [stepId]: true },
+        completedAt: { ...currentWs.completedAt, [stepId]: new Date().toISOString() },
+        startedAt: currentWs.startedAt || new Date().toISOString(),
       };
-      // Sync to server after state update
-      syncToServer(newState);
-      return newState;
+
+      const newPayload = buildFullPayload(prev, currentWorkspaceId, updatedWs);
+      syncToServer(newPayload);
+      return newPayload;
     });
-  }, [syncToServer]);
+  }, [currentWorkspaceId, syncToServer]);
 
   /**
    * Check if a step is completed
    */
   const isStepCompleted = useCallback(
     (stepId: OnboardingStepId): boolean => {
-      return state.steps[stepId] || false;
+      return wsState.steps[stepId] || false;
     },
-    [state.steps]
+    [wsState.steps]
   );
 
   /**
    * Get overall progress (0-100)
    */
   const getProgress = useCallback((): number => {
-    const completed = Object.values(state.steps).filter(Boolean).length;
-    const total = Object.keys(state.steps).length;
+    const completed = Object.values(wsState.steps).filter(Boolean).length;
+    const total = Object.keys(wsState.steps).length;
     return Math.round((completed / total) * 100);
-  }, [state.steps]);
+  }, [wsState.steps]);
 
   /**
    * Check if all steps are completed
    */
   const isComplete = useCallback((): boolean => {
-    return Object.values(state.steps).every(Boolean);
-  }, [state.steps]);
+    return Object.values(wsState.steps).every(Boolean);
+  }, [wsState.steps]);
 
   /**
-   * Dismiss the onboarding checklist
+   * Dismiss the onboarding checklist (for current workspace)
    */
   const dismiss = useCallback(() => {
-    setState((prev) => {
-      const newState = {
-        ...prev,
-        dismissed: true,
-      };
-      syncToServer(newState);
-      return newState;
+    if (!currentWorkspaceId) return;
+
+    setFullPayload((prev) => {
+      const currentWs = getWorkspaceState(prev, currentWorkspaceId);
+      const updatedWs: WorkspaceOnboardingState = { ...currentWs, dismissed: true };
+      const newPayload = buildFullPayload(prev, currentWorkspaceId, updatedWs);
+      syncToServer(newPayload);
+      return newPayload;
     });
-  }, [syncToServer]);
+  }, [currentWorkspaceId, syncToServer]);
 
   /**
    * Check if onboarding is dismissed
    */
   const isDismissed = useCallback((): boolean => {
-    return state.dismissed;
-  }, [state.dismissed]);
+    return wsState.dismissed;
+  }, [wsState.dismissed]);
 
   /**
-   * Reset onboarding (useful for testing)
+   * Reset onboarding (for current workspace, useful for testing)
    */
   const reset = useCallback(() => {
-    const newState = {
+    if (!currentWorkspaceId) return;
+
+    const freshWs: WorkspaceOnboardingState = {
       steps: { ...defaultSteps },
       completedAt: {},
       dismissed: false,
       startedAt: new Date().toISOString(),
     };
-    setState(newState);
-    syncToServer(newState);
-  }, [syncToServer]);
+
+    setFullPayload((prev) => {
+      const newPayload = buildFullPayload(prev, currentWorkspaceId, freshWs);
+      syncToServer(newPayload);
+      return newPayload;
+    });
+  }, [currentWorkspaceId, syncToServer]);
+
+  /**
+   * Returns true if the user has ever onboarded in ANY workspace or has legacy progress.
+   * Used to distinguish first-time users from returning users on a new empty workspace.
+   */
+  const hasEverOnboarded = useCallback((): boolean => {
+    if (!fullPayload) return false;
+
+    // Check legacy top-level fields
+    const legacyHasProgress =
+      Object.values(fullPayload.steps).some(Boolean) || fullPayload.dismissed;
+    if (legacyHasProgress) return true;
+
+    // Check any workspace entry
+    const workspaces = fullPayload.workspaces || {};
+    return Object.values(workspaces).some(
+      (ws) => Object.values(ws.steps).some(Boolean) || ws.dismissed
+    );
+  }, [fullPayload]);
 
   return {
     getSteps,
@@ -258,5 +318,6 @@ export function useOnboarding() {
     isDismissed,
     reset,
     isLoading,
+    hasEverOnboarded,
   };
 }

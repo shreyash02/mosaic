@@ -243,7 +243,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [welcomeKey, setWelcomeKey] = useState(0);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
-  const { completeStep, isComplete, isDismissed, reset: resetOnboarding } = useOnboarding();
+  const { completeStep, isComplete, isDismissed, reset: resetOnboarding, hasEverOnboarded } = useOnboarding();
 
   usePageTitle('Home');
 
@@ -403,6 +403,7 @@ export default function DashboardPage() {
           userName={user?.full_name?.split(' ')[0]}
           isPersonalWorkspace={isPersonalWorkspace}
           workspaceName={currentWorkspaceName}
+          isReturningUser={hasEverOnboarded()}
         />
 
         {/* Welcome Modal for first-time users */}
