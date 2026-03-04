@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 720" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <filter id="shadow-sm">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+    <filter id="shadow-md">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="390" height="720" fill="url(#bg-grad)" rx="12"/>
+
+  <!-- ===== TITLE ===== -->
+  <text x="195" y="42" text-anchor="middle" font-size="12" font-weight="600" fill="#3b82f6" letter-spacing="4">ASK</text>
+  <text x="195" y="74" text-anchor="middle" font-size="32" font-weight="700" fill="#1a1a2e" letter-spacing="-1">Conversations</text>
+  <text x="195" y="96" text-anchor="middle" font-size="13" fill="#6b7280">One asks. Many answer. AI reveals what matters.</text>
+  <line x1="155" y1="110" x2="235" y2="110" stroke="#dbeafe" stroke-width="2"/>
+
+  <!-- ===== VISUAL: QUESTION + RESPONSES ===== -->
+  <g transform="translate(20, 130)">
+    <!-- Creator question -->
+    <g filter="url(#shadow-sm)">
+      <rect x="0" y="0" width="350" height="50" rx="12" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+      <text x="16" y="18" font-size="10" font-weight="600" fill="#1e40af" letter-spacing="1">CREATOR ASKS</text>
+      <text x="16" y="36" font-size="13" font-weight="500" fill="#1e40af">"What should we improve?"</text>
+    </g>
+
+    <!-- Arrow down -->
+    <line x1="175" y1="56" x2="175" y2="72" stroke="#93c5fd" stroke-width="2" stroke-dasharray="4,3"/>
+    <polygon points="171,72 175,80 179,72" fill="#93c5fd"/>
+
+    <!-- Anonymous responses -->
+    <g transform="translate(40, 88)" filter="url(#shadow-sm)">
+      <rect x="0" y="0" width="310" height="36" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+      <circle cx="16" cy="18" r="7" fill="#3b82f6"/>
+      <text x="32" y="22" font-size="12" fill="#3b82f6">"Better onboarding process"</text>
+    </g>
+    <g transform="translate(20, 132)" filter="url(#shadow-sm)">
+      <rect x="0" y="0" width="310" height="36" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+      <circle cx="16" cy="18" r="7" fill="#60a5fa"/>
+      <text x="32" y="22" font-size="12" fill="#3b82f6">"Faster deploy pipeline"</text>
+    </g>
+    <g transform="translate(50, 176)" filter="url(#shadow-sm)">
+      <rect x="0" y="0" width="290" height="36" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+      <circle cx="16" cy="18" r="7" fill="#93c5fd"/>
+      <text x="32" y="22" font-size="12" fill="#3b82f6">"More documentation"</text>
+    </g>
+
+    <!-- AI Analysis -->
+    <g transform="translate(0, 228)" filter="url(#shadow-md)">
+      <rect x="0" y="0" width="350" height="60" rx="10" fill="#1a1a2e"/>
+      <g transform="translate(14, 14)">
+        <path d="M0,-6 L1.5,-1.5 L6,0 L1.5,1.5 L0,6 L-1.5,1.5 L-6,0 L-1.5,-1.5 Z" fill="#f59e0b"/>
+      </g>
+      <text x="28" y="18" font-size="10" font-weight="600" fill="#f59e0b" letter-spacing="1">AI ANALYSIS</text>
+      <text x="14" y="40" font-size="11" fill="#e5e7eb"><tspan font-weight="600">Core theme:</tspan> More efficient processes with</text>
+      <text x="14" y="54" font-size="11" fill="#9ca3af">clearer outcomes and better documentation.</text>
+    </g>
+  </g>
+
+  <!-- ===== LIFECYCLE ===== -->
+  <text x="195" y="440" text-anchor="middle" font-size="10" font-weight="600" fill="#9ca3af" letter-spacing="2">LIFECYCLE</text>
+
+  <g transform="translate(195, 475)">
+    <!-- Create -->
+    <circle cx="-130" cy="0" r="16" fill="#1e40af"/>
+    <text x="-130" y="5" text-anchor="middle" font-size="14" fill="white" font-weight="600">1</text>
+    <text x="-130" y="28" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a2e">Create</text>
+    <line x1="-110" y1="0" x2="-60" y2="0" stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+    <!-- Collect -->
+    <circle cx="-42" cy="0" r="16" fill="#2563eb"/>
+    <text x="-42" y="5" text-anchor="middle" font-size="14" fill="white" font-weight="600">2</text>
+    <text x="-42" y="28" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a2e">Collect</text>
+    <line x1="-22" y1="0" x2="28" y2="0" stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+    <!-- Close -->
+    <circle cx="46" cy="0" r="16" fill="#3b82f6"/>
+    <text x="46" y="5" text-anchor="middle" font-size="14" fill="white" font-weight="600">3</text>
+    <text x="46" y="28" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a2e">Close</text>
+    <line x1="66" y1="0" x2="116" y2="0" stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+    <!-- Analyze -->
+    <circle cx="134" cy="0" r="16" fill="#60a5fa"/>
+    <text x="134" y="5" text-anchor="middle" font-size="14" fill="white" font-weight="600">4</text>
+    <text x="134" y="28" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a2e">Analyze</text>
+    <g transform="translate(155, -16)">
+      <path d="M0,-6 L1.5,-1.5 L6,0 L1.5,1.5 L0,6 L-1.5,1.5 L-6,0 L-1.5,-1.5 Z" fill="#f59e0b" opacity="0.9"/>
+    </g>
+  </g>
+
+  <!-- ===== CAPABILITIES ===== -->
+  <text x="195" y="535" text-anchor="middle" font-size="10" font-weight="600" fill="#9ca3af" letter-spacing="2">CAPABILITIES</text>
+
+  <!-- Row 1 -->
+  <g transform="translate(20, 552)" filter="url(#shadow-sm)">
+    <rect x="0" y="0" width="170" height="56" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+    <g transform="translate(12, 12)">
+      <rect x="3" y="0" width="16" height="20" rx="2" fill="none" stroke="#3b82f6" stroke-width="1.2" opacity="0.4"/>
+      <rect x="0" y="3" width="16" height="20" rx="2" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+      <line x1="4" y1="10" x2="12" y2="10" stroke="#3b82f6" stroke-width="1"/>
+      <line x1="4" y1="15" x2="10" y2="15" stroke="#3b82f6" stroke-width="1"/>
+    </g>
+    <text x="40" y="22" font-size="12" font-weight="600" fill="#1a1a2e">Templates</text>
+    <text x="40" y="40" font-size="10" fill="#6b7280">Reusable starters</text>
+  </g>
+
+  <g transform="translate(200, 552)" filter="url(#shadow-sm)">
+    <rect x="0" y="0" width="170" height="56" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+    <g transform="translate(20, 20)">
+      <path d="M8,-3 C8,-12 -8,-12 -8,-3" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+      <polygon points="-11,-4 -7,-1 -6,-6" fill="#3b82f6"/>
+      <path d="M-8,3 C-8,12 8,12 8,3" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+      <polygon points="11,4 7,1 6,6" fill="#3b82f6"/>
+    </g>
+    <text x="40" y="22" font-size="12" font-weight="600" fill="#1a1a2e">Recurring</text>
+    <text x="40" y="40" font-size="10" fill="#6b7280">Scheduled repeats</text>
+  </g>
+
+  <!-- Row 2 -->
+  <g transform="translate(20, 618)" filter="url(#shadow-sm)">
+    <rect x="0" y="0" width="170" height="56" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+    <g transform="translate(12, 14)">
+      <rect x="0" y="2" width="8" height="12" rx="2" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+      <line x1="11" y1="8" x2="15" y2="8" stroke="#3b82f6" stroke-width="1.2"/>
+      <polyline points="13,5.5 16,8 13,10.5" fill="none" stroke="#3b82f6" stroke-width="1.2" stroke-linecap="round"/>
+      <rect x="18" y="2" width="8" height="12" rx="2" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+    </g>
+    <text x="40" y="22" font-size="12" font-weight="600" fill="#1a1a2e">Follow-ups</text>
+    <text x="40" y="40" font-size="10" fill="#6b7280">Chain of dialogues</text>
+  </g>
+
+  <g transform="translate(200, 618)" filter="url(#shadow-sm)">
+    <rect x="0" y="0" width="170" height="56" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+    <g transform="translate(18, 18)">
+      <path d="M0,-10 L10,0 L7,10 L-7,10 L-10,0 Z" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+      <circle cx="-3" cy="0" r="2" fill="#1e40af"/>
+      <circle cx="3" cy="0" r="2" fill="#1e40af"/>
+    </g>
+    <text x="40" y="22" font-size="12" font-weight="600" fill="#1a1a2e">Anonymity</text>
+    <text x="40" y="40" font-size="10" fill="#6b7280">4 privacy levels</text>
+  </g>
+
+  <!-- Bottom tagline -->
+  <text x="195" y="700" text-anchor="middle" font-size="11" fill="#9ca3af">Start a conversation. Get honest answers.</text>
+  <text x="195" y="715" text-anchor="middle" font-size="9" fill="#d1d5db">MOSAIC</text>
+</svg>
