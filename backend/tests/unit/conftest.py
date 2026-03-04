@@ -76,6 +76,12 @@ from app.models.question import Question
 from app.models.participant_code import ParticipantCode
 from app.models.conversation_invitation import ConversationInvitation
 from app.models.organization import Organization, OrganizationMember
+from app.models.analysis import Analysis
+from app.models.suggested_action import SuggestedAction
+from app.models.insight_annotation import InsightAnnotation
+from app.models.notification import Notification
+from app.models.response import Response
+from app.models.workspace import Workspace, WorkspaceMember
 from app.schemas.conversation import AnonymityLevel, ConversationState
 from app.core.security import get_password_hash
 
@@ -229,6 +235,34 @@ def third_test_user(db_session) -> User:
 
 
 # ============================================================================
+# Workspace fixtures
+# ============================================================================
+
+@pytest.fixture
+def test_workspace(db_session, test_user) -> Workspace:
+    """Create a personal workspace for test_user (FK for conversations)."""
+    workspace = Workspace(
+        id=uuid4(),
+        type="personal",
+        name="Personal",
+        owner_id=test_user.id,
+        is_default=True,
+    )
+    db_session.add(workspace)
+    db_session.flush()
+
+    member = WorkspaceMember(
+        workspace_id=workspace.id,
+        user_id=test_user.id,
+        role="admin",
+    )
+    db_session.add(member)
+    db_session.commit()
+    db_session.refresh(workspace)
+    return workspace
+
+
+# ============================================================================
 # Organization fixtures
 # ============================================================================
 
@@ -260,13 +294,14 @@ def test_organization(db_session, test_user) -> Organization:
 # ============================================================================
 
 @pytest.fixture
-def draft_conversation(db_session, test_user) -> Conversation:
+def draft_conversation(db_session, test_user, test_workspace) -> Conversation:
     """Create a draft conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Test Conversation",
         description="Test Description",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
         results_access="creator_only",
         state=ConversationState.DRAFT,
@@ -280,13 +315,14 @@ def draft_conversation(db_session, test_user) -> Conversation:
 
 
 @pytest.fixture
-def active_conversation(db_session, test_user) -> Conversation:
+def active_conversation(db_session, test_user, test_workspace) -> Conversation:
     """Create an active conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Active Conversation",
         description="Active Description",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.FULLY_ANONYMOUS,
         results_access="creator_only",
         state=ConversationState.ACTIVE,
@@ -301,13 +337,14 @@ def active_conversation(db_session, test_user) -> Conversation:
 
 
 @pytest.fixture
-def closed_conversation(db_session, test_user) -> Conversation:
+def closed_conversation(db_session, test_user, test_workspace) -> Conversation:
     """Create a closed conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Closed Conversation",
         description="Closed Description",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.REVEALABLE,
         results_access="creator_only",
         state=ConversationState.CLOSED,
@@ -360,13 +397,14 @@ def conversation_with_questions(db_session, draft_conversation) -> Conversation:
 
 
 @pytest.fixture
-def invite_only_conversation(db_session, test_user) -> Conversation:
+def invite_only_conversation(db_session, test_user, test_workspace) -> Conversation:
     """Create an invite-only conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Invite Only",
         description="Need invitation",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
         results_access="creator_only",
         state=ConversationState.DRAFT,
@@ -381,7 +419,7 @@ def invite_only_conversation(db_session, test_user) -> Conversation:
 
 
 @pytest.fixture
-def scheduled_conversation(db_session, test_user) -> Conversation:
+def scheduled_conversation(db_session, test_user, test_workspace) -> Conversation:
     """Create a conversation scheduled for future activation."""
     future_time = datetime.utcnow() + timedelta(hours=24)
     conversation = Conversation(
@@ -389,6 +427,7 @@ def scheduled_conversation(db_session, test_user) -> Conversation:
         title="Scheduled Conversation",
         description="Will activate tomorrow",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
         results_access="creator_only",
         state=ConversationState.DRAFT,
@@ -423,8 +462,7 @@ def participant_codes(db_session, active_conversation) -> list:
         code = ParticipantCode(
             id=uuid4(),
             conversation_id=active_conversation.id,
-            code=f"PCODE{i:05d}",
-            created_by_id=active_conversation.creator_id,
+            participant_code=f"PCODE{i:05d}",
         )
         codes.append(code)
         db_session.add(code)
@@ -460,3 +498,126 @@ def conversation_invitations(db_session, invite_only_conversation, test_user) ->
     for inv in invitations:
         db_session.refresh(inv)
     return invitations
+
+
+# ============================================================================
+# Conversation with questions (active, for response tests)
+# ============================================================================
+
+@pytest.fixture
+def active_conversation_with_questions(db_session, test_user, test_workspace) -> Conversation:
+    """Create an active platform_tracked conversation with questions."""
+    conversation = Conversation(
+        id=uuid4(),
+        title="Active With Questions",
+        description="For response tests",
+        creator_id=test_user.id,
+        workspace_id=test_workspace.id,
+        anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
+        results_access="creator_only",
+        state=ConversationState.ACTIVE,
+        access_code="ACTVQSTNABCD",
+        activated_at=datetime.utcnow(),
+        timezone="UTC",
+    )
+    db_session.add(conversation)
+    db_session.flush()
+
+    questions = [
+        Question(
+            id=uuid4(),
+            conversation_id=conversation.id,
+            question_type="text",
+            question_text="What went well?",
+            question_order=1,
+            is_required=True,
+        ),
+        Question(
+            id=uuid4(),
+            conversation_id=conversation.id,
+            question_type="rating",
+            question_text="Rate the sprint",
+            question_order=2,
+            options={"min": 1, "max": 5},
+            is_required=False,
+        ),
+    ]
+    db_session.add_all(questions)
+    db_session.commit()
+    db_session.refresh(conversation)
+    return conversation
+
+
+# ============================================================================
+# Analysis fixtures
+# ============================================================================
+
+@pytest.fixture
+def test_analysis(db_session, active_conversation) -> Analysis:
+    """Create a test analysis linked to an active conversation."""
+    analysis = Analysis(
+        id=uuid4(),
+        conversation_id=active_conversation.id,
+        overall_summary="Test summary of responses.",
+        themes=[{"theme": "Communication", "frequency": 5, "clusters": []}],
+        surprising_insights=[{"title": "Surprise", "description": "Something unexpected"}],
+        question_analyses=[],
+        total_responses_analyzed=10,
+        created_at=datetime.utcnow(),
+    )
+    db_session.add(analysis)
+    db_session.commit()
+    db_session.refresh(analysis)
+    return analysis
+
+
+# ============================================================================
+# Suggested action fixtures
+# ============================================================================
+
+@pytest.fixture
+def test_suggested_action(db_session, test_analysis, active_conversation) -> SuggestedAction:
+    """Create a test suggested action."""
+    action = SuggestedAction(
+        id=uuid4(),
+        analysis_id=test_analysis.id,
+        conversation_id=active_conversation.id,
+        title="Follow up on communication issues",
+        description="Schedule a meeting to discuss communication.",
+        action_type="communicate",
+        priority="high",
+        sentiment="negative",
+        source="user_requested",
+        status="suggested",
+        created_at=datetime.utcnow(),
+    )
+    db_session.add(action)
+    db_session.commit()
+    db_session.refresh(action)
+    return action
+
+
+# ============================================================================
+# Notification fixtures
+# ============================================================================
+
+@pytest.fixture
+def test_notifications(db_session, test_user) -> list:
+    """Create test notifications for test_user."""
+    notifications = []
+    for i in range(5):
+        n = Notification(
+            id=uuid4(),
+            user_id=test_user.id,
+            notification_type="response_submitted",
+            title=f"Notification {i}",
+            message=f"Test message {i}",
+            read=i < 2,  # First 2 are read, last 3 are unread
+            created_at=datetime.utcnow() - timedelta(hours=5 - i),
+        )
+        notifications.append(n)
+        db_session.add(n)
+    db_session.commit()
+    for n in notifications:
+        db_session.refresh(n)
+    return notifications
