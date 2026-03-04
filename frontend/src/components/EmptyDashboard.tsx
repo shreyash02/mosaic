@@ -130,6 +130,11 @@ export default function EmptyDashboard({ userName, isPersonalWorkspace = true, w
   const { isComplete: isConvChecklistComplete, isDismissed: isConvChecklistDismissed } = useChecklist('conversation');
   const showConvChecklist = isReturningUser && !isConvChecklistComplete() && !isConvChecklistDismissed();
 
+  // Hide checklist steps for disabled/inapplicable features
+  const dashboardHiddenSteps: string[] = [];
+  if (!journalsEnabled || !isPersonalWorkspace) dashboardHiddenSteps.push('write-journal');
+  if (!spacesEnabled) dashboardHiddenSteps.push('create-space');
+
   if (isReturningUser) {
     return (
       <div style={styles.container} className="empty-dashboard">
@@ -262,7 +267,7 @@ export default function EmptyDashboard({ userName, isPersonalWorkspace = true, w
 
       {/* Dashboard checklist — centered, single column */}
       <div style={{ maxWidth: '560px', margin: '0 auto', marginBottom: spacing[8] }}>
-        <GettingStartedChecklist checklistId="dashboard" variant="card" showDismiss />
+        <GettingStartedChecklist checklistId="dashboard" variant="card" showDismiss hiddenStepIds={dashboardHiddenSteps.length > 0 ? dashboardHiddenSteps : undefined} />
       </div>
 
       {/* Get Started cards */}

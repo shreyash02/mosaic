@@ -11,6 +11,8 @@ interface GettingStartedChecklistProps {
   variant?: 'card' | 'compact' | 'floating';
   /** Whether to show the dismiss button */
   showDismiss?: boolean;
+  /** Step IDs to hide (e.g. when feature is disabled or not applicable) */
+  hiddenStepIds?: string[];
   /** Callback when a step is clicked */
   onStepClick?: (stepId: string) => void;
 }
@@ -65,15 +67,21 @@ export default function GettingStartedChecklist({
   checklistId = 'conversation',
   variant = 'card',
   showDismiss = true,
+  hiddenStepIds,
   onStepClick,
 }: GettingStartedChecklistProps) {
   const { getSteps, getProgress, isComplete, dismiss, isDismissed, isLoading } = useChecklist(checklistId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [celebrateComplete, setCelebrateComplete] = useState(false);
 
-  const steps = getSteps();
-  const progress = getProgress();
-  const complete = isComplete();
+  const allSteps = getSteps();
+  const steps = hiddenStepIds ? allSteps.filter(s => !hiddenStepIds.includes(s.id)) : allSteps;
+  const progress = hiddenStepIds
+    ? (steps.length === 0 ? 0 : Math.round(steps.filter(s => s.completed).length / steps.length * 100))
+    : getProgress();
+  const complete = hiddenStepIds
+    ? (steps.length > 0 && steps.every(s => s.completed))
+    : isComplete();
 
   // Get step links for this checklist
   const links = checklistStepLinks[checklistId];
