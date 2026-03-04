@@ -377,6 +377,17 @@ export default function Header() {
                     Profile
                   </Link>
                   <Link
+                    to="/organizations/new"
+                    className="user-dropdown-item"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Create Organization
+                  </Link>
+                  <Link
                     to="/settings"
                     className="user-dropdown-item"
                     onClick={() => setShowUserDropdown(false)}
@@ -491,6 +502,9 @@ export default function Header() {
                   <div className="mobile-profile-divider" />
                   <Link to="/profile" className="mobile-profile-link" onClick={() => setMobileProfileOpen(false)}>
                     Profile
+                  </Link>
+                  <Link to="/organizations/new" className="mobile-profile-link" onClick={() => setMobileProfileOpen(false)}>
+                    Create Organization
                   </Link>
                   <Link to="/settings" className="mobile-profile-link" onClick={() => setMobileProfileOpen(false)}>
                     Settings

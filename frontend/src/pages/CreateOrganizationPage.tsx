@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { analytics } from '../services/analytics';
+import { useOrganization } from '../contexts/OrganizationContext';
 import type { OrganizationCreate } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles';
 
@@ -159,6 +160,7 @@ const hoverStyles = `
 
 export default function CreateOrganizationPage() {
   const navigate = useNavigate();
+  const { refreshOrganizations } = useOrganization();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -183,6 +185,7 @@ export default function CreateOrganizationPage() {
 
       const newOrg = await api.createOrganization(orgData);
       analytics.organizationCreated({ orgId: newOrg.id });
+      await refreshOrganizations();
       navigate(`/organizations/${newOrg.id}`);
     } catch (err: any) {
       console.error('Failed to create organization:', err);
