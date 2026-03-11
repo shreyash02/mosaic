@@ -451,6 +451,9 @@ export default function SpaceDetailPage() {
   const [sharedViewerExport, setSharedViewerExport] = useState(false);
   const [addingSharedViewer, setAddingSharedViewer] = useState(false);
   const shareDropdownRef = useRef<HTMLDivElement>(null);
+  const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false);
+  const [snapshotShowCount, setSnapshotShowCount] = useState(5);
+  const snapshotDropdownRef = useRef<HTMLDivElement>(null);
 
   // Idea search
   const [ideaSearch, setIdeaSearch] = useState('');
@@ -733,6 +736,21 @@ export default function SpaceDetailPage() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [shareDropdownOpen]);
+
+  // Close snapshot dropdown on click outside
+  useEffect(() => {
+    if (!snapshotDropdownOpen) {
+      setSnapshotShowCount(5);
+      return;
+    }
+    const handleClick = (e: MouseEvent) => {
+      if (snapshotDropdownRef.current && !snapshotDropdownRef.current.contains(e.target as Node)) {
+        setSnapshotDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [snapshotDropdownOpen]);
 
   // Load ideas filtered by theme when selection changes
   useEffect(() => {
@@ -1216,6 +1234,133 @@ export default function SpaceDetailPage() {
             onChange={(v) => setTimeFilterDays(Number(v))}
             minWidth="180px"
           />
+          {/* Snapshot switcher */}
+          <div ref={snapshotDropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setSnapshotDropdownOpen(prev => !prev); if (!snapshotsLoaded) loadSnapshots(); }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: spacing[1],
+                padding: `${spacing[2]} ${spacing[3]}`,
+                backgroundColor: snapshotDropdownOpen ? 'var(--color-primary-100)' : 'transparent',
+                color: 'var(--color-primary-600)',
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                borderRadius: borders.radius.md,
+                border: '1px solid var(--color-primary-300)',
+                cursor: 'pointer',
+                transition: transitions.duration.normal,
+                whiteSpace: 'nowrap' as const,
+              }}
+              title="Browse snapshots"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 8v4l3 3" />
+                <path d="M3.05 11a9 9 0 1 1 .5 4" />
+                <polyline points="1 4 3.05 11 10 9" />
+              </svg>
+              History
+            </button>
+            {snapshotDropdownOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: spacing[2],
+                width: '280px',
+                maxHeight: '320px',
+                overflowY: snapshotShowCount > 5 ? 'auto' : 'visible',
+                backgroundColor: 'var(--color-primary-50)',
+                border: '1px solid var(--color-primary-200)',
+                borderRadius: borders.radius.lg,
+                boxShadow: shadows.lg,
+                zIndex: 50,
+                padding: spacing[3],
+              }}>
+                <div style={{
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.semibold,
+                  color: 'var(--color-primary-700)',
+                  marginBottom: spacing[3],
+                }}>
+                  Snapshots
+                </div>
+                {!snapshotsLoaded && (
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>Loading...</div>
+                )}
+                {snapshotsLoaded && snapshots.length === 0 && (
+                  <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                    No snapshots yet. Snapshots are created automatically when you organize.
+                  </div>
+                )}
+                {snapshots.slice(0, snapshotShowCount).map(snap => (
+                  <Link
+                    key={snap.id}
+                    to={`/spaces/${id}/snapshots/${snap.id}`}
+                    onClick={() => setSnapshotDropdownOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing[2],
+                      padding: `${spacing[2]} ${spacing[2]}`,
+                      borderRadius: borders.radius.md,
+                      textDecoration: 'none',
+                      color: 'var(--color-primary-700)',
+                      fontSize: typography.fontSize.sm,
+                      transition: transitions.duration.normal,
+                      marginBottom: '2px',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-primary-100)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    {snap.snapshot_type === 'organize' ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" />
+                      </svg>
+                    )}
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap' as const,
+                      }}>
+                        {snap.title || formatRelativeTime(snap.created_at)}
+                      </div>
+                      {snap.title && (
+                        <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                          {formatRelativeTime(snap.created_at)}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+                {snapshots.length > snapshotShowCount && (
+                  <button
+                    onClick={() => setSnapshotShowCount(prev => prev + 5)}
+                    style={{
+                      width: '100%',
+                      padding: `${spacing[2]} 0`,
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-500)',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      borderTop: '1px solid var(--color-primary-200)',
+                      marginTop: spacing[1],
+                    }}
+                  >
+                    Show more ({snapshots.length - snapshotShowCount} remaining)
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           {/* Activity dropdown — hidden for shared viewers */}
           {!space.is_shared_view && (
           <div ref={activityDropdownRef} style={{ position: 'relative' }}>
