@@ -1,20 +1,42 @@
 """Workspace routes."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.models.workspace import Workspace, WorkspaceMember
+from app.models.workspace import Workspace, WorkspaceMember, WORKSPACE_ROLES
 from app.models.organization import OrganizationMember
 from app.schemas.workspace import WorkspaceResponse, WorkspaceCreate, WorkspaceUpdate
-from app.services.workspace_service import check_workspace_membership
+from app.services.workspace_service import check_workspace_membership, require_workspace_role
 
 router = APIRouter()
+
+
+class AddMemberRequest(BaseModel):
+    user_id: UUID
+    role: str = "editor"
+
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: str
+
+
+class WorkspaceMemberResponse(BaseModel):
+    user_id: UUID
+    display_name: Optional[str] = None
+    email: Optional[str] = None
+    role: str
+    joined_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 @router.get("/me", response_model=List[WorkspaceResponse])
@@ -171,8 +193,7 @@ async def update_workspace(
     if not workspace:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-    # Check permission: workspace admin or org admin
-    _require_workspace_admin(db, workspace, current_user)
+    require_workspace_role(db, workspace_id, current_user, "admin")
 
     # Validate visibility if provided
     if data.visibility is not None and data.visibility not in ("open", "private"):
@@ -217,17 +238,49 @@ async def delete_workspace(
             detail="Cannot delete the default workspace",
         )
 
-    # Check permission: workspace creator or org admin
-    _require_workspace_admin(db, workspace, current_user)
+    require_workspace_role(db, workspace_id, current_user, "admin")
 
     db.delete(workspace)
     db.commit()
 
 
+@router.get("/{workspace_id}/members", response_model=List[WorkspaceMemberResponse])
+async def list_workspace_members(
+    workspace_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List members of a workspace. Any workspace member can view."""
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+    require_workspace_role(db, workspace_id, current_user, "viewer")
+
+    members = (
+        db.query(WorkspaceMember, User)
+        .join(User, WorkspaceMember.user_id == User.id)
+        .filter(WorkspaceMember.workspace_id == workspace_id)
+        .order_by(WorkspaceMember.joined_at)
+        .all()
+    )
+
+    return [
+        WorkspaceMemberResponse(
+            user_id=member.user_id,
+            display_name=user.display_name if hasattr(user, "display_name") else user.email,
+            email=user.email,
+            role=member.role,
+            joined_at=member.joined_at.isoformat() if member.joined_at else None,
+        )
+        for member, user in members
+    ]
+
+
 @router.post("/{workspace_id}/members", status_code=status.HTTP_201_CREATED)
 async def add_workspace_member(
     workspace_id: UUID,
-    user_id: UUID,
+    data: AddMemberRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -236,7 +289,14 @@ async def add_workspace_member(
     if not workspace:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-    _require_workspace_admin(db, workspace, current_user)
+    require_workspace_role(db, workspace_id, current_user, "admin")
+
+    # Validate role
+    if data.role not in WORKSPACE_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Must be one of: {', '.join(WORKSPACE_ROLES)}",
+        )
 
     # Target user must be an org member
     if workspace.organization_id:
@@ -244,7 +304,7 @@ async def add_workspace_member(
             db.query(OrganizationMember)
             .filter(
                 OrganizationMember.organization_id == workspace.organization_id,
-                OrganizationMember.user_id == user_id,
+                OrganizationMember.user_id == data.user_id,
             )
             .first()
         )
@@ -255,7 +315,7 @@ async def add_workspace_member(
             )
 
     # Check if already a member
-    existing = check_workspace_membership(db, workspace_id, user_id)
+    existing = check_workspace_membership(db, workspace_id, data.user_id)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -264,13 +324,61 @@ async def add_workspace_member(
 
     member = WorkspaceMember(
         workspace_id=workspace_id,
-        user_id=user_id,
-        role="member",
+        user_id=data.user_id,
+        role=data.role,
     )
     db.add(member)
     db.commit()
 
-    return {"status": "added"}
+    return {"status": "added", "role": data.role}
+
+
+@router.patch("/{workspace_id}/members/{user_id}")
+async def update_member_role(
+    workspace_id: UUID,
+    user_id: UUID,
+    data: UpdateMemberRoleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a workspace member's role. Requires admin."""
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+    require_workspace_role(db, workspace_id, current_user, "admin")
+
+    # Validate role
+    if data.role not in WORKSPACE_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Must be one of: {', '.join(WORKSPACE_ROLES)}",
+        )
+
+    member = check_workspace_membership(db, workspace_id, user_id)
+    if not member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+
+    # Prevent demoting self if last admin
+    if user_id == current_user.id and member.role == "admin" and data.role != "admin":
+        admin_count = (
+            db.query(func.count(WorkspaceMember.user_id))
+            .filter(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.role == "admin",
+            )
+            .scalar()
+        )
+        if admin_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot demote the last admin. Promote another member first.",
+            )
+
+    member.role = data.role
+    db.commit()
+
+    return {"status": "updated", "role": data.role}
 
 
 @router.delete("/{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -287,38 +395,27 @@ async def remove_workspace_member(
 
     # Allow self-removal or admin removal
     if user_id != current_user.id:
-        _require_workspace_admin(db, workspace, current_user)
+        require_workspace_role(db, workspace_id, current_user, "admin")
 
     member = check_workspace_membership(db, workspace_id, user_id)
     if not member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
+    # Prevent removing the last admin
+    if member.role == "admin":
+        admin_count = (
+            db.query(func.count(WorkspaceMember.user_id))
+            .filter(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.role == "admin",
+            )
+            .scalar()
+        )
+        if admin_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot remove the last admin. Promote another member first.",
+            )
+
     db.delete(member)
     db.commit()
-
-
-def _require_workspace_admin(db: Session, workspace: Workspace, user: User) -> None:
-    """Require the user to be a workspace admin or org admin. Raises 403 otherwise."""
-    # Check workspace-level admin
-    ws_member = check_workspace_membership(db, workspace.id, user.id)
-    if ws_member and ws_member.role == "admin":
-        return
-
-    # Check org-level admin
-    if workspace.organization_id:
-        org_member = (
-            db.query(OrganizationMember)
-            .filter(
-                OrganizationMember.organization_id == workspace.organization_id,
-                OrganizationMember.user_id == user.id,
-                OrganizationMember.role == "admin",
-            )
-            .first()
-        )
-        if org_member:
-            return
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="You must be a workspace admin or organization admin",
-    )

@@ -85,8 +85,8 @@ async def create_series(
         organization_id=series_data.organization_id,
         user_id=current_user.id,
     )
-    from app.services.workspace_service import require_workspace_membership
-    require_workspace_membership(db, workspace_id, current_user)
+    from app.services.workspace_service import require_workspace_role
+    require_workspace_role(db, workspace_id, current_user, "editor")
 
     # Create series
     series = Series(

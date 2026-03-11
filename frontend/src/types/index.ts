@@ -71,6 +71,8 @@ export interface OnboardingProgressResponse {
 }
 
 // Workspace types
+export type WorkspaceRole = 'viewer' | 'editor' | 'admin';
+
 export interface Workspace {
   id: string;
   type: 'personal' | 'organization';
@@ -80,6 +82,14 @@ export interface Workspace {
   owner_id: string;
   is_default: boolean;
   visibility: 'open' | 'private';
+}
+
+export interface WorkspaceMember {
+  user_id: string;
+  display_name?: string;
+  email?: string;
+  role: WorkspaceRole;
+  joined_at?: string;
 }
 
 export interface WorkspaceCreate {

@@ -19,6 +19,7 @@ from app.services.workspace_service import (
     resolve_workspace_id,
     check_workspace_membership,
     require_workspace_membership,
+    require_workspace_role,
     get_user_workspace_ids,
 )
 
@@ -95,7 +96,7 @@ async def create_preset(
         organization_id=preset_data.organization_id,
         user_id=current_user.id,
     )
-    require_workspace_membership(db, workspace_id, current_user)
+    require_workspace_role(db, workspace_id, current_user, "editor")
 
     # Create preset
     preset = ConversationPreset(

@@ -8,6 +8,16 @@ import uuid
 
 from app.core.database import Base
 
+# Ordered from least to most privileged
+WORKSPACE_ROLES = ["viewer", "editor", "admin"]
+
+
+def has_minimum_role(member_role: str, required_role: str) -> bool:
+    """Check if member_role meets or exceeds the required_role level."""
+    if member_role not in WORKSPACE_ROLES or required_role not in WORKSPACE_ROLES:
+        return False
+    return WORKSPACE_ROLES.index(member_role) >= WORKSPACE_ROLES.index(required_role)
+
 
 class Workspace(Base):
     """Workspace model — first-class container for conversations, journals, spaces."""
@@ -46,7 +56,7 @@ class WorkspaceMember(Base):
 
     workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    role = Column(String(50), nullable=False, default="member")
+    role = Column(String(50), nullable=False, default="editor")
     joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

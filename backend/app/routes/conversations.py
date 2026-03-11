@@ -23,7 +23,7 @@ from app.models.question import Question
 from app.models.participant_code import ParticipantCode
 from app.models.response import Response
 from app.models.conversation_invitation import ConversationInvitation
-from app.services.workspace_service import resolve_workspace_id, check_workspace_membership, require_workspace_membership, get_user_workspace_ids
+from app.services.workspace_service import resolve_workspace_id, check_workspace_membership, require_workspace_membership, require_workspace_role, get_user_workspace_ids
 from app.utils.timezone_utils import parse_datetime_with_timezone, convert_local_to_utc
 from app.schemas.conversation import (
     ConversationCreate,
@@ -242,7 +242,7 @@ async def create_conversation(
         organization_id=conversation_data.organization_id,
         user_id=current_user.id,
     )
-    require_workspace_membership(db, workspace_id, current_user)
+    require_workspace_role(db, workspace_id, current_user, "editor")
 
     # If series_id is provided, verify series exists and user has access
     if conversation_data.series_id:

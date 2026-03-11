@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from sqlalchemy import union
 
-from app.models.workspace import Workspace, WorkspaceMember
+from app.models.workspace import Workspace, WorkspaceMember, WORKSPACE_ROLES, has_minimum_role
 from app.models.organization import OrganizationMember
 from app.models.user import User
 
@@ -125,6 +125,63 @@ def require_workspace_membership(
     return member
 
 
+def resolve_workspace_role(
+    db: Session, workspace_id: UUID, user_id: UUID
+) -> Optional[str]:
+    """Return the effective workspace role for a user, or None if no access.
+
+    Checks explicit membership first, then org admin fallback.
+    Open org workspaces grant implicit 'viewer' access to org members.
+    """
+    # Explicit membership
+    member = check_workspace_membership(db, workspace_id, user_id)
+    if member:
+        return member.role
+
+    # Check org-level: org admins get implicit admin, org members get viewer on open workspaces
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if workspace and workspace.organization_id:
+        org_member = (
+            db.query(OrganizationMember)
+            .filter(
+                OrganizationMember.organization_id == workspace.organization_id,
+                OrganizationMember.user_id == user_id,
+            )
+            .first()
+        )
+        if org_member:
+            if org_member.role == "admin":
+                return "admin"
+            if workspace.visibility == "open":
+                return "viewer"
+
+    return None
+
+
+def require_workspace_role(
+    db: Session, workspace_id: UUID, user: User, min_role: str = "viewer"
+) -> str:
+    """Require the user to have at least min_role in the workspace. Returns the effective role.
+
+    Raises 403 if the user lacks access or has insufficient permissions.
+    """
+    if min_role not in WORKSPACE_ROLES:
+        raise ValueError(f"Invalid role: {min_role}. Must be one of {WORKSPACE_ROLES}")
+
+    role = resolve_workspace_role(db, workspace_id, user.id)
+    if role is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a member of this workspace",
+        )
+    if not has_minimum_role(role, min_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"This action requires at least '{min_role}' role in the workspace",
+        )
+    return role
+
+
 def get_user_workspace_ids(db: Session, user_id: UUID):
     """Return a subquery of workspace IDs the user can access.
 
@@ -234,7 +291,7 @@ def add_user_to_default_org_workspace(
     db: Session,
     organization_id: UUID,
     user_id: UUID,
-    role: str = "member",
+    role: str = "editor",
 ) -> Optional[WorkspaceMember]:
     """
     Add a user to an organization's default workspace.
@@ -246,7 +303,7 @@ def add_user_to_default_org_workspace(
         db: Database session
         organization_id: The organization's ID
         user_id: User to add
-        role: Workspace role (default 'member')
+        role: Workspace role (default 'editor')
 
     Returns:
         The created WorkspaceMember, or None if no default workspace found

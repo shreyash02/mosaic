@@ -855,7 +855,7 @@ def create_space(
 ):
     """Create a new space."""
     from app.services.feature_flag_service import feature_flag_service
-    from app.services.workspace_service import resolve_workspace_id, require_workspace_membership
+    from app.services.workspace_service import resolve_workspace_id, require_workspace_role
 
     tier = _require_spaces_flag(current_user, db)
 
@@ -866,7 +866,7 @@ def create_space(
         organization_id=data.organization_id,
         user_id=current_user.id,
     )
-    require_workspace_membership(db, workspace_id, current_user)
+    require_workspace_role(db, workspace_id, current_user, "editor")
 
     # Check max_spaces limit
     max_spaces = feature_flag_service.get_config_value(
