@@ -172,6 +172,7 @@ class SpaceResponse(BaseModel):
     is_shared_view: bool = False
     shared_viewers: Optional[List[SpaceSharedViewerResponse]] = None
     viewer_can_export: Optional[bool] = None
+    viewer_access_level: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

@@ -336,6 +336,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
     if is_shared_view:
         # Check if this viewer has a shared_viewer record (for can_export)
         viewer_can_export = None
+        viewer_access_level = None
         if current_user:
             sv = db.query(SpaceSharedViewer).filter(
                 SpaceSharedViewer.space_id == space.id,
@@ -343,6 +344,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             ).first()
             if sv:
                 viewer_can_export = sv.can_export
+                viewer_access_level = sv.access_level
         return {
             "id": space.id,
             "title": space.title,
@@ -370,6 +372,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             "is_shared_view": True,
             "shared_viewers": None,
             "viewer_can_export": viewer_can_export,
+            "viewer_access_level": viewer_access_level,
         }
 
     # Query persisted synthesis activity log
@@ -492,6 +495,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "is_shared_view": False,
         "shared_viewers": shared_viewers_data,
         "viewer_can_export": None,
+        "viewer_access_level": None,
     }
 
 
@@ -2385,13 +2389,13 @@ def delete_space_snapshot(
 # --- Shared Viewers ---
 
 @router.post("/{space_id}/shared-viewers", response_model=SpaceSharedViewerResponse, status_code=status.HTTP_201_CREATED)
-def add_shared_viewer(
+async def add_shared_viewer(
     space_id: UUID,
     data: SpaceSharedViewerCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add a shared viewer to a space. Owner only."""
+    """Add a shared viewer to a space. Owner only. Sends notification email."""
     space = _get_space_or_404(space_id, current_user, db)
     _require_space_owner(space, current_user)
 
@@ -2422,6 +2426,21 @@ def add_shared_viewer(
     db.add(viewer)
     db.commit()
     db.refresh(viewer)
+
+    # Send notification email
+    try:
+        from app.services.email_service import email_service
+        space_url = f"{settings.FRONTEND_URL}/spaces/{space_id}"
+        await email_service.send_space_shared_email(
+            to_email=data.email,
+            space_title=space.title,
+            access_level=data.access_level,
+            inviter_name=current_user.full_name,
+            space_url=space_url,
+            has_snapshots=db.query(SpaceSnapshot).filter(SpaceSnapshot.space_id == space_id).first() is not None,
+        )
+    except Exception as e:
+        logger.error(f"Failed to send space shared email to {data.email}: {e}")
 
     return {
         "id": viewer.id,

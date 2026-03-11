@@ -537,9 +537,16 @@ export default function SpaceDetailPage() {
   const refreshContent = useCallback(async (themeFilter?: string | null) => {
     if (!id) return;
     try {
+      const spaceData = await api.getSpace(id);
+      setSpace(spaceData);
+
+      // Snapshots-only shared viewers can't access live data
+      if (spaceData.is_shared_view && spaceData.viewer_access_level === 'snapshots') {
+        return;
+      }
+
       const since = sinceDateRef.current;
-      const [spaceData, themesData, graph, evoData] = await Promise.all([
-        api.getSpace(id),
+      const [themesData, graph, evoData] = await Promise.all([
         api.getThemes(id),
         api.getGraphData(id),
         api.getEvolution(id, undefined, since),
@@ -552,7 +559,6 @@ export default function SpaceDetailPage() {
       } else {
         ideasData = await api.getIdeas(id, filter || undefined, undefined, since);
       }
-      setSpace(spaceData);
       setThemes(themesData);
       setIdeas(ideasData);
       setGraphData(graph);
@@ -666,6 +672,8 @@ export default function SpaceDetailPage() {
       await refreshContent(null);
       // Load suggestions for editors/owners (ignore errors — suggesters/viewers will 403)
       api.getSuggestions(id).then(setSuggestions).catch(() => {});
+      // Load snapshots for shared viewers (they may need them)
+      api.getSpaceSnapshots(id).then(data => { setSnapshots(data); setSnapshotsLoaded(true); }).catch(() => {});
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load space');
     } finally {
@@ -2091,7 +2099,53 @@ export default function SpaceDetailPage() {
         </div>
       )}
 
+      {/* Snapshots-only view for shared viewers with restricted access */}
+      {space.is_shared_view && space.viewer_access_level === 'snapshots' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: spacing[4], padding: spacing[8] }}>
+          <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)' }}>
+            Snapshots
+          </div>
+          <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', textAlign: 'center' as const, maxWidth: '400px' }}>
+            You have access to snapshots of this space. Select a snapshot below to view it.
+          </p>
+          {snapshots.length === 0 && snapshotsLoaded && (
+            <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-400)', marginTop: spacing[4] }}>
+              No snapshots have been created yet. The space owner will create snapshots to share with you.
+            </div>
+          )}
+          {snapshots.map(snap => (
+            <Link
+              key={snap.id}
+              to={`/spaces/${id}/snapshots/${snap.id}`}
+              style={{
+                display: 'block',
+                width: '100%',
+                maxWidth: '400px',
+                padding: `${spacing[3]} ${spacing[4]}`,
+                backgroundColor: 'var(--color-primary-50)',
+                border: '1px solid var(--color-primary-200)',
+                borderRadius: borders.radius.lg,
+                textDecoration: 'none',
+                color: 'var(--color-primary-700)',
+                fontSize: typography.fontSize.sm,
+                transition: transitions.duration.normal,
+              }}
+              onMouseOver={e => (e.currentTarget.style.borderColor = 'var(--color-primary-400)')}
+              onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--color-primary-200)')}
+            >
+              <div style={{ fontWeight: typography.fontWeight.medium }}>
+                {snap.title || 'Untitled snapshot'}
+              </div>
+              <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginTop: spacing[1] }}>
+                {formatRelativeTime(snap.created_at)}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* Main layout: graph + sidebar */}
+      {!(space.is_shared_view && space.viewer_access_level === 'snapshots') && (
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph area */}
         {(!isMobile || mobileTab === 'map') && (
@@ -3732,6 +3786,7 @@ export default function SpaceDetailPage() {
         </div>
         )}
       </div>
+      )}
 
       {/* Spin animation */}
       <style>{`

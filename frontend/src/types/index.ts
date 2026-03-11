@@ -1947,6 +1947,7 @@ export interface Space {
   is_shared_view?: boolean;
   shared_viewers?: SpaceSharedViewer[];
   viewer_can_export?: boolean;
+  viewer_access_level?: 'space' | 'snapshots' | null;
 }
 
 export interface SpaceCreate {
