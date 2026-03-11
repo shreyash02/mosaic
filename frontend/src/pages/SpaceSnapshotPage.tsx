@@ -7,7 +7,6 @@ import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatRelativeTime } from '../utils/formatting';
 import NetworkGraph from '../components/NetworkGraph';
-import PanZoomContainer from '../components/PanZoomContainer';
 
 const s = {
   page: {
@@ -251,16 +250,14 @@ export default function SpaceSnapshotPage() {
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph */}
         <div style={s.graphArea}>
-          <PanZoomContainer>
-            <NetworkGraph
-              data={graphData}
-              selectedNodeId={selectedThemeId || undefined}
-              onNodeClick={handleNodeClick}
-              onEdgeClick={handleEdgeClick}
-              selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
-              onClearSelection={handleClearSelection}
-            />
-          </PanZoomContainer>
+          <NetworkGraph
+            data={graphData}
+            selectedNodeId={selectedThemeId || undefined}
+            onNodeClick={handleNodeClick}
+            onEdgeClick={handleEdgeClick}
+            selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
+            onClearSelection={handleClearSelection}
+          />
         </div>
 
         {/* Sidebar */}
@@ -295,41 +292,6 @@ export default function SpaceSnapshotPage() {
                   {synthesis.space_summary}
                 </div>
               )}
-              {synthesis.theme_notes && Object.entries(synthesis.theme_notes).map(([themeKey, notes]) => {
-                // theme_notes may be keyed by theme ID or theme name
-                const resolvedName = themes.find((t: any) => t.id === themeKey)?.name || themeKey;
-                return (
-                <div key={themeKey} style={{
-                  marginBottom: spacing[3],
-                  padding: spacing[3],
-                  borderRadius: borders.radius.md,
-                  border: '1px solid var(--color-primary-200)',
-                  backgroundColor: 'var(--color-primary-50)',
-                }}>
-                  <div style={{
-                    fontSize: typography.fontSize.sm,
-                    fontWeight: typography.fontWeight.semibold,
-                    color: 'var(--color-primary-800)',
-                    marginBottom: spacing[1],
-                  }}>
-                    {resolvedName}
-                  </div>
-                  {notes.length > 0 && (
-                    <ul style={{
-                      margin: `${spacing[2]} 0 0 0`,
-                      paddingLeft: spacing[4],
-                      fontSize: typography.fontSize.xs,
-                      color: 'var(--color-primary-600)',
-                      lineHeight: typography.lineHeight.relaxed,
-                    }}>
-                      {notes.map((note, ni) => (
-                        <li key={ni}>{note}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                );
-              })}
             </div>
           )}
 
@@ -372,6 +334,20 @@ export default function SpaceSnapshotPage() {
                 }}>
                   {theme.idea_count} {theme.idea_count === 1 ? 'idea' : 'ideas'}
                 </div>
+                {/* Show theme notes when selected */}
+                {selectedThemeId === theme.id && synthesis?.theme_notes?.[theme.id] && (
+                  <ul style={{
+                    margin: `${spacing[2]} 0 0 0`,
+                    paddingLeft: spacing[4],
+                    fontSize: typography.fontSize.xs,
+                    color: 'var(--color-primary-600)',
+                    lineHeight: typography.lineHeight.relaxed,
+                  }}>
+                    {synthesis.theme_notes[theme.id].map((note: string, ni: number) => (
+                      <li key={ni} style={{ marginBottom: spacing[1] }}>{note}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
