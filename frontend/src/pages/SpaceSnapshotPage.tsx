@@ -7,6 +7,7 @@ import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatRelativeTime } from '../utils/formatting';
 import NetworkGraph from '../components/NetworkGraph';
+import { generateSnapshotPdf, sanitizeFilename } from '../utils/pdf/snapshotPdf';
 
 const s = {
   page: {
@@ -117,7 +118,9 @@ export default function SpaceSnapshotPage() {
   const [sidebarWidth, setSidebarWidth] = useState(380);
   const [dragging, setDragging] = useState(false);
   const [dragHandleHovered, setDragHandleHovered] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
+  const graphAreaRef = useRef<HTMLDivElement>(null);
 
   usePageTitle(snapshot ? `Snapshot: ${snapshot.snapshot_data?.space?.title || 'Space'}` : 'Snapshot');
 
@@ -220,6 +223,38 @@ export default function SpaceSnapshotPage() {
     setSelectedEdge(null);
   }
 
+  async function handleExportPdf() {
+    setExporting(true);
+    try {
+      const graphCanvas = graphAreaRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
+      const purposeLabel = SPACE_PURPOSES[synthesisPurpose as SpacePurpose]?.label || synthesisPurpose;
+      const snapshotDate = new Date(snapshot.created_at).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric',
+      });
+
+      const blob = await generateSnapshotPdf({
+        title: spaceInfo.title || 'Space Snapshot',
+        snapshotLabel: snapshot.title ? `Snapshot: ${snapshot.title}` : 'Snapshot',
+        snapshotDate,
+        synthesis,
+        synthesisPurposeLabel: purposeLabel,
+        themes,
+        graphCanvas,
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFilename(spaceInfo.title || 'snapshot')}-snapshot.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div style={s.page}>
       {/* Top bar */}
@@ -244,12 +279,38 @@ export default function SpaceSnapshotPage() {
             Snapshot {snapshot.title ? `"${snapshot.title}"` : ''} from {formatRelativeTime(snapshot.created_at)}
           </span>
         </div>
+        <button
+          onClick={handleExportPdf}
+          disabled={exporting}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            padding: `${spacing[2]} ${spacing[3]}`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            color: 'var(--color-primary-700)',
+            backgroundColor: 'var(--color-primary-100)',
+            border: '1px solid var(--color-primary-300)',
+            borderRadius: borders.radius.md,
+            cursor: exporting ? 'wait' : 'pointer',
+            opacity: exporting ? 0.6 : 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          {exporting ? 'Exporting...' : 'Export PDF'}
+        </button>
       </div>
 
       {/* Main layout */}
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph */}
-        <div style={s.graphArea}>
+        <div ref={graphAreaRef} style={s.graphArea}>
           <NetworkGraph
             data={graphData}
             selectedNodeId={selectedThemeId || undefined}
