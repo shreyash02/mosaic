@@ -459,8 +459,8 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
           left: tooltip.x,
           top: tooltip.y,
           transform: 'translate(-50%, -100%)',
-          backgroundColor: 'rgba(26, 26, 46, 0.92)',
-          color: 'var(--color-primary-50)',
+          backgroundColor: 'rgba(26, 26, 46, 0.95)',
+          color: '#e2e8f0',
           padding: `${spacing[1]} ${spacing[3]}`,
           borderRadius: borders.radius.md,
           fontSize: typography.fontSize.xs,
@@ -470,7 +470,7 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
           zIndex: 10,
         }}>
           {tooltip.lines.map((line, i) => (
-            <div key={i} style={i === 0 ? { fontWeight: typography.fontWeight.medium } : { color: 'var(--color-primary-400)' }}>
+            <div key={i} style={i === 0 ? { fontWeight: typography.fontWeight.medium } : { color: '#94a3b8' }}>
               {line}
             </div>
           ))}

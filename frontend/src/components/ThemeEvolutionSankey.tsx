@@ -137,24 +137,34 @@ function buildSankeyData(runs: OrganizeRun[]) {
 
 function SankeyNodeRenderer({ x, y, width, height, payload }: any) {
   const n = payload as NodeData;
-  const label = n.displayName.length > 18
-    ? n.displayName.slice(0, 18) + '\u2026'
-    : n.displayName;
+  const labelWidth = 120;
+  const labelHeight = Math.max(height, 32);
 
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} fill={n.color} rx={2} />
-      <text
+      <foreignObject
         x={x + width + 6}
-        y={y + height / 2}
-        textAnchor="start"
-        dominantBaseline="central"
-        fontSize={11}
-        fill="var(--color-primary-700)"
-        fontFamily={typography.fontFamily.sans}
+        y={y + height / 2 - labelHeight / 2}
+        width={labelWidth}
+        height={labelHeight}
       >
-        {label}
-      </text>
+        <div
+          style={{
+            fontSize: 11,
+            color: 'var(--color-primary-700)',
+            fontFamily: typography.fontFamily.sans,
+            lineHeight: 1.2,
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            overflow: 'hidden',
+            wordBreak: 'break-word',
+          }}
+        >
+          {n.displayName}
+        </div>
+      </foreignObject>
     </g>
   );
 }
@@ -333,8 +343,8 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
           left: tooltip.x,
           top: tooltip.y,
           transform: 'translate(-50%, -100%)',
-          backgroundColor: 'rgba(26, 26, 46, 0.92)',
-          color: 'var(--color-primary-50)',
+          backgroundColor: 'rgba(26, 26, 46, 0.95)',
+          color: '#e2e8f0',
           padding: `${spacing[1]} ${spacing[3]}`,
           borderRadius: borders.radius.md,
           fontSize: typography.fontSize.xs,
@@ -344,7 +354,7 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
           zIndex: 10,
         }}>
           {tooltip.lines.map((line, i) => (
-            <div key={i} style={i === 0 ? { fontWeight: typography.fontWeight.medium } : { color: 'var(--color-primary-400)' }}>
+            <div key={i} style={i === 0 ? { fontWeight: typography.fontWeight.medium } : { color: '#94a3b8' }}>
               {line}
             </div>
           ))}

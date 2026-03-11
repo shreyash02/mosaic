@@ -60,8 +60,10 @@ const s = {
     backgroundColor: 'var(--color-primary-50)',
     overflowY: 'auto' as const,
     flexShrink: 0,
-    padding: spacing[5],
     position: 'relative' as const,
+  },
+  sidebarContent: {
+    padding: spacing[5],
   },
   dragHandle: {
     position: 'sticky' as const,
@@ -135,6 +137,7 @@ export default function SpaceSnapshotPage() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ideasExpanded, setIdeasExpanded] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
   const graphAreaRef = useRef<HTMLDivElement>(null);
 
@@ -491,6 +494,7 @@ export default function SpaceSnapshotPage() {
             onMouseLeave={() => setDragHandleHovered(false)}
           />
           )}
+          <div style={s.sidebarContent}>
           {/* Synthesis */}
           {synthesis && (
             <div style={{ marginBottom: spacing[6] }}>
@@ -512,6 +516,138 @@ export default function SpaceSnapshotPage() {
                   marginBottom: spacing[3],
                 }}>
                   {synthesis.space_summary}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Edge selection — ideas inline above themes */}
+          {selectedEdge && edgeThemeNames && (
+            <div style={{
+              marginBottom: spacing[4],
+              padding: spacing[3],
+              borderRadius: borders.radius.md,
+              backgroundColor: 'var(--color-primary-100)',
+              border: '1px solid var(--color-primary-200)',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: spacing[2],
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' as const }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: borders.radius.full,
+                      backgroundColor: themes.find((t: any) => t.id === selectedEdge.sourceId)?.color || '#3B82F6',
+                    }} />
+                    <span style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)' }}>{edgeThemeNames.source}</span>
+                  </div>
+                  <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>&</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: borders.radius.full,
+                      backgroundColor: themes.find((t: any) => t.id === selectedEdge.targetId)?.color || '#3B82F6',
+                    }} />
+                    <span style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)' }}>{edgeThemeNames.target}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleClearSelection}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-primary-400)',
+                    padding: '2px',
+                    lineHeight: 1,
+                  }}
+                  title="Clear selection"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div style={{
+                fontSize: typography.fontSize.xs,
+                color: 'var(--color-primary-500)',
+                marginBottom: filteredIdeas.length > 0 ? spacing[2] : 0,
+              }}>
+                {filteredIdeas.length} idea{filteredIdeas.length !== 1 ? 's' : ''} across these themes
+              </div>
+              {filteredIdeas.slice(0, 30).map(idea => (
+                <div key={idea.id} style={s.ideaCard}>
+                  {idea.text}
+                </div>
+              ))}
+              {filteredIdeas.length > 30 && (
+                <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', textAlign: 'center', padding: spacing[2] }}>
+                  + {filteredIdeas.length - 30} more ideas
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Selected theme ideas — above theme list */}
+          {selectedThemeId && !selectedEdge && (
+            <div style={{
+              marginBottom: spacing[4],
+              padding: spacing[3],
+              borderRadius: borders.radius.md,
+              backgroundColor: 'var(--color-primary-100)',
+              border: '1px solid var(--color-primary-200)',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: spacing[2],
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: borders.radius.full,
+                    backgroundColor: themes.find((t: any) => t.id === selectedThemeId)?.color || '#3B82F6',
+                  }} />
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-800)' }}>
+                    {themes.find((t: any) => t.id === selectedThemeId)?.name || 'Theme'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleClearSelection}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-primary-400)',
+                    padding: '2px',
+                    lineHeight: 1,
+                  }}
+                  title="Clear selection"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div style={{
+                fontSize: typography.fontSize.xs,
+                color: 'var(--color-primary-500)',
+                marginBottom: filteredIdeas.length > 0 ? spacing[2] : 0,
+              }}>
+                {filteredIdeas.length} idea{filteredIdeas.length !== 1 ? 's' : ''}
+              </div>
+              {filteredIdeas.slice(0, 30).map(idea => (
+                <div key={idea.id} style={s.ideaCard}>
+                  {idea.text}
+                </div>
+              ))}
+              {filteredIdeas.length > 30 && (
+                <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', textAlign: 'center', padding: spacing[2] }}>
+                  + {filteredIdeas.length - 30} more ideas
                 </div>
               )}
             </div>
@@ -574,96 +710,36 @@ export default function SpaceSnapshotPage() {
             ))}
           </div>
 
-          {/* Edge selection indicator */}
-          {selectedEdge && edgeThemeNames && (
-            <div style={{
-              marginBottom: spacing[4],
-              padding: spacing[3],
-              borderRadius: borders.radius.md,
-              backgroundColor: 'var(--color-primary-100)',
-              border: '1px solid var(--color-primary-200)',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' as const }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: borders.radius.full,
-                      backgroundColor: themes.find((t: any) => t.id === selectedEdge.sourceId)?.color || '#3B82F6',
-                    }} />
-                    <span style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)' }}>{edgeThemeNames.source}</span>
-                  </div>
-                  <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>&</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: borders.radius.full,
-                      backgroundColor: themes.find((t: any) => t.id === selectedEdge.targetId)?.color || '#3B82F6',
-                    }} />
-                    <span style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)' }}>{edgeThemeNames.target}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleClearSelection}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--color-primary-400)',
-                    padding: '2px',
-                    lineHeight: 1,
-                  }}
-                  title="Clear selection"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-              <div style={{
-                fontSize: typography.fontSize.xs,
-                color: 'var(--color-primary-500)',
-                marginTop: spacing[1],
-              }}>
-                {filteredIdeas.length} idea{filteredIdeas.length !== 1 ? 's' : ''} across these themes
-              </div>
-            </div>
-          )}
-
-          {/* Ideas */}
+          {/* All Ideas — collapsible */}
           <div>
-            <div style={s.sectionTitle}>
-              Ideas ({filteredIdeas.length}{(selectedThemeId || selectedEdge) ? ` of ${ideas.length}` : ''})
-              {(selectedThemeId || selectedEdge) && (
-                <button
-                  onClick={handleClearSelection}
-                  style={{
-                    fontSize: typography.fontSize.xs,
-                    color: 'var(--color-primary-500)',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Show all
-                </button>
-              )}
+            <div style={{
+              ...s.sectionTitle,
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+              onClick={() => setIdeasExpanded(prev => !prev)}
+            >
+              <span>Ideas ({ideas.length})</span>
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transform: ideasExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </div>
-            {filteredIdeas.slice(0, 50).map(idea => (
+            {ideasExpanded && ideas.slice(0, 50).map(idea => (
               <div key={idea.id} style={s.ideaCard}>
                 {idea.text}
               </div>
             ))}
-            {filteredIdeas.length > 50 && (
+            {ideasExpanded && ideas.length > 50 && (
               <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', textAlign: 'center', padding: spacing[2] }}>
-                + {filteredIdeas.length - 50} more ideas
+                + {ideas.length - 50} more ideas
               </div>
             )}
           </div>
+          </div>{/* end sidebarContent */}
         </div>
       </div>
     </div>
