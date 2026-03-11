@@ -108,8 +108,19 @@ const s = {
   },
 };
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function SpaceSnapshotPage() {
   const { id, snapshotId } = useParams<{ id: string; snapshotId: string }>();
+  const isMobile = useIsMobile();
   const [snapshot, setSnapshot] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -283,14 +294,14 @@ export default function SpaceSnapshotPage() {
   return (
     <div style={s.page}>
       {/* Top bar */}
-      <div style={s.topBar}>
-        <div style={s.topBarLeft}>
+      <div style={{ ...s.topBar, ...(isMobile ? { flexWrap: 'wrap' as const, gap: spacing[2], padding: `${spacing[3]} ${spacing[4]}` } : {}) }}>
+        <div style={{ ...s.topBarLeft, ...(isMobile ? { flexWrap: 'wrap' as const, gap: spacing[2] } : {}) }}>
           <Link to={`/spaces/${id}`} style={s.backLink}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </Link>
-          <h1 style={s.title}>{spaceInfo.title || 'Space'}</h1>
+          <h1 style={{ ...s.title, ...(isMobile ? { fontSize: typography.fontSize.lg } : {}) }}>{spaceInfo.title || 'Space'}</h1>
           <span style={{
             fontSize: typography.fontSize.xs,
             color: 'var(--color-primary-600)',
@@ -335,9 +346,16 @@ export default function SpaceSnapshotPage() {
       </div>
 
       {/* Main layout */}
-      <div ref={mainLayoutRef} style={s.mainLayout}>
+      <div ref={mainLayoutRef} style={{
+        ...s.mainLayout,
+        ...(isMobile ? { flexDirection: 'column' as const, overflow: 'auto' } : {}),
+      }}>
         {/* Graph */}
-        <div ref={graphAreaRef} style={{ ...s.graphArea, ...(isFullscreen ? { backgroundColor: 'var(--color-primary-100)' } : {}) }}>
+        <div ref={graphAreaRef} style={{
+          ...s.graphArea,
+          ...(isFullscreen ? { backgroundColor: 'var(--color-primary-100)' } : {}),
+          ...(isMobile ? { minHeight: '350px', height: '350px', flex: 'none' } : {}),
+        }}>
           <NetworkGraph
             data={graphData}
             selectedNodeId={selectedThemeId || undefined}
@@ -386,14 +404,21 @@ export default function SpaceSnapshotPage() {
         </div>
 
         {/* Sidebar */}
-        <div style={{ ...s.sidebar, width: sidebarWidth }}>
-          {/* Drag handle */}
+        <div style={{
+          ...s.sidebar,
+          ...(isMobile
+            ? { width: '100%', borderLeft: 'none', borderTop: '1px solid var(--color-primary-200)' }
+            : { width: sidebarWidth }),
+        }}>
+          {/* Drag handle — desktop only */}
+          {!isMobile && (
           <div
             style={{ ...s.dragHandle, ...(dragging || dragHandleHovered ? s.dragHandleHover : {}) }}
             onMouseDown={() => setDragging(true)}
             onMouseEnter={() => setDragHandleHovered(true)}
             onMouseLeave={() => setDragHandleHovered(false)}
           />
+          )}
           {/* Synthesis */}
           {synthesis && (
             <div style={{ marginBottom: spacing[6] }}>
