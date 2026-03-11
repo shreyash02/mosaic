@@ -342,14 +342,18 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     const target = link.target as GraphNodeData;
     if (!source.x || !source.y || !target.x || !target.y) return;
 
-    const hitWidth = Math.max(6, link.strength * 6);
+    // Don't register hit area for filtered-out edges
+    if (link.strength < minStrength) return;
+
+    const hitWidth = Math.max(4, link.strength * 4);
     ctx.beginPath();
     ctx.moveTo(source.x, source.y);
     ctx.lineTo(target.x, target.y);
     ctx.strokeStyle = color;
     ctx.lineWidth = hitWidth;
     ctx.stroke();
-  }, []);
+  }, [minStrength]);
+
 
   // Resolve link source/target to node data for tooltip display
   const tooltipData = useMemo(() => {
@@ -587,6 +591,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
         onLinkClick={handleLinkClick}
         onNodeHover={(node: GraphNodeData | null) => setHoveredNode(node?.id || null)}
         onLinkHover={handleLinkHover}
+
         onBackgroundClick={() => { if (focusNodeId) { setFocusNodeId(null); setTimeout(() => graphRef.current?.zoomToFit(400, 60), 100); } }}
         nodeLabel={() => ''}
         cooldownTicks={100}
