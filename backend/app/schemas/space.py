@@ -47,6 +47,7 @@ class SpaceUpdate(BaseModel):
     clustering_mode: Optional[str] = None
     purpose: Optional[str] = None
     purposes: Optional[List[str]] = None
+    graph_min_edge_strength: Optional[float] = Field(None, ge=0, le=1)
 
     @field_validator("clustering_mode")
     @classmethod
@@ -173,6 +174,7 @@ class SpaceResponse(BaseModel):
     shared_viewers: Optional[List[SpaceSharedViewerResponse]] = None
     viewer_can_export: Optional[bool] = None
     viewer_access_level: Optional[str] = None
+    graph_min_edge_strength: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -201,6 +203,7 @@ class SpaceListItem(BaseModel):
     members: Optional[List[SpaceMemberResponse]] = None
     share_access: Optional[str] = None
     is_shared_view: bool = False
+    graph_min_edge_strength: Optional[float] = None
 
     model_config = {"from_attributes": True}
 

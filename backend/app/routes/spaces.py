@@ -442,6 +442,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             "shared_viewers": None,
             "viewer_can_export": viewer_can_export,
             "viewer_access_level": viewer_access_level,
+            "graph_min_edge_strength": (space.settings or {}).get("graph_min_edge_strength"),
         }
 
     # Query persisted synthesis activity log
@@ -565,6 +566,7 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "shared_viewers": shared_viewers_data,
         "viewer_can_export": None,
         "viewer_access_level": None,
+        "graph_min_edge_strength": (space.settings or {}).get("graph_min_edge_strength"),
     }
 
 
@@ -1008,6 +1010,11 @@ def update_space(
             SpaceSynthesis.space_id == space.id,
             SpaceSynthesis.is_current == True,
         ).update({"is_current": False})
+        space.settings = current_settings
+        flag_modified(space, "settings")
+    if data.graph_min_edge_strength is not None:
+        current_settings = dict(space.settings) if space.settings else {}
+        current_settings["graph_min_edge_strength"] = data.graph_min_edge_strength
         space.settings = current_settings
         flag_modified(space, "settings")
     db.commit()

@@ -1948,6 +1948,7 @@ export interface Space {
   shared_viewers?: SpaceSharedViewer[];
   viewer_can_export?: boolean;
   viewer_access_level?: 'space' | 'snapshots' | null;
+  graph_min_edge_strength?: number | null;
 }
 
 export interface SpaceCreate {
@@ -1966,6 +1967,7 @@ export interface SpaceUpdate {
   clustering_mode?: 'dbscan' | 'llm';
   purpose?: SpacePurpose;
   purposes?: SpacePurpose[];
+  graph_min_edge_strength?: number | null;
 }
 
 export interface SpaceSnapshot {

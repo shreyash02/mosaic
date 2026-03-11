@@ -13,6 +13,8 @@ interface NetworkGraphProps {
   onEdgeClick?: (sourceId: string, targetId: string) => void;
   selectedEdge?: { source: string; target: string };
   onClearSelection?: () => void;
+  savedMinEdgeStrength?: number | null;
+  onSaveMinEdgeStrength?: (value: number) => void;
 }
 
 interface GraphNodeData extends GraphNode {
@@ -35,7 +37,7 @@ interface GraphDataInternal {
 // Show all labels when node count is at or below this threshold
 const LABEL_NODE_THRESHOLD = 15;
 
-export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdgeClick, selectedEdge, onClearSelection }: NetworkGraphProps) {
+export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdgeClick, selectedEdge, onClearSelection, savedMinEdgeStrength, onSaveMinEdgeStrength }: NetworkGraphProps) {
   const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
@@ -76,39 +78,37 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
 
   // Memoize graph data so it only changes when the actual data prop changes
   // Strength filter state
-  const [minStrength, setMinStrength] = useState(0);
+  const [minStrength, setMinStrength] = useState(savedMinEdgeStrength ?? 0);
   // Focus mode: double-click a node to show only its neighborhood
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
 
   const graphData: GraphDataInternal = useMemo(() => {
-    let filteredEdges = data.edges
-      .filter(e => e.strength >= minStrength)
-      .map(e => ({
-        source: e.source,
-        target: e.target,
-        strength: e.strength,
-        shared_count: e.shared_count,
-      }));
+    let allEdges = data.edges.map(e => ({
+      source: e.source,
+      target: e.target,
+      strength: e.strength,
+      shared_count: e.shared_count,
+    }));
 
     let filteredNodes = data.nodes.map(n => ({ ...n }));
 
     if (focusNodeId) {
       const neighborIds = new Set<string>();
       neighborIds.add(focusNodeId);
-      for (const e of filteredEdges) {
+      for (const e of allEdges) {
         if (e.source === focusNodeId) neighborIds.add(e.target as string);
         if (e.target === focusNodeId) neighborIds.add(e.source as string);
       }
       filteredNodes = filteredNodes.filter(n => neighborIds.has(n.id));
-      filteredEdges = filteredEdges.filter(e => {
+      allEdges = allEdges.filter(e => {
         const src = e.source as string;
         const tgt = e.target as string;
         return neighborIds.has(src) && neighborIds.has(tgt);
       });
     }
 
-    return { nodes: filteredNodes, links: filteredEdges };
-  }, [data, minStrength, focusNodeId]);
+    return { nodes: filteredNodes, links: allEdges };
+  }, [data, focusNodeId]);
 
   // Configure forces for better spread across canvas
   useEffect(() => {
@@ -236,7 +236,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       const fontSize = 12 / globalScale;
       const gap = 8 / globalScale;
       const labelY = y + size + gap;
-      const label = node.name;
+      const label = (isSelected || isHovered) ? `${node.name} (${node.size})` : node.name;
 
       ctx.font = `${isSelected ? 'bold ' : ''}${fontSize}px ${typography.fontFamily.sans}`;
       ctx.textAlign = 'center';
@@ -264,6 +264,9 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     const source = link.source as GraphNodeData;
     const target = link.target as GraphNodeData;
     if (!source.x || !source.y || !target.x || !target.y) return;
+
+    // Hide edges below strength threshold (visual only — keeps graph structure stable)
+    if (link.strength < minStrength) return;
 
     const isHovered = hoveredLink === link;
     const sourceId = typeof link.source === 'string' ? link.source : (link.source as GraphNodeData).id;
@@ -324,7 +327,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
       ctx.fillText(label, midX, midY);
     }
-  }, [hoveredLink, isDark, selectedEdge, selectedNodeId]);
+  }, [hoveredLink, isDark, selectedEdge, selectedNodeId, minStrength]);
 
   const nodePointerAreaPaint = useCallback((node: GraphNodeData, color: string, ctx: CanvasRenderingContext2D) => {
     const size = Math.max(6, Math.sqrt(node.size) * 3 + 4);
@@ -406,11 +409,11 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       onMouseUp={() => setIsDraggingCanvas(false)}
       onMouseLeave={() => setIsDraggingCanvas(false)}
     >
-      {/* Edge strength filter — bottom left */}
+      {/* Edge strength filter — top left, below size legend */}
       {data.edges.length > 3 && (
         <div style={{
           position: 'absolute',
-          bottom: 12,
+          top: 12,
           left: 12,
           zIndex: zIndex.dropdown,
           display: 'flex',
@@ -424,7 +427,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
           fontSize: typography.fontSize.xs,
           color: isDark ? '#94a3b8' : '#64748b',
         }}>
-          <span>Filter</span>
+          <span>Connections</span>
           <input
             type="range"
             min={0}
@@ -432,10 +435,40 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
             step={5}
             value={minStrength * 100}
             onChange={(e) => setMinStrength(Number(e.target.value) / 100)}
-            style={{ width: 60, accentColor: isDark ? '#64748b' : '#475569' }}
+            style={{ width: 150, accentColor: isDark ? '#64748b' : '#475569' }}
             title={`Hiding edges below ${Math.round(minStrength * 100)}% strength`}
           />
           <span style={{ minWidth: 28, textAlign: 'right' }}>{Math.round(minStrength * 100)}%</span>
+          {onSaveMinEdgeStrength && (
+            <button
+              onClick={() => onSaveMinEdgeStrength(minStrength)}
+              title={savedMinEdgeStrength === minStrength ? 'Saved' : 'Save this filter for everyone'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: savedMinEdgeStrength === minStrength ? 'default' : 'pointer',
+                padding: '1px',
+                lineHeight: 1,
+                display: 'flex',
+                color: savedMinEdgeStrength === minStrength
+                  ? (isDark ? '#64748b' : '#94a3b8')
+                  : (isDark ? '#e2e8f0' : '#475569'),
+                opacity: savedMinEdgeStrength === minStrength ? 0.5 : 1,
+              }}
+            >
+              {savedMinEdgeStrength === minStrength ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       )}
       {/* Focus mode indicator */}

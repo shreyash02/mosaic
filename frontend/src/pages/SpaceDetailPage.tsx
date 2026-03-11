@@ -1002,6 +1002,16 @@ export default function SpaceDetailPage() {
     setSelectedEdge(null);
   }
 
+  async function handleSaveMinEdgeStrength(value: number) {
+    if (!id || !space?.can_edit) return;
+    try {
+      const updated = await api.updateSpace(id, { graph_min_edge_strength: value });
+      setSpace(updated);
+    } catch {
+      addToast({ type: 'error', title: 'Failed to save edge filter', message: 'Could not persist the filter setting.' });
+    }
+  }
+
   async function handleDeleteIdea(ideaId: string) {
     if (!id) return;
     try {
@@ -2498,6 +2508,8 @@ export default function SpaceDetailPage() {
                 onEdgeClick={handleEdgeClick}
                 selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
                 onClearSelection={handleClearSelection}
+                savedMinEdgeStrength={space?.graph_min_edge_strength ?? null}
+                onSaveMinEdgeStrength={space?.can_edit ? handleSaveMinEdgeStrength : undefined}
               />
             )
           ) : evolutionStyle === 'timeline' ? (
