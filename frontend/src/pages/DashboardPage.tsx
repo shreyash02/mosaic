@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import type { ConversationListItem, JournalListItem, SpaceListItem } from '../types';
+import type { ConversationListItem, JournalListItem, SpaceListItem, WorkspaceActivityLogEntry } from '../types';
 import { ConversationState } from '../types';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +15,8 @@ import {
   ChartIcon,
   CopyIcon,
 } from '../components/icons';
+import { formatRelativeTime } from '../utils/formatting';
+import { getWorkspaceActivityVerb, getWorkspaceActivityIcon, getEntityLink } from '../utils/workspaceActivity';
 import EmptyState from '../components/EmptyState';
 import EmptyDashboard from '../components/EmptyDashboard';
 import { SkeletonDashboard } from '../components/Skeleton';
@@ -244,6 +246,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [welcomeKey, setWelcomeKey] = useState(0);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [activityEntries, setActivityEntries] = useState<WorkspaceActivityLogEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
   const { completeStep, isComplete, isDismissed, reset: resetOnboarding } = useOnboarding();
   const { completeStep: completeDashboardStep, hasEverStarted: hasDashboardProgress, reset: resetDashboardChecklist } = useChecklist('dashboard');
 
@@ -343,6 +347,16 @@ export default function DashboardPage() {
 
     loadData();
   }, [currentWorkspaceId, isPersonalWorkspace, journalsEnabled, spacesEnabled]);
+
+  // Fetch recent activity
+  useEffect(() => {
+    if (!currentWorkspaceId) return;
+    setActivityLoading(true);
+    api.getWorkspaceActivity(currentWorkspaceId, 0, 5)
+      .then(res => setActivityEntries(res.items))
+      .catch(() => setActivityEntries([]))
+      .finally(() => setActivityLoading(false));
+  }, [currentWorkspaceId]);
 
   const stats = useMemo(() => {
     const total = conversations.length;
@@ -697,6 +711,68 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div style={s.section}>
+        <div style={s.sectionHeader}>
+          <h3 style={s.sectionTitle}>Recent Activity</h3>
+          <Link to="/activity" className="view-all-link" style={s.viewAllLink}>
+            View all
+          </Link>
+        </div>
+        <div style={s.card}>
+          {activityLoading ? (
+            <div style={{ textAlign: 'center' as const, color: 'var(--color-primary-400)', fontSize: typography.fontSize.sm, padding: spacing[4] }}>
+              Loading activity...
+            </div>
+          ) : activityEntries.length === 0 ? (
+            <div style={{ textAlign: 'center' as const, color: 'var(--color-primary-400)', fontSize: typography.fontSize.sm, padding: spacing[4] }}>
+              No activity yet
+            </div>
+          ) : (
+            activityEntries.map((entry, i) => {
+              const verb = getWorkspaceActivityVerb(entry.event_type);
+              const link = getEntityLink(entry.entity_type, entry.entity_id);
+              const showUserName = entry.event_type !== 'response_received';
+              const isCurrentUser = entry.user_id === user?.id || entry.user_name === user?.full_name;
+
+              return (
+                <div
+                  key={entry.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: spacing[3],
+                    padding: `${spacing[3]} 0`,
+                    borderBottom: i === activityEntries.length - 1 ? 'none' : '1px solid var(--color-primary-100)',
+                  }}
+                >
+                  {getWorkspaceActivityIcon(entry.event_type)}
+                  <div style={{ flex: 1, minWidth: 0, fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)', lineHeight: typography.lineHeight.relaxed }}>
+                    <div>
+                      {showUserName && entry.user_name && (
+                        <strong>{isCurrentUser ? 'You' : entry.user_name}</strong>
+                      )}
+                      {showUserName && entry.user_name && ' '}
+                      {verb}
+                      {entry.entity_name && link ? (
+                        <> <Link to={link} style={{ color: 'var(--color-primary-500)', textDecoration: 'none', fontWeight: typography.fontWeight.medium }}>{entry.entity_name}</Link></>
+                      ) : entry.entity_name ? (
+                        <span style={{ color: 'var(--color-primary-500)' }}> {entry.entity_name}</span>
+                      ) : entry.detail ? (
+                        <span style={{ color: 'var(--color-primary-500)' }}> {entry.detail}</span>
+                      ) : null}
+                    </div>
+                    <div style={{ color: 'var(--color-primary-400)', fontSize: typography.fontSize.xs, marginTop: '2px' }}>
+                      {formatRelativeTime(entry.created_at)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

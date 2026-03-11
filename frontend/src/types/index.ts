@@ -2101,6 +2101,39 @@ export interface SpaceActivityLogPage {
   has_more: boolean;
 }
 
+// Workspace Activity types
+export type WorkspaceActivityEventType =
+  | 'conversation_created'
+  | 'conversation_activated'
+  | 'conversation_closed'
+  | 'conversation_analyzed'
+  | 'space_created'
+  | 'journal_created'
+  | 'response_received'
+  | 'member_joined'
+  | 'member_left'
+  | 'reminder_sent'
+  | 'announcement_sent';
+
+export interface WorkspaceActivityLogEntry {
+  id: string;
+  workspace_id: string;
+  user_id?: string;
+  user_name?: string;
+  event_type: WorkspaceActivityEventType;
+  entity_type?: string;
+  entity_id?: string;
+  entity_name?: string;
+  detail?: string;
+  created_at: string;
+}
+
+export interface WorkspaceActivityLogPage {
+  items: WorkspaceActivityLogEntry[];
+  total: number;
+  has_more: boolean;
+}
+
 // Audit Log types
 export interface AuditLogEntry {
   id: string;

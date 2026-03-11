@@ -14,7 +14,9 @@ from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember, WORKSPACE_ROLES
 from app.models.organization import OrganizationMember
 from app.schemas.workspace import WorkspaceResponse, WorkspaceCreate, WorkspaceUpdate
-from app.services.workspace_service import check_workspace_membership, require_workspace_role
+from app.services.workspace_service import check_workspace_membership, require_workspace_role, check_workspace_access
+from app.services.workspace_activity_service import log_activity
+from app.models.workspace_activity_log import WorkspaceActivityLog
 
 router = APIRouter()
 
@@ -328,6 +330,22 @@ async def add_workspace_member(
         role=data.role,
     )
     db.add(member)
+
+    # Look up added user's name for the activity log
+    added_user = db.query(User).filter(User.id == data.user_id).first()
+    added_user_name = added_user.full_name or added_user.email if added_user else None
+    log_activity(
+        db,
+        workspace_id=workspace_id,
+        event_type="member_joined",
+        user_id=current_user.id,
+        user_name=current_user.full_name or current_user.email,
+        entity_type="member",
+        entity_id=data.user_id,
+        entity_name=added_user_name,
+        detail=f"Added as {data.role}",
+    )
+
     db.commit()
 
     return {"status": "added", "role": data.role}
@@ -417,5 +435,70 @@ async def remove_workspace_member(
                 detail="Cannot remove the last admin. Promote another member first.",
             )
 
+    # Log before delete so we can reference the member
+    removed_user = db.query(User).filter(User.id == user_id).first()
+    removed_user_name = removed_user.full_name or removed_user.email if removed_user else None
+    log_activity(
+        db,
+        workspace_id=workspace_id,
+        event_type="member_left",
+        user_id=current_user.id,
+        user_name=current_user.full_name or current_user.email,
+        entity_type="member",
+        entity_id=user_id,
+        entity_name=removed_user_name,
+    )
+
     db.delete(member)
     db.commit()
+
+
+@router.get("/{workspace_id}/activity")
+async def get_workspace_activity(
+    workspace_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return paginated workspace activity feed. Requires workspace access."""
+    if not check_workspace_access(db, workspace_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this workspace",
+        )
+
+    total = (
+        db.query(func.count(WorkspaceActivityLog.id))
+        .filter(WorkspaceActivityLog.workspace_id == workspace_id)
+        .scalar()
+    )
+
+    items = (
+        db.query(WorkspaceActivityLog)
+        .filter(WorkspaceActivityLog.workspace_id == workspace_id)
+        .order_by(WorkspaceActivityLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "items": [
+            {
+                "id": str(item.id),
+                "workspace_id": str(item.workspace_id),
+                "user_id": str(item.user_id) if item.user_id else None,
+                "user_name": item.user_name,
+                "event_type": item.event_type,
+                "entity_type": item.entity_type,
+                "entity_id": str(item.entity_id) if item.entity_id else None,
+                "entity_name": item.entity_name,
+                "detail": item.detail,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+            }
+            for item in items
+        ],
+        "total": total,
+        "has_more": skip + limit < total,
+    }

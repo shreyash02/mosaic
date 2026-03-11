@@ -24,6 +24,7 @@ from app.models.participant_code import ParticipantCode
 from app.models.response import Response
 from app.models.conversation_invitation import ConversationInvitation
 from app.services.workspace_service import resolve_workspace_id, check_workspace_membership, require_workspace_membership, require_workspace_role, get_user_workspace_ids
+from app.services.workspace_activity_service import log_activity as log_workspace_activity
 from app.utils.timezone_utils import parse_datetime_with_timezone, convert_local_to_utc
 from app.schemas.conversation import (
     ConversationCreate,
@@ -340,6 +341,19 @@ async def create_conversation(
             question_image_url=question_data.question_image_url if hasattr(question_data, 'question_image_url') else None,
         )
         db.add(question)
+
+    # Log workspace activity
+    if conversation.workspace_id:
+        log_workspace_activity(
+            db,
+            workspace_id=conversation.workspace_id,
+            event_type="conversation_created",
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.email,
+            entity_type="conversation",
+            entity_id=conversation.id,
+            entity_name=conversation.title,
+        )
 
     db.commit()
     db.refresh(conversation)
@@ -1364,6 +1378,19 @@ async def activate_conversation(
             # Allow override via activation endpoint if duration_minutes is not set
             conversation.auto_close_at = activate_data.auto_close_at
 
+    # Log workspace activity for immediate activation
+    if conversation.state == ConversationState.ACTIVE.value and conversation.workspace_id:
+        log_workspace_activity(
+            db,
+            workspace_id=conversation.workspace_id,
+            event_type="conversation_activated",
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.email,
+            entity_type="conversation",
+            entity_id=conversation.id,
+            entity_name=conversation.title,
+        )
+
     db.commit()
     db.refresh(conversation)
 
@@ -1473,6 +1500,19 @@ async def close_conversation(
                 conversation.auto_analyze_skipped = True
         else:
             conversation.auto_analyze_skipped = True
+
+    # Log workspace activity for close
+    if conversation.workspace_id:
+        log_workspace_activity(
+            db,
+            workspace_id=conversation.workspace_id,
+            event_type="conversation_closed",
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.email,
+            entity_type="conversation",
+            entity_id=conversation.id,
+            entity_name=conversation.title,
+        )
 
     db.commit()
     db.refresh(conversation)

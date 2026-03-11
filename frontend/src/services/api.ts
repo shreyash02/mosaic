@@ -113,6 +113,7 @@ import type {
   SpaceInvitation,
   SpaceSharedViewer,
   SpaceActivityLogPage,
+  WorkspaceActivityLogPage,
   GraphData,
   OrganizeRun,
   ImageExtractionResult,
@@ -1725,6 +1726,12 @@ class ApiService {
     if (since) params.since = since;
     const response = await this.client.get<SpaceActivityLogPage>(`/spaces/${spaceId}/activity`, {
       params,
+    });
+    return response.data;
+  }
+  async getWorkspaceActivity(workspaceId: string, skip: number = 0, limit: number = 30): Promise<WorkspaceActivityLogPage> {
+    const response = await this.client.get<WorkspaceActivityLogPage>(`/workspaces/${workspaceId}/activity`, {
+      params: { skip, limit },
     });
     return response.data;
   }

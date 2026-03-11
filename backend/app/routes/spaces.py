@@ -24,6 +24,7 @@ from app.models.theme_connection import ThemeConnection
 from app.models.user import User
 from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
+from app.services.workspace_activity_service import log_activity as log_workspace_activity
 from app.models.space_snapshot import SpaceSnapshot
 from app.models.space_synthesis import SpaceSynthesis
 from app.models.space_shared_viewer import SpaceSharedViewer
@@ -908,6 +909,20 @@ def create_space(
         role="owner",
     )
     db.add(owner_member)
+
+    # Log workspace activity
+    if workspace_id:
+        log_workspace_activity(
+            db,
+            workspace_id=workspace_id,
+            event_type="space_created",
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.email,
+            entity_type="space",
+            entity_id=space.id,
+            entity_name=space.title,
+        )
+
     db.commit()
     db.refresh(space)
 
