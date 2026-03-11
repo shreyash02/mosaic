@@ -162,16 +162,17 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     return map;
   }, [data.nodes]);
 
-  // Build neighbor set for the selected node
+  // Build neighbor set for the selected node (only via visible edges)
   const selectedNeighbors = useMemo(() => {
     if (!selectedNodeId) return new Set<string>();
     const neighbors = new Set<string>();
     for (const edge of data.edges) {
+      if (edge.strength < minStrength) continue;
       if (edge.source === selectedNodeId) neighbors.add(edge.target);
       if (edge.target === selectedNodeId) neighbors.add(edge.source);
     }
     return neighbors;
-  }, [selectedNodeId, data.edges]);
+  }, [selectedNodeId, data.edges, minStrength]);
 
   const handleLinkHover = useCallback((link: GraphEdgeData | null) => {
     setHoveredLink(link || null);
