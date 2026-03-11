@@ -182,13 +182,15 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       // Draw text background halo so labels are readable over edges
       const textWidth = ctx.measureText(label).width;
       const padding = 3 / globalScale;
-      ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(241, 245, 249, 0.9)';
-      ctx.fillRect(
-        x - textWidth / 2 - padding,
-        labelY - padding,
-        textWidth + padding * 2,
-        fontSize + padding * 2
-      );
+      const radius = 2 / globalScale;
+      ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.85)';
+      const hx = x - textWidth / 2 - padding;
+      const hy = labelY - padding;
+      const hw = textWidth + padding * 2;
+      const hh = fontSize + padding * 2;
+      ctx.beginPath();
+      ctx.roundRect(hx, hy, hw, hh, radius);
+      ctx.fill();
 
       ctx.fillStyle = labelColor;
       ctx.fillText(label, x, labelY);

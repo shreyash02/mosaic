@@ -1686,6 +1686,11 @@ class ApiService {
     return response.data;
   }
 
+  async updateSpaceSnapshot(spaceId: string, snapshotId: string, title: string | null): Promise<any> {
+    const response = await this.client.patch(`/spaces/${spaceId}/snapshots/${snapshotId}`, { title });
+    return response.data;
+  }
+
   async deleteSpaceSnapshot(spaceId: string, snapshotId: string): Promise<void> {
     await this.client.delete(`/spaces/${spaceId}/snapshots/${snapshotId}`);
   }

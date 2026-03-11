@@ -241,6 +241,75 @@ def _get_space_purposes(space: Space) -> list:
     return ["explore"]
 
 
+def _build_snapshot_data(db: Session, space: Space) -> dict:
+    """Build a snapshot_data dict capturing the current space state."""
+    from app.services.space_service import SpaceService
+    service = SpaceService()
+    space_id = space.id
+
+    themes_data = []
+    themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+    for theme in themes:
+        idea_count = (
+            db.query(func.count(IdeaTheme.id))
+            .filter(IdeaTheme.theme_id == theme.id)
+            .scalar() or 0
+        )
+        themes_data.append({
+            "id": str(theme.id),
+            "name": theme.name,
+            "summary": theme.summary,
+            "color": theme.color,
+            "idea_count": idea_count,
+        })
+
+    ideas = db.query(Idea).filter(Idea.space_id == space_id, Idea.status == "active").all()
+    ideas_data = []
+    for idea in ideas:
+        assignments = (
+            db.query(IdeaTheme, Theme)
+            .join(Theme, IdeaTheme.theme_id == Theme.id)
+            .filter(IdeaTheme.idea_id == idea.id)
+            .all()
+        )
+        ideas_data.append({
+            "id": str(idea.id),
+            "text": idea.text,
+            "image_url": idea.image_url,
+            "themes": [{"theme_id": str(t.id), "theme_name": t.name} for _, t in assignments],
+        })
+
+    graph = service.get_graph_data(db, space_id)
+
+    purpose_synthesis = None
+    synthesis_purpose = None
+    synthesis_row = _get_current_synthesis(db, space.id)
+    if synthesis_row:
+        purpose_synthesis = {
+            "space_summary": synthesis_row.space_summary,
+            "theme_notes": synthesis_row.theme_notes or {},
+            "note_states": synthesis_row.note_states or {},
+            "dismiss_reasons": synthesis_row.dismiss_reasons or {},
+            "completion_outcomes": synthesis_row.completion_outcomes or {},
+            "completion_outcome_images": synthesis_row.completion_outcome_images or {},
+            "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+        }
+        synthesis_purpose = synthesis_row.purpose
+
+    return {
+        "space": {
+            "title": space.title,
+            "description": space.description,
+            "purposes": _get_space_purposes(space),
+            "purpose_synthesis": purpose_synthesis,
+            "synthesis_purpose": synthesis_purpose,
+        },
+        "themes": themes_data,
+        "ideas": ideas_data,
+        "graph": graph,
+    }
+
+
 def _get_current_synthesis(db: Session, space_id: UUID, purpose: str = None) -> Optional[SpaceSynthesis]:
     """Get current synthesis for a space, optionally filtered by purpose."""
     query = db.query(SpaceSynthesis).filter(
@@ -659,6 +728,22 @@ def run_organize_space_task(space_id: UUID, owner_id: UUID, db_url: str, context
         detail = f"{theme_count} theme{'s' if theme_count != 1 else ''}"
         log_space_activity(db, space_id, owner_id, user_name, "organize_completed", detail=detail)
         db.commit()
+
+        # Auto-snapshot after organize
+        if space:
+            try:
+                snapshot_data = _build_snapshot_data(db, space)
+                snapshot = SpaceSnapshot(
+                    space_id=space_id,
+                    created_by_id=owner_id,
+                    title=None,
+                    snapshot_type="organize",
+                    snapshot_data=snapshot_data,
+                )
+                db.add(snapshot)
+                db.commit()
+            except Exception as snap_err:
+                logger.error(f"Failed to create auto-snapshot for space {space_id}: {snap_err}")
 
         _broadcast_sse_to_space(db, space_id, "space_organize_completed", {"space_id": str(space_id)})
     except Exception as e:
@@ -2245,80 +2330,13 @@ def create_space_snapshot(
     space = _get_space_or_404(space_id, current_user, db)
     _require_space_editor(space_id, current_user, db)
 
-    # Serialize current space state
-    from app.services.space_service import SpaceService
-    service = SpaceService()
-
-    # Get themes with idea counts
-    themes_data = []
-    themes = db.query(Theme).filter(Theme.space_id == space_id).all()
-    for theme in themes:
-        idea_count = (
-            db.query(func.count(IdeaTheme.id))
-            .filter(IdeaTheme.theme_id == theme.id)
-            .scalar() or 0
-        )
-        themes_data.append({
-            "id": str(theme.id),
-            "name": theme.name,
-            "summary": theme.summary,
-            "color": theme.color,
-            "idea_count": idea_count,
-        })
-
-    # Get ideas with theme assignments
-    ideas = db.query(Idea).filter(Idea.space_id == space_id, Idea.status == "active").all()
-    ideas_data = []
-    for idea in ideas:
-        assignments = (
-            db.query(IdeaTheme, Theme)
-            .join(Theme, IdeaTheme.theme_id == Theme.id)
-            .filter(IdeaTheme.idea_id == idea.id)
-            .all()
-        )
-        ideas_data.append({
-            "id": str(idea.id),
-            "text": idea.text,
-            "image_url": idea.image_url,
-            "themes": [{"theme_id": str(t.id), "theme_name": t.name} for _, t in assignments],
-        })
-
-    # Get graph data
-    graph = service.get_graph_data(db, space_id)
-
-    # Get synthesis from dedicated table
-    purpose_synthesis = None
-    synthesis_purpose = None
-    snapshot_synthesis_row = _get_current_synthesis(db, space.id)
-    if snapshot_synthesis_row:
-        purpose_synthesis = {
-            "space_summary": snapshot_synthesis_row.space_summary,
-            "theme_notes": snapshot_synthesis_row.theme_notes or {},
-            "note_states": snapshot_synthesis_row.note_states or {},
-            "dismiss_reasons": snapshot_synthesis_row.dismiss_reasons or {},
-            "completion_outcomes": snapshot_synthesis_row.completion_outcomes or {},
-            "completion_outcome_images": snapshot_synthesis_row.completion_outcome_images or {},
-            "generated_at": snapshot_synthesis_row.generated_at.isoformat() if snapshot_synthesis_row.generated_at else None,
-        }
-        synthesis_purpose = snapshot_synthesis_row.purpose
-
-    snapshot_data = {
-        "space": {
-            "title": space.title,
-            "description": space.description,
-            "purposes": _get_space_purposes(space),
-            "purpose_synthesis": purpose_synthesis,
-            "synthesis_purpose": synthesis_purpose,
-        },
-        "themes": themes_data,
-        "ideas": ideas_data,
-        "graph": graph,
-    }
+    snapshot_data = _build_snapshot_data(db, space)
 
     snapshot = SpaceSnapshot(
         space_id=space_id,
         created_by_id=current_user.id,
         title=data.title,
+        snapshot_type="manual",
         snapshot_data=snapshot_data,
     )
     db.add(snapshot)
@@ -2363,6 +2381,29 @@ def get_space_snapshot(
     ).first()
     if not snapshot:
         raise HTTPException(status_code=404, detail="Snapshot not found")
+    return snapshot
+
+
+@router.patch("/{space_id}/snapshots/{snapshot_id}", response_model=SpaceSnapshotResponse)
+def update_space_snapshot(
+    space_id: UUID,
+    snapshot_id: UUID,
+    data: SpaceSnapshotCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Rename a snapshot. Editor+ only."""
+    _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+    snapshot = db.query(SpaceSnapshot).filter(
+        SpaceSnapshot.id == snapshot_id,
+        SpaceSnapshot.space_id == space_id,
+    ).first()
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    snapshot.title = data.title
+    db.commit()
+    db.refresh(snapshot)
     return snapshot
 
 

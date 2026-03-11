@@ -26,6 +26,7 @@ class SpaceSnapshot(Base):
         nullable=True,
     )
     title = Column(String(200), nullable=True)
+    snapshot_type = Column(String(20), nullable=False, default="manual")  # 'manual' or 'organize'
     snapshot_data = Column(JSONB, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

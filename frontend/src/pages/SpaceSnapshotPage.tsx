@@ -131,6 +131,9 @@ export default function SpaceSnapshotPage() {
   const [dragHandleHovered, setDragHandleHovered] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [canExport, setCanExport] = useState(true);
+  const [canEdit, setCanEdit] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
   const graphAreaRef = useRef<HTMLDivElement>(null);
@@ -163,6 +166,7 @@ export default function SpaceSnapshotPage() {
       .then(([snap, space]) => {
         setSnapshot(snap);
         if (space?.viewer_can_export === false) setCanExport(false);
+        if (space && space.can_edit !== false && !space.is_shared_view) setCanEdit(true);
       })
       .catch((err: any) => setError(err.response?.data?.detail || 'Failed to load snapshot'))
       .finally(() => setLoading(false));
@@ -258,9 +262,31 @@ export default function SpaceSnapshotPage() {
     setSelectedEdge(null);
   }
 
+  async function handleRenameSnapshot() {
+    if (!id || !snapshotId) return;
+    const newTitle = titleDraft.trim() || null;
+    try {
+      const updated = await api.updateSpaceSnapshot(id, snapshotId, newTitle);
+      setSnapshot((prev: any) => ({ ...prev, title: updated.title }));
+      setEditingTitle(false);
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleExportPdf() {
     setExporting(true);
     try {
+      // Temporarily switch to light theme for canvas capture (PDF is always light)
+      const root = document.documentElement;
+      const prevTheme = root.getAttribute('data-theme');
+      const wasForced = prevTheme === 'dark';
+      if (wasForced) {
+        root.setAttribute('data-theme', 'light');
+        // Wait two frames for the graph to re-render with light colors
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      }
+
       const graphCanvas = graphAreaRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
       const purposeLabel = SPACE_PURPOSES[synthesisPurpose as SpacePurpose]?.label || synthesisPurpose;
       const snapshotDate = new Date(snapshot.created_at).toLocaleDateString('en-US', {
@@ -277,6 +303,11 @@ export default function SpaceSnapshotPage() {
         themes,
         graphCanvas,
       });
+
+      // Restore original theme
+      if (wasForced) {
+        root.setAttribute('data-theme', prevTheme!);
+      }
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -302,18 +333,59 @@ export default function SpaceSnapshotPage() {
             </svg>
           </Link>
           <h1 style={{ ...s.title, ...(isMobile ? { fontSize: typography.fontSize.lg } : {}) }}>{spaceInfo.title || 'Space'}</h1>
-          <span style={{
-            fontSize: typography.fontSize.xs,
-            color: 'var(--color-primary-600)',
-            backgroundColor: 'var(--color-primary-100)',
-            padding: `2px ${spacing[2]}`,
-            borderRadius: borders.radius.full,
-            fontWeight: typography.fontWeight.medium,
-            whiteSpace: 'nowrap',
-            border: '1px solid var(--color-primary-300)',
-          }}>
-            Snapshot {snapshot.title ? `"${snapshot.title}"` : ''} from {formatRelativeTime(snapshot.created_at)}
+          {editingTitle ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+              <input
+                autoFocus
+                value={titleDraft}
+                onChange={e => setTitleDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleRenameSnapshot();
+                  if (e.key === 'Escape') setEditingTitle(false);
+                }}
+                onBlur={() => handleRenameSnapshot()}
+                placeholder="Snapshot name"
+                maxLength={200}
+                style={{
+                  fontSize: typography.fontSize.xs,
+                  padding: `2px ${spacing[2]}`,
+                  border: '1px solid var(--color-primary-400)',
+                  borderRadius: borders.radius.full,
+                  backgroundColor: 'var(--color-primary-50)',
+                  color: 'var(--color-primary-900)',
+                  outline: 'none',
+                  width: '180px',
+                }}
+              />
+            </div>
+          ) : (
+          <span
+            style={{
+              fontSize: typography.fontSize.xs,
+              color: 'var(--color-primary-600)',
+              backgroundColor: 'var(--color-primary-100)',
+              padding: `2px ${spacing[2]}`,
+              borderRadius: borders.radius.full,
+              fontWeight: typography.fontWeight.medium,
+              whiteSpace: 'nowrap',
+              border: '1px solid var(--color-primary-300)',
+              cursor: canEdit ? 'pointer' : 'default',
+            }}
+            onClick={() => {
+              if (!canEdit) return;
+              setTitleDraft(snapshot.title || '');
+              setEditingTitle(true);
+            }}
+            title={canEdit ? 'Click to rename' : undefined}
+          >
+            {snapshot.snapshot_type === 'organize' && (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '3px' }}>
+                <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+            )}
+            {snapshot.title || formatRelativeTime(snapshot.created_at)}
           </span>
+          )}
         </div>
         {canExport && (
           <button

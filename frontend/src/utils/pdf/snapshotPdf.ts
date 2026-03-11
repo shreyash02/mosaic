@@ -106,10 +106,17 @@ export async function generateSnapshotPdf(input: SnapshotPdfInput): Promise<Blob
 
   // ── Theme Graph ──
   if (graphCanvas) {
-    const imgData = graphCanvas.toDataURL('image/png');
     const canvasAspect = graphCanvas.height / graphCanvas.width;
-    const imgWidth = CONTENT_WIDTH;
-    const imgHeight = Math.min(imgWidth * canvasAspect, 320);
+    // Preserve aspect ratio — fit within content width and max height
+    const maxHeight = 300;
+    let imgWidth = CONTENT_WIDTH;
+    let imgHeight = imgWidth * canvasAspect;
+    if (imgHeight > maxHeight) {
+      imgHeight = maxHeight;
+      imgWidth = imgHeight / canvasAspect;
+    }
+    // Center the image if it's narrower than content width
+    const imgX = x + (CONTENT_WIDTH - imgWidth) / 2;
 
     if (needsPageBreak(y, imgHeight + 30)) {
       doc.addPage();
@@ -122,10 +129,12 @@ export async function generateSnapshotPdf(input: SnapshotPdfInput): Promise<Blob
     doc.text('Theme Map', x, y);
     y += 28;
 
-    // Light background behind graph
+    // Light background behind graph (full width)
     doc.setFillColor('#f1f5f9');
-    doc.roundedRect(x, y, imgWidth, imgHeight, 4, 4, 'F');
-    doc.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+    doc.roundedRect(x, y, CONTENT_WIDTH, imgHeight, 4, 4, 'F');
+    // Render canvas as-is, preserving native aspect ratio
+    const imgData = graphCanvas.toDataURL('image/png');
+    doc.addImage(imgData, 'PNG', imgX, y, imgWidth, imgHeight);
     y += imgHeight + 24;
   }
 

@@ -456,6 +456,7 @@ class SpaceSnapshotResponse(BaseModel):
     space_id: UUID
     created_by_id: Optional[UUID] = None
     title: Optional[str] = None
+    snapshot_type: str = "manual"
     created_at: datetime
 
     model_config = {"from_attributes": True}

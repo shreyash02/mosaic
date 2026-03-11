@@ -441,7 +441,7 @@ export default function SpaceDetailPage() {
   const [sharingToggling, setSharingToggling] = useState(false);
   const [snapshotTitle, setSnapshotTitle] = useState('');
   const [creatingSnapshot, setCreatingSnapshot] = useState(false);
-  const [snapshots, setSnapshots] = useState<Array<{ id: string; title?: string; created_at: string }>>([]);
+  const [snapshots, setSnapshots] = useState<Array<{ id: string; title?: string; snapshot_type?: string; created_at: string }>>([]);
   const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
@@ -605,6 +605,8 @@ export default function SpaceDetailPage() {
       autoOrgPollRef.current = null;
     }
     refreshContentRef.current();
+    // Refresh snapshots since organize auto-creates one
+    if (id) api.getSpaceSnapshots(id).then(data => { setSnapshots(data); setSnapshotsLoaded(true); }).catch(() => {});
   }, [id]);
 
   const handleIdeaAdded = useCallback((data: any) => {
@@ -1685,7 +1687,14 @@ export default function SpaceDetailPage() {
                         fontSize: typography.fontSize.xs,
                         color: 'var(--color-primary-600)',
                       }}>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                          {snap.snapshot_type === 'organize' && (
+                            <span title="Auto-saved after organize" style={{ fontSize: '9px', color: 'var(--color-primary-400)', fontWeight: typography.fontWeight.medium }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+                                <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                              </svg>
+                            </span>
+                          )}
                           {snap.title || formatRelativeTime(snap.created_at)}
                         </span>
                         <div style={{ display: 'flex', gap: spacing[1], flexShrink: 0 }}>
