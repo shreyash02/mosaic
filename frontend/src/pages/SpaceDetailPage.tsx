@@ -446,6 +446,10 @@ export default function SpaceDetailPage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
   const [confirmDeleteSnapshot, setConfirmDeleteSnapshot] = useState<{ id: string; title?: string } | null>(null);
+  const [sharedViewerEmail, setSharedViewerEmail] = useState('');
+  const [sharedViewerAccess, setSharedViewerAccess] = useState<'space' | 'snapshots'>('snapshots');
+  const [sharedViewerExport, setSharedViewerExport] = useState(false);
+  const [addingSharedViewer, setAddingSharedViewer] = useState(false);
   const shareDropdownRef = useRef<HTMLDivElement>(null);
 
   // Idea search
@@ -911,6 +915,42 @@ export default function SpaceDetailPage() {
     }
   }
 
+  async function handleAddSharedViewer() {
+    if (!id || !sharedViewerEmail.trim()) return;
+    try {
+      setAddingSharedViewer(true);
+      const viewer = await api.addSpaceSharedViewer(id, sharedViewerEmail.trim(), sharedViewerAccess, sharedViewerExport);
+      setSpace(prev => prev ? { ...prev, shared_viewers: [viewer, ...(prev.shared_viewers || [])] } : prev);
+      setSharedViewerEmail('');
+      setSharedViewerAccess('snapshots');
+      setSharedViewerExport(false);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to add shared viewer');
+    } finally {
+      setAddingSharedViewer(false);
+    }
+  }
+
+  async function handleRemoveSharedViewer(viewerId: string) {
+    if (!id) return;
+    try {
+      await api.removeSpaceSharedViewer(id, viewerId);
+      setSpace(prev => prev ? { ...prev, shared_viewers: (prev.shared_viewers || []).filter(v => v.id !== viewerId) } : prev);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to remove viewer');
+    }
+  }
+
+  async function handleUpdateSharedViewer(viewerId: string, updates: { access_level?: 'space' | 'snapshots'; can_export?: boolean }) {
+    if (!id) return;
+    try {
+      const updated = await api.updateSpaceSharedViewer(id, viewerId, updates);
+      setSpace(prev => prev ? { ...prev, shared_viewers: (prev.shared_viewers || []).map(v => v.id === viewerId ? updated : v) } : prev);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update viewer');
+    }
+  }
+
   function copyShareLink() {
     const url = `${window.location.origin}/spaces/${id}`;
     navigator.clipboard.writeText(url);
@@ -1369,7 +1409,7 @@ export default function SpaceDetailPage() {
                           width: '36px',
                           height: '20px',
                           borderRadius: '10px',
-                          backgroundColor: space.share_access ? 'var(--color-primary-900)' : 'var(--color-primary-300)',
+                          backgroundColor: space.share_access ? '#3b82f6' : 'var(--color-primary-400)',
                           position: 'relative',
                           transition: transitions.duration.normal,
                           cursor: sharingToggling ? 'wait' : 'pointer',
@@ -1381,7 +1421,8 @@ export default function SpaceDetailPage() {
                           width: '16px',
                           height: '16px',
                           borderRadius: '50%',
-                          backgroundColor: 'white',
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                           position: 'absolute',
                           top: '2px',
                           left: space.share_access ? '18px' : '2px',
@@ -1423,6 +1464,154 @@ export default function SpaceDetailPage() {
                         {copiedLink ? 'Copied!' : 'Copy link'}
                       </button>
                     </div>
+                  )}
+
+                  {/* Shared with — only shown when link sharing is off */}
+                  {!space.share_access && (
+                  <div style={{ borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3], marginBottom: spacing[4] }}>
+                    <div style={{
+                      fontSize: typography.fontSize.sm,
+                      fontWeight: typography.fontWeight.semibold,
+                      color: 'var(--color-primary-700)',
+                      marginBottom: spacing[2],
+                    }}>
+                      Shared with
+                    </div>
+                    <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[2] }}>
+                      <input
+                        style={{
+                          flex: 1,
+                          padding: `${spacing[1]} ${spacing[2]}`,
+                          fontSize: typography.fontSize.sm,
+                          border: '1px solid var(--color-primary-300)',
+                          borderRadius: borders.radius.md,
+                          backgroundColor: 'var(--color-primary-50)',
+                          color: 'var(--color-primary-900)',
+                          outline: 'none',
+                          boxSizing: 'border-box' as const,
+                        }}
+                        value={sharedViewerEmail}
+                        onChange={(e) => setSharedViewerEmail(e.target.value)}
+                        placeholder="Email address"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddSharedViewer()}
+                      />
+                      <button
+                        onClick={handleAddSharedViewer}
+                        disabled={addingSharedViewer || !sharedViewerEmail.trim()}
+                        style={{
+                          padding: `${spacing[1]} ${spacing[3]}`,
+                          backgroundColor: 'var(--color-primary-900)',
+                          color: 'var(--color-primary-50)',
+                          fontSize: typography.fontSize.xs,
+                          fontWeight: typography.fontWeight.medium,
+                          borderRadius: borders.radius.md,
+                          border: 'none',
+                          cursor: addingSharedViewer ? 'wait' : 'pointer',
+                          opacity: (addingSharedViewer || !sharedViewerEmail.trim()) ? 0.6 : 1,
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {addingSharedViewer ? 'Adding...' : 'Add'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: spacing[3], marginBottom: spacing[3], alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: spacing[1], alignItems: 'center' }}>
+                        <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>Access:</span>
+                        <button
+                          onClick={() => setSharedViewerAccess(sharedViewerAccess === 'snapshots' ? 'space' : 'snapshots')}
+                          style={{
+                            padding: `1px ${spacing[2]}`,
+                            fontSize: typography.fontSize.xs,
+                            border: '1px solid var(--color-primary-300)',
+                            borderRadius: borders.radius.sm,
+                            backgroundColor: sharedViewerAccess === 'space' ? 'var(--color-primary-100)' : 'transparent',
+                            color: 'var(--color-primary-700)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {sharedViewerAccess === 'space' ? 'Full space' : 'Snapshots only'}
+                        </button>
+                      </div>
+                      <label style={{ display: 'flex', gap: spacing[1], alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={sharedViewerExport}
+                          onChange={(e) => setSharedViewerExport(e.target.checked)}
+                          style={{ accentColor: 'var(--color-primary-600)' }}
+                        />
+                        <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>Can export</span>
+                      </label>
+                    </div>
+                    {(space.shared_viewers || []).length === 0 && (
+                      <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                        Not shared with anyone yet
+                      </div>
+                    )}
+                    {(space.shared_viewers || []).map(viewer => (
+                      <div key={viewer.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: spacing[2],
+                        padding: `${spacing[1]} 0`,
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-600)',
+                      }}>
+                        <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                          <span title={viewer.email}>{viewer.shared_user_name || viewer.email}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: spacing[1], flexShrink: 0, alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleUpdateSharedViewer(viewer.id, {
+                              access_level: viewer.access_level === 'snapshots' ? 'space' : 'snapshots',
+                            })}
+                            title={`Currently: ${viewer.access_level === 'space' ? 'Full space' : 'Snapshots only'}. Click to toggle.`}
+                            style={{
+                              padding: '1px 4px',
+                              fontSize: '10px',
+                              border: '1px solid var(--color-primary-200)',
+                              borderRadius: borders.radius.sm,
+                              backgroundColor: viewer.access_level === 'space' ? 'var(--color-primary-100)' : 'transparent',
+                              color: 'var(--color-primary-600)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {viewer.access_level === 'space' ? 'Space' : 'Snaps'}
+                          </button>
+                          <button
+                            onClick={() => handleUpdateSharedViewer(viewer.id, { can_export: !viewer.can_export })}
+                            title={viewer.can_export ? 'Can export. Click to revoke.' : 'Cannot export. Click to allow.'}
+                            style={{
+                              padding: '1px 4px',
+                              fontSize: '10px',
+                              border: '1px solid var(--color-primary-200)',
+                              borderRadius: borders.radius.sm,
+                              backgroundColor: viewer.can_export ? 'var(--color-primary-100)' : 'transparent',
+                              color: viewer.can_export ? 'var(--color-primary-600)' : 'var(--color-primary-400)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Export
+                          </button>
+                          <button
+                            onClick={() => handleRemoveSharedViewer(viewer.id)}
+                            title="Remove access"
+                            style={{
+                              padding: '1px 4px',
+                              fontSize: '10px',
+                              backgroundColor: 'transparent',
+                              color: 'var(--color-error)',
+                              border: '1px solid var(--color-primary-200)',
+                              borderRadius: borders.radius.sm,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                   )}
 
                   {/* Snapshots */}

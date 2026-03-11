@@ -1907,6 +1907,17 @@ export interface SpaceListItem {
   members?: SpaceMember[];
   share_access?: string | null;
   is_shared_view?: boolean;
+  shared_viewers?: SpaceSharedViewer[];
+}
+
+export interface SpaceSharedViewer {
+  id: string;
+  space_id: string;
+  email: string;
+  access_level: 'space' | 'snapshots';
+  can_export: boolean;
+  shared_user_name?: string;
+  created_at: string;
 }
 
 export interface Space {
@@ -1934,6 +1945,8 @@ export interface Space {
   members?: SpaceMember[];
   share_access?: string | null;
   is_shared_view?: boolean;
+  shared_viewers?: SpaceSharedViewer[];
+  viewer_can_export?: boolean;
 }
 
 export interface SpaceCreate {

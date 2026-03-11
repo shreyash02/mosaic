@@ -26,6 +26,7 @@ from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
 from app.models.space_snapshot import SpaceSnapshot
 from app.models.space_synthesis import SpaceSynthesis
+from app.models.space_shared_viewer import SpaceSharedViewer
 from app.schemas.space import (
     SpaceCreate,
     SpaceUpdate,
@@ -56,6 +57,9 @@ from app.schemas.space import (
     ActionOutcomeImageResponse,
     ResynthesizeRequest,
     SpaceShareUpdate,
+    SpaceSharedViewerCreate,
+    SpaceSharedViewerUpdate,
+    SpaceSharedViewerResponse,
     SpaceSnapshotCreate,
     SpaceSnapshotResponse,
     SpaceSnapshotDetailResponse,
@@ -110,9 +114,10 @@ def _get_space_or_404(space_id: UUID, current_user: User, db: Session) -> Space:
     return space
 
 
-def _get_space_with_sharing(space_id: UUID, current_user: User, db: Session) -> tuple:
+def _get_space_with_sharing(space_id: UUID, current_user: User, db: Session, require_live: bool = False) -> tuple:
     """Get a space if user is owner, member, or has shared access.
-    Returns (space, is_shared_view: bool). Raises 404 if not accessible."""
+    Returns (space, is_shared_view: bool). Raises 404 if not accessible.
+    If require_live=True, snapshots-only shared viewers are rejected."""
     space = db.query(Space).filter(Space.id == space_id).first()
     if not space:
         raise HTTPException(status_code=404, detail="Space not found")
@@ -126,7 +131,23 @@ def _get_space_with_sharing(space_id: UUID, current_user: User, db: Session) -> 
     ).first()
     if member:
         return space, False
-    # Check sharing
+    # Check shared viewers list (email-based access)
+    shared_viewer = db.query(SpaceSharedViewer).filter(
+        SpaceSharedViewer.space_id == space_id,
+        SpaceSharedViewer.email == current_user.email.lower(),
+    ).first()
+    if shared_viewer:
+        # Backfill shared_user_id on first access
+        if shared_viewer.shared_user_id is None:
+            shared_viewer.shared_user_id = current_user.id
+            db.commit()
+        if require_live and shared_viewer.access_level != "space":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You only have access to snapshots of this space",
+            )
+        return space, True
+    # Check link sharing (anyone authenticated)
     if space.share_access == "authenticated":
         return space, True
     raise HTTPException(status_code=404, detail="Space not found")
@@ -313,6 +334,15 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
 
     # Shared viewers get limited data
     if is_shared_view:
+        # Check if this viewer has a shared_viewer record (for can_export)
+        viewer_can_export = None
+        if current_user:
+            sv = db.query(SpaceSharedViewer).filter(
+                SpaceSharedViewer.space_id == space.id,
+                SpaceSharedViewer.email == current_user.email.lower(),
+            ).first()
+            if sv:
+                viewer_can_export = sv.can_export
         return {
             "id": space.id,
             "title": space.title,
@@ -338,6 +368,8 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             "members": None,
             "share_access": getattr(space, "share_access", None),
             "is_shared_view": True,
+            "shared_viewers": None,
+            "viewer_can_export": viewer_can_export,
         }
 
     # Query persisted synthesis activity log
@@ -410,6 +442,29 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             Idea.space_id == space.id, Idea.status == "suggested"
         ).scalar() or 0
 
+    # Shared viewers (only for owner)
+    shared_viewers_data = None
+    if is_owner:
+        sv_rows = (
+            db.query(SpaceSharedViewer, User)
+            .outerjoin(User, SpaceSharedViewer.shared_user_id == User.id)
+            .filter(SpaceSharedViewer.space_id == space.id)
+            .order_by(SpaceSharedViewer.created_at.desc())
+            .all()
+        )
+        shared_viewers_data = [
+            {
+                "id": sv.id,
+                "space_id": sv.space_id,
+                "email": sv.email,
+                "access_level": sv.access_level,
+                "can_export": sv.can_export,
+                "shared_user_name": u.full_name if u else None,
+                "created_at": sv.created_at,
+            }
+            for sv, u in sv_rows
+        ]
+
     return {
         "id": space.id,
         "title": space.title,
@@ -435,6 +490,8 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
         "members": members_data,
         "share_access": getattr(space, "share_access", None),
         "is_shared_view": False,
+        "shared_viewers": shared_viewers_data,
+        "viewer_can_export": None,
     }
 
 
@@ -980,7 +1037,7 @@ def list_ideas(
     db: Session = Depends(get_db),
 ):
     """List ideas in a space, optionally filtered by theme or unthemed. Supports shared viewing."""
-    _get_space_with_sharing(space_id, current_user, db)
+    _get_space_with_sharing(space_id, current_user, db, require_live=True)
 
     query = db.query(Idea).filter(Idea.space_id == space_id, Idea.status == "active")
 
@@ -1325,7 +1382,7 @@ def list_themes(
     db: Session = Depends(get_db),
 ):
     """List themes in a space with idea counts. Supports shared viewing."""
-    _get_space_with_sharing(space_id, current_user, db)
+    _get_space_with_sharing(space_id, current_user, db, require_live=True)
 
     themes = db.query(Theme).filter(Theme.space_id == space_id).order_by(Theme.created_at).all()
     result = []
@@ -1570,7 +1627,7 @@ def get_graph_data(
     db: Session = Depends(get_db),
 ):
     """Get network graph data for a space. Supports shared viewing."""
-    _get_space_with_sharing(space_id, current_user, db)
+    _get_space_with_sharing(space_id, current_user, db, require_live=True)
 
     from app.services.space_service import SpaceService
     service = SpaceService()
@@ -1735,7 +1792,7 @@ def get_evolution(
     from app.models.theme_event import ThemeEvent
     from collections import defaultdict
 
-    _get_space_with_sharing(space_id, current_user, db)
+    _get_space_with_sharing(space_id, current_user, db, require_live=True)
 
     events_query = (
         db.query(ThemeEvent)
@@ -2322,4 +2379,151 @@ def delete_space_snapshot(
     if not snapshot:
         raise HTTPException(status_code=404, detail="Snapshot not found")
     db.delete(snapshot)
+    db.commit()
+
+
+# --- Shared Viewers ---
+
+@router.post("/{space_id}/shared-viewers", response_model=SpaceSharedViewerResponse, status_code=status.HTTP_201_CREATED)
+def add_shared_viewer(
+    space_id: UUID,
+    data: SpaceSharedViewerCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a shared viewer to a space. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    # Check if already shared
+    existing = db.query(SpaceSharedViewer).filter(
+        SpaceSharedViewer.space_id == space_id,
+        SpaceSharedViewer.email == data.email,
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This email already has access to this space",
+        )
+
+    # Check if the email belongs to an existing user
+    shared_user = db.query(User).filter(
+        func.lower(User.email) == data.email,
+    ).first()
+
+    viewer = SpaceSharedViewer(
+        space_id=space_id,
+        email=data.email,
+        shared_by_id=current_user.id,
+        shared_user_id=shared_user.id if shared_user else None,
+        access_level=data.access_level,
+        can_export=data.can_export,
+    )
+    db.add(viewer)
+    db.commit()
+    db.refresh(viewer)
+
+    return {
+        "id": viewer.id,
+        "space_id": viewer.space_id,
+        "email": viewer.email,
+        "access_level": viewer.access_level,
+        "can_export": viewer.can_export,
+        "shared_user_name": shared_user.full_name if shared_user else None,
+        "created_at": viewer.created_at,
+    }
+
+
+@router.get("/{space_id}/shared-viewers", response_model=list[SpaceSharedViewerResponse])
+def list_shared_viewers(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List shared viewers for a space. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    rows = (
+        db.query(SpaceSharedViewer, User)
+        .outerjoin(User, SpaceSharedViewer.shared_user_id == User.id)
+        .filter(SpaceSharedViewer.space_id == space_id)
+        .order_by(SpaceSharedViewer.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": sv.id,
+            "space_id": sv.space_id,
+            "email": sv.email,
+            "access_level": sv.access_level,
+            "can_export": sv.can_export,
+            "shared_user_name": u.full_name if u else None,
+            "created_at": sv.created_at,
+        }
+        for sv, u in rows
+    ]
+
+
+@router.patch("/{space_id}/shared-viewers/{viewer_id}", response_model=SpaceSharedViewerResponse)
+def update_shared_viewer(
+    space_id: UUID,
+    viewer_id: UUID,
+    data: SpaceSharedViewerUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a shared viewer's access level or export permission. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    viewer = db.query(SpaceSharedViewer).filter(
+        SpaceSharedViewer.id == viewer_id,
+        SpaceSharedViewer.space_id == space_id,
+    ).first()
+    if not viewer:
+        raise HTTPException(status_code=404, detail="Shared viewer not found")
+
+    if data.access_level is not None:
+        viewer.access_level = data.access_level
+    if data.can_export is not None:
+        viewer.can_export = data.can_export
+
+    db.commit()
+    db.refresh(viewer)
+
+    shared_user = None
+    if viewer.shared_user_id:
+        shared_user = db.query(User).filter(User.id == viewer.shared_user_id).first()
+
+    return {
+        "id": viewer.id,
+        "space_id": viewer.space_id,
+        "email": viewer.email,
+        "access_level": viewer.access_level,
+        "can_export": viewer.can_export,
+        "shared_user_name": shared_user.full_name if shared_user else None,
+        "created_at": viewer.created_at,
+    }
+
+
+@router.delete("/{space_id}/shared-viewers/{viewer_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_shared_viewer(
+    space_id: UUID,
+    viewer_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove a shared viewer from a space. Owner only."""
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_owner(space, current_user)
+
+    viewer = db.query(SpaceSharedViewer).filter(
+        SpaceSharedViewer.id == viewer_id,
+        SpaceSharedViewer.space_id == space_id,
+    ).first()
+    if not viewer:
+        raise HTTPException(status_code=404, detail="Shared viewer not found")
+
+    db.delete(viewer)
     db.commit()

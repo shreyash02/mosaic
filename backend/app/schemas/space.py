@@ -131,6 +131,19 @@ class SpaceInvitationResponse(BaseModel):
     created_at: datetime
 
 
+class SpaceSharedViewerResponse(BaseModel):
+    """A shared viewer entry."""
+    id: UUID
+    space_id: UUID
+    email: str
+    access_level: str
+    can_export: bool
+    shared_user_name: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class SpaceResponse(BaseModel):
     """Full space detail response."""
     id: UUID
@@ -157,6 +170,8 @@ class SpaceResponse(BaseModel):
     members: Optional[List[SpaceMemberResponse]] = None
     share_access: Optional[str] = None
     is_shared_view: bool = False
+    shared_viewers: Optional[List[SpaceSharedViewerResponse]] = None
+    viewer_can_export: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 
@@ -389,6 +404,41 @@ class SpaceShareUpdate(BaseModel):
     def validate_share_access(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and v not in ("authenticated",):
             raise ValueError("share_access must be 'authenticated' or null")
+        return v
+
+
+class SpaceSharedViewerCreate(BaseModel):
+    """Add a shared viewer to a space."""
+    email: str = Field(..., max_length=255)
+    access_level: str = "snapshots"
+    can_export: bool = False
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        v = v.lower().strip()
+        if "@" not in v:
+            raise ValueError("Invalid email address")
+        return v
+
+    @field_validator("access_level")
+    @classmethod
+    def validate_access_level(cls, v: str) -> str:
+        if v not in ("space", "snapshots"):
+            raise ValueError("access_level must be 'space' or 'snapshots'")
+        return v
+
+
+class SpaceSharedViewerUpdate(BaseModel):
+    """Update a shared viewer's settings."""
+    access_level: Optional[str] = None
+    can_export: Optional[bool] = None
+
+    @field_validator("access_level")
+    @classmethod
+    def validate_access_level(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("space", "snapshots"):
+            raise ValueError("access_level must be 'space' or 'snapshots'")
         return v
 
 

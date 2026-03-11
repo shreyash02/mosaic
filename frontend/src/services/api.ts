@@ -111,6 +111,7 @@ import type {
   SpaceTheme,
   SpaceMember,
   SpaceInvitation,
+  SpaceSharedViewer,
   SpaceActivityLogPage,
   GraphData,
   OrganizeRun,
@@ -1687,6 +1688,31 @@ class ApiService {
 
   async deleteSpaceSnapshot(spaceId: string, snapshotId: string): Promise<void> {
     await this.client.delete(`/spaces/${spaceId}/snapshots/${snapshotId}`);
+  }
+
+  // Space shared viewers
+
+  async addSpaceSharedViewer(spaceId: string, email: string, accessLevel: 'space' | 'snapshots' = 'snapshots', canExport: boolean = false): Promise<SpaceSharedViewer> {
+    const response = await this.client.post<SpaceSharedViewer>(`/spaces/${spaceId}/shared-viewers`, {
+      email,
+      access_level: accessLevel,
+      can_export: canExport,
+    });
+    return response.data;
+  }
+
+  async listSpaceSharedViewers(spaceId: string): Promise<SpaceSharedViewer[]> {
+    const response = await this.client.get<SpaceSharedViewer[]>(`/spaces/${spaceId}/shared-viewers`);
+    return response.data;
+  }
+
+  async updateSpaceSharedViewer(spaceId: string, viewerId: string, updates: { access_level?: 'space' | 'snapshots'; can_export?: boolean }): Promise<SpaceSharedViewer> {
+    const response = await this.client.patch<SpaceSharedViewer>(`/spaces/${spaceId}/shared-viewers/${viewerId}`, updates);
+    return response.data;
+  }
+
+  async removeSpaceSharedViewer(spaceId: string, viewerId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/shared-viewers/${viewerId}`);
   }
 
   async getSpaceActivity(spaceId: string, skip: number = 0, limit: number = 30, since?: string): Promise<SpaceActivityLogPage> {

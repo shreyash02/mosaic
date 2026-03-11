@@ -50,6 +50,7 @@ class Space(Base):
     theme_connections = relationship("ThemeConnection", back_populates="space", cascade="all, delete-orphan")
     members = relationship("SpaceMember", back_populates="space", cascade="all, delete-orphan")
     invitations = relationship("SpaceInvitation", back_populates="space", cascade="all, delete-orphan")
+    shared_viewers = relationship("SpaceSharedViewer", back_populates="space", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_spaces_owner", "owner_id"),

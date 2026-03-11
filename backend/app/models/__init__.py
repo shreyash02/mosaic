@@ -44,6 +44,7 @@ from app.models.theme_event import ThemeEvent
 from app.models.synthesis_action import SynthesisAction
 from app.models.space_activity_log import SpaceActivityLog
 from app.models.space_snapshot import SpaceSnapshot
+from app.models.space_shared_viewer import SpaceSharedViewer
 from app.models.space_synthesis import SpaceSynthesis
 from app.models.workspace import Workspace, WorkspaceMember
 
@@ -95,6 +96,7 @@ __all__ = [
     "SynthesisAction",
     "SpaceActivityLog",
     "SpaceSnapshot",
+    "SpaceSharedViewer",
     "SpaceSynthesis",
     "Workspace",
     "WorkspaceMember",

@@ -119,6 +119,7 @@ export default function SpaceSnapshotPage() {
   const [dragging, setDragging] = useState(false);
   const [dragHandleHovered, setDragHandleHovered] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [canExport, setCanExport] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
   const graphAreaRef = useRef<HTMLDivElement>(null);
@@ -144,8 +145,14 @@ export default function SpaceSnapshotPage() {
   useEffect(() => {
     if (!id || !snapshotId) return;
     setLoading(true);
-    api.getSpaceSnapshot(id, snapshotId)
-      .then(setSnapshot)
+    Promise.all([
+      api.getSpaceSnapshot(id, snapshotId),
+      api.getSpace(id).catch(() => null),
+    ])
+      .then(([snap, space]) => {
+        setSnapshot(snap);
+        if (space?.viewer_can_export === false) setCanExport(false);
+      })
       .catch((err: any) => setError(err.response?.data?.detail || 'Failed to load snapshot'))
       .finally(() => setLoading(false));
   }, [id, snapshotId]);
@@ -297,32 +304,34 @@ export default function SpaceSnapshotPage() {
             Snapshot {snapshot.title ? `"${snapshot.title}"` : ''} from {formatRelativeTime(snapshot.created_at)}
           </span>
         </div>
-        <button
-          onClick={handleExportPdf}
-          disabled={exporting}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: spacing[2],
-            padding: `${spacing[2]} ${spacing[3]}`,
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            color: 'var(--color-primary-700)',
-            backgroundColor: 'var(--color-primary-100)',
-            border: '1px solid var(--color-primary-300)',
-            borderRadius: borders.radius.md,
-            cursor: exporting ? 'wait' : 'pointer',
-            opacity: exporting ? 0.6 : 1,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          {exporting ? 'Exporting...' : 'Export PDF'}
-        </button>
+        {canExport && (
+          <button
+            onClick={handleExportPdf}
+            disabled={exporting}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              padding: `${spacing[2]} ${spacing[3]}`,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              color: 'var(--color-primary-700)',
+              backgroundColor: 'var(--color-primary-100)',
+              border: '1px solid var(--color-primary-300)',
+              borderRadius: borders.radius.md,
+              cursor: exporting ? 'wait' : 'pointer',
+              opacity: exporting ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {exporting ? 'Exporting...' : 'Export PDF'}
+          </button>
+        )}
       </div>
 
       {/* Main layout */}
