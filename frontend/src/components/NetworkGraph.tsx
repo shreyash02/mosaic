@@ -40,6 +40,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
   const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredLink, setHoveredLink] = useState<GraphEdgeData | null>(null);
+  const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isDark, setIsDark] = useState(() =>
     document.documentElement.getAttribute('data-theme') === 'dark'
@@ -275,9 +276,21 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
   }, []);
 
   const hasSelection = !!(selectedNodeId || selectedEdge);
+  const isHoveringInteractive = !!(hoveredNode || hoveredLink);
+  const canvasCursor = isHoveringInteractive ? 'pointer' : isDraggingCanvas ? 'grabbing' : 'grab';
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} onMouseMove={handleMouseMove}>
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', position: 'relative', cursor: canvasCursor }}
+      onMouseMove={handleMouseMove}
+      onMouseDown={(e) => {
+        // Only track canvas drag, not button clicks
+        if ((e.target as HTMLElement).tagName === 'CANVAS') setIsDraggingCanvas(true);
+      }}
+      onMouseUp={() => setIsDraggingCanvas(false)}
+      onMouseLeave={() => setIsDraggingCanvas(false)}
+    >
       <div style={{
         position: 'absolute',
         bottom: 12,
