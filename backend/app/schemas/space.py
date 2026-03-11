@@ -314,6 +314,7 @@ class GraphEdge(BaseModel):
     source: str
     target: str
     strength: float
+    shared_count: int = 0
 
 
 class GraphData(BaseModel):

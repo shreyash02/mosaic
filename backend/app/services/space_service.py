@@ -670,14 +670,29 @@ class SpaceService:
             .filter(ThemeConnection.space_id == space_id)
             .all()
         )
-        edges = [
-            {
-                "source": str(c.theme_a_id),
-                "target": str(c.theme_b_id),
+
+        # Build idea sets per theme for shared_count computation
+        theme_ideas: dict[str, set] = {}
+        for theme in themes:
+            tid = str(theme.id)
+            idea_ids = (
+                db.query(IdeaTheme.idea_id)
+                .filter(IdeaTheme.theme_id == theme.id)
+                .all()
+            )
+            theme_ideas[tid] = {row[0] for row in idea_ids}
+
+        edges = []
+        for c in connections:
+            src = str(c.theme_a_id)
+            tgt = str(c.theme_b_id)
+            shared = len(theme_ideas.get(src, set()) & theme_ideas.get(tgt, set()))
+            edges.append({
+                "source": src,
+                "target": tgt,
                 "strength": c.strength,
-            }
-            for c in connections
-        ]
+                "shared_count": shared,
+            })
 
         # Count unthemed ideas
         all_themed_idea_ids = (

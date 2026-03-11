@@ -2032,6 +2032,7 @@ export interface GraphEdge {
   source: string;
   target: string;
   strength: number;
+  shared_count?: number;
 }
 
 export interface GraphData {

@@ -24,6 +24,7 @@ interface GraphEdgeData {
   source: string | GraphNodeData;
   target: string | GraphNodeData;
   strength: number;
+  shared_count?: number;
 }
 
 interface GraphDataInternal {
@@ -74,14 +75,40 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
   }, []);
 
   // Memoize graph data so it only changes when the actual data prop changes
-  const graphData: GraphDataInternal = useMemo(() => ({
-    nodes: data.nodes.map(n => ({ ...n })),
-    links: data.edges.map(e => ({
-      source: e.source,
-      target: e.target,
-      strength: e.strength,
-    })),
-  }), [data]);
+  // Strength filter state
+  const [minStrength, setMinStrength] = useState(0);
+  // Focus mode: double-click a node to show only its neighborhood
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
+
+  const graphData: GraphDataInternal = useMemo(() => {
+    let filteredEdges = data.edges
+      .filter(e => e.strength >= minStrength)
+      .map(e => ({
+        source: e.source,
+        target: e.target,
+        strength: e.strength,
+        shared_count: e.shared_count,
+      }));
+
+    let filteredNodes = data.nodes.map(n => ({ ...n }));
+
+    if (focusNodeId) {
+      const neighborIds = new Set<string>();
+      neighborIds.add(focusNodeId);
+      for (const e of filteredEdges) {
+        if (e.source === focusNodeId) neighborIds.add(e.target as string);
+        if (e.target === focusNodeId) neighborIds.add(e.source as string);
+      }
+      filteredNodes = filteredNodes.filter(n => neighborIds.has(n.id));
+      filteredEdges = filteredEdges.filter(e => {
+        const src = e.source as string;
+        const tgt = e.target as string;
+        return neighborIds.has(src) && neighborIds.has(tgt);
+      });
+    }
+
+    return { nodes: filteredNodes, links: filteredEdges };
+  }, [data, minStrength, focusNodeId]);
 
   // Configure forces for better spread across canvas
   useEffect(() => {
@@ -104,7 +131,18 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
 
   const nodeCount = data.nodes.length;
 
+  const lastClickRef = useRef<{ id: string; time: number } | null>(null);
   const handleNodeClick = useCallback((node: GraphNodeData) => {
+    const now = Date.now();
+    const last = lastClickRef.current;
+    if (last && last.id === node.id && now - last.time < 400) {
+      // Double-click — toggle focus mode
+      lastClickRef.current = null;
+      setFocusNodeId(prev => prev === node.id ? null : node.id);
+      setTimeout(() => graphRef.current?.zoomToFit(400, 60), 100);
+      return;
+    }
+    lastClickRef.current = { id: node.id, time: now };
     onNodeClick(node.id);
   }, [onNodeClick]);
 
@@ -124,6 +162,17 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     return map;
   }, [data.nodes]);
 
+  // Build neighbor set for the selected node
+  const selectedNeighbors = useMemo(() => {
+    if (!selectedNodeId) return new Set<string>();
+    const neighbors = new Set<string>();
+    for (const edge of data.edges) {
+      if (edge.source === selectedNodeId) neighbors.add(edge.target);
+      if (edge.target === selectedNodeId) neighbors.add(edge.source);
+    }
+    return neighbors;
+  }, [selectedNodeId, data.edges]);
+
   const handleLinkHover = useCallback((link: GraphEdgeData | null) => {
     setHoveredLink(link || null);
   }, []);
@@ -138,6 +187,9 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
   const nodeCanvasObject = useCallback((node: GraphNodeData, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const isSelected = node.id === selectedNodeId;
     const isHovered = node.id === hoveredNode;
+    const isNeighbor = selectedNodeId != null && selectedNeighbors.has(node.id);
+    const hasSelection = selectedNodeId != null;
+    const isDimmed = hasSelection && !isSelected && !isNeighbor;
     const baseSize = Math.max(5, Math.sqrt(node.size) * 4);
     const rawSize = isSelected ? baseSize * 1.3 : baseSize;
     // Cap apparent size so nodes don't become huge when zoomed in
@@ -156,10 +208,21 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       ctx.fill();
     }
 
+    // Draw neighbor ring — dashed circle around connected nodes
+    if (isNeighbor && !isHovered) {
+      ctx.beginPath();
+      ctx.arc(x, y, size + 3 / globalScale, 0, 2 * Math.PI);
+      ctx.strokeStyle = `${node.color}90`;
+      ctx.lineWidth = 1.5 / globalScale;
+      ctx.setLineDash([3 / globalScale, 3 / globalScale]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Draw node circle
     ctx.beginPath();
     ctx.arc(x, y, size, 0, 2 * Math.PI);
-    ctx.fillStyle = node.color;
+    ctx.fillStyle = isDimmed ? `${node.color}40` : node.color;
     ctx.fill();
 
     // Draw border
@@ -167,8 +230,8 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
     ctx.stroke();
 
-    // Draw label: always for small graphs, only selected/hovered for large
-    const showLabel = nodeCount <= LABEL_NODE_THRESHOLD || isSelected || isHovered;
+    // Draw label: always for small graphs; selected/hovered/neighbor for large
+    const showLabel = nodeCount <= LABEL_NODE_THRESHOLD || isSelected || isHovered || isNeighbor;
     if (showLabel) {
       const fontSize = 12 / globalScale;
       const gap = 8 / globalScale;
@@ -192,12 +255,12 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       ctx.roundRect(hx, hy, hw, hh, radius);
       ctx.fill();
 
-      ctx.fillStyle = labelColor;
+      ctx.fillStyle = isDimmed ? (isDark ? '#64748b' : '#94a3b8') : labelColor;
       ctx.fillText(label, x, labelY);
     }
-  }, [selectedNodeId, hoveredNode, labelColor, nodeCount]);
+  }, [selectedNodeId, selectedNeighbors, hoveredNode, labelColor, isDark, nodeCount]);
 
-  const linkCanvasObject = useCallback((link: GraphEdgeData, ctx: CanvasRenderingContext2D) => {
+  const linkCanvasObject = useCallback((link: GraphEdgeData, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const source = link.source as GraphNodeData;
     const target = link.target as GraphNodeData;
     if (!source.x || !source.y || !target.x || !target.y) return;
@@ -205,25 +268,63 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
     const isHovered = hoveredLink === link;
     const sourceId = typeof link.source === 'string' ? link.source : (link.source as GraphNodeData).id;
     const targetId = typeof link.target === 'string' ? link.target : (link.target as GraphNodeData).id;
-    const isSelected = selectedEdge != null && (
+    const isSelectedEdge = selectedEdge != null && (
       (sourceId === selectedEdge.source && targetId === selectedEdge.target) ||
       (sourceId === selectedEdge.target && targetId === selectedEdge.source)
     );
+    const isConnectedToSelected = selectedNodeId != null && (sourceId === selectedNodeId || targetId === selectedNodeId);
+    const hasNodeSelection = selectedNodeId != null;
 
     ctx.beginPath();
     ctx.moveTo(source.x, source.y);
     ctx.lineTo(target.x, target.y);
-    if (isSelected || isHovered) {
+    if (isSelectedEdge || isHovered) {
       ctx.strokeStyle = isDark
         ? `rgba(209, 213, 219, 0.8)`
         : `rgba(75, 85, 99, 0.8)`;
       ctx.lineWidth = Math.max(2, link.strength * 4);
+    } else if (isConnectedToSelected) {
+      // Highlight edges connected to the selected node
+      const neighborColor = (sourceId === selectedNodeId ? target : source) as GraphNodeData;
+      ctx.strokeStyle = `${neighborColor.color}88`;
+      ctx.lineWidth = Math.max(1.5, link.strength * 4);
+    } else if (hasNodeSelection) {
+      // Dim unrelated edges
+      ctx.strokeStyle = `rgba(107, 114, 128, 0.08)`;
+      ctx.lineWidth = Math.max(0.5, link.strength * 2);
     } else {
       ctx.strokeStyle = `rgba(107, 114, 128, ${Math.max(0.15, link.strength * 0.6)})`;
       ctx.lineWidth = Math.max(0.5, link.strength * 3);
     }
     ctx.stroke();
-  }, [hoveredLink, isDark, selectedEdge]);
+
+    // Show shared idea count on connected edges when a node is selected
+    if (isConnectedToSelected && link.shared_count && link.shared_count > 0) {
+      const midX = (source.x + target.x) / 2;
+      const midY = (source.y + target.y) / 2;
+      const fontSize = 10 / globalScale;
+      const label = `${link.shared_count}`;
+      ctx.font = `bold ${fontSize}px ${typography.fontFamily.sans}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Pill background
+      const textWidth = ctx.measureText(label).width;
+      const padX = 4 / globalScale;
+      const padY = 2 / globalScale;
+      const pillRadius = (fontSize / 2 + padY);
+      ctx.fillStyle = isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(midX - textWidth / 2 - padX, midY - pillRadius, textWidth + padX * 2, pillRadius * 2, pillRadius);
+      ctx.fill();
+      ctx.strokeStyle = isDark ? '#475569' : '#cbd5e1';
+      ctx.lineWidth = 0.5 / globalScale;
+      ctx.stroke();
+
+      ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
+      ctx.fillText(label, midX, midY);
+    }
+  }, [hoveredLink, isDark, selectedEdge, selectedNodeId]);
 
   const nodePointerAreaPaint = useCallback((node: GraphNodeData, color: string, ctx: CanvasRenderingContext2D) => {
     const size = Math.max(6, Math.sqrt(node.size) * 3 + 4);
@@ -305,6 +406,80 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       onMouseUp={() => setIsDraggingCanvas(false)}
       onMouseLeave={() => setIsDraggingCanvas(false)}
     >
+      {/* Edge strength filter — bottom left */}
+      {data.edges.length > 3 && (
+        <div style={{
+          position: 'absolute',
+          bottom: 12,
+          left: 12,
+          zIndex: zIndex.dropdown,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+          border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+          borderRadius: borders.radius.md,
+          padding: '4px 8px',
+          fontFamily: typography.fontFamily.sans,
+          fontSize: typography.fontSize.xs,
+          color: isDark ? '#94a3b8' : '#64748b',
+        }}>
+          <span>Filter</span>
+          <input
+            type="range"
+            min={0}
+            max={80}
+            step={5}
+            value={minStrength * 100}
+            onChange={(e) => setMinStrength(Number(e.target.value) / 100)}
+            style={{ width: 60, accentColor: isDark ? '#64748b' : '#475569' }}
+            title={`Hiding edges below ${Math.round(minStrength * 100)}% strength`}
+          />
+          <span style={{ minWidth: 28, textAlign: 'right' }}>{Math.round(minStrength * 100)}%</span>
+        </div>
+      )}
+      {/* Focus mode indicator */}
+      {focusNodeId && (
+        <div style={{
+          position: 'absolute',
+          top: 12,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: zIndex.dropdown,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: isDark ? 'rgba(30, 41, 59, 0.92)' : 'rgba(255, 255, 255, 0.92)',
+          border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+          borderRadius: borders.radius.full,
+          padding: '4px 12px',
+          fontFamily: typography.fontFamily.sans,
+          fontSize: typography.fontSize.xs,
+          color: isDark ? '#e2e8f0' : '#334155',
+          boxShadow: shadows.md,
+        }}>
+          <span>Focused on <strong>{nodeMap[focusNodeId]?.name || 'theme'}</strong></span>
+          <button
+            onClick={() => { setFocusNodeId(null); setTimeout(() => graphRef.current?.zoomToFit(400, 60), 100); }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: isDark ? '#94a3b8' : '#64748b',
+              padding: '1px',
+              lineHeight: 1,
+              display: 'flex',
+            }}
+            title="Exit focus mode (show all themes)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      )}
+      {/* Bottom-right controls */}
       <div style={{
         position: 'absolute',
         bottom: 12,
@@ -379,6 +554,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
         onLinkClick={handleLinkClick}
         onNodeHover={(node: GraphNodeData | null) => setHoveredNode(node?.id || null)}
         onLinkHover={handleLinkHover}
+        onBackgroundClick={() => { if (focusNodeId) { setFocusNodeId(null); setTimeout(() => graphRef.current?.zoomToFit(400, 60), 100); } }}
         nodeLabel={() => ''}
         cooldownTicks={100}
         d3AlphaDecay={0.02}
