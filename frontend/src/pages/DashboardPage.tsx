@@ -571,6 +571,83 @@ export default function DashboardPage() {
         </p>
       </header>
 
+      {/* Quick Actions */}
+      <div style={{ marginBottom: spacing[8] }}>
+        <div className="dashboard-quick-actions">
+          <Link to="/conversations/new" className="btn-secondary-action" style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spacing[3],
+            backgroundColor: 'transparent',
+            color: 'var(--color-primary-900)',
+            padding: `${spacing[4]} ${spacing[6]}`,
+            borderRadius: borders.radius.lg,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            textDecoration: 'none',
+            border: '1px solid var(--color-primary-300)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <line x1="12" y1="8" x2="12" y2="14" />
+              <line x1="9" y1="11" x2="15" y2="11" />
+            </svg>
+            New Conversation
+          </Link>
+          {journalsEnabled && (
+            <Link to="/journals" className="btn-secondary-action" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[3],
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-900)',
+              padding: `${spacing[4]} ${spacing[6]}`,
+              borderRadius: borders.radius.lg,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              textDecoration: 'none',
+              border: '1px solid var(--color-primary-300)',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <line x1="12" y1="8" x2="12" y2="14" />
+                <line x1="9" y1="11" x2="15" y2="11" />
+              </svg>
+              New Journal
+            </Link>
+          )}
+          {spacesEnabled && (
+            <Link to="/spaces/new" className="btn-secondary-action" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spacing[3],
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-900)',
+              padding: `${spacing[4]} ${spacing[6]}`,
+              borderRadius: borders.radius.lg,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              textDecoration: 'none',
+              border: '1px solid var(--color-primary-300)',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <circle cx="4" cy="6" r="2" />
+                <circle cx="20" cy="6" r="2" />
+                <circle cx="4" cy="18" r="2" />
+                <circle cx="20" cy="18" r="2" />
+                <line x1="9.5" y1="10" x2="5.5" y2="7" />
+                <line x1="14.5" y1="10" x2="18.5" y2="7" />
+                <line x1="9.5" y1="14" x2="5.5" y2="17" />
+                <line x1="14.5" y1="14" x2="18.5" y2="17" />
+              </svg>
+              New Space
+            </Link>
+          )}
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="dashboard-stats-grid">
         <div style={s.statCard} className="dashboard-stat-card">
@@ -915,76 +992,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div style={s.section}>
-        <h3 style={{ ...s.sectionTitle, marginBottom: spacing[4] }}>Quick Actions</h3>
-        <div className="dashboard-quick-actions">
-          <Link to="/conversations/new" className="btn-primary-action" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: spacing[2],
-            backgroundColor: 'var(--color-primary-900)',
-            color: 'var(--color-primary-50)',
-            padding: `${spacing[3]} ${spacing[6]}`,
-            borderRadius: borders.radius.md,
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            textDecoration: 'none',
-          }}>
-            + New Conversation
-          </Link>
-          <Link to="/templates" className="btn-secondary-action" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: spacing[2],
-            backgroundColor: 'transparent',
-            color: 'var(--color-primary-900)',
-            padding: `${spacing[3]} ${spacing[6]}`,
-            borderRadius: borders.radius.md,
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            textDecoration: 'none',
-            border: '1px solid var(--color-primary-400)',
-          }}>
-            View Templates
-          </Link>
-          {journalsEnabled && (
-            <Link to="/journals" className="btn-secondary-action" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: spacing[2],
-              backgroundColor: 'transparent',
-              color: 'var(--color-primary-900)',
-              padding: `${spacing[3]} ${spacing[6]}`,
-              borderRadius: borders.radius.md,
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              textDecoration: 'none',
-              border: '1px solid var(--color-primary-400)',
-            }}>
-              + New Journal
-            </Link>
-          )}
-          {spacesEnabled && (
-            <Link to="/spaces/new" className="btn-secondary-action" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: spacing[2],
-              backgroundColor: 'transparent',
-              color: 'var(--color-primary-900)',
-              padding: `${spacing[3]} ${spacing[6]}`,
-              borderRadius: borders.radius.md,
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              textDecoration: 'none',
-              border: '1px solid var(--color-primary-400)',
-            }}>
-              + New Space
-            </Link>
-          )}
-        </div>
-      </div>
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal key={welcomeKey} userName={user?.full_name?.split(' ')[0]} />
