@@ -15,7 +15,7 @@ vi.mock('../services/api', () => ({
 import { useDraftResponses } from './useDraftResponses'
 import { api } from '../services/api'
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   saveDraft: ReturnType<typeof vi.fn>
   loadDraft: ReturnType<typeof vi.fn>
   deleteDraft: ReturnType<typeof vi.fn>

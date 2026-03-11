@@ -13,7 +13,7 @@ vi.mock('../services/api', () => ({
 import { useJournalDraft } from './useJournalDraft'
 import { api } from '../services/api'
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   saveJournalDraft: ReturnType<typeof vi.fn>
   loadJournalDraft: ReturnType<typeof vi.fn>
   deleteJournalDraft: ReturnType<typeof vi.fn>
