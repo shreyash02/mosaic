@@ -22,6 +22,7 @@ import ImageLightbox from '../components/ImageLightbox';
 import Modal from '../components/Modal';
 import { getActivityVerb, getActivityIcon } from '../utils/spaceActivity';
 import { getErrorMessage } from '../utils/errorMessages';
+import { generateSnapshotPdf, sanitizeFilename } from '../utils/pdf/snapshotPdf';
 
 const s = {
   page: {
@@ -423,6 +424,7 @@ export default function SpaceDetailPage() {
   const mainLayoutRef = useRef<HTMLDivElement>(null);
   const graphAreaRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const ideaInputRef = useRef<HTMLTextAreaElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -503,6 +505,53 @@ export default function SpaceDetailPage() {
       document.exitFullscreen();
     } else {
       graphAreaRef.current.requestFullscreen();
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!space) return;
+    setExporting(true);
+    try {
+      // Temporarily switch to light theme for canvas capture (PDF is always light)
+      const root = document.documentElement;
+      const prevTheme = root.getAttribute('data-theme');
+      const wasForced = prevTheme === 'dark';
+      if (wasForced) {
+        root.setAttribute('data-theme', 'light');
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      }
+
+      const graphCanvas = graphAreaRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
+      const purposeKey = (space.synthesis_purpose || space.purposes?.[0] || 'explore') as SpacePurpose;
+      const purposeLabel = SPACE_PURPOSES[purposeKey]?.label || purposeKey;
+
+      const blob = await generateSnapshotPdf({
+        title: space.title || 'Space',
+        snapshotLabel: 'Current state',
+        snapshotDate: new Date().toLocaleDateString('en-US', {
+          year: 'numeric', month: 'long', day: 'numeric',
+        }),
+        snapshotUrl: window.location.href,
+        synthesis: space.purpose_synthesis || null,
+        synthesisPurposeLabel: purposeLabel,
+        themes,
+        graphCanvas,
+      });
+
+      if (wasForced) {
+        root.setAttribute('data-theme', prevTheme!);
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFilename(space.title || 'space')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -1962,6 +2011,31 @@ export default function SpaceDetailPage() {
               </div>
             );
           })()}
+          {themes.length > 0 && (
+            <button
+              onClick={handleExportPdf}
+              disabled={exporting}
+              title="Export as PDF"
+              style={{
+                color: 'var(--color-primary-500)',
+                background: 'none',
+                border: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: spacing[2],
+                borderRadius: borders.radius.md,
+                cursor: exporting ? 'wait' : 'pointer',
+                opacity: exporting ? 0.5 : 1,
+                transition: transitions.duration.normal,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          )}
           {(space.is_owner !== false) && !space.is_shared_view && (
             <Link to={`/spaces/${id}/settings`} style={s.settingsLink}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2831,20 +2905,41 @@ export default function SpaceDetailPage() {
                       </div>
                       {space.can_edit !== false && (
                         <button
-                          onClick={() => startDismiss(themeId, noteIndex)}
-                          title="Dismiss"
+                          onClick={() => handleNoteStateChange(themeId, noteIndex, null)}
+                          title="Remove from actions"
                           style={{
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: 'var(--color-primary-400)',
+                            color: 'var(--color-primary-600)',
                             padding: '0 2px',
                             fontSize: typography.fontSize.xs,
                             flexShrink: 0,
                             lineHeight: 1,
                           }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 14L4 9l5-5" />
+                            <path d="M20 20v-7a4 4 0 00-4-4H4" />
+                          </svg>
+                        </button>
+                      )}
+                      {space.can_edit !== false && (
+                        <button
+                          onClick={() => startDismiss(themeId, noteIndex)}
+                          title="Dismiss"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary-600)',
+                            padding: '0 2px',
+                            fontSize: typography.fontSize.xs,
+                            flexShrink: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" />
                             <line x1="6" y1="6" x2="18" y2="18" />
                           </svg>
@@ -3027,7 +3122,7 @@ export default function SpaceDetailPage() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: 'var(--color-primary-400)',
+                    color: 'var(--color-primary-600)',
                     padding: '2px',
                     lineHeight: 1,
                   }}
@@ -3129,28 +3224,39 @@ export default function SpaceDetailPage() {
                                   background: 'none',
                                   border: 'none',
                                   cursor: 'pointer',
-                                  color: 'var(--color-primary-400)',
+                                  color: 'var(--color-primary-600)',
                                   padding: '0 2px',
                                   fontSize: typography.fontSize.xs,
                                   flexShrink: 0,
                                   lineHeight: 1,
                                 }}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <line x1="12" y1="5" x2="12" y2="19" />
                                   <line x1="5" y1="12" x2="19" y2="12" />
                                 </svg>
                               </button>
                             )}
-                            {isAccepted && (
-                              <span style={{
-                                fontSize: typography.fontSize.xs,
-                                color: 'var(--color-primary-500)',
-                                flexShrink: 0,
-                                fontStyle: 'italic',
-                              }}>
-                                active
-                              </span>
+                            {isAccepted && space.can_edit !== false && (
+                              <button
+                                onClick={() => handleNoteStateChange(themeId, i, null)}
+                                title="Remove from actions"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--color-primary-600)',
+                                  padding: '0 2px',
+                                  fontSize: typography.fontSize.xs,
+                                  flexShrink: 0,
+                                  lineHeight: 1,
+                                }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M9 14L4 9l5-5" />
+                                  <path d="M20 20v-7a4 4 0 00-4-4H4" />
+                                </svg>
+                              </button>
                             )}
                             {!isCompleted && space.can_edit !== false && (
                               <button
@@ -3160,14 +3266,14 @@ export default function SpaceDetailPage() {
                                   background: 'none',
                                   border: 'none',
                                   cursor: 'pointer',
-                                  color: 'var(--color-primary-400)',
+                                  color: 'var(--color-primary-600)',
                                   padding: '0 2px',
                                   fontSize: typography.fontSize.xs,
                                   flexShrink: 0,
                                   lineHeight: 1,
                                 }}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <line x1="18" y1="6" x2="6" y2="18" />
                                   <line x1="6" y1="6" x2="18" y2="18" />
                                 </svg>
@@ -3458,7 +3564,7 @@ export default function SpaceDetailPage() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: 'var(--color-primary-400)',
+                    color: 'var(--color-primary-600)',
                     padding: '2px',
                     lineHeight: 1,
                   }}
@@ -3852,7 +3958,7 @@ export default function SpaceDetailPage() {
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: 'var(--color-primary-400)',
+                            color: 'var(--color-primary-600)',
                             padding: '2px',
                             fontSize: typography.fontSize.xs,
                           }}
