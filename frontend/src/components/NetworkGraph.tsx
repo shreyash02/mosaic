@@ -178,6 +178,18 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
       ctx.font = `${isSelected ? 'bold ' : ''}${fontSize}px ${typography.fontFamily.sans}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
+
+      // Draw text background halo so labels are readable over edges
+      const textWidth = ctx.measureText(label).width;
+      const padding = 3 / globalScale;
+      ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(241, 245, 249, 0.9)';
+      ctx.fillRect(
+        x - textWidth / 2 - padding,
+        labelY - padding,
+        textWidth + padding * 2,
+        fontSize + padding * 2
+      );
+
       ctx.fillStyle = labelColor;
       ctx.fillText(label, x, labelY);
     }

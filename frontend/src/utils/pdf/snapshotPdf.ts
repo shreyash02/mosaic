@@ -17,6 +17,7 @@ interface SnapshotPdfInput {
   title: string;
   snapshotLabel: string;
   snapshotDate: string;
+  snapshotUrl?: string;
   synthesis: PurposeSynthesis | null;
   synthesisPurposeLabel: string;
   themes: SnapshotTheme[];
@@ -24,7 +25,7 @@ interface SnapshotPdfInput {
 }
 
 export async function generateSnapshotPdf(input: SnapshotPdfInput): Promise<Blob> {
-  const { title, snapshotLabel, snapshotDate, synthesis, synthesisPurposeLabel, themes, graphCanvas } = input;
+  const { title, snapshotLabel, snapshotDate, snapshotUrl, synthesis, synthesisPurposeLabel, themes, graphCanvas } = input;
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -51,7 +52,16 @@ export async function generateSnapshotPdf(input: SnapshotPdfInput): Promise<Blob
   doc.setFont(FONT, 'normal');
   const metaParts = [snapshotLabel, snapshotDate].filter(Boolean);
   doc.text(metaParts.join('  •  '), x, y);
-  y += 24;
+  y += 18;
+
+  // Snapshot link
+  if (snapshotUrl) {
+    doc.setFontSize(PDF_STYLES.fonts.small.size);
+    doc.setTextColor(PDF_STYLES.colors.ratingBar);
+    doc.setFont(FONT, 'normal');
+    doc.textWithLink('View snapshot on Mosaic', x, y, { url: snapshotUrl });
+    y += 20;
+  }
 
   // Divider
   doc.setDrawColor(PDF_STYLES.colors.border);
@@ -59,34 +69,14 @@ export async function generateSnapshotPdf(input: SnapshotPdfInput): Promise<Blob
   doc.line(x, y, x + CONTENT_WIDTH, y);
   y += 24;
 
-  // ── Theme Graph ──
-  if (graphCanvas) {
-    const imgData = graphCanvas.toDataURL('image/png');
-    const canvasAspect = graphCanvas.height / graphCanvas.width;
-    const imgWidth = CONTENT_WIDTH;
-    const imgHeight = Math.min(imgWidth * canvasAspect, 320);
-
-    if (needsPageBreak(y, imgHeight + 30)) {
-      doc.addPage();
-      y = PDF_STYLES.page.marginTop;
-    }
-
-    doc.setFontSize(PDF_STYLES.fonts.heading1.size);
-    doc.setTextColor(PDF_STYLES.colors.text);
-    doc.setFont(FONT, 'bold');
-    doc.text('Theme Map', x, y);
-    y += 28;
-
-    // Light background behind graph
-    doc.setFillColor('#f1f5f9');
-    doc.roundedRect(x, y, imgWidth, imgHeight, 4, 4, 'F');
-    doc.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-    y += imgHeight + 24;
-  }
-
   // ── Synthesis ──
   if (synthesis?.space_summary) {
-    if (needsPageBreak(y, 100)) {
+    // Require space for heading + at least a few lines of summary
+    doc.setFontSize(PDF_STYLES.fonts.body.size);
+    doc.setFont(FONT, 'normal');
+    const previewLines = doc.splitTextToSize(synthesis.space_summary, CONTENT_WIDTH);
+    const minSummaryHeight = Math.min(previewLines.length, 3) * 20;
+    if (needsPageBreak(y, 28 + minSummaryHeight + 30)) {
       doc.addPage();
       y = PDF_STYLES.page.marginTop;
     }
@@ -114,9 +104,37 @@ export async function generateSnapshotPdf(input: SnapshotPdfInput): Promise<Blob
     y += summaryLines.length * 20 + 24;
   }
 
+  // ── Theme Graph ──
+  if (graphCanvas) {
+    const imgData = graphCanvas.toDataURL('image/png');
+    const canvasAspect = graphCanvas.height / graphCanvas.width;
+    const imgWidth = CONTENT_WIDTH;
+    const imgHeight = Math.min(imgWidth * canvasAspect, 320);
+
+    if (needsPageBreak(y, imgHeight + 30)) {
+      doc.addPage();
+      y = PDF_STYLES.page.marginTop;
+    }
+
+    doc.setFontSize(PDF_STYLES.fonts.heading1.size);
+    doc.setTextColor(PDF_STYLES.colors.text);
+    doc.setFont(FONT, 'bold');
+    doc.text('Theme Map', x, y);
+    y += 28;
+
+    // Light background behind graph
+    doc.setFillColor('#f1f5f9');
+    doc.roundedRect(x, y, imgWidth, imgHeight, 4, 4, 'F');
+    doc.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+    y += imgHeight + 24;
+  }
+
   // ── Themes ──
   if (themes.length > 0) {
-    if (needsPageBreak(y, 80)) {
+    // Require space for heading + at least the first theme card
+    const firstThemeNotes = synthesis?.theme_notes?.[themes[0].id] || [];
+    const firstThemeHeight = 50 + (themes[0].summary ? 20 : 0) + firstThemeNotes.length * 20;
+    if (needsPageBreak(y, 30 + firstThemeHeight)) {
       doc.addPage();
       y = PDF_STYLES.page.marginTop;
     }

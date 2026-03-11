@@ -253,6 +253,7 @@ export default function SpaceSnapshotPage() {
         title: spaceInfo.title || 'Space Snapshot',
         snapshotLabel: snapshot.title ? `Snapshot: ${snapshot.title}` : 'Snapshot',
         snapshotDate,
+        snapshotUrl: window.location.href,
         synthesis,
         synthesisPurposeLabel: purposeLabel,
         themes,
