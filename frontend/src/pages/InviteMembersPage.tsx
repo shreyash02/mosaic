@@ -397,7 +397,7 @@ export default function InviteMembersPage() {
                 </button>
               </div>
               <p style={styles.cardDescription}>
-                Invite team members to join this organization. They will receive an email with an invitation link.
+                Invite people to join this organization. They will receive an email with an invitation link.
               </p>
 
               <div style={styles.formGroup}>
@@ -425,8 +425,8 @@ export default function InviteMembersPage() {
                   value={selectedRole}
                   onChange={(val) => setSelectedRole(val as 'admin' | 'member')}
                   options={[
-                    { value: 'member', label: 'Member - Can create conversations and view organization content' },
-                    { value: 'admin', label: 'Admin - Can manage members and organization settings' },
+                    { value: 'member', label: 'Member' },
+                    { value: 'admin', label: 'Admin' },
                   ]}
                 />
               </div>
@@ -500,7 +500,7 @@ export default function InviteMembersPage() {
           ) : (
             <div style={styles.card}>
               <div style={styles.emptyState}>
-                No invitations sent yet. Use the form above to invite team members.
+                No invitations sent yet. Use the form above to invite people.
               </div>
             </div>
           )}
