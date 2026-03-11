@@ -444,7 +444,6 @@ export default function SpaceDetailPage() {
   const [snapshots, setSnapshots] = useState<Array<{ id: string; title?: string; snapshot_type?: string; created_at: string }>>([]);
   const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
   const [confirmDeleteSnapshot, setConfirmDeleteSnapshot] = useState<{ id: string; title?: string } | null>(null);
   const [sharedViewerEmail, setSharedViewerEmail] = useState('');
   const [sharedViewerAccess, setSharedViewerAccess] = useState<'space' | 'snapshots'>('snapshots');
@@ -986,13 +985,6 @@ export default function SpaceDetailPage() {
     setTimeout(() => setCopiedLink(false), 2000);
   }
 
-  function copySnapshotLink(snapshotId: string) {
-    const url = `${window.location.origin}/spaces/${id}/snapshots/${snapshotId}`;
-    navigator.clipboard.writeText(url);
-    setCopiedSnapshotId(snapshotId);
-    setTimeout(() => setCopiedSnapshotId(null), 2000);
-  }
-
   function handleNodeClick(nodeId: string) {
     setSelectedThemeId(prev => prev === nodeId ? null : nodeId);
     setSelectedEdge(null);
@@ -1277,6 +1269,47 @@ export default function SpaceDetailPage() {
                 zIndex: 50,
                 padding: spacing[3],
               }}>
+                {/* Create snapshot — editors only */}
+                {space.can_edit !== false && !space.is_shared_view && (
+                  <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3] }}>
+                    <input
+                      style={{
+                        flex: 1,
+                        padding: `${spacing[1]} ${spacing[2]}`,
+                        fontSize: typography.fontSize.sm,
+                        border: '1px solid var(--color-primary-300)',
+                        borderRadius: borders.radius.md,
+                        backgroundColor: 'var(--color-primary-50)',
+                        color: 'var(--color-primary-900)',
+                        outline: 'none',
+                        boxSizing: 'border-box' as const,
+                      }}
+                      value={snapshotTitle}
+                      onChange={(e) => setSnapshotTitle(e.target.value)}
+                      placeholder="Name (optional)"
+                      maxLength={200}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateSnapshot()}
+                    />
+                    <button
+                      onClick={handleCreateSnapshot}
+                      disabled={creatingSnapshot}
+                      style={{
+                        padding: `${spacing[1]} ${spacing[3]}`,
+                        backgroundColor: 'var(--color-primary-900)',
+                        color: 'var(--color-primary-50)',
+                        fontSize: typography.fontSize.xs,
+                        fontWeight: typography.fontWeight.medium,
+                        borderRadius: borders.radius.md,
+                        border: 'none',
+                        cursor: creatingSnapshot ? 'wait' : 'pointer',
+                        opacity: creatingSnapshot ? 0.6 : 1,
+                        whiteSpace: 'nowrap' as const,
+                      }}
+                    >
+                      {creatingSnapshot ? 'Saving...' : 'Save snapshot'}
+                    </button>
+                  </div>
+                )}
                 {!snapshotsLoaded && (
                   <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>Loading...</div>
                 )}
@@ -1328,6 +1361,26 @@ export default function SpaceDetailPage() {
                         </div>
                       )}
                     </div>
+                    {space.can_edit !== false && !space.is_shared_view && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDeleteSnapshot({ id: snap.id, title: snap.title }); }}
+                        title="Delete snapshot"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--color-primary-300)',
+                          padding: '2px',
+                          lineHeight: 1,
+                          flexShrink: 0,
+                          display: 'flex',
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    )}
                   </Link>
                 ))}
                 {snapshots.length > snapshotShowCount && (
@@ -1497,7 +1550,7 @@ export default function SpaceDetailPage() {
           {space.is_owner && !space.is_shared_view && (
             <div ref={shareDropdownRef} style={{ position: 'relative' }}>
               <button
-                onClick={() => { setShareDropdownOpen(!shareDropdownOpen); if (!snapshotsLoaded) loadSnapshots(); }}
+                onClick={() => setShareDropdownOpen(!shareDropdownOpen)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1764,114 +1817,6 @@ export default function SpaceDetailPage() {
                   </div>
                   )}
 
-                  {/* Snapshots */}
-                  <div style={{ borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3] }}>
-                    <div style={{
-                      fontSize: typography.fontSize.sm,
-                      fontWeight: typography.fontWeight.semibold,
-                      color: 'var(--color-primary-700)',
-                      marginBottom: spacing[2],
-                    }}>
-                      Snapshots
-                    </div>
-                    <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3] }}>
-                      <input
-                        style={{
-                          flex: 1,
-                          padding: `${spacing[1]} ${spacing[2]}`,
-                          fontSize: typography.fontSize.sm,
-                          border: '1px solid var(--color-primary-300)',
-                          borderRadius: borders.radius.md,
-                          backgroundColor: 'var(--color-primary-50)',
-                          color: 'var(--color-primary-900)',
-                          outline: 'none',
-                          boxSizing: 'border-box' as const,
-                        }}
-                        value={snapshotTitle}
-                        onChange={(e) => setSnapshotTitle(e.target.value)}
-                        placeholder="Snapshot title (optional)"
-                        maxLength={200}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCreateSnapshot()}
-                      />
-                      <button
-                        onClick={handleCreateSnapshot}
-                        disabled={creatingSnapshot}
-                        style={{
-                          padding: `${spacing[1]} ${spacing[3]}`,
-                          backgroundColor: 'var(--color-primary-900)',
-                          color: 'var(--color-primary-50)',
-                          fontSize: typography.fontSize.xs,
-                          fontWeight: typography.fontWeight.medium,
-                          borderRadius: borders.radius.md,
-                          border: 'none',
-                          cursor: creatingSnapshot ? 'wait' : 'pointer',
-                          opacity: creatingSnapshot ? 0.6 : 1,
-                          whiteSpace: 'nowrap' as const,
-                        }}
-                      >
-                        {creatingSnapshot ? 'Creating...' : 'Create'}
-                      </button>
-                    </div>
-                    {snapshots.length === 0 && snapshotsLoaded && (
-                      <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
-                        No snapshots yet
-                      </div>
-                    )}
-                    {snapshots.map(snap => (
-                      <div key={snap.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: spacing[2],
-                        padding: `${spacing[1]} 0`,
-                        fontSize: typography.fontSize.xs,
-                        color: 'var(--color-primary-600)',
-                      }}>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                          {snap.snapshot_type === 'organize' && (
-                            <span title="Auto-saved after organize" style={{ fontSize: '9px', color: 'var(--color-primary-400)', fontWeight: typography.fontWeight.medium }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-                                <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                              </svg>
-                            </span>
-                          )}
-                          {snap.title || formatRelativeTime(snap.created_at)}
-                        </span>
-                        <div style={{ display: 'flex', gap: spacing[1], flexShrink: 0 }}>
-                          <button
-                            onClick={() => copySnapshotLink(snap.id)}
-                            title="Copy snapshot link"
-                            style={{
-                              padding: '2px 6px',
-                              backgroundColor: 'transparent',
-                              color: 'var(--color-primary-500)',
-                              border: '1px solid var(--color-primary-200)',
-                              borderRadius: borders.radius.sm,
-                              cursor: 'pointer',
-                              fontSize: '10px',
-                            }}
-                          >
-                            {copiedSnapshotId === snap.id ? 'Copied!' : 'Copy'}
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteSnapshot({ id: snap.id, title: snap.title })}
-                            title="Delete snapshot"
-                            style={{
-                              padding: '2px 6px',
-                              backgroundColor: 'transparent',
-                              color: 'var(--color-error)',
-                              border: '1px solid var(--color-primary-200)',
-                              borderRadius: borders.radius.sm,
-                              cursor: 'pointer',
-                              fontSize: '10px',
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>

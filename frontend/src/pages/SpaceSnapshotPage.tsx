@@ -336,6 +336,27 @@ export default function SpaceSnapshotPage() {
             </svg>
           </Link>
           <h1 style={{ ...s.title, ...(isMobile ? { fontSize: typography.fontSize.lg } : {}) }}>{spaceInfo.title || 'Space'}</h1>
+          {/* Timestamp badge */}
+          <span
+            style={{
+              fontSize: typography.fontSize.xs,
+              color: 'var(--color-primary-500)',
+              backgroundColor: 'var(--color-primary-100)',
+              padding: `2px ${spacing[2]}`,
+              borderRadius: borders.radius.full,
+              fontWeight: typography.fontWeight.normal,
+              whiteSpace: 'nowrap',
+              border: '1px solid var(--color-primary-200)',
+            }}
+          >
+            {snapshot.snapshot_type === 'organize' && (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '3px' }}>
+                <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+            )}
+            {formatRelativeTime(snapshot.created_at)}
+          </span>
+          {/* Snapshot name — inline editor or "+ Name" button */}
           {editingTitle ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
               <input
@@ -353,7 +374,7 @@ export default function SpaceSnapshotPage() {
                   fontSize: typography.fontSize.xs,
                   padding: `2px ${spacing[2]}`,
                   border: '1px solid var(--color-primary-400)',
-                  borderRadius: borders.radius.full,
+                  borderRadius: borders.radius.md,
                   backgroundColor: 'var(--color-primary-50)',
                   color: 'var(--color-primary-900)',
                   outline: 'none',
@@ -361,34 +382,61 @@ export default function SpaceSnapshotPage() {
                 }}
               />
             </div>
-          ) : (
-          <span
-            style={{
-              fontSize: typography.fontSize.xs,
-              color: 'var(--color-primary-600)',
-              backgroundColor: 'var(--color-primary-100)',
-              padding: `2px ${spacing[2]}`,
-              borderRadius: borders.radius.full,
-              fontWeight: typography.fontWeight.medium,
-              whiteSpace: 'nowrap',
-              border: '1px solid var(--color-primary-300)',
-              cursor: canEdit ? 'pointer' : 'default',
-            }}
-            onClick={() => {
-              if (!canEdit) return;
-              setTitleDraft(snapshot.title || '');
-              setEditingTitle(true);
-            }}
-            title={canEdit ? 'Click to rename' : undefined}
-          >
-            {snapshot.snapshot_type === 'organize' && (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '3px' }}>
-                <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          ) : snapshot.title ? (
+            <span
+              style={{
+                fontSize: typography.fontSize.xs,
+                color: 'var(--color-primary-700)',
+                fontWeight: typography.fontWeight.medium,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: spacing[1],
+              }}
+            >
+              {snapshot.title}
+              {canEdit && (
+                <button
+                  onClick={() => { setTitleDraft(snapshot.title || ''); setEditingTitle(true); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-primary-400)',
+                    padding: '1px',
+                    lineHeight: 1,
+                    display: 'inline-flex',
+                  }}
+                  title="Rename snapshot"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+              )}
+            </span>
+          ) : canEdit ? (
+            <button
+              onClick={() => { setTitleDraft(''); setEditingTitle(true); }}
+              style={{
+                fontSize: typography.fontSize.xs,
+                color: 'var(--color-primary-400)',
+                backgroundColor: 'transparent',
+                border: '1px dashed var(--color-primary-300)',
+                borderRadius: borders.radius.md,
+                padding: `2px ${spacing[2]}`,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-            )}
-            {snapshot.title || formatRelativeTime(snapshot.created_at)}
-          </span>
-          )}
+              Name
+            </button>
+          ) : null}
         </div>
         {canExport && (
           <button
