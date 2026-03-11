@@ -436,7 +436,7 @@ export default function NetworkGraph({ data, onNodeClick, selectedNodeId, onEdge
             type="range"
             min={0}
             max={80}
-            step={5}
+            step={1}
             value={minStrength * 100}
             onChange={(e) => setMinStrength(Number(e.target.value) / 100)}
             style={{ width: 150, accentColor: isDark ? '#64748b' : '#475569' }}
