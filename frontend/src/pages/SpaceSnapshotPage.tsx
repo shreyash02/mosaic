@@ -119,10 +119,27 @@ export default function SpaceSnapshotPage() {
   const [dragging, setDragging] = useState(false);
   const [dragHandleHovered, setDragHandleHovered] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const mainLayoutRef = useRef<HTMLDivElement>(null);
   const graphAreaRef = useRef<HTMLDivElement>(null);
 
   usePageTitle(snapshot ? `Snapshot: ${snapshot.snapshot_data?.space?.title || 'Space'}` : 'Snapshot');
+
+  // Sync fullscreen state with browser fullscreen API
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!graphAreaRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      graphAreaRef.current.requestFullscreen();
+    }
+  }
 
   useEffect(() => {
     if (!id || !snapshotId) return;
@@ -310,7 +327,7 @@ export default function SpaceSnapshotPage() {
       {/* Main layout */}
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph */}
-        <div ref={graphAreaRef} style={s.graphArea}>
+        <div ref={graphAreaRef} style={{ ...s.graphArea, ...(isFullscreen ? { backgroundColor: 'var(--color-primary-100)' } : {}) }}>
           <NetworkGraph
             data={graphData}
             selectedNodeId={selectedThemeId || undefined}
@@ -319,6 +336,43 @@ export default function SpaceSnapshotPage() {
             selectedEdge={selectedEdge ? { source: selectedEdge.sourceId, target: selectedEdge.targetId } : undefined}
             onClearSelection={handleClearSelection}
           />
+          {/* Fullscreen toggle */}
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              zIndex: 5,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: spacing[2],
+              backgroundColor: 'var(--color-primary-200)',
+              border: 'none',
+              borderRadius: borders.radius.full,
+              cursor: 'pointer',
+              color: 'var(--color-primary-600)',
+              fontSize: typography.fontSize.sm,
+            }}
+          >
+            {isFullscreen ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 14h6v6" />
+                <path d="M20 10h-6V4" />
+                <path d="M14 10l7-7" />
+                <path d="M3 21l7-7" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Sidebar */}

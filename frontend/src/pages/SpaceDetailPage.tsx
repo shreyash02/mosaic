@@ -421,6 +421,8 @@ export default function SpaceDetailPage() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   const [mobileTab, setMobileTab] = useState<'ideas' | 'map'>('ideas');
   const mainLayoutRef = useRef<HTMLDivElement>(null);
+  const graphAreaRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const ideaInputRef = useRef<HTMLTextAreaElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -481,6 +483,22 @@ export default function SpaceDetailPage() {
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
+
+  // Sync fullscreen state with browser fullscreen API
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!graphAreaRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      graphAreaRef.current.requestFullscreen();
+    }
+  }
 
   // Sidebar drag-to-resize
   useEffect(() => {
@@ -1888,7 +1906,7 @@ export default function SpaceDetailPage() {
       <div ref={mainLayoutRef} style={s.mainLayout}>
         {/* Graph area */}
         {(!isMobile || mobileTab === 'map') && (
-        <div style={{ ...s.graphArea, flex: pc.graphFlex }}>
+        <div ref={graphAreaRef} style={{ ...s.graphArea, flex: pc.graphFlex, ...(isFullscreen ? { backgroundColor: 'var(--color-primary-100)' } : {}) }}>
           {/* View toggle: Graph / Evolution + sub-style */}
           <div style={{ ...s.viewToggle, gap: spacing[2] }}>
             <div style={{
@@ -1943,6 +1961,37 @@ export default function SpaceDetailPage() {
                 ))}
               </div>
             )}
+            {/* Fullscreen toggle */}
+            <button
+              onClick={toggleFullscreen}
+              title={isFullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+              style={{
+                ...s.viewToggleBtn,
+                backgroundColor: 'var(--color-primary-200)',
+                borderRadius: borders.radius.full,
+                padding: `${spacing[2]} ${spacing[2]}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-primary-600)',
+              }}
+            >
+              {isFullscreen ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 14h6v6" />
+                  <path d="M20 10h-6V4" />
+                  <path d="M14 10l7-7" />
+                  <path d="M3 21l7-7" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                  <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                  <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                </svg>
+              )}
+            </button>
           </div>
 
           {mainView === 'graph' ? (
