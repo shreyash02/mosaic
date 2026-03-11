@@ -451,8 +451,8 @@ export default function SpaceDetailPage() {
   const [sharedViewerExport, setSharedViewerExport] = useState(false);
   const [addingSharedViewer, setAddingSharedViewer] = useState(false);
   const shareDropdownRef = useRef<HTMLDivElement>(null);
-  const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false);
   const [snapshotShowCount, setSnapshotShowCount] = useState(5);
+  const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false);
   const snapshotDropdownRef = useRef<HTMLDivElement>(null);
 
   // Idea search
@@ -1234,7 +1234,7 @@ export default function SpaceDetailPage() {
             onChange={(v) => setTimeFilterDays(Number(v))}
             minWidth="180px"
           />
-          {/* Snapshot switcher */}
+          {/* Snapshots dropdown */}
           <div ref={snapshotDropdownRef} style={{ position: 'relative' }}>
             <button
               onClick={() => { setSnapshotDropdownOpen(prev => !prev); if (!snapshotsLoaded) loadSnapshots(); }}
@@ -1256,11 +1256,10 @@ export default function SpaceDetailPage() {
               title="Browse snapshots"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 8v4l3 3" />
-                <path d="M3.05 11a9 9 0 1 1 .5 4" />
-                <polyline points="1 4 3.05 11 10 9" />
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
               </svg>
-              History
+              Snapshots
             </button>
             {snapshotDropdownOpen && (
               <div style={{
@@ -1278,14 +1277,6 @@ export default function SpaceDetailPage() {
                 zIndex: 50,
                 padding: spacing[3],
               }}>
-                <div style={{
-                  fontSize: typography.fontSize.sm,
-                  fontWeight: typography.fontWeight.semibold,
-                  color: 'var(--color-primary-700)',
-                  marginBottom: spacing[3],
-                }}>
-                  Snapshots
-                </div>
                 {!snapshotsLoaded && (
                   <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>Loading...</div>
                 )}
@@ -1383,8 +1374,12 @@ export default function SpaceDetailPage() {
               title="Activity log"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
               </svg>
             </button>
             {spaceActivityExpanded && (
