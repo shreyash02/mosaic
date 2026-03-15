@@ -2810,8 +2810,8 @@ def _serialize_space(space: Space, db: Session) -> dict:
                 "dismiss_reasons": s.dismiss_reasons,
                 "completion_outcomes": s.completion_outcomes,
                 "completion_outcome_images": s.completion_outcome_images,
-                "expanded_summary": s.expanded_summary,
-                "expanded_theme_notes": s.expanded_theme_notes,
+                "expanded_summary": getattr(s, "expanded_summary", None),
+                "expanded_theme_notes": getattr(s, "expanded_theme_notes", None),
                 "is_current": s.is_current,
                 "generated_at": s.generated_at.isoformat() if s.generated_at else None,
                 "created_at": s.created_at.isoformat(),
@@ -3034,8 +3034,9 @@ async def admin_import_space(
                 ))
 
         # Import syntheses
+        _has_expanded = hasattr(SpaceSynthesis, "expanded_summary")
         for synth in payload.get("syntheses", []):
-            db.add(SpaceSynthesis(
+            synth_kwargs = dict(
                 id=uuid.uuid4(),
                 space_id=new_space.id,
                 purpose=synth["purpose"],
@@ -3045,12 +3046,14 @@ async def admin_import_space(
                 dismiss_reasons=synth.get("dismiss_reasons"),
                 completion_outcomes=synth.get("completion_outcomes"),
                 completion_outcome_images=synth.get("completion_outcome_images"),
-                expanded_summary=synth.get("expanded_summary"),
-                expanded_theme_notes=synth.get("expanded_theme_notes"),
                 is_current=synth.get("is_current", False),
                 generated_at=datetime.fromisoformat(synth["generated_at"]) if synth.get("generated_at") else None,
                 created_at=datetime.fromisoformat(synth["created_at"]) if synth.get("created_at") else datetime.utcnow(),
-            ))
+            )
+            if _has_expanded:
+                synth_kwargs["expanded_summary"] = synth.get("expanded_summary")
+                synth_kwargs["expanded_theme_notes"] = synth.get("expanded_theme_notes")
+            db.add(SpaceSynthesis(**synth_kwargs))
 
         # Import synthesis actions
         for sa in payload.get("synthesis_actions", []):

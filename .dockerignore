@@ -75,3 +75,11 @@ backend/venv/**/*
 # Created by venv; see https://docs.python.org/3/library/venv.html
 frontend/path/to/venv/**/*
 fly.toml
+
+# Non-production assets
+docs
+.product-flows
+flows.config.json
+**/*.md
+!backend/README.md
+!frontend/README.md
