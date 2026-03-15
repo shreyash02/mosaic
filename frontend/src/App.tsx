@@ -61,6 +61,7 @@ import AdminEmailLogsPage from './pages/AdminEmailLogsPage';
 import AdminInviteCodesPage from './pages/AdminInviteCodesPage';
 import AdminPlatformSettingsPage from './pages/AdminPlatformSettingsPage';
 import AdminAuditLogPage from './pages/AdminAuditLogPage';
+import AdminSpaceToolsPage from './pages/AdminSpaceToolsPage';
 import RequestAccessPage from './pages/RequestAccessPage';
 import TemplateDetailPage from './pages/TemplateDetailPage';
 import OrganizationsPage from './pages/OrganizationsPage';
@@ -585,6 +586,7 @@ function App() {
             <Route path="/adminportal/invite-codes" element={<AdminInviteCodesPage />} />
             <Route path="/adminportal/platform-settings" element={<AdminPlatformSettingsPage />} />
             <Route path="/adminportal/audit-log" element={<AdminAuditLogPage />} />
+            <Route path="/adminportal/space-tools" element={<AdminSpaceToolsPage />} />
 
             {/* Request Access (public waitlist) */}
             <Route path="/request-access" element={<RequestAccessPage />} />

@@ -14,6 +14,7 @@ const MAIN_TABS = [
 const TEST_TOOLS_ITEMS = [
   { label: 'Test Response Generation', path: '/adminportal/test-generation' },
   { label: 'Email Template Preview', path: '/adminportal/email-preview' },
+  { label: 'Space Export/Import', path: '/adminportal/space-tools' },
 ];
 
 const PLATFORM_SECTIONS = [

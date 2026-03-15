@@ -25,6 +25,18 @@ from app.models.analysis import Analysis
 from app.models.organization import Organization
 from app.models.journal_template import JournalTemplate
 from app.models.subscription import Subscription
+from app.models.space import Space
+from app.models.idea import Idea
+from app.models.theme import Theme
+from app.models.idea_theme import IdeaTheme
+from app.models.theme_connection import ThemeConnection
+from app.models.space_synthesis import SpaceSynthesis
+from app.models.synthesis_action import SynthesisAction
+from app.models.space_member import SpaceMember
+from app.models.space_snapshot import SpaceSnapshot
+from app.models.space_activity_log import SpaceActivityLog
+from app.models.theme_event import ThemeEvent
+from app.models.workspace import Workspace
 from app.schemas.admin import (
     AdminLoginRequest,
     AdminToken,
@@ -2660,4 +2672,508 @@ async def admin_delete_journal_template(
         entity_id=str(template_id),
         details={"title": template_title},
     )
+
+
+# ─── Space Export / Import ────────────────────────────────────────────
+
+def _serialize_space(space: Space, db: Session) -> dict:
+    """Build a complete JSON-serializable dict for a space and all its data."""
+    ideas = db.query(Idea).filter(Idea.space_id == space.id).order_by(Idea.created_at).all()
+    themes = db.query(Theme).filter(Theme.space_id == space.id).order_by(Theme.created_at).all()
+
+    # Build id->index maps for stable references in the export
+    idea_id_map = {str(idea.id): idx for idx, idea in enumerate(ideas)}
+    theme_id_map = {str(theme.id): idx for idx, theme in enumerate(themes)}
+
+    # idea-theme assignments
+    idea_themes = (
+        db.query(IdeaTheme)
+        .filter(IdeaTheme.idea_id.in_([i.id for i in ideas]))
+        .all()
+    ) if ideas else []
+
+    # theme connections
+    connections = db.query(ThemeConnection).filter(ThemeConnection.space_id == space.id).all()
+
+    # syntheses (all, including history)
+    syntheses = (
+        db.query(SpaceSynthesis)
+        .filter(SpaceSynthesis.space_id == space.id)
+        .order_by(SpaceSynthesis.created_at)
+        .all()
+    )
+
+    # synthesis actions
+    synthesis_actions = (
+        db.query(SynthesisAction)
+        .filter(SynthesisAction.space_id == space.id)
+        .order_by(SynthesisAction.created_at)
+        .all()
+    )
+
+    # snapshots
+    snapshots = (
+        db.query(SpaceSnapshot)
+        .filter(SpaceSnapshot.space_id == space.id)
+        .order_by(SpaceSnapshot.created_at)
+        .all()
+    )
+
+    # activity log
+    activity_logs = (
+        db.query(SpaceActivityLog)
+        .filter(SpaceActivityLog.space_id == space.id)
+        .order_by(SpaceActivityLog.created_at)
+        .all()
+    )
+
+    # theme events
+    theme_events = (
+        db.query(ThemeEvent)
+        .filter(ThemeEvent.space_id == space.id)
+        .order_by(ThemeEvent.created_at)
+        .all()
+    )
+
+    # owner info for reference
+    owner = db.query(User).filter(User.id == space.owner_id).first()
+    workspace = db.query(Workspace).filter(Workspace.id == space.workspace_id).first() if space.workspace_id else None
+
+    return {
+        "export_version": 1,
+        "exported_at": datetime.utcnow().isoformat(),
+        "space": {
+            "title": space.title,
+            "description": space.description,
+            "settings": space.settings,
+            "auto_organize": space.auto_organize,
+            "clustering_mode": space.clustering_mode,
+            "share_access": space.share_access,
+            "last_organized_at": space.last_organized_at.isoformat() if space.last_organized_at else None,
+            "ideas_at_last_organize": space.ideas_at_last_organize,
+            "created_at": space.created_at.isoformat(),
+            "updated_at": space.updated_at.isoformat(),
+            "owner_email": owner.email if owner else None,
+            "workspace_name": workspace.name if workspace else None,
+        },
+        "ideas": [
+            {
+                "ref": idx,
+                "text": idea.text,
+                "image_url": idea.image_url,
+                "status": idea.status,
+                "created_at": idea.created_at.isoformat(),
+                "updated_at": idea.updated_at.isoformat(),
+            }
+            for idx, idea in enumerate(ideas)
+        ],
+        "themes": [
+            {
+                "ref": idx,
+                "name": theme.name,
+                "summary": theme.summary,
+                "color": theme.color,
+                "is_ai_generated": theme.is_ai_generated,
+                "created_at": theme.created_at.isoformat(),
+                "updated_at": theme.updated_at.isoformat(),
+            }
+            for idx, theme in enumerate(themes)
+        ],
+        "idea_theme_assignments": [
+            {
+                "idea_ref": idea_id_map.get(str(it.idea_id)),
+                "theme_ref": theme_id_map.get(str(it.theme_id)),
+                "confidence": it.confidence,
+                "assigned_by": it.assigned_by,
+                "created_at": it.created_at.isoformat(),
+            }
+            for it in idea_themes
+            if idea_id_map.get(str(it.idea_id)) is not None and theme_id_map.get(str(it.theme_id)) is not None
+        ],
+        "theme_connections": [
+            {
+                "theme_a_ref": theme_id_map.get(str(c.theme_a_id)),
+                "theme_b_ref": theme_id_map.get(str(c.theme_b_id)),
+                "strength": c.strength,
+                "description": c.description,
+                "created_at": c.created_at.isoformat(),
+            }
+            for c in connections
+            if theme_id_map.get(str(c.theme_a_id)) is not None and theme_id_map.get(str(c.theme_b_id)) is not None
+        ],
+        "syntheses": [
+            {
+                "purpose": s.purpose,
+                "space_summary": s.space_summary,
+                "theme_notes": s.theme_notes,
+                "note_states": s.note_states,
+                "dismiss_reasons": s.dismiss_reasons,
+                "completion_outcomes": s.completion_outcomes,
+                "completion_outcome_images": s.completion_outcome_images,
+                "expanded_summary": s.expanded_summary,
+                "expanded_theme_notes": s.expanded_theme_notes,
+                "is_current": s.is_current,
+                "generated_at": s.generated_at.isoformat() if s.generated_at else None,
+                "created_at": s.created_at.isoformat(),
+            }
+            for s in syntheses
+        ],
+        "synthesis_actions": [
+            {
+                "theme_name": sa.theme_name,
+                "note_text": sa.note_text,
+                "action": sa.action,
+                "detail": sa.detail,
+                "created_at": sa.created_at.isoformat(),
+            }
+            for sa in synthesis_actions
+        ],
+        "snapshots": [
+            {
+                "title": snap.title,
+                "snapshot_type": snap.snapshot_type,
+                "snapshot_data": snap.snapshot_data,
+                "created_at": snap.created_at.isoformat(),
+            }
+            for snap in snapshots
+        ],
+        "activity_log": [
+            {
+                "user_name": log.user_name,
+                "event_type": log.event_type,
+                "detail": log.detail,
+                "created_at": log.created_at.isoformat(),
+            }
+            for log in activity_logs
+        ],
+        "theme_events": [
+            {
+                "organize_run_id": str(te.organize_run_id),
+                "event_type": te.event_type,
+                "theme_name": te.theme_name,
+                "theme_color": te.theme_color,
+                "details": te.details,
+                "created_at": te.created_at.isoformat(),
+            }
+            for te in theme_events
+        ],
+    }
+
+
+@router.get("/spaces/{space_id}/export")
+async def admin_export_space(
+    space_id: UUID,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Export all data for a space as JSON."""
+    space = db.query(Space).filter(Space.id == space_id).first()
+    if not space:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Space not found")
+
+    log_audit(
+        admin_id=admin.id,
+        admin_username=admin.username,
+        action="export_space",
+        entity_type="space",
+        entity_id=str(space_id),
+        details={"title": space.title},
+    )
+
+    return _serialize_space(space, db)
+
+
+@router.post("/spaces/import")
+async def admin_import_space(
+    payload: dict,
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Import a space from previously-exported JSON. Generates new UUIDs for all entities.
+
+    Requires `target_owner_email` in the payload to assign ownership.
+    Optionally accepts `target_workspace_id` to place the space in a specific workspace.
+    """
+    if payload.get("export_version") != 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported or missing export_version. Expected 1.",
+        )
+
+    space_data = payload.get("space")
+    if not space_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing 'space' in payload")
+
+    # Resolve owner
+    target_email = payload.get("target_owner_email") or space_data.get("owner_email")
+    if not target_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="target_owner_email is required",
+        )
+    owner = db.query(User).filter(func.lower(User.email) == target_email.lower().strip()).first()
+    if not owner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No user found with email: {target_email}",
+        )
+
+    # Resolve workspace
+    target_workspace_id = payload.get("target_workspace_id")
+    if target_workspace_id:
+        workspace = db.query(Workspace).filter(Workspace.id == uuid.UUID(target_workspace_id)).first()
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+        workspace_id = workspace.id
+    else:
+        # Use owner's personal workspace
+        workspace = db.query(Workspace).filter(
+            Workspace.owner_id == owner.id,
+            Workspace.type == "personal",
+        ).first()
+        if not workspace:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Owner has no personal workspace. Provide target_workspace_id.",
+            )
+        workspace_id = workspace.id
+
+    try:
+        # Create space
+        new_space = Space(
+            id=uuid.uuid4(),
+            title=space_data.get("title", "Imported Space"),
+            description=space_data.get("description"),
+            owner_id=owner.id,
+            organization_id=None,
+            workspace_id=workspace_id,
+            settings=space_data.get("settings"),
+            auto_organize=space_data.get("auto_organize", True),
+            clustering_mode=space_data.get("clustering_mode", "llm"),
+            share_access=space_data.get("share_access"),
+            last_organized_at=datetime.fromisoformat(space_data["last_organized_at"]) if space_data.get("last_organized_at") else None,
+            ideas_at_last_organize=space_data.get("ideas_at_last_organize"),
+            created_at=datetime.fromisoformat(space_data["created_at"]) if space_data.get("created_at") else datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(new_space)
+        db.flush()
+
+        # Create owner as space member
+        db.add(SpaceMember(
+            id=uuid.uuid4(),
+            space_id=new_space.id,
+            user_id=owner.id,
+            role="owner",
+        ))
+
+        # Import ideas — map ref index to new UUID
+        idea_ref_to_id = {}
+        for idea_data in payload.get("ideas", []):
+            idea_id = uuid.uuid4()
+            idea_ref_to_id[idea_data["ref"]] = idea_id
+            db.add(Idea(
+                id=idea_id,
+                space_id=new_space.id,
+                author_id=owner.id,
+                text=idea_data["text"],
+                image_url=idea_data.get("image_url"),
+                status=idea_data.get("status", "active"),
+                created_at=datetime.fromisoformat(idea_data["created_at"]) if idea_data.get("created_at") else datetime.utcnow(),
+                updated_at=datetime.fromisoformat(idea_data["updated_at"]) if idea_data.get("updated_at") else datetime.utcnow(),
+            ))
+
+        # Import themes — map ref index to new UUID
+        theme_ref_to_id = {}
+        for theme_data in payload.get("themes", []):
+            theme_id = uuid.uuid4()
+            theme_ref_to_id[theme_data["ref"]] = theme_id
+            db.add(Theme(
+                id=theme_id,
+                space_id=new_space.id,
+                name=theme_data["name"],
+                summary=theme_data.get("summary"),
+                color=theme_data.get("color"),
+                is_ai_generated=theme_data.get("is_ai_generated", True),
+                created_at=datetime.fromisoformat(theme_data["created_at"]) if theme_data.get("created_at") else datetime.utcnow(),
+                updated_at=datetime.fromisoformat(theme_data["updated_at"]) if theme_data.get("updated_at") else datetime.utcnow(),
+            ))
+
+        db.flush()  # ensure themes/ideas are persisted before references
+
+        # Import idea-theme assignments
+        for assignment in payload.get("idea_theme_assignments", []):
+            idea_id = idea_ref_to_id.get(assignment.get("idea_ref"))
+            theme_id = theme_ref_to_id.get(assignment.get("theme_ref"))
+            if idea_id and theme_id:
+                db.add(IdeaTheme(
+                    id=uuid.uuid4(),
+                    idea_id=idea_id,
+                    theme_id=theme_id,
+                    confidence=assignment.get("confidence", 1.0),
+                    assigned_by=assignment.get("assigned_by", "ai"),
+                    created_at=datetime.fromisoformat(assignment["created_at"]) if assignment.get("created_at") else datetime.utcnow(),
+                ))
+
+        # Import theme connections
+        for conn in payload.get("theme_connections", []):
+            a_id = theme_ref_to_id.get(conn.get("theme_a_ref"))
+            b_id = theme_ref_to_id.get(conn.get("theme_b_ref"))
+            if a_id and b_id:
+                # Ensure ordered constraint
+                if str(a_id) > str(b_id):
+                    a_id, b_id = b_id, a_id
+                db.add(ThemeConnection(
+                    id=uuid.uuid4(),
+                    space_id=new_space.id,
+                    theme_a_id=a_id,
+                    theme_b_id=b_id,
+                    strength=conn.get("strength", 0.0),
+                    description=conn.get("description"),
+                    created_at=datetime.fromisoformat(conn["created_at"]) if conn.get("created_at") else datetime.utcnow(),
+                ))
+
+        # Import syntheses
+        for synth in payload.get("syntheses", []):
+            db.add(SpaceSynthesis(
+                id=uuid.uuid4(),
+                space_id=new_space.id,
+                purpose=synth["purpose"],
+                space_summary=synth.get("space_summary"),
+                theme_notes=synth.get("theme_notes"),
+                note_states=synth.get("note_states"),
+                dismiss_reasons=synth.get("dismiss_reasons"),
+                completion_outcomes=synth.get("completion_outcomes"),
+                completion_outcome_images=synth.get("completion_outcome_images"),
+                expanded_summary=synth.get("expanded_summary"),
+                expanded_theme_notes=synth.get("expanded_theme_notes"),
+                is_current=synth.get("is_current", False),
+                generated_at=datetime.fromisoformat(synth["generated_at"]) if synth.get("generated_at") else None,
+                created_at=datetime.fromisoformat(synth["created_at"]) if synth.get("created_at") else datetime.utcnow(),
+            ))
+
+        # Import synthesis actions
+        for sa in payload.get("synthesis_actions", []):
+            db.add(SynthesisAction(
+                id=uuid.uuid4(),
+                space_id=new_space.id,
+                theme_name=sa["theme_name"],
+                note_text=sa["note_text"],
+                action=sa["action"],
+                detail=sa.get("detail"),
+                created_at=datetime.fromisoformat(sa["created_at"]) if sa.get("created_at") else datetime.utcnow(),
+            ))
+
+        # Import snapshots
+        for snap in payload.get("snapshots", []):
+            db.add(SpaceSnapshot(
+                id=uuid.uuid4(),
+                space_id=new_space.id,
+                created_by_id=owner.id,
+                title=snap.get("title"),
+                snapshot_type=snap.get("snapshot_type", "manual"),
+                snapshot_data=snap.get("snapshot_data", {}),
+                created_at=datetime.fromisoformat(snap["created_at"]) if snap.get("created_at") else datetime.utcnow(),
+            ))
+
+        # Import activity log
+        for log_entry in payload.get("activity_log", []):
+            db.add(SpaceActivityLog(
+                id=uuid.uuid4(),
+                space_id=new_space.id,
+                user_name=log_entry.get("user_name"),
+                event_type=log_entry["event_type"],
+                detail=log_entry.get("detail"),
+                created_at=datetime.fromisoformat(log_entry["created_at"]) if log_entry.get("created_at") else datetime.utcnow(),
+            ))
+
+        # Import theme events
+        for te in payload.get("theme_events", []):
+            db.add(ThemeEvent(
+                id=uuid.uuid4(),
+                space_id=new_space.id,
+                organize_run_id=uuid.uuid4(),  # new run id since original is meaningless
+                event_type=te["event_type"],
+                theme_name=te["theme_name"],
+                theme_color=te.get("theme_color"),
+                details=te.get("details", {}),
+                created_at=datetime.fromisoformat(te["created_at"]) if te.get("created_at") else datetime.utcnow(),
+            ))
+
+        db.commit()
+
+        log_audit(
+            admin_id=admin.id,
+            admin_username=admin.username,
+            action="import_space",
+            entity_type="space",
+            entity_id=str(new_space.id),
+            details={
+                "title": new_space.title,
+                "owner_email": target_email,
+                "ideas": len(payload.get("ideas", [])),
+                "themes": len(payload.get("themes", [])),
+            },
+        )
+
+        return {
+            "success": True,
+            "space_id": str(new_space.id),
+            "title": new_space.title,
+            "ideas_imported": len(payload.get("ideas", [])),
+            "themes_imported": len(payload.get("themes", [])),
+            "syntheses_imported": len(payload.get("syntheses", [])),
+            "snapshots_imported": len(payload.get("snapshots", [])),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Space import failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Import failed: {str(e)}",
+        )
+
+
+@router.get("/spaces")
+async def admin_list_spaces(
+    admin: Admin = Depends(get_admin),
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+    search: Optional[str] = None,
+):
+    """List spaces for admin browsing."""
+    query = db.query(Space).order_by(Space.created_at.desc())
+    if search:
+        query = query.filter(
+            or_(
+                Space.title.ilike(f"%{search}%"),
+                Space.description.ilike(f"%{search}%"),
+            )
+        )
+    total = query.count()
+    spaces = query.offset(offset).limit(limit).all()
+
+    results = []
+    for s in spaces:
+        owner = db.query(User).filter(User.id == s.owner_id).first()
+        idea_count = db.query(func.count(Idea.id)).filter(Idea.space_id == s.id).scalar()
+        theme_count = db.query(func.count(Theme.id)).filter(Theme.space_id == s.id).scalar()
+        results.append({
+            "id": str(s.id),
+            "title": s.title,
+            "description": s.description,
+            "owner_email": owner.email if owner else None,
+            "owner_name": owner.full_name if owner else None,
+            "idea_count": idea_count,
+            "theme_count": theme_count,
+            "clustering_mode": s.clustering_mode,
+            "created_at": s.created_at.isoformat(),
+            "updated_at": s.updated_at.isoformat(),
+        })
+
+    return {"spaces": results, "total": total}
 
