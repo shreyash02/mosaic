@@ -3090,12 +3090,16 @@ async def admin_import_space(
                 created_at=datetime.fromisoformat(log_entry["created_at"]) if log_entry.get("created_at") else datetime.utcnow(),
             ))
 
-        # Import theme events
+        # Import theme events — preserve run grouping with stable ID mapping
+        run_id_map: dict[str, uuid.UUID] = {}
         for te in payload.get("theme_events", []):
+            old_run_id = te.get("organize_run_id", "")
+            if old_run_id not in run_id_map:
+                run_id_map[old_run_id] = uuid.uuid4()
             db.add(ThemeEvent(
                 id=uuid.uuid4(),
                 space_id=new_space.id,
-                organize_run_id=uuid.uuid4(),  # new run id since original is meaningless
+                organize_run_id=run_id_map[old_run_id],
                 event_type=te["event_type"],
                 theme_name=te["theme_name"],
                 theme_color=te.get("theme_color"),
