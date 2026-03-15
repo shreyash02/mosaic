@@ -411,6 +411,8 @@ export default function SpaceDetailPage() {
   const [spaceActivityLoading, setSpaceActivityLoading] = useState(false);
   const spaceActivityLoadedRef = useRef(false);
   const [synthesisExpanded, setSynthesisExpanded] = useState(true);
+  const [showExpandedSynthesis, setShowExpandedSynthesis] = useState(false);
+  const [expandingSynthesis, setExpandingSynthesis] = useState(false);
   const [themesExpanded, setThemesExpanded] = useState(true);
   const [ideasExpanded, setIdeasExpanded] = useState(true);
   const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
@@ -762,6 +764,7 @@ export default function SpaceDetailPage() {
     setOrganizeTriggeredBy(null);
     setOrganizing(false);
     setResynthesizing(false);
+    setShowExpandedSynthesis(false);
     // Clear fallback poll timer since SSE delivered the event
     if (autoOrgPollRef.current) {
       clearTimeout(autoOrgPollRef.current);
@@ -824,12 +827,34 @@ export default function SpaceDetailPage() {
     setSpace(prev => prev ? { ...prev, suggestion_count: (prev.suggestion_count ?? 0) + 1 } : prev);
   }, [id]);
 
+  const handleSynthesisExpanded = useCallback((data: any) => {
+    if (data.space_id !== id) return;
+    setExpandingSynthesis(false);
+    if (data.error) {
+      addToast({ type: 'error', title: 'Failed to expand synthesis', message: data.error });
+      return;
+    }
+    setSpace(prev => {
+      if (!prev || !prev.purpose_synthesis) return prev;
+      return {
+        ...prev,
+        purpose_synthesis: {
+          ...prev.purpose_synthesis,
+          expanded_summary: data.expanded_summary,
+          expanded_theme_notes: data.expanded_theme_notes,
+        },
+      };
+    });
+    setShowExpandedSynthesis(true);
+  }, [id, addToast]);
+
   useSSEEvent('space_classify_completed', handleClassifyCompleted);
   useSSEEvent('space_organize_started', handleOrganizeStarted);
   useSSEEvent('space_organize_completed', handleOrganizeCompleted);
   useSSEEvent('space_idea_added', handleIdeaAdded);
   useSSEEvent('space_activity', handleSpaceActivity);
   useSSEEvent('space_suggestion_submitted', handleSuggestionSubmitted);
+  useSSEEvent('space_synthesis_expanded', handleSynthesisExpanded);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -1051,6 +1076,39 @@ export default function SpaceDetailPage() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to re-synthesize');
       setResynthesizing(false);
+    }
+  }
+
+  async function handleExpandSynthesis() {
+    if (!id || !space) return;
+    // If already have expanded data, just toggle visibility
+    if (space.purpose_synthesis?.expanded_summary) {
+      setShowExpandedSynthesis(prev => !prev);
+      return;
+    }
+    try {
+      setExpandingSynthesis(true);
+      const result = await api.expandSynthesis(id);
+      if (result.status === 'ready') {
+        // Cached — apply immediately
+        setSpace(prev => {
+          if (!prev || !prev.purpose_synthesis) return prev;
+          return {
+            ...prev,
+            purpose_synthesis: {
+              ...prev.purpose_synthesis,
+              expanded_summary: result.expanded_summary,
+              expanded_theme_notes: result.expanded_theme_notes,
+            },
+          };
+        });
+        setShowExpandedSynthesis(true);
+        setExpandingSynthesis(false);
+      }
+      // If status === 'started', keep expandingSynthesis=true — SSE handler will resolve it
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Failed to expand synthesis', message: err.response?.data?.detail || 'Something went wrong' });
+      setExpandingSynthesis(false);
     }
   }
 
@@ -2914,13 +2972,30 @@ export default function SpaceDetailPage() {
               </div>
               {synthesisExpanded && (
                 <>
-                  <div style={{
-                    fontSize: typography.fontSize.sm,
-                    color: 'var(--color-primary-700)',
-                    lineHeight: typography.lineHeight.relaxed,
-                  }}>
-                    {space.purpose_synthesis.space_summary}
-                  </div>
+                  {/* Compact summary — always shown */}
+                  {!showExpandedSynthesis && (
+                    <div style={{
+                      fontSize: typography.fontSize.sm,
+                      color: 'var(--color-primary-700)',
+                      lineHeight: typography.lineHeight.relaxed,
+                    }}>
+                      {space.purpose_synthesis.space_summary}
+                    </div>
+                  )}
+
+                  {/* Expanded summary — replaces compact when active */}
+                  {showExpandedSynthesis && space.purpose_synthesis.expanded_summary && (
+                    <div style={{
+                      fontSize: typography.fontSize.sm,
+                      color: 'var(--color-primary-700)',
+                      lineHeight: typography.lineHeight.relaxed,
+                    }}>
+                      {space.purpose_synthesis.expanded_summary.split('\n\n').map((paragraph, i) => (
+                        <p key={i} style={{ margin: i === 0 ? 0 : `${spacing[3]} 0 0 0` }}>{paragraph}</p>
+                      ))}
+                    </div>
+                  )}
+
                   {synthesisProgress && (synthesisProgress.completedCount > 0 || synthesisProgress.acceptedCount > 0) && (
                     <div style={{
                       fontSize: typography.fontSize.xs,
@@ -2932,15 +3007,64 @@ export default function SpaceDetailPage() {
                       {synthesisProgress.completedCount > 0 && `${synthesisProgress.completedCount} completed`}
                     </div>
                   )}
-                  {space.purpose_synthesis.generated_at && (
-                    <div style={{
-                      fontSize: typography.fontSize.xs,
-                      color: 'var(--color-primary-400)',
-                      marginTop: spacing[1],
-                    }}>
-                      Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
-                    </div>
-                  )}
+
+                  {/* Expand/Collapse button + generated date */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginTop: spacing[2],
+                  }}>
+                    {space.can_edit !== false && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleExpandSynthesis(); }}
+                        disabled={expandingSynthesis}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: expandingSynthesis ? 'wait' : 'pointer',
+                          color: 'var(--color-primary-500)',
+                          fontSize: typography.fontSize.xs,
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: spacing[1],
+                        }}
+                      >
+                        {expandingSynthesis ? (
+                          'Expanding...'
+                        ) : showExpandedSynthesis ? (
+                          <>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="4 14 10 14 10 20" />
+                              <polyline points="20 10 14 10 14 4" />
+                              <line x1="14" y1="10" x2="21" y2="3" />
+                              <line x1="3" y1="21" x2="10" y2="14" />
+                            </svg>
+                            Compact view
+                          </>
+                        ) : (
+                          <>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="15 3 21 3 21 9" />
+                              <polyline points="9 21 3 21 3 15" />
+                              <line x1="21" y1="3" x2="14" y2="10" />
+                              <line x1="3" y1="21" x2="10" y2="14" />
+                            </svg>
+                            Expand
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {space.purpose_synthesis.generated_at && (
+                      <span style={{
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-400)',
+                      }}>
+                        Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -3664,6 +3788,102 @@ export default function SpaceDetailPage() {
                         </div>
                       );
                     })}
+                    {/* Expanded theme analysis */}
+                    {showExpandedSynthesis && space.purpose_synthesis?.expanded_theme_notes?.[themeId] && (() => {
+                      const analysis = space.purpose_synthesis!.expanded_theme_notes![themeId];
+                      return (
+                        <div style={{
+                          marginTop: spacing[3],
+                          padding: spacing[3],
+                          backgroundColor: 'var(--color-primary-50)',
+                          borderRadius: borders.radius.md,
+                          border: '1px solid var(--color-primary-200)',
+                        }}>
+                          {analysis.narrative && (
+                            <div style={{
+                              fontSize: typography.fontSize.xs,
+                              color: 'var(--color-primary-700)',
+                              lineHeight: typography.lineHeight.relaxed,
+                              marginBottom: spacing[2],
+                            }}>
+                              {analysis.narrative}
+                            </div>
+                          )}
+                          {analysis.tensions?.length > 0 && (
+                            <div style={{ marginBottom: spacing[2] }}>
+                              <div style={{
+                                fontSize: typography.fontSize.xs,
+                                fontWeight: typography.fontWeight.medium,
+                                color: 'var(--color-primary-500)',
+                                marginBottom: spacing[1],
+                              }}>
+                                Tensions
+                              </div>
+                              {analysis.tensions.map((t: string, i: number) => (
+                                <div key={i} style={{
+                                  fontSize: typography.fontSize.xs,
+                                  color: 'var(--color-primary-600)',
+                                  lineHeight: typography.lineHeight.relaxed,
+                                  padding: `2px 0 2px ${spacing[3]}`,
+                                  borderLeft: '2px solid var(--color-primary-300)',
+                                  marginBottom: spacing[1],
+                                }}>
+                                  {t}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {analysis.open_questions?.length > 0 && (
+                            <div style={{ marginBottom: spacing[2] }}>
+                              <div style={{
+                                fontSize: typography.fontSize.xs,
+                                fontWeight: typography.fontWeight.medium,
+                                color: 'var(--color-primary-500)',
+                                marginBottom: spacing[1],
+                              }}>
+                                Open questions
+                              </div>
+                              {analysis.open_questions.map((q: string, i: number) => (
+                                <div key={i} style={{
+                                  fontSize: typography.fontSize.xs,
+                                  color: 'var(--color-primary-600)',
+                                  lineHeight: typography.lineHeight.relaxed,
+                                  padding: `2px 0 2px ${spacing[3]}`,
+                                  borderLeft: '2px solid var(--color-primary-300)',
+                                  marginBottom: spacing[1],
+                                }}>
+                                  {q}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {analysis.connections?.length > 0 && (
+                            <div>
+                              <div style={{
+                                fontSize: typography.fontSize.xs,
+                                fontWeight: typography.fontWeight.medium,
+                                color: 'var(--color-primary-500)',
+                                marginBottom: spacing[1],
+                              }}>
+                                Connections
+                              </div>
+                              {analysis.connections.map((c: string, i: number) => (
+                                <div key={i} style={{
+                                  fontSize: typography.fontSize.xs,
+                                  color: 'var(--color-primary-600)',
+                                  lineHeight: typography.lineHeight.relaxed,
+                                  padding: `2px 0 2px ${spacing[3]}`,
+                                  borderLeft: '2px solid var(--color-primary-300)',
+                                  marginBottom: spacing[1],
+                                }}>
+                                  {c}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}

@@ -1857,6 +1857,13 @@ export const SPACE_PURPOSES: Record<SpacePurpose, { label: string; description: 
   actions: { label: 'Plan next steps', description: 'Turn ideas into actionable items' },
 };
 
+export interface ExpandedThemeAnalysis {
+  narrative: string;
+  tensions: string[];
+  open_questions: string[];
+  connections: string[];
+}
+
 export interface PurposeSynthesis {
   space_summary: string;
   theme_notes: Record<string, string[]>;
@@ -1865,6 +1872,8 @@ export interface PurposeSynthesis {
   dismiss_reasons?: Record<string, string>;
   completion_outcomes?: Record<string, string>;
   completion_outcome_images?: Record<string, string>;
+  expanded_summary?: string;
+  expanded_theme_notes?: Record<string, ExpandedThemeAnalysis>;
 }
 
 export interface SynthesisActivityEntry {

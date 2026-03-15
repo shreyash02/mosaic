@@ -1508,6 +1508,11 @@ class ApiService {
     return response.data;
   }
 
+  async expandSynthesis(spaceId: string): Promise<{ status: string; expanded_summary?: string; expanded_theme_notes?: Record<string, any>; message?: string }> {
+    const response = await this.client.post<{ status: string; expanded_summary?: string; expanded_theme_notes?: Record<string, any>; message?: string }>(`/spaces/${spaceId}/expand-synthesis`);
+    return response.data;
+  }
+
   async getGraphData(spaceId: string): Promise<GraphData> {
     const response = await this.client.get<GraphData>(`/spaces/${spaceId}/graph`);
     return response.data;

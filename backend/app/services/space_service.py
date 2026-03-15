@@ -1246,6 +1246,168 @@ Return JSON only:
 
 Use the exact theme names as keys in theme_notes. Be specific and actionable, not generic."""
 
+    def generate_expanded_synthesis(
+        self,
+        db: Session,
+        space_id: UUID,
+        purpose: str,
+        compact_summary: str,
+        compact_theme_notes: Dict[str, list],
+    ) -> Optional[Dict[str, Any]]:
+        """Generate an expanded, detailed synthesis building on the compact version.
+
+        Returns dict with expanded_summary (narrative) and expanded_theme_notes
+        (dict of theme_id -> detailed analysis object).
+        """
+        from app.models.theme import Theme
+        from app.models.idea import Idea
+        from app.models.idea_theme import IdeaTheme
+
+        themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+        if not themes:
+            return None
+
+        # Build theme data with member ideas
+        theme_data: List[Dict[str, Any]] = []
+        id_to_name: Dict[str, str] = {}
+        for theme in themes:
+            assignments = (
+                db.query(IdeaTheme)
+                .filter(IdeaTheme.theme_id == theme.id)
+                .all()
+            )
+            if not assignments:
+                continue
+            idea_ids = [a.idea_id for a in assignments]
+            member_ideas = (
+                db.query(Idea)
+                .filter(Idea.id.in_(idea_ids), Idea.status == "active")
+                .limit(15)
+                .all()
+            )
+            theme_data.append({
+                "id": str(theme.id),
+                "name": theme.name,
+                "summary": theme.summary or "",
+                "ideas": [i.text for i in member_ideas],
+            })
+            id_to_name[str(theme.id)] = theme.name
+
+        if not theme_data:
+            return None
+
+        # Convert compact_theme_notes from id-keyed to name-keyed for the prompt
+        compact_notes_by_name = {}
+        for tid, notes in compact_theme_notes.items():
+            name = id_to_name.get(tid)
+            if name:
+                compact_notes_by_name[name] = notes
+
+        prompt = self._build_expanded_prompt(
+            purpose, theme_data, compact_summary, compact_notes_by_name
+        )
+
+        try:
+            t0 = time.time()
+            response = self.anthropic_client.messages.create(
+                model=self.llm_model,
+                max_tokens=4000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type="space_expanded_synthesis",
+                provider="anthropic",
+                model=self.llm_model,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                latency_ms=latency,
+            )
+
+            text = response.content[0].text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            result = json.loads(text)
+
+            # Map theme names -> theme IDs
+            name_to_id: Dict[str, str] = {}
+            name_to_id_lower: Dict[str, str] = {}
+            for td in theme_data:
+                name_to_id[td["name"]] = td["id"]
+                name_to_id_lower[td["name"].lower()] = td["id"]
+
+            raw_notes = result.get("theme_analysis", {})
+            mapped_notes: Dict[str, dict] = {}
+            for theme_name, analysis in raw_notes.items():
+                theme_id = name_to_id.get(theme_name) or name_to_id_lower.get(theme_name.lower())
+                if theme_id and isinstance(analysis, dict):
+                    mapped_notes[theme_id] = analysis
+
+            return {
+                "expanded_summary": result.get("expanded_summary", ""),
+                "expanded_theme_notes": mapped_notes,
+            }
+        except Exception:
+            logger.warning("Failed to generate expanded synthesis", exc_info=True)
+            return None
+
+    @staticmethod
+    def _build_expanded_prompt(
+        purpose: str,
+        theme_data: List[Dict[str, Any]],
+        compact_summary: str,
+        compact_theme_notes: Dict[str, list],
+    ) -> str:
+        """Build a prompt for expanded/detailed synthesis."""
+        themes_section = ""
+        for td in theme_data:
+            ideas_text = "\n".join(f"  - {idea}" for idea in td["ideas"])
+            compact_notes = compact_theme_notes.get(td["name"], [])
+            notes_text = "\n".join(f"  - {n}" for n in compact_notes) if compact_notes else "  (none)"
+            themes_section += (
+                f'\nTheme: "{td["name"]}"\n'
+                f'Summary: {td["summary"]}\n'
+                f'Ideas:\n{ideas_text}\n'
+                f'Current synthesis notes:\n{notes_text}\n'
+            )
+
+        purpose_framing = {
+            "actions": "Focus on strategic reasoning behind each action area — why these steps matter, what risks exist, and how themes build on each other.",
+            "insights": "Go deeper into each pattern — what evidence supports it, what tensions exist, and what might be missing from the picture.",
+            "connections": "Elaborate on the relationships between themes — shared roots, productive tensions, and how they might evolve together.",
+            "explore": "Expand on the emerging directions — what makes each promising, what unknowns remain, and where the most interesting intersections lie.",
+            "organize": "Analyze the groupings — what each cluster reveals about the underlying structure, what doesn't fit neatly, and what gaps exist.",
+        }
+
+        framing = purpose_framing.get(purpose, purpose_framing["explore"])
+
+        return f"""You have already produced a compact synthesis of this space. Now provide a detailed, expanded analysis that goes much deeper.
+
+Compact summary: {compact_summary}
+
+Themes and their ideas:
+{themes_section}
+
+{framing}
+
+Provide a detailed JSON response with:
+
+1. "expanded_summary": A rich narrative (2-3 paragraphs) that covers:
+   - The overall landscape of ideas and what they reveal
+   - Cross-theme connections, tensions, or surprising relationships
+   - Open questions or areas that deserve more attention
+
+2. "theme_analysis": For each theme (using exact theme names as keys), an object with:
+   - "narrative": A detailed paragraph analyzing this theme in depth — what the ideas reveal, what's most significant, and nuances the compact version missed
+   - "tensions": 1-2 tensions or trade-offs within this theme (array of strings)
+   - "open_questions": 1-2 questions that remain unresolved or worth exploring (array of strings)
+   - "connections": 1-2 specific connections to other themes by name (array of strings)
+
+Return JSON only:
+{{"expanded_summary": "...", "theme_analysis": {{"Theme Name": {{"narrative": "...", "tensions": ["..."], "open_questions": ["..."], "connections": ["..."]}}}}}}
+
+Be specific and grounded in the actual ideas. Avoid generic observations."""
+
     @staticmethod
     def generate_starter_prompts(
         title: str,

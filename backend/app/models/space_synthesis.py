@@ -32,6 +32,8 @@ class SpaceSynthesis(Base):
     dismiss_reasons = Column(JSONB, nullable=True, default=dict)
     completion_outcomes = Column(JSONB, nullable=True, default=dict)
     completion_outcome_images = Column(JSONB, nullable=True, default=dict)
+    expanded_summary = Column(Text, nullable=True)
+    expanded_theme_notes = Column(JSONB, nullable=True)
     is_current = Column(Boolean, default=True, nullable=False)
     generated_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

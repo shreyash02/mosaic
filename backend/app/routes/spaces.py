@@ -294,6 +294,8 @@ def _build_snapshot_data(db: Session, space: Space) -> dict:
             "completion_outcomes": synthesis_row.completion_outcomes or {},
             "completion_outcome_images": synthesis_row.completion_outcome_images or {},
             "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+            "expanded_summary": synthesis_row.expanded_summary,
+            "expanded_theme_notes": synthesis_row.expanded_theme_notes or {},
         }
         synthesis_purpose = synthesis_row.purpose
 
@@ -399,6 +401,8 @@ def _build_space_response(space: Space, db: Session, current_user: Optional[User
             "completion_outcomes": synthesis_row.completion_outcomes or {},
             "completion_outcome_images": synthesis_row.completion_outcome_images or {},
             "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+            "expanded_summary": synthesis_row.expanded_summary,
+            "expanded_theme_notes": synthesis_row.expanded_theme_notes or {},
         }
         synthesis_purpose = synthesis_row.purpose
 
@@ -1729,6 +1733,85 @@ def resynthesize_space(
     )
 
     return {"message": "Re-synthesis started", "purpose": data.purpose}
+
+
+def run_expand_synthesis_task(space_id: UUID, synthesis_id: UUID, purpose: str, space_summary: str, theme_notes: dict, db_url: str):
+    """Background task to generate expanded synthesis."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.space_service import SpaceService
+    from app.services.platform_settings_service import get_llm_model
+    from app.models.space_synthesis import SpaceSynthesis
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        llm_model = get_llm_model(db)
+        service = SpaceService(model=llm_model)
+        result = service.generate_expanded_synthesis(
+            db, space_id, purpose, space_summary, theme_notes,
+        )
+
+        if result:
+            synthesis_row = db.query(SpaceSynthesis).filter(SpaceSynthesis.id == synthesis_id).first()
+            if synthesis_row:
+                synthesis_row.expanded_summary = result["expanded_summary"]
+                synthesis_row.expanded_theme_notes = result.get("expanded_theme_notes", {})
+                db.commit()
+
+        _broadcast_sse_to_space(db, space_id, "space_synthesis_expanded", {
+            "space_id": str(space_id),
+            "expanded_summary": result.get("expanded_summary", "") if result else "",
+            "expanded_theme_notes": result.get("expanded_theme_notes", {}) if result else {},
+        })
+    except Exception as e:
+        logger.error(f"Error in expand-synthesis for space {space_id}: {e}", exc_info=True)
+        _broadcast_sse_to_space(db, space_id, "space_synthesis_expanded", {
+            "space_id": str(space_id),
+            "error": "Failed to generate expanded synthesis",
+        })
+    finally:
+        db.close()
+        engine.dispose()
+
+
+@router.post("/{space_id}/expand-synthesis", status_code=status.HTTP_202_ACCEPTED)
+def expand_synthesis(
+    space_id: UUID,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate an expanded, detailed version of the current synthesis."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+
+    # Get current synthesis
+    synthesis_row = _get_current_synthesis(db, space.id)
+    if not synthesis_row or not synthesis_row.space_summary:
+        raise HTTPException(status_code=400, detail="No synthesis to expand. Organize the space first.")
+
+    # If already expanded, return existing immediately
+    if synthesis_row.expanded_summary:
+        return {
+            "status": "ready",
+            "expanded_summary": synthesis_row.expanded_summary,
+            "expanded_theme_notes": synthesis_row.expanded_theme_notes or {},
+        }
+
+    background_tasks.add_task(
+        run_expand_synthesis_task,
+        space_id=space.id,
+        synthesis_id=synthesis_row.id,
+        purpose=synthesis_row.purpose,
+        space_summary=synthesis_row.space_summary,
+        theme_notes=synthesis_row.theme_notes or {},
+        db_url=str(settings.DATABASE_URL),
+    )
+
+    return {"status": "started", "message": "Expanding synthesis..."}
 
 
 @router.get("/{space_id}/graph", response_model=GraphData)
