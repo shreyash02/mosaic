@@ -6,6 +6,7 @@ interface Props {
   runs: OrganizeRun[];
   expanded?: boolean;
   onToggle?: () => void;
+  onThemeClick?: (themeName: string) => void;
 }
 
 const s = {
@@ -96,7 +97,18 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
-function EventDescription({ event }: { event: ThemeEvent }) {
+function ThemeNameLink({ name, onClick }: { name: string; onClick?: (name: string) => void }) {
+  return (
+    <span
+      style={{ fontWeight: typography.fontWeight.medium, cursor: onClick ? 'pointer' : 'default' }}
+      onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(name); } }}
+    >
+      {name}
+    </span>
+  );
+}
+
+function EventDescription({ event, onThemeClick }: { event: ThemeEvent; onThemeClick?: (name: string) => void }) {
   const details = event.details || {};
   const themeName = event.theme_name;
 
@@ -105,7 +117,7 @@ function EventDescription({ event }: { event: ThemeEvent }) {
     return (
       <div>
         <div>
-          <span style={{ fontWeight: typography.fontWeight.medium }}>{themeName}</span>
+          <ThemeNameLink name={themeName} onClick={onThemeClick} />
           {' emerged with '}
           {details.idea_count ?? 0}
           {' idea'}
@@ -125,7 +137,7 @@ function EventDescription({ event }: { event: ThemeEvent }) {
     return (
       <div>
         <div>
-          <span style={{ fontWeight: typography.fontWeight.medium }}>{themeName}</span>
+          <ThemeNameLink name={themeName} onClick={onThemeClick} />
           {' retired'}
         </div>
         {dests && dests.length > 0 && (
@@ -146,13 +158,13 @@ function EventDescription({ event }: { event: ThemeEvent }) {
 
   return (
     <div>
-      <span style={{ fontWeight: typography.fontWeight.medium }}>{themeName}</span>
+      <ThemeNameLink name={themeName} onClick={onThemeClick} />
       {parts.length > 0 ? `: ${parts.join(', ')}` : ': unchanged'}
     </div>
   );
 }
 
-export default function ThemeEvolutionTimeline({ runs, expanded, onToggle }: Props) {
+export default function ThemeEvolutionTimeline({ runs, expanded, onToggle, onThemeClick }: Props) {
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(() => {
     // Expand the most recent run by default
     if (runs.length > 0) return new Set([runs[0].run_id]);
@@ -246,7 +258,7 @@ export default function ThemeEvolutionTimeline({ runs, expanded, onToggle }: Pro
                               border: `2px solid ${EVENT_COLORS[event.event_type] || '#9ca3af'}`,
                             }}
                           />
-                          <EventDescription event={event} />
+                          <EventDescription event={event} onThemeClick={onThemeClick} />
                         </div>
                       ))}
                     </div>

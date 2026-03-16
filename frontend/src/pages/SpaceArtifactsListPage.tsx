@@ -69,7 +69,7 @@ export default function SpaceArtifactsListPage() {
   const groupedArtifacts = useMemo(() => {
     if (!artifacts.length) return [];
 
-    const groups = new Map<string, { synthesisId: string | null; artifacts: SpaceArtifact[] }>();
+    const groups = new Map<string, { runId: string | null; artifacts: SpaceArtifact[] }>();
 
     for (const artifact of artifacts) {
       const key = artifact.organize_run_id || 'unassigned';

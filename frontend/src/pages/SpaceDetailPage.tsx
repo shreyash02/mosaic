@@ -1105,6 +1105,18 @@ export default function SpaceDetailPage() {
     }
   }
 
+  const handleEvolutionThemeClick = useCallback((themeName: string) => {
+    // Find by exact name first, then case-insensitive
+    const theme = themes.find(t => t.name === themeName)
+      || themes.find(t => t.name.toLowerCase() === themeName.toLowerCase());
+    if (theme) {
+      setSelectedThemeId(prev => prev === theme.id ? null : theme.id);
+      setSelectedEdge(null);
+    } else {
+      addToast({ type: 'info', title: 'Theme not in current state', message: `"${themeName}" was retired or renamed in a later organize` });
+    }
+  }, [themes, addToast]);
+
   async function handleResynthesize(purpose: string) {
     if (!id) return;
     try {
@@ -2798,7 +2810,7 @@ export default function SpaceDetailPage() {
             )
           ) : evolutionStyle === 'timeline' ? (
             <div style={{ flex: 1, overflow: 'auto' }}>
-              <ThemeEvolutionTimeline runs={evolution} expanded onToggle={() => {}} />
+              <ThemeEvolutionTimeline runs={evolution} expanded onToggle={() => {}} onThemeClick={handleEvolutionThemeClick} />
             </div>
           ) : (
             <PanZoomContainer
@@ -2816,9 +2828,10 @@ export default function SpaceDetailPage() {
                       setShowArtifactModal(true);
                     }).catch(() => {});
                   }}
+                  onThemeClick={handleEvolutionThemeClick}
                 />
               ) : (
-                <ThemeEvolutionBranch runs={evolution} />
+                <ThemeEvolutionBranch runs={evolution} onThemeClick={handleEvolutionThemeClick} />
               )}
             </PanZoomContainer>
           )}

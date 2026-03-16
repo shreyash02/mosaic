@@ -22,6 +22,7 @@ interface Props {
   runs: OrganizeRun[];
   spaceId?: string;
   artifacts?: SpaceArtifact[];
+  onThemeClick?: (themeName: string) => void;
   onArtifactClick?: (artifact: SpaceArtifact) => void;
 }
 
@@ -153,21 +154,40 @@ function buildSankeyData(runs: OrganizeRun[]) {
   return { nodes, links, dates, runIds };
 }
 
+// Store the click handler in a ref-like variable accessible to the renderer
+let _onThemeClickHandler: ((name: string) => void) | undefined;
+
 function SankeyNodeRenderer({ x, y, width, height, payload }: any) {
   const n = payload as NodeData;
   const labelWidth = 120;
   const labelHeight = Math.max(height, 32);
+  const clickable = !!_onThemeClickHandler;
 
   return (
     <g>
-      <rect x={x} y={y} width={width} height={height} fill={n.color} rx={2} />
+      <rect
+        x={x} y={y} width={width} height={height} fill={n.color} rx={2}
+        data-no-pan=""
+        style={{ cursor: clickable ? 'pointer' : 'default' }}
+        onClick={() => _onThemeClickHandler?.(n.displayName)}
+      />
       <foreignObject
         x={x + width + 6}
         y={y + height / 2 - labelHeight / 2}
         width={labelWidth}
         height={labelHeight}
+        data-no-pan=""
+        style={{ pointerEvents: 'all', overflow: 'visible' }}
       >
         <div
+          data-no-pan
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            _onThemeClickHandler?.(n.displayName);
+          }}
+          role="button"
+          tabIndex={0}
           style={{
             fontSize: 11,
             color: 'var(--color-primary-700)',
@@ -178,6 +198,8 @@ function SankeyNodeRenderer({ x, y, width, height, payload }: any) {
             height: '100%',
             overflow: 'hidden',
             wordBreak: 'break-word',
+            cursor: clickable ? 'pointer' : 'default',
+            pointerEvents: 'all',
           }}
         >
           {n.displayName}
@@ -222,7 +244,7 @@ const emptyStyle: React.CSSProperties = {
   textAlign: 'center',
 };
 
-export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], onArtifactClick }: Props) {
+export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], onArtifactClick, onThemeClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
@@ -283,6 +305,9 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
     }
     return map;
   }, [runIds, artifacts]);
+
+  // Set the module-level handler so the static renderer can access it
+  _onThemeClickHandler = onThemeClick;
 
   const handleMouseEnter = useCallback((item: any, type: string, e: React.MouseEvent) => {
     if (!containerRef.current) return;

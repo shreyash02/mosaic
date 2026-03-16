@@ -5,6 +5,7 @@ import { usePanZoomContext } from '../hooks/usePanZoom';
 
 interface Props {
   runs: OrganizeRun[];
+  onThemeClick?: (themeName: string) => void;
 }
 
 interface LaneTheme {
@@ -174,7 +175,7 @@ const emptyStyle: React.CSSProperties = {
   textAlign: 'center',
 };
 
-export default function ThemeEvolutionBranch({ runs }: Props) {
+export default function ThemeEvolutionBranch({ runs, onThemeClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
@@ -307,6 +308,7 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
         {laneOrder.map((theme, li) => (
           <text
             key={`label-${li}`}
+            data-no-pan
             x={labelWidth - LABEL_PADDING}
             y={laneY(li)}
             textAnchor="end"
@@ -315,6 +317,8 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
             fill="var(--color-primary-700)"
             fontFamily={typography.fontFamily.sans}
             fontWeight={typography.fontWeight.normal}
+            style={{ cursor: onThemeClick ? 'pointer' : 'default' }}
+            onClick={() => onThemeClick?.(theme.name)}
           >
             {theme.name}
           </text>
@@ -410,7 +414,9 @@ export default function ThemeEvolutionBranch({ runs }: Props) {
                   fill={theme.color}
                   stroke="var(--color-primary-50)"
                   strokeWidth={2}
-                  style={{ cursor: 'pointer' }}
+                  data-no-pan
+                  style={{ cursor: onThemeClick ? 'pointer' : 'default' }}
+                  onClick={() => onThemeClick?.(theme.name)}
                   onMouseEnter={(e) => handleDotEnter(e, theme, ri)}
                   onMouseMove={(e) => handleDotEnter(e, theme, ri)}
                   onMouseLeave={handleMouseLeave}
