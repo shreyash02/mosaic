@@ -481,7 +481,6 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                                 href={`/spaces/${spaceId}/checkpoint?run=${runIds[i]}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={(e) => { e.stopPropagation(); }}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',

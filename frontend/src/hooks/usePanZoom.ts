@@ -121,7 +121,7 @@ export function usePanZoom(options?: UsePanZoomOptions) {
   const handleMouseDownCapture = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as Element;
-    if (target.closest('button')) return;
+    if (target.closest('button, a, [data-no-pan]')) return;
 
     e.preventDefault();
     setIsPanning(true);
