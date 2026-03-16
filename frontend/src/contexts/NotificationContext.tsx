@@ -116,6 +116,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Setup SSE connection
+  // TODO: Migrate to WebSocket when we need bidirectional communication (e.g. live
+  // collaboration in spaces). WebSocket also has better proxy support (Vite `ws: true`)
+  // and avoids HTTP/1.1 connection-pool issues in dev. SSE works fine in production.
   const setupEventSource = useCallback(() => {
     if (!isAuthenticated) return;
 
