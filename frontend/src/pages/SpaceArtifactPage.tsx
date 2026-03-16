@@ -21,10 +21,18 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
 };
 
 function summarizeRefinement(text: string): string {
-  const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  const cleaned = text.trim().replace(/^[-•*]\s*/, '');
+  const words = cleaned.split(/\s+/).filter(Boolean).slice(0, 12);
   if (words.length === 0) return '';
-  const summary = words.join(' ');
+  let summary = words.join(' ');
+  if (cleaned.split(/\s+/).length > 12) summary += '...';
   return summary.charAt(0).toUpperCase() + summary.slice(1).replace(/[.,;:!?]+$/, '');
+}
+
+function formatShortDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
 export default function SpaceArtifactPage() {
@@ -50,9 +58,20 @@ export default function SpaceArtifactPage() {
     Promise.all([
       api.getArtifact(spaceId, artifactId),
       api.getSpace(spaceId).catch(() => null),
-    ]).then(([art, spaceData]) => {
-      setArtifact(art);
+    ]).then(async ([art, spaceData]) => {
       if (spaceData) setSpaceTitle(spaceData.title || '');
+      // If this is the original and there are newer versions, load the latest
+      if (art.versions?.length > 1 && art.version === 1) {
+        const latest = art.versions[0]; // versions are sorted desc
+        if (latest.id !== art.id) {
+          try {
+            const latestArt = await api.getArtifact(spaceId!, latest.id);
+            setArtifact(latestArt);
+            return;
+          } catch { /* fall through to original */ }
+        }
+      }
+      setArtifact(art);
     }).catch((err: any) => {
       setError(err.response?.data?.detail || 'Failed to load artifact');
     }).finally(() => setLoading(false));
@@ -129,7 +148,7 @@ export default function SpaceArtifactPage() {
                   position: 'absolute', top: '100%', right: 0, marginTop: 4,
                   backgroundColor: 'var(--color-primary-50)', border: '1px solid var(--color-primary-200)',
                   borderRadius: borders.radius.md, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  padding: spacing[1], minWidth: 240, zIndex: 20,
+                  padding: spacing[1], minWidth: 360, zIndex: 20,
                 }}>
                   {artifact.versions!.map(v => (
                     <div
@@ -155,14 +174,23 @@ export default function SpaceArtifactPage() {
                           color: 'inherit', padding: 0, fontFamily: 'inherit',
                         }}
                       >
-                        <span style={{ fontWeight: typography.fontWeight.medium }}>v{v.version}</span>
-                        {v.version === 1 ? (
-                          <span style={{ color: 'var(--color-primary-400)', marginLeft: spacing[2] }}>Original</span>
-                        ) : v.refinement ? (
-                          <span style={{ color: 'var(--color-primary-500)', marginLeft: spacing[2] }}>
-                            {summarizeRefinement(v.refinement)}
-                          </span>
-                        ) : null}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                            <span style={{ fontWeight: typography.fontWeight.medium }}>v{v.version}</span>
+                            {v.version === 1 ? (
+                              <span style={{ color: 'var(--color-primary-400)' }}>Original</span>
+                            ) : v.refinement ? (
+                              <span style={{ color: 'var(--color-primary-500)' }}>
+                                {v.refinement_summary || summarizeRefinement(v.refinement)}
+                              </span>
+                            ) : null}
+                          </div>
+                          {v.created_at && (
+                            <div style={{ fontSize: 10, color: 'var(--color-primary-400)', marginTop: 1 }}>
+                              {formatShortDateTime(v.created_at)}
+                            </div>
+                          )}
+                        </div>
                       </button>
                       {confirmDeleteVersionId === v.id ? (
                         <button
@@ -218,13 +246,17 @@ export default function SpaceArtifactPage() {
             <button
               onClick={() => setShowRefine(true)}
               style={{
-                display: 'flex', alignItems: 'center', gap: spacing[1],
-                padding: `${spacing[1]} ${spacing[3]}`, fontSize: typography.fontSize.xs,
-                color: 'var(--color-primary-600)', backgroundColor: 'transparent',
-                border: '1px solid var(--color-primary-300)', borderRadius: borders.radius.sm, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[4]}`, fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium,
+                color: 'var(--color-primary-700)', backgroundColor: 'var(--color-primary-100)',
+                border: '1px solid var(--color-primary-300)', borderRadius: borders.radius.md, cursor: 'pointer',
+                transition: 'all 0.15s ease',
               }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary-200)'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
@@ -240,7 +272,7 @@ export default function SpaceArtifactPage() {
           )}
           {artifact.created_at && (
             <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
-              Generated {new Date(artifact.created_at).toLocaleDateString()}
+              Last generated: {formatShortDateTime(artifact.created_at)}
             </span>
           )}
         </div>

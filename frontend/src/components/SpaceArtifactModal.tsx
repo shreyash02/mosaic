@@ -20,11 +20,19 @@ const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: str
 ];
 
 function summarizeRefinement(text: string): string {
-  // Take first 4 words, capitalize first letter
-  const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  // Strip leading dashes/bullets, take up to 8 words
+  const cleaned = text.trim().replace(/^[-•*]\s*/, '');
+  const words = cleaned.split(/\s+/).filter(Boolean).slice(0, 12);
   if (words.length === 0) return '';
-  const summary = words.join(' ');
+  let summary = words.join(' ');
+  if (cleaned.split(/\s+/).length > 12) summary += '...';
   return summary.charAt(0).toUpperCase() + summary.slice(1).replace(/[.,;:!?]+$/, '');
+}
+
+function formatShortDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
 function countWords(text: string): number {
@@ -360,7 +368,7 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
                       borderRadius: borders.radius.md,
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                       padding: spacing[1],
-                      minWidth: 200,
+                      minWidth: 340,
                       zIndex: 20,
                     }}>
                       {artifact.versions!.map(v => (
@@ -393,14 +401,23 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
                               color: 'inherit', padding: 0, fontFamily: 'inherit',
                             }}
                           >
-                            <span style={{ fontWeight: typography.fontWeight.medium }}>v{v.version}</span>
-                            {v.version === 1 ? (
-                              <span style={{ color: 'var(--color-primary-400)', marginLeft: spacing[2] }}>Original</span>
-                            ) : v.refinement ? (
-                              <span style={{ color: 'var(--color-primary-500)', marginLeft: spacing[2] }}>
-                                {summarizeRefinement(v.refinement)}
-                              </span>
-                            ) : null}
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                                <span style={{ fontWeight: typography.fontWeight.medium }}>v{v.version}</span>
+                                {v.version === 1 ? (
+                                  <span style={{ color: 'var(--color-primary-400)' }}>Original</span>
+                                ) : v.refinement ? (
+                                  <span style={{ color: 'var(--color-primary-500)' }}>
+                                    {v.refinement_summary || summarizeRefinement(v.refinement)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {v.created_at && (
+                                <div style={{ fontSize: 10, color: 'var(--color-primary-400)', marginTop: 1 }}>
+                                  {formatShortDateTime(v.created_at)}
+                                </div>
+                              )}
+                            </div>
                           </button>
                           {confirmDeleteVersionId === v.id ? (
                             <button

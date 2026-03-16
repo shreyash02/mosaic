@@ -2796,7 +2796,7 @@ export default function SpaceDetailPage() {
                   spaceId={id}
                   artifacts={artifacts}
                   onArtifactClick={(a) => {
-                    api.getArtifact(id!, a.id).then(full => {
+                    api.getArtifact(id!, a.latest_version_id || a.id).then(full => {
                       setViewingArtifact(full);
                       setShowArtifactModal(true);
                     }).catch(() => {});
@@ -3141,7 +3141,7 @@ export default function SpaceDetailPage() {
                       key={a.id}
                       onClick={() => {
                         if (a.status === 'ready') {
-                          api.getArtifact(id!, a.id).then(full => {
+                          api.getArtifact(id!, a.latest_version_id || a.id).then(full => {
                             setViewingArtifact(full);
                             setShowArtifactModal(true);
                           }).catch(() => {});
