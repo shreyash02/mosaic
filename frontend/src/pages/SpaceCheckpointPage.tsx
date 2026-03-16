@@ -444,6 +444,23 @@ export default function SpaceCheckpointPage() {
                     }}>
                       {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}
                     </span>
+                    {a.artifact_type === 'custom' && (a.title || a.user_context) && (
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: typography.fontWeight.normal,
+                        color: 'var(--color-primary-500)',
+                        textAlign: 'center',
+                        lineHeight: 1.3,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        wordBreak: 'break-word',
+                        maxWidth: '100%',
+                      }}>
+                        {a.user_context || a.title}
+                      </span>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                       {a.created_at && (
                         <span style={{ fontSize: 10, color: 'var(--color-primary-500)' }}>
