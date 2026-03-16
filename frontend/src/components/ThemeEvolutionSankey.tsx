@@ -1,14 +1,16 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { Sankey, ResponsiveContainer } from 'recharts';
-import type { OrganizeRun } from '../types';
+import type { OrganizeRun, SpaceArtifact } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePanZoomContext } from '../hooks/usePanZoom';
 
 interface Props {
   runs: OrganizeRun[];
+  artifacts?: SpaceArtifact[];
+  onArtifactClick?: (artifact: SpaceArtifact) => void;
 }
 
-const MARGIN = { top: 40, right: 140, bottom: 10, left: 10 };
+const MARGIN = { top: 54, right: 140, bottom: 10, left: 10 };
 const NODE_WIDTH = 14;
 const NODE_PADDING = 24;
 
@@ -204,7 +206,7 @@ const emptyStyle: React.CSSProperties = {
   textAlign: 'center',
 };
 
-export default function ThemeEvolutionSankey({ runs }: Props) {
+export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
@@ -231,6 +233,27 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
     if (!data) return [];
     return data.dates;
   }, [data]);
+
+  // Map artifacts to run indices by matching timestamps
+  const artifactsByRunIndex = useMemo(() => {
+    if (!dates.length || !artifacts.length) return new Map<number, SpaceArtifact[]>();
+    const map = new Map<number, SpaceArtifact[]>();
+    const readyArtifacts = artifacts.filter(a => a.status === 'ready' && a.created_at);
+    for (const artifact of readyArtifacts) {
+      const artTime = new Date(artifact.created_at!).getTime();
+      // Find the latest run that happened before this artifact
+      let bestIdx = dates.length - 1;
+      for (let i = dates.length - 1; i >= 0; i--) {
+        if (new Date(dates[i]).getTime() <= artTime) {
+          bestIdx = i;
+          break;
+        }
+      }
+      if (!map.has(bestIdx)) map.set(bestIdx, []);
+      map.get(bestIdx)!.push(artifact);
+    }
+    return map;
+  }, [dates, artifacts]);
 
   const handleMouseEnter = useCallback((item: any, type: string, e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -291,7 +314,7 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
           transform: `translateX(${clampedTx}px)`,
           position: 'relative',
         }}>
-          {/* Date labels as HTML overlay — evenly spaced, independent of Sankey node positions */}
+          {/* Date labels + artifact indicators as HTML overlay */}
           {dates.length > 0 && (
             <div style={{
               position: 'absolute',
@@ -301,24 +324,74 @@ export default function ThemeEvolutionSankey({ runs }: Props) {
               height: MARGIN.top,
               display: 'flex',
               justifyContent: dates.length === 1 ? 'flex-start' : 'space-between',
-              alignItems: 'flex-end',
-              paddingBottom: 4,
+              alignItems: 'flex-start',
+              paddingTop: 4,
               pointerEvents: 'none',
             }}>
-              {dates.map((date, i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: 10,
-                    color: 'var(--color-primary-500)',
-                    fontFamily: typography.fontFamily.sans,
-                    whiteSpace: 'nowrap',
-                    textAlign: 'center',
-                  }}
-                >
-                  {formatShortDate(date)}
-                </span>
-              ))}
+              {dates.map((date, i) => {
+                const runArtifacts = artifactsByRunIndex.get(i);
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: 'var(--color-primary-500)',
+                        fontFamily: typography.fontFamily.sans,
+                        whiteSpace: 'nowrap',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {formatShortDate(date)}
+                    </span>
+                    {runArtifacts && runArtifacts.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        gap: 3,
+                        pointerEvents: 'auto',
+                      }}>
+                        {runArtifacts.slice(0, 3).map(a => (
+                          <button
+                            key={a.id}
+                            title={a.title || a.artifact_type}
+                            onClick={() => onArtifactClick?.(a)}
+                            style={{
+                              width: 14,
+                              height: 14,
+                              padding: 0,
+                              border: 'none',
+                              borderRadius: borders.radius.sm,
+                              backgroundColor: 'var(--color-primary-300)',
+                              color: 'var(--color-primary-600)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                          </button>
+                        ))}
+                        {runArtifacts.length > 3 && (
+                          <span style={{ fontSize: 9, color: 'var(--color-primary-400)', lineHeight: '14px' }}>
+                            +{runArtifacts.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
           <ResponsiveContainer width="100%" height="100%">

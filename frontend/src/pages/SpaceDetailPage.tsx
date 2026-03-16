@@ -2791,7 +2791,16 @@ export default function SpaceDetailPage() {
               cssTransform={false}
             >
               {evolutionStyle === 'flow' ? (
-                <ThemeEvolutionSankey runs={evolution} />
+                <ThemeEvolutionSankey
+                  runs={evolution}
+                  artifacts={artifacts}
+                  onArtifactClick={(a) => {
+                    api.getArtifact(id!, a.id).then(full => {
+                      setViewingArtifact(full);
+                      setShowArtifactModal(true);
+                    }).catch(() => {});
+                  }}
+                />
               ) : (
                 <ThemeEvolutionBranch runs={evolution} />
               )}
