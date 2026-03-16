@@ -20,6 +20,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",
     "jszip": "^3.10.1",
+    "lucide-react": "^0.577.0",
     "posthog-js": "^1.353.1",
     "pptxgenjs": "^4.0.1",
     "qrcode": "^1.5.4",

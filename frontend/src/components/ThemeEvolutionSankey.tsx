@@ -3,6 +3,7 @@ import { Sankey, ResponsiveContainer } from 'recharts';
 import type { OrganizeRun, SpaceArtifact } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePanZoomContext } from '../hooks/usePanZoom';
+import ArtifactIcon from './ArtifactIcon';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -456,10 +457,7 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                                   onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
                                   onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                                 >
-                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14 2 14 8 20 8" />
-                                  </svg>
+                                  <ArtifactIcon type={a.artifact_type} size={36} />
                                   <span style={{
                                     fontSize: 9,
                                     lineHeight: 1.2,

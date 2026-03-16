@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { OrganizeRun, SpaceArtifact, ThemeEvent } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import ArtifactIcon from '../components/ArtifactIcon';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -432,10 +433,7 @@ export default function SpaceCheckpointPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
+                    <ArtifactIcon type={a.artifact_type} size={52} />
                     <span style={{
                       fontSize: typography.fontSize.xs,
                       fontWeight: typography.fontWeight.medium,
