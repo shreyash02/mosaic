@@ -31,38 +31,41 @@ const s = {
 };
 
 export default function MaintenanceBanner() {
-  const [maintenance, setMaintenance] = useState(false);
+  // Maintenance polling disabled — re-enable when needed
+  // const [maintenance, setMaintenance] = useState(false);
+  //
+  // useEffect(() => {
+  //   let timer: ReturnType<typeof setInterval>;
+  //
+  //   const check = async () => {
+  //     try {
+  //       const res = await fetch('/api/platform/status');
+  //       if (res.ok) {
+  //         const data = await res.json();
+  //         setMaintenance(data.maintenance === true);
+  //       }
+  //     } catch {
+  //       // ignore network errors
+  //     }
+  //   };
+  //
+  //   check();
+  //   timer = setInterval(check, POLL_INTERVAL);
+  //   return () => clearInterval(timer);
+  // }, []);
+  //
+  // if (!maintenance) return null;
+  //
+  // return (
+  //   <>
+  //     <div style={s.banner}>
+  //       <p style={s.message}>
+  //         Mosaic is temporarily down for maintenance. Some features may be unavailable.
+  //       </p>
+  //     </div>
+  //     <div style={s.spacer} />
+  //   </>
+  // );
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-
-    const check = async () => {
-      try {
-        const res = await fetch('/api/platform/status');
-        if (res.ok) {
-          const data = await res.json();
-          setMaintenance(data.maintenance === true);
-        }
-      } catch {
-        // ignore network errors
-      }
-    };
-
-    check();
-    timer = setInterval(check, POLL_INTERVAL);
-    return () => clearInterval(timer);
-  }, []);
-
-  if (!maintenance) return null;
-
-  return (
-    <>
-      <div style={s.banner}>
-        <p style={s.message}>
-          Mosaic is temporarily down for maintenance. Some features may be unavailable.
-        </p>
-      </div>
-      <div style={s.spacer} />
-    </>
-  );
+  return null;
 }
