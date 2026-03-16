@@ -13,6 +13,7 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   implementation_spec: 'Implementation Spec',
   talking_points: 'Talking Points',
   retrospective: 'Retrospective',
+  custom: 'Custom',
 };
 
 export default function SpaceArtifactPage() {
@@ -125,6 +126,7 @@ export default function SpaceArtifactPage() {
           {artifact.artifact_type === 'implementation_spec' && <ImplementationSpecView content={content} />}
           {artifact.artifact_type === 'talking_points' && <TalkingPointsView content={content} />}
           {artifact.artifact_type === 'retrospective' && <RetrospectiveView content={content} />}
+          {artifact.artifact_type === 'custom' && <SummaryView content={content} />}
         </div>
       </div>
     </div>

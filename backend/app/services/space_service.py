@@ -1552,6 +1552,10 @@ Return your analysis as JSON:
             "label": "Retrospective",
             "description": "What worked, what didn't, what to change",
         },
+        "custom": {
+            "label": "Custom",
+            "description": "User-defined artifact based on a custom prompt",
+        },
     }
 
     def generate_artifact(
@@ -1812,7 +1816,24 @@ Be balanced — include genuine positives and genuine areas for improvement.
 Ground everything in the actual ideas, not generic retrospective advice.""",
         }
 
-        instructions = type_instructions.get(artifact_type, type_instructions["summary"])
+        # Custom artifact: use user_context as the primary instruction
+        if artifact_type == "custom" and user_context:
+            instructions = f"""The user wants you to generate the following based on the space's themes and ideas:
+
+"{user_context}"
+
+Return JSON with:
+{{
+  "title": "A descriptive title for this document",
+  "sections": [
+    {{"heading": "Section heading", "content": "Section content — one or more paragraphs"}}
+  ]
+}}
+
+Structure the output with clear sections that address the user's request.
+Be specific and grounded in the actual themes and ideas. Avoid generic filler."""
+        else:
+            instructions = type_instructions.get(artifact_type, type_instructions["summary"])
 
         return f"""You are generating a document artifact from a space that has been organized into themes.
 

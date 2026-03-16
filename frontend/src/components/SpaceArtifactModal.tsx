@@ -12,7 +12,14 @@ const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: str
   { key: 'implementation_spec', label: 'Implementation Spec', description: 'Detailed spec with requirements and approach' },
   { key: 'talking_points', label: 'Talking Points', description: 'Key messages organized by audience or topic' },
   { key: 'retrospective', label: 'Retrospective', description: 'What worked, what didn\'t, what to change' },
+  { key: 'custom', label: 'Custom', description: 'Describe what you need and we\'ll generate it' },
 ];
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+const MAX_CUSTOM_WORDS = 80;
 
 export interface SpaceArtifactModalHandle {
   _handleReady: (artifact: SpaceArtifact) => void;
@@ -161,25 +168,35 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
         </div>
       )}
 
-      {view === 'context' && selectedType && (
+      {view === 'context' && selectedType && (() => {
+        const isCustom = selectedType === 'custom';
+        const wordCount = countWords(userContext);
+        const overLimit = isCustom && wordCount > MAX_CUSTOM_WORDS;
+        const customEmpty = isCustom && wordCount === 0;
+        return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
-          <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
-            {ARTIFACT_TYPES.find(t => t.key === selectedType)?.description}
-          </div>
+          {!isCustom && (
+            <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+              {ARTIFACT_TYPES.find(t => t.key === selectedType)?.description}
+            </div>
+          )}
           <div>
             <label style={{ display: 'block', fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)', marginBottom: spacing[1] }}>
-              Additional context (optional)
+              {isCustom ? 'What do you need?' : 'Additional context (optional)'}
             </label>
             <textarea
               value={userContext}
               onChange={e => setUserContext(e.target.value)}
-              placeholder="E.g., 'Focus on the cost themes' or 'This is for a board presentation'"
-              rows={3}
+              placeholder={isCustom
+                ? "E.g., 'Write a pitch for why we should pursue the top two themes' or 'Create a FAQ based on these ideas'"
+                : "E.g., 'Focus on the cost themes' or 'This is for a board presentation'"
+              }
+              rows={isCustom ? 4 : 3}
               style={{
                 width: '100%',
                 padding: spacing[2],
                 fontSize: typography.fontSize.sm,
-                border: '1px solid var(--color-primary-300)',
+                border: `1px solid ${overLimit ? 'var(--color-error-600, #dc2626)' : 'var(--color-primary-300)'}`,
                 borderRadius: borders.radius.sm,
                 backgroundColor: 'var(--color-primary-50)',
                 color: 'var(--color-primary-700)',
@@ -189,6 +206,17 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
                 boxSizing: 'border-box',
               }}
             />
+            {isCustom && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                fontSize: typography.fontSize.xs,
+                color: overLimit ? 'var(--color-error-600, #dc2626)' : 'var(--color-primary-400)',
+                marginTop: spacing[1],
+              }}>
+                {wordCount}/{MAX_CUSTOM_WORDS} words
+              </div>
+            )}
           </div>
           {error && (
             <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-error-600, #dc2626)' }}>{error}</div>
@@ -210,14 +238,15 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
             </button>
             <button
               onClick={handleGenerate}
+              disabled={overLimit || customEmpty}
               style={{
                 padding: `${spacing[2]} ${spacing[4]}`,
                 fontSize: typography.fontSize.sm,
-                backgroundColor: 'var(--color-primary-700)',
+                backgroundColor: (overLimit || customEmpty) ? 'var(--color-primary-400)' : 'var(--color-primary-700)',
                 color: 'var(--color-primary-50)',
                 border: 'none',
                 borderRadius: borders.radius.sm,
-                cursor: 'pointer',
+                cursor: (overLimit || customEmpty) ? 'not-allowed' : 'pointer',
                 fontWeight: typography.fontWeight.medium,
               }}
             >
@@ -225,7 +254,8 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {view === 'generating' && (
         <div style={{
@@ -301,6 +331,7 @@ function ArtifactContent({ artifact }: { artifact: SpaceArtifact }) {
       {type === 'implementation_spec' && <ImplementationSpecView content={content} />}
       {type === 'talking_points' && <TalkingPointsView content={content} />}
       {type === 'retrospective' && <RetrospectiveView content={content} />}
+      {type === 'custom' && <SummaryView content={content} />}
     </div>
   );
 }
