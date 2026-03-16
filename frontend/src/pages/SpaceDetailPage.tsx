@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry, SpaceActivityLogEntry } from '../types';
+import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry, SpaceActivityLogEntry, SpaceArtifact } from '../types';
 import { SPACE_PURPOSES } from '../types';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -23,6 +23,7 @@ import Modal from '../components/Modal';
 import { getActivityVerb, getActivityIcon } from '../utils/spaceActivity';
 import { getErrorMessage } from '../utils/errorMessages';
 import { generateSnapshotPdf, sanitizeFilename } from '../utils/pdf/snapshotPdf';
+import SpaceArtifactModal from '../components/SpaceArtifactModal';
 
 const s = {
   page: {
@@ -432,6 +433,11 @@ export default function SpaceDetailPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [showArtifactModal, setShowArtifactModal] = useState(false);
+  const [artifacts, setArtifacts] = useState<SpaceArtifact[]>([]);
+  const [viewingArtifact, setViewingArtifact] = useState<SpaceArtifact | null>(null);
+  const [deletingArtifact, setDeletingArtifact] = useState<SpaceArtifact | null>(null);
+  const artifactModalRef = useRef<any>(null);
   const [outcomeImageFile, setOutcomeImageFile] = useState<File | null>(null);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const [outcomeModalActionText, setOutcomeModalActionText] = useState('');
@@ -848,6 +854,22 @@ export default function SpaceDetailPage() {
     setShowExpandedSynthesis(true);
   }, [id, addToast]);
 
+  const handleArtifactGenerated = useCallback((data: any) => {
+    if (data.space_id !== id) return;
+    if (data.status === 'ready' && data.artifact_id) {
+      // Fetch the full artifact
+      api.getArtifact(data.space_id, data.artifact_id).then((artifact) => {
+        setArtifacts(prev => [artifact, ...prev]);
+        // Notify the modal if it's waiting
+        if (artifactModalRef.current?._handleReady) {
+          artifactModalRef.current._handleReady(artifact);
+        }
+      }).catch(() => {});
+    } else if (data.status === 'failed') {
+      addToast({ type: 'error', title: 'Artifact generation failed', message: 'Something went wrong generating the artifact' });
+    }
+  }, [id, addToast]);
+
   useSSEEvent('space_classify_completed', handleClassifyCompleted);
   useSSEEvent('space_organize_started', handleOrganizeStarted);
   useSSEEvent('space_organize_completed', handleOrganizeCompleted);
@@ -855,6 +877,7 @@ export default function SpaceDetailPage() {
   useSSEEvent('space_activity', handleSpaceActivity);
   useSSEEvent('space_suggestion_submitted', handleSuggestionSubmitted);
   useSSEEvent('space_synthesis_expanded', handleSynthesisExpanded);
+  useSSEEvent('space_artifact_generated', handleArtifactGenerated);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -864,6 +887,8 @@ export default function SpaceDetailPage() {
       api.getSuggestions(id).then(setSuggestions).catch(() => {});
       // Load snapshots for shared viewers (they may need them)
       api.getSpaceSnapshots(id).then(data => { setSnapshots(data); setSnapshotsLoaded(true); }).catch(() => {});
+      // Load artifacts
+      api.listArtifacts(id).then(setArtifacts).catch(() => {});
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load space');
     } finally {
@@ -3070,6 +3095,112 @@ export default function SpaceDetailPage() {
             </div>
           )}
 
+          {/* Generate artifact button + artifact list */}
+          {themes.length > 0 && space.can_edit !== false && (
+            <div style={s.sidebarSection}>
+              <button
+                onClick={() => setShowArtifactModal(true)}
+                style={{
+                  width: '100%',
+                  padding: `${spacing[3]} ${spacing[3]}`,
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  backgroundColor: 'var(--color-primary-700)',
+                  color: 'var(--color-primary-50)',
+                  border: 'none',
+                  borderRadius: borders.radius.sm,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="12" y1="18" x2="12" y2="12" />
+                  <line x1="9" y1="15" x2="15" y2="15" />
+                </svg>
+                Generate
+              </button>
+              {artifacts.length > 0 && (
+                <div style={{ marginTop: spacing[2] }}>
+                  {artifacts.filter(a => a.status !== 'failed').slice(0, 5).map(a => (
+                    <button
+                      key={a.id}
+                      onClick={() => {
+                        if (a.status === 'ready') {
+                          api.getArtifact(id!, a.id).then(full => {
+                            setViewingArtifact(full);
+                            setShowArtifactModal(true);
+                          }).catch(() => {});
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing[2],
+                        width: '100%',
+                        padding: `${spacing[2]} ${spacing[2]}`,
+                        fontSize: typography.fontSize.xs,
+                        color: a.status === 'ready' ? 'var(--color-primary-600)' : 'var(--color-primary-400)',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: a.status === 'ready' ? 'pointer' : 'default',
+                        textAlign: 'left',
+                        borderRadius: borders.radius.sm,
+                      }}
+                      onMouseEnter={e => { if (a.status === 'ready') e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.title || a.artifact_type}
+                      </span>
+                      {a.status === 'generating' && (
+                        <span style={{
+                          width: 10, height: 10, flexShrink: 0,
+                          border: '1.5px solid var(--color-primary-200)',
+                          borderTopColor: 'var(--color-primary-500)',
+                          borderRadius: '50%',
+                          animation: 'spin 0.8s linear infinite',
+                          display: 'inline-block',
+                        }} />
+                      )}
+                      {a.status === 'ready' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingArtifact(a); }}
+                          title="Delete"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary-500)',
+                            padding: '0 2px',
+                            fontSize: typography.fontSize.xs,
+                            flexShrink: 0,
+                            lineHeight: 1,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error-600, #dc2626)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Your Actions section — accepted items across themes */}
           {acceptedActions.length > 0 && (
             <div style={s.sidebarSection}>
@@ -4416,6 +4547,69 @@ export default function SpaceDetailPage() {
               Delete
             </button>
           </div>
+        </div>
+      </Modal>
+      <SpaceArtifactModal
+        ref={artifactModalRef}
+        isOpen={showArtifactModal}
+        onClose={() => { setShowArtifactModal(false); setViewingArtifact(null); }}
+        spaceId={id || ''}
+        onGenerated={(artifact) => {
+          setArtifacts(prev => {
+            if (prev.some(a => a.id === artifact.id)) return prev;
+            return [artifact, ...prev];
+          });
+        }}
+        viewArtifact={viewingArtifact}
+      />
+      <Modal
+        isOpen={!!deletingArtifact}
+        onClose={() => setDeletingArtifact(null)}
+        title="Delete artifact"
+        maxWidth="400px"
+      >
+        <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[4] }}>
+          Are you sure you want to delete "{deletingArtifact?.title || deletingArtifact?.artifact_type}"? This cannot be undone.
+        </div>
+        <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setDeletingArtifact(null)}
+            style={{
+              padding: `${spacing[2]} ${spacing[3]}`,
+              fontSize: typography.fontSize.sm,
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-600)',
+              border: '1px solid var(--color-primary-300)',
+              borderRadius: borders.radius.sm,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              if (!id || !deletingArtifact) return;
+              try {
+                await api.deleteArtifact(id, deletingArtifact.id);
+                setArtifacts(prev => prev.filter(a => a.id !== deletingArtifact.id));
+                setDeletingArtifact(null);
+              } catch {
+                addToast({ type: 'error', title: 'Failed to delete artifact', message: 'Something went wrong' });
+              }
+            }}
+            style={{
+              padding: `${spacing[2]} ${spacing[3]}`,
+              fontSize: typography.fontSize.sm,
+              backgroundColor: 'var(--color-error-600, #dc2626)',
+              color: 'white',
+              border: 'none',
+              borderRadius: borders.radius.sm,
+              cursor: 'pointer',
+              fontWeight: typography.fontWeight.medium,
+            }}
+          >
+            Delete
+          </button>
         </div>
       </Modal>
     </div>

@@ -1520,3 +1520,307 @@ Return your analysis as JSON:
         except (json.JSONDecodeError, IndexError):
             logger.warning("Failed to parse LLM theme extraction response")
             return {"theme": "Unnamed Theme", "summary": ""}
+
+    # --- Artifact Generation ---
+
+    ARTIFACT_TYPES = {
+        "summary": {
+            "label": "Summary",
+            "description": "A narrative write-up synthesizing all themes",
+        },
+        "checklist": {
+            "label": "Prioritized Checklist",
+            "description": "Ranked action items with rationale",
+        },
+        "plan": {
+            "label": "Plan",
+            "description": "Phased plan with milestones and dependencies",
+        },
+        "decision_brief": {
+            "label": "Decision Brief",
+            "description": "Options, trade-offs, and recommendation",
+        },
+        "implementation_spec": {
+            "label": "Implementation Spec",
+            "description": "Detailed spec with requirements and approach",
+        },
+        "talking_points": {
+            "label": "Talking Points",
+            "description": "Key messages organized by audience or topic",
+        },
+        "retrospective": {
+            "label": "Retrospective",
+            "description": "What worked, what didn't, what to change",
+        },
+    }
+
+    def generate_artifact(
+        self,
+        db: Session,
+        space_id: UUID,
+        artifact_type: str,
+        purpose: str,
+        space_title: str,
+        space_description: Optional[str],
+        user_context: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Generate an artifact (summary, checklist, etc.) from the space's themes and ideas."""
+        from app.models.theme import Theme
+        from app.models.idea import Idea
+        from app.models.idea_theme import IdeaTheme
+        from app.models.space_synthesis import SpaceSynthesis
+
+        themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+        if not themes:
+            return None
+
+        # Build theme data with member ideas
+        theme_data: List[Dict[str, Any]] = []
+        for theme in themes:
+            assignments = (
+                db.query(IdeaTheme)
+                .filter(IdeaTheme.theme_id == theme.id)
+                .all()
+            )
+            if not assignments:
+                continue
+            idea_ids = [a.idea_id for a in assignments]
+            member_ideas = (
+                db.query(Idea)
+                .filter(Idea.id.in_(idea_ids), Idea.status == "active")
+                .limit(20)
+                .all()
+            )
+            theme_data.append({
+                "name": theme.name,
+                "summary": theme.summary or "",
+                "ideas": [i.text for i in member_ideas],
+            })
+
+        if not theme_data:
+            return None
+
+        # Get current synthesis for additional context
+        synthesis_row = (
+            db.query(SpaceSynthesis)
+            .filter(
+                SpaceSynthesis.space_id == space_id,
+                SpaceSynthesis.is_current == True,
+            )
+            .first()
+        )
+        synthesis_summary = synthesis_row.space_summary if synthesis_row else None
+
+        prompt = self._build_artifact_prompt(
+            artifact_type, purpose, space_title, space_description,
+            theme_data, synthesis_summary, user_context,
+        )
+
+        try:
+            t0 = time.time()
+            response = self.anthropic_client.messages.create(
+                model=self.llm_model,
+                max_tokens=8000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type=f"space_artifact_{artifact_type}",
+                provider="anthropic",
+                model=self.llm_model,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                latency_ms=latency,
+            )
+
+            text = response.content[0].text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                # Truncated output — try to repair by closing open strings/arrays/objects
+                repaired = text
+                # Close any unterminated string
+                if repaired.count('"') % 2 == 1:
+                    repaired += '"'
+                # Close open brackets
+                open_brackets = repaired.count('[') - repaired.count(']')
+                open_braces = repaired.count('{') - repaired.count('}')
+                repaired += ']' * max(0, open_brackets)
+                repaired += '}' * max(0, open_braces)
+                return json.loads(repaired)
+        except Exception:
+            logger.warning(f"Failed to generate artifact type={artifact_type}", exc_info=True)
+            return None
+
+    @staticmethod
+    def _build_artifact_prompt(
+        artifact_type: str,
+        purpose: str,
+        space_title: str,
+        space_description: Optional[str],
+        theme_data: List[Dict[str, Any]],
+        synthesis_summary: Optional[str],
+        user_context: Optional[str],
+    ) -> str:
+        """Build a prompt for artifact generation."""
+        themes_section = ""
+        for td in theme_data:
+            ideas_text = "\n".join(f"  - {idea}" for idea in td["ideas"])
+            themes_section += f'\nTheme: "{td["name"]}"\nSummary: {td["summary"]}\nIdeas:\n{ideas_text}\n'
+
+        context_parts = [f'Space: "{space_title}"']
+        if space_description:
+            context_parts.append(f"Description: {space_description}")
+        if synthesis_summary:
+            context_parts.append(f"Current synthesis: {synthesis_summary}")
+        if user_context:
+            context_parts.append(f"User's additional context: {user_context}")
+        context_section = "\n".join(context_parts)
+
+        type_instructions = {
+            "summary": """Generate a comprehensive narrative summary of this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for this summary",
+  "sections": [
+    {"heading": "Section heading", "content": "One or more paragraphs of narrative text"}
+  ]
+}
+
+Structure the summary with 3-5 sections that flow naturally. Cover:
+- What this space is about and what emerged
+- The key themes and what they reveal
+- Cross-cutting patterns or tensions
+- What stands out or deserves attention
+Write in clear, direct prose. Be specific — reference actual ideas and themes by name.""",
+
+            "checklist": """Generate a prioritized checklist of action items based on this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for this checklist",
+  "items": [
+    {
+      "text": "The action item",
+      "priority": "high" | "medium" | "low",
+      "rationale": "Why this matters and why it's at this priority level",
+      "theme": "Which theme this relates to"
+    }
+  ]
+}
+
+List 8-15 items, ordered by priority (high first). Focus on:
+- Concrete, actionable items someone could start this week
+- Clear rationale tied to the ideas in the space
+- A mix of quick wins and strategic moves
+Avoid generic advice. Every item should be grounded in the actual ideas.""",
+
+            "plan": """Generate a phased plan based on this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for this plan",
+  "overview": "1-2 paragraph strategic overview",
+  "phases": [
+    {
+      "name": "Phase name",
+      "description": "What this phase accomplishes",
+      "items": ["Specific deliverable or milestone"],
+      "dependencies": ["What needs to happen first, if anything"]
+    }
+  ]
+}
+
+Create 3-5 phases that build on each other. Each phase should have 3-6 concrete items.
+Ground every item in actual themes and ideas from the space.""",
+
+            "decision_brief": """Generate a decision brief based on this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for this brief",
+  "context": "1-2 paragraphs of background and why a decision is needed",
+  "options": [
+    {
+      "name": "Option name",
+      "description": "What this option entails",
+      "pros": ["Advantage 1", "Advantage 2"],
+      "cons": ["Disadvantage 1", "Disadvantage 2"],
+      "effort": "low" | "medium" | "high"
+    }
+  ],
+  "recommendation": "1-2 paragraphs with the recommended path and why"
+}
+
+Identify 2-4 distinct options from the themes. Be honest about trade-offs.
+The recommendation should be clear and well-reasoned.""",
+
+            "implementation_spec": """Generate an implementation specification based on this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for this spec",
+  "overview": "1-2 paragraph summary of what's being specified",
+  "requirements": [
+    {"text": "Requirement description", "priority": "must" | "should" | "could", "theme": "Related theme"}
+  ],
+  "approach": [
+    {"heading": "Approach section heading", "content": "Detailed description"}
+  ],
+  "risks": [
+    {"risk": "What could go wrong", "mitigation": "How to address it"}
+  ]
+}
+
+Be specific and detailed. Requirements should be concrete and testable.
+The approach should be actionable, not hand-wavy.""",
+
+            "talking_points": """Generate talking points based on this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for these talking points",
+  "overview": "A 2-3 sentence executive summary",
+  "topics": [
+    {
+      "heading": "Topic heading",
+      "points": ["Key message 1", "Key message 2"],
+      "supporting_detail": "Brief supporting evidence or context"
+    }
+  ]
+}
+
+Create 4-7 topics. Each should have 2-4 crisp, quotable points.
+Include enough supporting detail to answer follow-up questions.""",
+
+            "retrospective": """Generate a retrospective analysis based on this space.
+
+Return JSON:
+{
+  "title": "A descriptive title for this retrospective",
+  "summary": "1-2 paragraph overall assessment",
+  "went_well": [{"point": "What went well", "evidence": "Supporting detail from ideas"}],
+  "challenges": [{"point": "What was challenging", "evidence": "Supporting detail from ideas"}],
+  "changes": [{"point": "What to change", "rationale": "Why this change matters"}],
+  "key_takeaways": ["Takeaway 1", "Takeaway 2"]
+}
+
+Be balanced — include genuine positives and genuine areas for improvement.
+Ground everything in the actual ideas, not generic retrospective advice.""",
+        }
+
+        instructions = type_instructions.get(artifact_type, type_instructions["summary"])
+
+        return f"""You are generating a document artifact from a space that has been organized into themes.
+
+{context_section}
+
+Themes and their ideas:
+{themes_section}
+
+{instructions}
+
+Return valid JSON only. Be specific and grounded in the actual content — avoid generic filler."""

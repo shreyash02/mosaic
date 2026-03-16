@@ -1876,6 +1876,25 @@ export interface PurposeSynthesis {
   expanded_theme_notes?: Record<string, ExpandedThemeAnalysis>;
 }
 
+export type ArtifactType = 'summary' | 'checklist' | 'plan' | 'decision_brief' | 'implementation_spec' | 'talking_points' | 'retrospective';
+
+export interface ArtifactTypeInfo {
+  key: ArtifactType;
+  label: string;
+  description: string;
+}
+
+export interface SpaceArtifact {
+  id: string;
+  artifact_type: ArtifactType;
+  title?: string;
+  status: 'generating' | 'ready' | 'failed';
+  content?: Record<string, any>;
+  user_context?: string;
+  synthesis_id?: string;
+  created_at?: string;
+}
+
 export interface SynthesisActivityEntry {
   theme_name: string;
   note_text: string;

@@ -1814,6 +1814,242 @@ def expand_synthesis(
     return {"status": "started", "message": "Expanding synthesis..."}
 
 
+# --- Artifact Generation ---
+
+
+def run_generate_artifact_task(
+    space_id: UUID,
+    artifact_id: UUID,
+    artifact_type: str,
+    purpose: str,
+    space_title: str,
+    space_description: Optional[str],
+    user_context: Optional[str],
+    db_url: str,
+):
+    """Background task to generate an artifact."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.space_service import SpaceService
+    from app.services.platform_settings_service import get_llm_model
+    from app.models.space_artifact import SpaceArtifact
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        llm_model = get_llm_model(db)
+        service = SpaceService(model=llm_model)
+        result = service.generate_artifact(
+            db, space_id, artifact_type, purpose,
+            space_title, space_description, user_context,
+        )
+
+        artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == artifact_id).first()
+        if artifact_row:
+            if result:
+                artifact_row.content = result
+                artifact_row.title = result.get("title", SpaceService.ARTIFACT_TYPES.get(artifact_type, {}).get("label", artifact_type))
+                artifact_row.status = "ready"
+                db.commit()
+            else:
+                db.delete(artifact_row)
+                db.commit()
+
+        _broadcast_sse_to_space(db, space_id, "space_artifact_generated", {
+            "space_id": str(space_id),
+            "artifact_id": str(artifact_id),
+            "artifact_type": artifact_type,
+            "status": "ready" if result else "failed",
+            "title": result.get("title", "") if result else "",
+        })
+    except Exception as e:
+        logger.error(f"Error generating artifact for space {space_id}: {e}", exc_info=True)
+        artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == artifact_id).first()
+        if artifact_row:
+            db.delete(artifact_row)
+            db.commit()
+        _broadcast_sse_to_space(db, space_id, "space_artifact_generated", {
+            "space_id": str(space_id),
+            "artifact_id": str(artifact_id),
+            "artifact_type": artifact_type,
+            "status": "failed",
+        })
+    finally:
+        db.close()
+        engine.dispose()
+
+
+@router.post("/{space_id}/artifacts", status_code=status.HTTP_202_ACCEPTED)
+def generate_artifact(
+    space_id: UUID,
+    data: dict,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate an artifact (summary, checklist, plan, etc.) for a space."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+
+    artifact_type = data.get("artifact_type")
+    user_context = data.get("user_context")
+
+    from app.services.space_service import SpaceService
+    if artifact_type not in SpaceService.ARTIFACT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid artifact type: {artifact_type}")
+
+    # Need themes to generate
+    theme_count = db.query(func.count(Theme.id)).filter(Theme.space_id == space_id).scalar() or 0
+    if theme_count == 0:
+        raise HTTPException(status_code=400, detail="Organize the space first before generating artifacts")
+
+    # Get current synthesis to tie the artifact to
+    synthesis_row = _get_current_synthesis(db, space.id)
+
+    # Create artifact row in generating state
+    from app.models.space_artifact import SpaceArtifact
+    import uuid
+    artifact_row = SpaceArtifact(
+        id=uuid.uuid4(),
+        space_id=space.id,
+        synthesis_id=synthesis_row.id if synthesis_row else None,
+        created_by_id=current_user.id,
+        artifact_type=artifact_type,
+        user_context=user_context,
+        status="generating",
+    )
+    db.add(artifact_row)
+    db.commit()
+
+    purpose = _get_space_purpose(space)
+    background_tasks.add_task(
+        run_generate_artifact_task,
+        space_id=space.id,
+        artifact_id=artifact_row.id,
+        artifact_type=artifact_type,
+        purpose=purpose,
+        space_title=space.title,
+        space_description=space.description,
+        user_context=user_context,
+        db_url=str(settings.DATABASE_URL),
+    )
+
+    return {
+        "id": str(artifact_row.id),
+        "artifact_type": artifact_type,
+        "status": "generating",
+        "message": f"Generating {SpaceService.ARTIFACT_TYPES[artifact_type]['label']}...",
+    }
+
+
+@router.get("/{space_id}/artifacts")
+def list_artifacts(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all artifacts for a space."""
+    _require_spaces_flag(current_user, db)
+    _get_space_or_404(space_id, current_user, db)
+
+    from app.models.space_artifact import SpaceArtifact
+    rows = (
+        db.query(SpaceArtifact)
+        .filter(SpaceArtifact.space_id == space_id)
+        .order_by(SpaceArtifact.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(r.id),
+            "artifact_type": r.artifact_type,
+            "title": r.title,
+            "status": r.status,
+            "user_context": r.user_context,
+            "synthesis_id": str(r.synthesis_id) if r.synthesis_id else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/{space_id}/artifacts/{artifact_id}")
+def get_artifact(
+    space_id: UUID,
+    artifact_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a single artifact with its content."""
+    _require_spaces_flag(current_user, db)
+    _get_space_or_404(space_id, current_user, db)
+
+    from app.models.space_artifact import SpaceArtifact
+    row = db.query(SpaceArtifact).filter(
+        SpaceArtifact.id == artifact_id,
+        SpaceArtifact.space_id == space_id,
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    return {
+        "id": str(row.id),
+        "artifact_type": row.artifact_type,
+        "title": row.title,
+        "status": row.status,
+        "content": row.content,
+        "user_context": row.user_context,
+        "synthesis_id": str(row.synthesis_id) if row.synthesis_id else None,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+@router.delete("/{space_id}/artifacts/{artifact_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_artifact(
+    space_id: UUID,
+    artifact_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete an artifact."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+    _require_space_editor(space_id, current_user, db)
+
+    from app.models.space_artifact import SpaceArtifact
+    row = db.query(SpaceArtifact).filter(
+        SpaceArtifact.id == artifact_id,
+        SpaceArtifact.space_id == space_id,
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    db.delete(row)
+    db.commit()
+
+
+@router.get("/{space_id}/artifact-types")
+def get_artifact_types(
+    space_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get available artifact types."""
+    _require_spaces_flag(current_user, db)
+    _get_space_or_404(space_id, current_user, db)
+
+    from app.services.space_service import SpaceService
+    return {
+        "types": [
+            {"key": k, "label": v["label"], "description": v["description"]}
+            for k, v in SpaceService.ARTIFACT_TYPES.items()
+        ]
+    }
+
+
 @router.get("/{space_id}/graph", response_model=GraphData)
 def get_graph_data(
     space_id: UUID,

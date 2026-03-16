@@ -1513,6 +1513,30 @@ class ApiService {
     return response.data;
   }
 
+  async generateArtifact(spaceId: string, artifactType: string, userContext?: string): Promise<{ id: string; artifact_type: string; status: string; message: string }> {
+    const response = await this.client.post<{ id: string; artifact_type: string; status: string; message: string }>(`/spaces/${spaceId}/artifacts`, { artifact_type: artifactType, user_context: userContext });
+    return response.data;
+  }
+
+  async listArtifacts(spaceId: string): Promise<any[]> {
+    const response = await this.client.get<any[]>(`/spaces/${spaceId}/artifacts`);
+    return response.data;
+  }
+
+  async getArtifact(spaceId: string, artifactId: string): Promise<any> {
+    const response = await this.client.get<any>(`/spaces/${spaceId}/artifacts/${artifactId}`);
+    return response.data;
+  }
+
+  async deleteArtifact(spaceId: string, artifactId: string): Promise<void> {
+    await this.client.delete(`/spaces/${spaceId}/artifacts/${artifactId}`);
+  }
+
+  async getArtifactTypes(spaceId: string): Promise<{ types: Array<{ key: string; label: string; description: string }> }> {
+    const response = await this.client.get<{ types: Array<{ key: string; label: string; description: string }> }>(`/spaces/${spaceId}/artifact-types`);
+    return response.data;
+  }
+
   async getGraphData(spaceId: string): Promise<GraphData> {
     const response = await this.client.get<GraphData>(`/spaces/${spaceId}/graph`);
     return response.data;

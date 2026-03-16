@@ -92,6 +92,7 @@ import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import SpaceActivityPage from './pages/SpaceActivityPage';
 import WorkspaceActivityPage from './pages/WorkspaceActivityPage';
 import SpaceSnapshotPage from './pages/SpaceSnapshotPage';
+import SpaceArtifactPage from './pages/SpaceArtifactPage';
 import AcceptSpaceInvitePage from './pages/AcceptSpaceInvitePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
@@ -522,6 +523,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SpaceSnapshotPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/spaces/:id/artifacts/:artifactId"
+              element={
+                <ProtectedRoute>
+                  <SpaceArtifactPage />
                 </ProtectedRoute>
               }
             />
