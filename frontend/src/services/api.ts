@@ -1513,8 +1513,12 @@ class ApiService {
     return response.data;
   }
 
-  async generateArtifact(spaceId: string, artifactType: string, userContext?: string): Promise<{ id: string; artifact_type: string; status: string; message: string }> {
-    const response = await this.client.post<{ id: string; artifact_type: string; status: string; message: string }>(`/spaces/${spaceId}/artifacts`, { artifact_type: artifactType, user_context: userContext });
+  async generateArtifact(spaceId: string, artifactType: string, userContext?: string, synthesisId?: string, organizeRunId?: string): Promise<{ id: string; artifact_type: string; status: string; message: string }> {
+    const body: Record<string, any> = { artifact_type: artifactType };
+    if (userContext) body.user_context = userContext;
+    if (synthesisId) body.synthesis_id = synthesisId;
+    if (organizeRunId) body.organize_run_id = organizeRunId;
+    const response = await this.client.post<{ id: string; artifact_type: string; status: string; message: string }>(`/spaces/${spaceId}/artifacts`, body);
     return response.data;
   }
 
@@ -1582,6 +1586,11 @@ class ApiService {
         description: description || undefined,
       },
     );
+    return response.data;
+  }
+
+  async getSynthesisForRun(spaceId: string, runId: string): Promise<{ synthesis_id: string | null; run_id: string }> {
+    const response = await this.client.get<{ synthesis_id: string | null; run_id: string }>(`/spaces/${spaceId}/synthesis-for-run`, { params: { run_id: runId } });
     return response.data;
   }
 

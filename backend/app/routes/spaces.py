@@ -1917,6 +1917,8 @@ def generate_artifact(
 
     artifact_type = data.get("artifact_type")
     user_context = data.get("user_context")
+    requested_synthesis_id = data.get("synthesis_id")  # Optional: tie to a specific checkpoint
+    organize_run_id = data.get("organize_run_id")  # Optional: which organize run this belongs to
 
     from app.services.space_service import SpaceService
     if artifact_type not in SpaceService.ARTIFACT_TYPES:
@@ -1927,8 +1929,16 @@ def generate_artifact(
     if theme_count == 0:
         raise HTTPException(status_code=400, detail="Organize the space first before generating artifacts")
 
-    # Get current synthesis to tie the artifact to
-    synthesis_row = _get_current_synthesis(db, space.id)
+    # Get synthesis to tie the artifact to (specific or current)
+    if requested_synthesis_id:
+        synthesis_row = db.query(SpaceSynthesis).filter(
+            SpaceSynthesis.id == requested_synthesis_id,
+            SpaceSynthesis.space_id == space_id,
+        ).first()
+        if not synthesis_row:
+            raise HTTPException(status_code=404, detail="Synthesis not found")
+    else:
+        synthesis_row = _get_current_synthesis(db, space.id)
 
     # Create artifact row in generating state
     from app.models.space_artifact import SpaceArtifact
@@ -1937,6 +1947,7 @@ def generate_artifact(
         id=uuid.uuid4(),
         space_id=space.id,
         synthesis_id=synthesis_row.id if synthesis_row else None,
+        organize_run_id=organize_run_id,
         created_by_id=current_user.id,
         artifact_type=artifact_type,
         user_context=user_context,
@@ -2008,6 +2019,7 @@ def list_artifacts(
             "status": display.status,
             "user_context": r.user_context,
             "synthesis_id": str(r.synthesis_id) if r.synthesis_id else None,
+            "organize_run_id": r.organize_run_id,
             "created_at": _utc_iso(r.created_at),
             "version_count": version_count,
             "latest_version_id": str(display.id) if latest else None,
@@ -2071,6 +2083,7 @@ def get_artifact(
         "refinement": row.refinement,
         "parent_id": str(row.parent_id) if row.parent_id else None,
         "synthesis_id": str(row.synthesis_id) if row.synthesis_id else None,
+        "organize_run_id": row.organize_run_id,
         "created_at": _utc_iso(row.created_at),
         "versions": versions,
     }
@@ -2444,6 +2457,54 @@ def update_synthesis_note_state(
         "completion_outcomes": completion_outcomes,
         "completion_outcome_images": completion_outcome_images,
         "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+    }
+
+
+@router.get("/{space_id}/synthesis-for-run")
+def get_synthesis_for_run(
+    space_id: UUID,
+    run_id: str = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the synthesis_id associated with a given organize run."""
+    from app.models.theme_event import ThemeEvent
+
+    _get_space_with_sharing(space_id, current_user, db, require_live=True)
+
+    # Get the run's timestamp from its events
+    event = db.query(ThemeEvent).filter(
+        ThemeEvent.space_id == space_id,
+        ThemeEvent.organize_run_id == run_id,
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    run_time = event.created_at
+
+    # Find the synthesis generated closest to (and after) this run
+    synthesis = (
+        db.query(SpaceSynthesis)
+        .filter(
+            SpaceSynthesis.space_id == space_id,
+            SpaceSynthesis.generated_at >= run_time,
+        )
+        .order_by(SpaceSynthesis.generated_at.asc())
+        .first()
+    )
+
+    # If no synthesis after the run, get the most recent one before it
+    if not synthesis:
+        synthesis = (
+            db.query(SpaceSynthesis)
+            .filter(SpaceSynthesis.space_id == space_id)
+            .order_by(SpaceSynthesis.generated_at.desc())
+            .first()
+        )
+
+    return {
+        "synthesis_id": str(synthesis.id) if synthesis else None,
+        "run_id": run_id,
     }
 
 

@@ -34,6 +34,7 @@ class SpaceArtifact(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    organize_run_id = Column(String(50), nullable=True)  # Which organize run this artifact belongs to
     artifact_type = Column(String(30), nullable=False)  # summary, checklist, plan, decision_brief, etc.
     title = Column(String(200), nullable=True)
     content = Column(JSONB, nullable=True, default=dict)

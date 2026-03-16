@@ -1900,6 +1900,7 @@ export interface SpaceArtifact {
   content?: Record<string, any>;
   user_context?: string;
   synthesis_id?: string;
+  organize_run_id?: string;
   created_at?: string;
   version?: number;
   refinement?: string;

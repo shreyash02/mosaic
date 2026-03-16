@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { SpaceArtifact } from '../types';
+import type { SpaceArtifact, OrganizeRun } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import Modal from '../components/Modal';
@@ -28,6 +28,7 @@ function formatShortDateTime(iso: string): string {
 export default function SpaceArtifactsListPage() {
   const { id: spaceId } = useParams<{ id: string }>();
   const [artifacts, setArtifacts] = useState<SpaceArtifact[]>([]);
+  const [runs, setRuns] = useState<OrganizeRun[]>([]);
   const [spaceTitle, setSpaceTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedArtifacts, setSelectedArtifacts] = useState<Set<string>>(new Set());
@@ -42,27 +43,43 @@ export default function SpaceArtifactsListPage() {
     Promise.all([
       api.listArtifacts(spaceId),
       api.getSpace(spaceId).catch(() => null),
-    ]).then(([arts, spaceData]) => {
+      api.getEvolution(spaceId, 50).catch(() => []),
+    ]).then(([arts, spaceData, evolutionData]) => {
       setArtifacts(arts.filter((a: SpaceArtifact) => a.status !== 'failed'));
       if (spaceData) setSpaceTitle(spaceData.title || '');
+      setRuns(evolutionData || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [spaceId]);
 
-  // Group artifacts by synthesis_id (checkpoint)
+  // Build a map from run_id to display name
+  const runDisplayNames = useMemo(() => {
+    const sorted = [...runs].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const map = new Map<string, { name: string; date: string }>();
+    sorted.forEach((r, i) => {
+      const savedName = localStorage.getItem(`checkpoint-name-${r.run_id}`);
+      map.set(r.run_id, {
+        name: savedName || `Checkpoint ${i + 1}`,
+        date: r.created_at,
+      });
+    });
+    return map;
+  }, [runs]);
+
+  // Group artifacts by organize_run_id (checkpoint)
   const groupedArtifacts = useMemo(() => {
     if (!artifacts.length) return [];
 
     const groups = new Map<string, { synthesisId: string | null; artifacts: SpaceArtifact[] }>();
 
     for (const artifact of artifacts) {
-      const key = artifact.synthesis_id || 'none';
+      const key = artifact.organize_run_id || 'unassigned';
       if (!groups.has(key)) {
-        groups.set(key, { synthesisId: artifact.synthesis_id || null, artifacts: [] });
+        groups.set(key, { runId: artifact.organize_run_id || null, artifacts: [] });
       }
       groups.get(key)!.artifacts.push(artifact);
     }
 
-    // Sort groups by the earliest artifact date descending
+    // Sort groups by the latest artifact date descending
     return [...groups.values()].sort((a, b) => {
       const aTime = a.artifacts[0]?.created_at ? new Date(a.artifacts[0].created_at).getTime() : 0;
       const bTime = b.artifacts[0]?.created_at ? new Date(b.artifacts[0].created_at).getTime() : 0;
@@ -152,23 +169,35 @@ export default function SpaceArtifactsListPage() {
               <div key={gi}>
                 {/* Checkpoint header */}
                 {(
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: spacing[2],
-                    marginBottom: spacing[3],
-                    paddingBottom: spacing[2],
-                    borderBottom: '1px solid var(--color-primary-200)',
-                  }}>
+                  <Link
+                    to={group.runId ? `/spaces/${spaceId}/checkpoint?run=${group.runId}` : '#'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: spacing[2],
+                      marginBottom: spacing[3],
+                      paddingBottom: spacing[2],
+                      borderBottom: '1px solid var(--color-primary-200)',
+                      textDecoration: 'none',
+                      cursor: group.runId ? 'pointer' : 'default',
+                    }}
+                    onMouseEnter={e => { if (group.runId) e.currentTarget.style.opacity = '0.8'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                  >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
                     <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>
-                      Checkpoint — {group.artifacts[0]?.created_at ? formatShortDateTime(group.artifacts[0].created_at) : ''}
+                      {group.runId
+                        ? (runDisplayNames.get(group.runId)?.name || 'Checkpoint')
+                        : 'Earlier artifacts'}
+                      {group.runId && runDisplayNames.get(group.runId)?.date
+                        ? ` — ${formatShortDateTime(runDisplayNames.get(group.runId)!.date)}`
+                        : ''}
                     </span>
                     <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
-                      ({group.artifacts.length} artifact{group.artifacts.length > 1 ? 's' : ''})
+                      ({group.artifacts.length})
                     </span>
-                  </div>
+                  </Link>
                 )}
 
                 {/* Artifact grid */}

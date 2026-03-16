@@ -269,25 +269,20 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
   }, [data]);
 
   // Map artifacts to run indices by matching timestamps
+  // Map artifacts to run indices by organize_run_id
   const artifactsByRunIndex = useMemo(() => {
-    if (!dates.length || !artifacts.length) return new Map<number, SpaceArtifact[]>();
+    if (!runIds.length || !artifacts.length) return new Map<number, SpaceArtifact[]>();
     const map = new Map<number, SpaceArtifact[]>();
-    const readyArtifacts = artifacts.filter(a => a.status === 'ready' && a.created_at);
+    const readyArtifacts = artifacts.filter(a => a.status === 'ready');
     for (const artifact of readyArtifacts) {
-      const artTime = new Date(artifact.created_at!).getTime();
-      // Find the latest run that happened before this artifact
-      let bestIdx = dates.length - 1;
-      for (let i = dates.length - 1; i >= 0; i--) {
-        if (new Date(dates[i]).getTime() <= artTime) {
-          bestIdx = i;
-          break;
-        }
-      }
-      if (!map.has(bestIdx)) map.set(bestIdx, []);
-      map.get(bestIdx)!.push(artifact);
+      if (!artifact.organize_run_id) continue;
+      const idx = runIds.indexOf(artifact.organize_run_id);
+      if (idx === -1) continue;
+      if (!map.has(idx)) map.set(idx, []);
+      map.get(idx)!.push(artifact);
     }
     return map;
-  }, [dates, artifacts]);
+  }, [runIds, artifacts]);
 
   const handleMouseEnter = useCallback((item: any, type: string, e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -374,18 +369,22 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                       gap: 2,
                     }}
                   >
-                    <span
+                    <a
+                      href={spaceId && runIds[i] ? `/spaces/${spaceId}/checkpoint?run=${runIds[i]}` : undefined}
                       style={{
                         fontSize: 10,
                         color: 'var(--color-primary-500)',
                         fontFamily: typography.fontFamily.sans,
                         whiteSpace: 'nowrap',
                         textAlign: 'center',
-                        pointerEvents: 'none',
+                        textDecoration: 'none',
+                        cursor: spaceId ? 'pointer' : 'default',
                       }}
+                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
                     >
                       {formatShortDate(date)}
-                    </span>
+                    </a>
                     {runArtifacts && runArtifacts.length > 0 && (
                       <div data-artifact-dropdown style={{ position: 'relative' }} onMouseLeave={() => setOpenArtifactDropdown(null)}>
                         <button
@@ -428,11 +427,13 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                             borderRadius: borders.radius.lg,
                             boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
                             padding: spacing[3],
+                            minWidth: 160,
                            }}>
                             <div style={{
                               display: 'grid',
                               gridTemplateColumns: `repeat(${Math.min(runArtifacts.length, 4)}, 1fr)`,
                               gap: spacing[2],
+                              justifyItems: 'center',
                             }}>
                               {runArtifacts.map(a => (
                                 <button
@@ -492,6 +493,7 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                                   color: 'var(--color-primary-500)',
                                   textDecoration: 'none',
                                   fontFamily: typography.fontFamily.sans,
+                                  whiteSpace: 'nowrap',
                                 }}
                                 onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
                                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}

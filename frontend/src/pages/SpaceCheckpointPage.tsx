@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizeRun, SpaceArtifact, ThemeEvent } from '../types';
@@ -6,6 +6,7 @@ import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import ArtifactIcon from '../components/ArtifactIcon';
 import Modal from '../components/Modal';
+import SpaceArtifactModal from '../components/SpaceArtifactModal';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -95,6 +96,8 @@ export default function SpaceCheckpointPage() {
   const [editValue, setEditValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showArtifactModal, setShowArtifactModal] = useState(false);
+  const artifactModalRef = useRef<any>(null);
   const [selectedArtifacts, setSelectedArtifacts] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
@@ -135,19 +138,30 @@ export default function SpaceCheckpointPage() {
     return sorted.findIndex(r => r.run_id === run.run_id);
   }, [runs, run]);
 
-  const runArtifacts = useMemo(() => {
-    if (!run || !artifacts.length || !runs.length) return [];
-    const sorted = [...runs].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    const idx = sorted.findIndex(r => r.run_id === run.run_id);
-    const runTime = new Date(run.created_at).getTime();
-    const nextRunTime = idx < sorted.length - 1 ? new Date(sorted[idx + 1].created_at).getTime() : Infinity;
+  // Get synthesis_id for this checkpoint
+  const [checkpointSynthesisId, setCheckpointSynthesisId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!spaceId || !runId) return;
+    // Try from existing artifacts first
+    const fromArtifact = artifacts.find(a => a.synthesis_id)?.synthesis_id;
+    if (fromArtifact) {
+      setCheckpointSynthesisId(fromArtifact);
+      return;
+    }
+    // Otherwise fetch from backend
+    api.getSynthesisForRun(spaceId, runId).then(data => {
+      setCheckpointSynthesisId(data.synthesis_id);
+    }).catch(() => {});
+  }, [spaceId, runId, artifacts]);
 
-    return artifacts.filter(a => {
-      if (a.status !== 'ready' || !a.created_at) return false;
-      const artTime = new Date(a.created_at).getTime();
-      return artTime >= runTime && artTime < nextRunTime;
-    });
-  }, [run, artifacts, runs]);
+  const runArtifacts = useMemo(() => {
+    if (!artifacts.length || !runId) return [];
+    // Filter by organize_run_id (direct association)
+    const byRun = artifacts.filter(a => a.organize_run_id === runId && a.status !== 'failed');
+    if (byRun.length > 0) return byRun;
+    // Fallback for old artifacts without organize_run_id: show generating ones
+    return artifacts.filter(a => a.status === 'generating');
+  }, [artifacts, runId]);
 
   const displayName = checkpointName || `Checkpoint ${runIndex + 1}`;
 
@@ -340,17 +354,37 @@ export default function SpaceCheckpointPage() {
         </div>
 
         {/* Artifacts folder grid */}
-        {runArtifacts.length > 0 ? (
+        {(runArtifacts.length > 0 || artifacts.some(a => a.status === 'generating')) ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] }}>
-              <h2 style={{
-                fontSize: typography.fontSize.base,
-                fontWeight: typography.fontWeight.semibold,
-                color: 'var(--color-primary-700)',
-                margin: 0,
-              }}>
-                Artifacts ({runArtifacts.length})
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                <h2 style={{
+                  fontSize: typography.fontSize.base,
+                  fontWeight: typography.fontWeight.semibold,
+                  color: 'var(--color-primary-700)',
+                  margin: 0,
+                }}>
+                  Artifacts ({runArtifacts.length})
+                </h2>
+                <button
+                  onClick={() => setShowArtifactModal(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: spacing[1],
+                    padding: `${spacing[1]} ${spacing[3]}`,
+                    fontSize: typography.fontSize.xs,
+                    color: 'var(--color-primary-600)',
+                    backgroundColor: 'var(--color-primary-100)',
+                    border: '1px solid var(--color-primary-200)',
+                    borderRadius: borders.radius.sm, cursor: 'pointer',
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Generate
+                </button>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                 {selectedArtifacts.size > 0 && (
                   <>
@@ -396,7 +430,37 @@ export default function SpaceCheckpointPage() {
               gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
               gap: spacing[3],
             }}>
-              {runArtifacts.map(a => (
+              {/* Generating placeholders */}
+              {artifacts.filter(a => a.status === 'generating').map(a => (
+                <div
+                  key={a.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing[2],
+                    padding: `${spacing[5]} ${spacing[3]}`,
+                    border: '2px dashed var(--color-primary-300)',
+                    borderRadius: borders.radius.lg,
+                    minHeight: 120,
+                  }}
+                >
+                  <span style={{
+                    width: 20, height: 20,
+                    border: '2px solid var(--color-primary-200)',
+                    borderTopColor: 'var(--color-primary-500)',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                    display: 'inline-block',
+                  }} />
+                  <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                    Generating {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}...
+                  </span>
+                </div>
+              ))}
+
+              {runArtifacts.filter(a => a.status !== 'generating').map(a => (
                 <div
                   key={a.id}
                   style={{
@@ -575,7 +639,26 @@ export default function SpaceCheckpointPage() {
             color: 'var(--color-primary-500)',
             fontSize: typography.fontSize.sm,
           }}>
-            No artifacts generated at this checkpoint.
+            <div style={{ marginBottom: spacing[3] }}>No artifacts generated at this checkpoint.</div>
+            <button
+              onClick={() => setShowArtifactModal(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[4]}`,
+                fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium,
+                color: 'var(--color-primary-50)',
+                backgroundColor: 'var(--color-primary-700)',
+                border: 'none', borderRadius: borders.radius.sm, cursor: 'pointer',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <line x1="9" y1="15" x2="15" y2="15" />
+              </svg>
+              Generate
+            </button>
           </div>
         )}
       </div>
@@ -630,6 +713,35 @@ export default function SpaceCheckpointPage() {
           </button>
         </div>
       </Modal>
+
+      <SpaceArtifactModal
+        ref={artifactModalRef}
+        isOpen={showArtifactModal}
+        onClose={() => {
+          setShowArtifactModal(false);
+          // Refresh artifacts list to pick up any newly generated ones
+          if (spaceId) {
+            api.listArtifacts(spaceId).then(arts => {
+              setArtifacts(arts.filter((a: SpaceArtifact) => a.status !== 'failed'));
+            }).catch(() => {});
+          }
+        }}
+        spaceId={spaceId || ''}
+        synthesisId={checkpointSynthesisId || undefined}
+        organizeRunId={runId || undefined}
+        onGenerated={(artifact) => {
+          setArtifacts(prev => {
+            // Replace generating placeholder with ready artifact, or add new
+            const existing = prev.findIndex(a => a.id === artifact.id);
+            if (existing >= 0) {
+              const updated = [...prev];
+              updated[existing] = artifact;
+              return updated;
+            }
+            return [artifact, ...prev];
+          });
+        }}
+      />
     </div>
   );
 }

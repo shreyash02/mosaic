@@ -52,12 +52,14 @@ interface Props {
   spaceId: string;
   onGenerated: (artifact: SpaceArtifact) => void;
   viewArtifact?: SpaceArtifact | null;
+  synthesisId?: string;
+  organizeRunId?: string;
 }
 
 type View = 'pick' | 'context' | 'generating' | 'view';
 
 const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function SpaceArtifactModal(
-  { isOpen, onClose, spaceId, onGenerated, viewArtifact },
+  { isOpen, onClose, spaceId, onGenerated, viewArtifact, synthesisId, organizeRunId },
   ref,
 ) {
   const [view, setView] = useState<View>('pick');
@@ -118,7 +120,7 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
         if (posterAccent.trim()) parts.push(`Accent color: ${posterAccent.trim()}`);
         context = parts.join('. ') + '.' + (context ? ' ' + context : '');
       }
-      const result = await api.generateArtifact(spaceId, selectedType, context || undefined);
+      const result = await api.generateArtifact(spaceId, selectedType, context || undefined, synthesisId, organizeRunId);
       generatingIdRef.current = result.id;
       // Add generating placeholder to parent's artifact list immediately
       onGenerated({ id: result.id, artifact_type: selectedType, status: 'generating' } as SpaceArtifact);
@@ -418,7 +420,7 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
             Generating {ARTIFACT_TYPES.find(t => t.key === selectedType)?.label?.toLowerCase()}...
           </div>
           <div style={{ fontSize: typography.fontSize.xs, color: colors.primary[600], marginTop: spacing[2] }}>
-            You can close this and keep working — it'll appear in the sidebar when ready.
+            You can close this and keep working — it'll appear when ready.
           </div>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
