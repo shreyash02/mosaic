@@ -361,18 +361,19 @@ export default function SpaceCheckpointPage() {
                     alignItems: 'center',
                     gap: spacing[2],
                     padding: `${spacing[5]} ${spacing[3]}`,
-                    backgroundColor: 'var(--color-primary-50)',
-                    border: '1px solid var(--color-primary-200)',
+                    backgroundColor: 'transparent',
                     borderRadius: borders.radius.lg,
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.backgroundColor = 'var(--color-primary-100)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary-300)';
+                    const del = e.currentTarget.querySelector('[data-delete-btn]') as HTMLElement;
+                    if (del) del.style.opacity = '1';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.backgroundColor = 'var(--color-primary-50)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary-200)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    const del = e.currentTarget.querySelector('[data-delete-btn]') as HTMLElement;
+                    if (del && confirmDeleteId !== a.id) del.style.opacity = '0';
                     if (confirmDeleteId === a.id) setConfirmDeleteId(null);
                   }}
                 >
@@ -405,7 +406,8 @@ export default function SpaceCheckpointPage() {
                       color: confirmDeleteId === a.id ? 'var(--color-error-600, #dc2626)' : 'var(--color-primary-500)',
                       fontSize: 10,
                       fontFamily: 'inherit',
-                      transition: 'color 0.15s ease',
+                      opacity: confirmDeleteId === a.id ? 1 : 0,
+                      transition: 'opacity 0.15s ease, color 0.15s ease',
                       zIndex: 2,
                     }}
                     onMouseEnter={e => { if (confirmDeleteId !== a.id) e.currentTarget.style.color = 'var(--color-primary-700)'; }}
