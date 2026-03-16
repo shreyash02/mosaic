@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Space, SpaceIdea, SpaceTheme, GraphData, OrganizeRun, SpacePurpose, PurposeSynthesis, SynthesisActivityEntry, SpaceActivityLogEntry, SpaceArtifact } from '../types';
 import { SPACE_PURPOSES } from '../types';
@@ -376,6 +376,8 @@ const ORGANIZE_THRESHOLD = 5;
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { addToast } = useNotifications();
   const [space, setSpace] = useState<Space | null>(null);
@@ -416,7 +418,17 @@ export default function SpaceDetailPage() {
   const [expandingSynthesis, setExpandingSynthesis] = useState(false);
   const [themesExpanded, setThemesExpanded] = useState(true);
   const [ideasExpanded, setIdeasExpanded] = useState(true);
-  const [mainView, setMainView] = useState<'graph' | 'evolution'>('graph');
+  const isEvolutionRoute = location.pathname.endsWith('/evolution');
+  const [mainView, setMainViewState] = useState<'graph' | 'evolution'>(isEvolutionRoute ? 'evolution' : 'graph');
+
+  const setMainView = useCallback((view: 'graph' | 'evolution') => {
+    setMainViewState(view);
+    if (view === 'evolution') {
+      navigate(`/spaces/${id}/evolution`, { replace: true });
+    } else {
+      navigate(`/spaces/${id}`, { replace: true });
+    }
+  }, [id, navigate]);
   const [evolutionStyle, setEvolutionStyle] = useState<'flow' | 'branch' | 'timeline'>('flow');
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [suggestions, setSuggestions] = useState<SpaceIdea[]>([]);
@@ -3209,6 +3221,23 @@ export default function SpaceDetailPage() {
                       )}
                     </button>
                   ))}
+                  {artifacts.filter(a => a.status !== 'failed').length > 5 && (
+                    <Link
+                      to={`/spaces/${id}/artifacts`}
+                      style={{
+                        display: 'block',
+                        textAlign: 'center',
+                        padding: `${spacing[2]} 0`,
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-500)',
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
+                    >
+                      View all ({artifacts.filter(a => a.status !== 'failed').length})
+                    </Link>
+                  )}
                 </div>
               )}
             </div>

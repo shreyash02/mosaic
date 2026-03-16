@@ -93,6 +93,7 @@ import SpaceActivityPage from './pages/SpaceActivityPage';
 import WorkspaceActivityPage from './pages/WorkspaceActivityPage';
 import SpaceSnapshotPage from './pages/SpaceSnapshotPage';
 import SpaceArtifactPage from './pages/SpaceArtifactPage';
+import SpaceArtifactsListPage from './pages/SpaceArtifactsListPage';
 import SpaceCheckpointPage from './pages/SpaceCheckpointPage';
 import AcceptSpaceInvitePage from './pages/AcceptSpaceInvitePage';
 import SearchResultsPage from './pages/SearchResultsPage';
@@ -503,6 +504,14 @@ function App() {
               }
             />
             <Route
+              path="/spaces/:id/evolution"
+              element={
+                <ProtectedRoute>
+                  <SpaceDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/spaces/:id/settings"
               element={
                 <ProtectedRoute>
@@ -528,6 +537,14 @@ function App() {
               }
             />
 
+            <Route
+              path="/spaces/:id/artifacts"
+              element={
+                <ProtectedRoute>
+                  <SpaceArtifactsListPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/spaces/:id/artifacts/:artifactId"
               element={
