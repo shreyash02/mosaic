@@ -1876,7 +1876,7 @@ export interface PurposeSynthesis {
   expanded_theme_notes?: Record<string, ExpandedThemeAnalysis>;
 }
 
-export type ArtifactType = 'summary' | 'checklist' | 'plan' | 'decision_brief' | 'implementation_spec' | 'talking_points' | 'retrospective' | 'custom';
+export type ArtifactType = 'summary' | 'checklist' | 'plan' | 'decision_brief' | 'implementation_spec' | 'talking_points' | 'retrospective' | 'custom' | 'presentation';
 
 export interface ArtifactTypeInfo {
   key: ArtifactType;

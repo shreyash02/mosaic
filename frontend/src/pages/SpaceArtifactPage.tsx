@@ -5,6 +5,8 @@ import type { SpaceArtifact } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { renderInlineMarkdown } from '../utils/renderInlineMarkdown';
+import { generatePptx } from '../utils/generatePptx';
+import { generatePresentationPdf } from '../utils/generatePresentationPdf';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -15,6 +17,7 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   talking_points: 'Talking Points',
   retrospective: 'Retrospective',
   custom: 'Custom',
+  presentation: 'Presentation',
 };
 
 export default function SpaceArtifactPage() {
@@ -128,6 +131,7 @@ export default function SpaceArtifactPage() {
           {artifact.artifact_type === 'talking_points' && <TalkingPointsView content={content} />}
           {artifact.artifact_type === 'retrospective' && <RetrospectiveView content={content} />}
           {artifact.artifact_type === 'custom' && <SummaryView content={content} />}
+          {artifact.artifact_type === 'presentation' && <PresentationPageView content={content} />}
         </div>
       </div>
     </div>
@@ -365,6 +369,124 @@ function RetrospectiveView({ content }: { content: Record<string, any> }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+function PresentationPageView({ content }: { content: Record<string, any> }) {
+  const slides = content.slides || [];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: spacing[3], marginBottom: spacing[6] }}>
+        <button
+          onClick={() => generatePptx(content as any)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing[2],
+            padding: `${spacing[3]} ${spacing[6]}`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            backgroundColor: 'var(--color-primary-700)',
+            color: 'var(--color-primary-50)',
+            border: 'none',
+            borderRadius: borders.radius.md,
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          .pptx
+        </button>
+        <button
+          onClick={() => generatePresentationPdf(content as any)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing[2],
+            padding: `${spacing[3]} ${spacing[6]}`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            backgroundColor: 'transparent',
+            color: 'var(--color-primary-700)',
+            border: '1px solid var(--color-primary-300)',
+            borderRadius: borders.radius.md,
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          .pdf
+        </button>
+      </div>
+
+      <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', marginBottom: spacing[4] }}>
+        {slides.length} slides
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+        {slides.map((slide: any, i: number) => {
+          const isDark = slide.layout === 'title' || slide.layout === 'section';
+          return (
+            <div key={i} style={{
+              padding: `${spacing[4]} ${spacing[5]}`,
+              border: '1px solid var(--color-primary-200)',
+              borderRadius: borders.radius.md,
+              backgroundColor: isDark ? 'var(--color-primary-800)' : 'var(--color-primary-50)',
+              aspectRatio: '16/9',
+              maxHeight: 160,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: isDark ? 'center' : 'flex-start',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: spacing[3],
+                marginBottom: slide.bullets ? spacing[2] : 0,
+              }}>
+                <span style={{ fontSize: 10, color: isDark ? 'var(--color-primary-400)' : 'var(--color-primary-400)', minWidth: 18 }}>
+                  {i + 1}
+                </span>
+                <span style={{
+                  fontSize: isDark ? typography.fontSize.base : typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.semibold,
+                  color: isDark ? 'var(--color-primary-50)' : 'var(--color-primary-800)',
+                }}>
+                  {slide.title}
+                </span>
+              </div>
+              {slide.bullets && (
+                <div style={{ paddingLeft: 30 }}>
+                  {slide.bullets.slice(0, 4).map((b: string, j: number) => (
+                    <div key={j} style={{
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-600)',
+                      marginBottom: 2,
+                    }}>
+                      {b}
+                    </div>
+                  ))}
+                  {slide.bullets.length > 4 && (
+                    <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+                      +{slide.bullets.length - 4} more
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

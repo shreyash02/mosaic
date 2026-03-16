@@ -1556,6 +1556,10 @@ Return your analysis as JSON:
             "label": "Custom",
             "description": "User-defined artifact based on a custom prompt",
         },
+        "presentation": {
+            "label": "Presentation",
+            "description": "A slide deck you can download as .pptx",
+        },
     }
 
     def generate_artifact(
@@ -1832,6 +1836,55 @@ Return JSON with:
 
 Structure the output with clear sections that address the user's request.
 Be specific and grounded in the actual themes and ideas. Avoid generic filler."""
+        elif artifact_type == "presentation":
+            ctx = f'\nThe user added this context: "{user_context}"' if user_context else ""
+            instructions = f"""Generate a slide deck presentation based on this space.{ctx}
+
+Return JSON:
+{{
+  "title": "Presentation title",
+  "slides": [
+    {{
+      "layout": "title",
+      "title": "Presentation Title",
+      "subtitle": "Optional subtitle or date"
+    }},
+    {{
+      "layout": "section",
+      "title": "Section divider title"
+    }},
+    {{
+      "layout": "content",
+      "title": "Slide Title",
+      "bullets": ["Point 1", "Point 2", "Point 3"],
+      "notes": "Speaker notes for this slide"
+    }},
+    {{
+      "layout": "two_column",
+      "title": "Comparison Slide",
+      "left_heading": "Left Column",
+      "left_bullets": ["Point A", "Point B"],
+      "right_heading": "Right Column",
+      "right_bullets": ["Point X", "Point Y"],
+      "notes": "Speaker notes"
+    }},
+    {{
+      "layout": "content",
+      "title": "Thank You",
+      "bullets": ["Key takeaway 1", "Key takeaway 2"]
+    }}
+  ]
+}}
+
+Create 8-15 slides. Use these layouts:
+- "title": Opening slide with title and subtitle
+- "section": Section divider (just a title, used to separate topics)
+- "content": Standard slide with title and 3-5 bullet points
+- "two_column": Side-by-side comparison with two sets of bullets
+
+Keep bullet points concise (under 12 words each). Add speaker notes for content slides.
+Start with a title slide, organize by theme or topic, end with key takeaways.
+Be specific — reference actual ideas and themes, not generic advice."""
         else:
             instructions = type_instructions.get(artifact_type, type_instructions["summary"])
 

@@ -13,10 +13,12 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   talking_points: 'Talking Points',
   retrospective: 'Retrospective',
   custom: 'Custom',
+  presentation: 'Presentation',
 };
 
 interface Props {
   runs: OrganizeRun[];
+  spaceId?: string;
   artifacts?: SpaceArtifact[];
   onArtifactClick?: (artifact: SpaceArtifact) => void;
 }
@@ -142,10 +144,11 @@ function buildSankeyData(runs: OrganizeRun[]) {
     }
   }
 
-  // Collect one date per run for the header row
+  // Collect one date and run_id per run for the header row
   const dates = sorted.map(r => r.created_at);
+  const runIds = sorted.map(r => r.run_id);
 
-  return { nodes, links, dates };
+  return { nodes, links, dates, runIds };
 }
 
 function SankeyNodeRenderer({ x, y, width, height, payload }: any) {
@@ -217,7 +220,7 @@ const emptyStyle: React.CSSProperties = {
   textAlign: 'center',
 };
 
-export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactClick }: Props) {
+export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], onArtifactClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
@@ -256,6 +259,11 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
   const dates = useMemo(() => {
     if (!data) return [];
     return data.dates;
+  }, [data]);
+
+  const runIds = useMemo(() => {
+    if (!data) return [];
+    return data.runIds;
   }, [data]);
 
   // Map artifacts to run indices by matching timestamps
@@ -408,50 +416,97 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
                             top: '100%',
                             left: '50%',
                             transform: 'translateX(-50%)',
-                            paddingTop: 4,
+                            paddingTop: 6,
+                            zIndex: 20,
+                            animation: 'artifactDropdownIn 0.15s ease-out',
+                          }}>
+                           <div style={{
                             backgroundColor: 'var(--color-primary-50)',
                             border: '1px solid var(--color-primary-200)',
-                            borderRadius: borders.radius.md,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                            padding: spacing[1],
-                            minWidth: 180,
-                            maxWidth: 260,
-                            zIndex: 20,
-                          }}>
-                            {runArtifacts.map(a => (
-                              <button
-                                key={a.id}
-                                onClick={() => {
-                                  setOpenArtifactDropdown(null);
-                                  onArtifactClick?.(a);
-                                }}
+                            borderRadius: borders.radius.lg,
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                            padding: spacing[3],
+                           }}>
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: `repeat(${Math.min(runArtifacts.length, 4)}, 1fr)`,
+                              gap: spacing[2],
+                            }}>
+                              {runArtifacts.map(a => (
+                                <button
+                                  key={a.id}
+                                  onClick={() => {
+                                    setOpenArtifactDropdown(null);
+                                    onArtifactClick?.(a);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: spacing[1],
+                                    width: 72,
+                                    padding: spacing[2],
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    cursor: 'pointer',
+                                    borderRadius: borders.radius.md,
+                                    textAlign: 'center',
+                                    fontFamily: typography.fontFamily.sans,
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                >
+                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                  </svg>
+                                  <span style={{
+                                    fontSize: 9,
+                                    lineHeight: 1.2,
+                                    color: 'var(--color-primary-600)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    wordBreak: 'break-word',
+                                  }}>
+                                    {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                            {spaceId && runIds[i] && (
+                              <a
+                                href={`/spaces/${spaceId}/checkpoint?run=${runIds[i]}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => { e.stopPropagation(); }}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: spacing[2],
-                                  width: '100%',
-                                  padding: `${spacing[2]} ${spacing[2]}`,
-                                  border: 'none',
-                                  backgroundColor: 'transparent',
-                                  cursor: 'pointer',
-                                  borderRadius: borders.radius.sm,
-                                  textAlign: 'left',
-                                  fontSize: 11,
-                                  color: 'var(--color-primary-700)',
+                                  justifyContent: 'center',
+                                  gap: 4,
+                                  marginTop: spacing[2],
+                                  paddingTop: spacing[2],
+                                  borderTop: '1px solid var(--color-primary-200)',
+                                  fontSize: 10,
+                                  color: 'var(--color-primary-500)',
+                                  textDecoration: 'none',
                                   fontFamily: typography.fontFamily.sans,
                                 }}
-                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                  <polyline points="14 2 14 8 20 8" />
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                  <polyline points="15 3 21 3 21 9" />
+                                  <line x1="10" y1="14" x2="21" y2="3" />
                                 </svg>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}
-                                </span>
-                              </button>
-                            ))}
+                                Open checkpoint
+                              </a>
+                            )}
+                           </div>
                           </div>
                         )}
                       </div>
@@ -500,6 +555,7 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
           ))}
         </div>
       )}
+      <style>{`@keyframes artifactDropdownIn { from { opacity: 0; transform: translateX(-50%) translateY(-4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
     </div>
   );
 }

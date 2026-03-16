@@ -2793,6 +2793,7 @@ export default function SpaceDetailPage() {
               {evolutionStyle === 'flow' ? (
                 <ThemeEvolutionSankey
                   runs={evolution}
+                  spaceId={id}
                   artifacts={artifacts}
                   onArtifactClick={(a) => {
                     api.getArtifact(id!, a.id).then(full => {

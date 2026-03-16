@@ -93,6 +93,7 @@ import SpaceActivityPage from './pages/SpaceActivityPage';
 import WorkspaceActivityPage from './pages/WorkspaceActivityPage';
 import SpaceSnapshotPage from './pages/SpaceSnapshotPage';
 import SpaceArtifactPage from './pages/SpaceArtifactPage';
+import SpaceCheckpointPage from './pages/SpaceCheckpointPage';
 import AcceptSpaceInvitePage from './pages/AcceptSpaceInvitePage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import HelpPage from './pages/HelpPage';
@@ -532,6 +533,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SpaceArtifactPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/spaces/:id/checkpoint"
+              element={
+                <ProtectedRoute>
+                  <SpaceCheckpointPage />
                 </ProtectedRoute>
               }
             />

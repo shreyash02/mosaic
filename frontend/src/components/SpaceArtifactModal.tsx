@@ -4,6 +4,8 @@ import { api } from '../services/api';
 import type { SpaceArtifact, ArtifactType } from '../types';
 import { typography, spacing, borders, colors } from '../styles/tokens';
 import { renderInlineMarkdown } from '../utils/renderInlineMarkdown';
+import { generatePptx } from '../utils/generatePptx';
+import { generatePresentationPdf } from '../utils/generatePresentationPdf';
 
 const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: string }> = [
   { key: 'summary', label: 'Summary', description: 'A narrative write-up synthesizing all themes' },
@@ -13,6 +15,7 @@ const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: str
   { key: 'implementation_spec', label: 'Implementation Spec', description: 'Detailed spec with requirements and approach' },
   { key: 'talking_points', label: 'Talking Points', description: 'Key messages organized by audience or topic' },
   { key: 'retrospective', label: 'Retrospective', description: 'What worked, what didn\'t, what to change' },
+  { key: 'presentation', label: 'Presentation', description: 'A slide deck you can download as .pptx' },
   { key: 'custom', label: 'Custom', description: 'Describe what you need and we\'ll generate it' },
 ];
 
@@ -333,6 +336,7 @@ function ArtifactContent({ artifact }: { artifact: SpaceArtifact }) {
       {type === 'talking_points' && <TalkingPointsView content={content} />}
       {type === 'retrospective' && <RetrospectiveView content={content} />}
       {type === 'custom' && <SummaryView content={content} />}
+      {type === 'presentation' && <PresentationView content={content} />}
     </div>
   );
 }
@@ -568,6 +572,114 @@ function RetrospectiveView({ content }: { content: Record<string, any> }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+function PresentationView({ content }: { content: Record<string, any> }) {
+  const slides = content.slides || [];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[4] }}>
+        <button
+          onClick={() => generatePptx(content as any)}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing[2],
+            padding: `${spacing[3]} ${spacing[4]}`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            backgroundColor: 'var(--color-primary-700)',
+            color: 'var(--color-primary-50)',
+            border: 'none',
+            borderRadius: borders.radius.sm,
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          .pptx
+        </button>
+        <button
+          onClick={() => generatePresentationPdf(content as any)}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing[2],
+            padding: `${spacing[3]} ${spacing[4]}`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            backgroundColor: 'transparent',
+            color: 'var(--color-primary-700)',
+            border: '1px solid var(--color-primary-300)',
+            borderRadius: borders.radius.sm,
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          .pdf
+        </button>
+      </div>
+
+      <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[3] }}>
+        {slides.length} slides
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+        {slides.map((slide: any, i: number) => (
+          <div key={i} style={{
+            padding: `${spacing[2]} ${spacing[3]}`,
+            border: '1px solid var(--color-primary-200)',
+            borderRadius: borders.radius.sm,
+            backgroundColor: slide.layout === 'title' || slide.layout === 'section'
+              ? 'var(--color-primary-800)' : 'var(--color-primary-50)',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+            }}>
+              <span style={{
+                fontSize: 10,
+                color: slide.layout === 'title' || slide.layout === 'section'
+                  ? 'var(--color-primary-400)' : 'var(--color-primary-400)',
+                minWidth: 18,
+              }}>
+                {i + 1}
+              </span>
+              <span style={{
+                fontSize: typography.fontSize.xs,
+                fontWeight: typography.fontWeight.medium,
+                color: slide.layout === 'title' || slide.layout === 'section'
+                  ? 'var(--color-primary-50)' : 'var(--color-primary-700)',
+              }}>
+                {slide.title}
+              </span>
+              <span style={{
+                fontSize: 10,
+                color: slide.layout === 'title' || slide.layout === 'section'
+                  ? 'var(--color-primary-400)' : 'var(--color-primary-400)',
+                marginLeft: 'auto',
+              }}>
+                {slide.layout === 'two_column' ? '2-col' : slide.layout}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
