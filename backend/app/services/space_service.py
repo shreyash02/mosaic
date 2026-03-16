@@ -1641,23 +1641,18 @@ Return your analysis as JSON:
                 latency_ms=latency,
             )
 
+            # Check if output was truncated
+            if response.stop_reason == "max_tokens":
+                logger.warning(f"Artifact generation truncated for type={artifact_type} — output hit max_tokens")
+                return None
+
             text = response.content[0].text.strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                # Truncated output — try to repair by closing open strings/arrays/objects
-                repaired = text
-                # Close any unterminated string
-                if repaired.count('"') % 2 == 1:
-                    repaired += '"'
-                # Close open brackets
-                open_brackets = repaired.count('[') - repaired.count(']')
-                open_braces = repaired.count('{') - repaired.count('}')
-                repaired += ']' * max(0, open_brackets)
-                repaired += '}' * max(0, open_braces)
-                return json.loads(repaired)
+            return json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning(f"Failed to parse artifact JSON for type={artifact_type}", exc_info=True)
+            return None
         except Exception:
             logger.warning(f"Failed to generate artifact type={artifact_type}", exc_info=True)
             return None
@@ -1867,11 +1862,6 @@ Return JSON:
       "right_heading": "Right Column",
       "right_bullets": ["Point X", "Point Y"],
       "notes": "Speaker notes"
-    }},
-    {{
-      "layout": "content",
-      "title": "Thank You",
-      "bullets": ["Key takeaway 1", "Key takeaway 2"]
     }}
   ]
 }}
@@ -1898,3 +1888,92 @@ Themes and their ideas:
 {instructions}
 
 Return valid JSON only. Be specific and grounded in the actual content — avoid generic filler."""
+
+    def refine_artifact(
+        self,
+        db: Session,
+        space_id: UUID,
+        previous_content: dict,
+        artifact_type: str,
+        refinement: str,
+        purpose: str,
+        space_title: str,
+        space_description: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Generate a refined version of an artifact based on user feedback."""
+        from app.models.theme import Theme
+        from app.models.idea import Idea
+        from app.models.idea_theme import IdeaTheme
+
+        themes = db.query(Theme).filter(Theme.space_id == space_id).all()
+
+        # Build lightweight theme context
+        theme_data: List[Dict[str, Any]] = []
+        for theme in themes:
+            assignments = db.query(IdeaTheme).filter(IdeaTheme.theme_id == theme.id).all()
+            if not assignments:
+                continue
+            idea_ids = [a.idea_id for a in assignments]
+            member_ideas = db.query(Idea).filter(Idea.id.in_(idea_ids), Idea.status == "active").limit(10).all()
+            theme_data.append({
+                "name": theme.name,
+                "summary": theme.summary or "",
+                "ideas": [i.text for i in member_ideas],
+            })
+
+        themes_section = ""
+        for td in theme_data:
+            ideas_text = "\n".join(f"  - {idea}" for idea in td["ideas"])
+            themes_section += f'\nTheme: "{td["name"]}"\nSummary: {td["summary"]}\nIdeas:\n{ideas_text}\n'
+
+        previous_json = json.dumps(previous_content, indent=2)
+
+        prompt = f"""You previously generated a {artifact_type} artifact for a space called "{space_title}".
+
+The user wants you to refine it with these instructions:
+"{refinement}"
+
+Here is the previous version:
+```json
+{previous_json}
+```
+
+Context — themes and ideas in this space:
+{themes_section}
+
+Generate an improved version that addresses the user's refinement instructions.
+Return the SAME JSON structure as the previous version, with the requested changes applied.
+Keep the same format and keys — only modify the content as instructed.
+Return valid JSON only."""
+
+        try:
+            t0 = time.time()
+            response = self.anthropic_client.messages.create(
+                model=self.llm_model,
+                max_tokens=8000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            latency = int((time.time() - t0) * 1000)
+            log_llm_usage(
+                operation_type=f"space_artifact_refine_{artifact_type}",
+                provider="anthropic",
+                model=self.llm_model,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                latency_ms=latency,
+            )
+
+            if response.stop_reason == "max_tokens":
+                logger.warning(f"Artifact refinement truncated for type={artifact_type} — output hit max_tokens")
+                return None
+
+            text = response.content[0].text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            return json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning(f"Failed to parse refined artifact JSON for type={artifact_type}", exc_info=True)
+            return None
+        except Exception:
+            logger.warning(f"Failed to refine artifact type={artifact_type}", exc_info=True)
+            return None

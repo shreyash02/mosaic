@@ -10,6 +10,8 @@ interface SlideData {
   left_bullets?: string[];
   right_heading?: string;
   right_bullets?: string[];
+  mermaid?: string;
+  image_query?: string;
 }
 
 interface PresentationData {
@@ -47,6 +49,12 @@ export function generatePresentationPdf(data: PresentationData, filename?: strin
         break;
       case 'content':
         renderContentSlide(pdf, slide, pageW, pageH, margin);
+        break;
+      case 'content_image':
+        renderContentSlide(pdf, slide, pageW, pageH, margin);
+        break;
+      case 'diagram':
+        renderDiagramSlide(pdf, slide, pageW, pageH, margin);
         break;
       case 'two_column':
         renderTwoColumnSlide(pdf, slide, pageW, pageH, margin);
@@ -208,5 +216,29 @@ function renderTwoColumnSlide(pdf: jsPDF, slide: SlideData, w: number, h: number
       pdf.text(lines, rightX + 6, y);
       y += lines.length * 4.5 + 2.5;
     }
+  }
+}
+
+function renderDiagramSlide(pdf: jsPDF, slide: SlideData, w: number, h: number, m: number) {
+  pdf.setFillColor(...COLORS.white);
+  pdf.rect(0, 0, w, h, 'F');
+
+  // Title
+  pdf.setFontSize(18);
+  pdf.setTextColor(...COLORS.primary);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(slide.title, m, m + 8);
+
+  // Accent bar
+  pdf.setFillColor(...COLORS.accent);
+  pdf.rect(m, m + 12, 20, 0.8, 'F');
+
+  // Show mermaid code as placeholder (PDF can't render diagrams inline easily)
+  if (slide.mermaid) {
+    pdf.setFontSize(9);
+    pdf.setTextColor(...COLORS.lightText);
+    pdf.setFont('courier', 'normal');
+    const lines = pdf.splitTextToSize(slide.mermaid, w - m * 2);
+    pdf.text(lines, m, m + 22);
   }
 }

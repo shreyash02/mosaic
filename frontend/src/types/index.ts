@@ -1884,6 +1884,13 @@ export interface ArtifactTypeInfo {
   description: string;
 }
 
+export interface ArtifactVersion {
+  id: string;
+  version: number;
+  refinement?: string;
+  created_at?: string;
+}
+
 export interface SpaceArtifact {
   id: string;
   artifact_type: ArtifactType;
@@ -1893,6 +1900,12 @@ export interface SpaceArtifact {
   user_context?: string;
   synthesis_id?: string;
   created_at?: string;
+  version?: number;
+  refinement?: string;
+  parent_id?: string;
+  versions?: ArtifactVersion[];
+  version_count?: number;
+  latest_version_id?: string;
 }
 
 export interface SynthesisActivityEntry {

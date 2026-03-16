@@ -1950,30 +1950,48 @@ def list_artifacts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List all artifacts for a space."""
+    """List all artifacts for a space (only originals, not versions)."""
     _require_spaces_flag(current_user, db)
     _get_space_or_404(space_id, current_user, db)
 
     from app.models.space_artifact import SpaceArtifact
+    # Only show originals (parent_id is null)
     rows = (
         db.query(SpaceArtifact)
-        .filter(SpaceArtifact.space_id == space_id)
+        .filter(SpaceArtifact.space_id == space_id, SpaceArtifact.parent_id == None)
         .order_by(SpaceArtifact.created_at.desc())
         .all()
     )
 
-    return [
-        {
+    result = []
+    for r in rows:
+        # Find latest version
+        latest = (
+            db.query(SpaceArtifact)
+            .filter(SpaceArtifact.parent_id == r.id, SpaceArtifact.status == "ready")
+            .order_by(SpaceArtifact.version.desc())
+            .first()
+        )
+        display = latest or r
+        version_count = (
+            db.query(func.count(SpaceArtifact.id))
+            .filter(SpaceArtifact.parent_id == r.id)
+            .scalar() or 0
+        ) + 1  # +1 for the original
+
+        result.append({
             "id": str(r.id),
             "artifact_type": r.artifact_type,
-            "title": r.title,
-            "status": r.status,
+            "title": display.title,
+            "status": display.status,
             "user_context": r.user_context,
             "synthesis_id": str(r.synthesis_id) if r.synthesis_id else None,
             "created_at": r.created_at.isoformat() if r.created_at else None,
-        }
-        for r in rows
-    ]
+            "version_count": version_count,
+            "latest_version_id": str(display.id) if latest else None,
+        })
+
+    return result
 
 
 @router.get("/{space_id}/artifacts/{artifact_id}")
@@ -1995,6 +2013,30 @@ def get_artifact(
     if not row:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
+    # Determine original_id for version queries
+    original_id = row.parent_id or row.id
+
+    # Get all versions (original + children)
+    all_versions = (
+        db.query(SpaceArtifact)
+        .filter(
+            ((SpaceArtifact.id == original_id) | (SpaceArtifact.parent_id == original_id)),
+            SpaceArtifact.status == "ready",
+        )
+        .order_by(SpaceArtifact.version.desc())
+        .all()
+    )
+
+    versions = [
+        {
+            "id": str(v.id),
+            "version": v.version,
+            "refinement": v.refinement,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+        }
+        for v in all_versions
+    ]
+
     return {
         "id": str(row.id),
         "artifact_type": row.artifact_type,
@@ -2002,8 +2044,12 @@ def get_artifact(
         "status": row.status,
         "content": row.content,
         "user_context": row.user_context,
+        "version": row.version,
+        "refinement": row.refinement,
+        "parent_id": str(row.parent_id) if row.parent_id else None,
         "synthesis_id": str(row.synthesis_id) if row.synthesis_id else None,
         "created_at": row.created_at.isoformat() if row.created_at else None,
+        "versions": versions,
     }
 
 
@@ -2031,6 +2077,152 @@ def delete_artifact(
     db.commit()
 
 
+def run_refine_artifact_task(
+    space_id: UUID,
+    new_artifact_id: UUID,
+    artifact_type: str,
+    previous_content: dict,
+    refinement: str,
+    purpose: str,
+    space_title: str,
+    space_description: Optional[str],
+    db_url: str,
+):
+    """Background task to generate a refined artifact version."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.services.space_service import SpaceService
+    from app.services.platform_settings_service import get_llm_model
+    from app.models.space_artifact import SpaceArtifact
+
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    try:
+        llm_model = get_llm_model(db)
+        service = SpaceService(model=llm_model)
+        result = service.refine_artifact(
+            db, space_id, previous_content, artifact_type,
+            refinement, purpose, space_title, space_description,
+        )
+
+        artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == new_artifact_id).first()
+        if artifact_row:
+            if result:
+                artifact_row.content = result
+                artifact_row.title = result.get("title", artifact_row.title)
+                artifact_row.status = "ready"
+                db.commit()
+            else:
+                db.delete(artifact_row)
+                db.commit()
+
+        _broadcast_sse_to_space(db, space_id, "space_artifact_generated", {
+            "space_id": str(space_id),
+            "artifact_id": str(new_artifact_id),
+            "artifact_type": artifact_type,
+            "status": "ready" if result else "failed",
+            "title": result.get("title", "") if result else "",
+        })
+    except Exception as e:
+        logger.error(f"Error refining artifact for space {space_id}: {e}", exc_info=True)
+        artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == new_artifact_id).first()
+        if artifact_row:
+            db.delete(artifact_row)
+            db.commit()
+        _broadcast_sse_to_space(db, space_id, "space_artifact_generated", {
+            "space_id": str(space_id),
+            "artifact_id": str(new_artifact_id),
+            "artifact_type": artifact_type,
+            "status": "failed",
+        })
+    finally:
+        db.close()
+        engine.dispose()
+
+
+@router.post("/{space_id}/artifacts/{artifact_id}/refine", status_code=status.HTTP_202_ACCEPTED)
+def refine_artifact(
+    space_id: UUID,
+    artifact_id: UUID,
+    data: dict,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a refined version of an artifact."""
+    _require_spaces_flag(current_user, db)
+    space = _get_space_or_404(space_id, current_user, db)
+
+    refinement = data.get("refinement", "").strip()
+    if not refinement:
+        raise HTTPException(status_code=400, detail="Refinement instructions are required")
+
+    from app.models.space_artifact import SpaceArtifact
+    import uuid
+
+    # Find the artifact (could be original or a version)
+    source_row = db.query(SpaceArtifact).filter(
+        SpaceArtifact.id == artifact_id,
+        SpaceArtifact.space_id == space_id,
+    ).first()
+    if not source_row:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    if not source_row.content:
+        raise HTTPException(status_code=400, detail="Artifact has no content to refine")
+
+    # Determine the original artifact ID
+    original_id = source_row.parent_id or source_row.id
+
+    # Get current max version
+    max_version = (
+        db.query(func.max(SpaceArtifact.version))
+        .filter(
+            (SpaceArtifact.id == original_id) | (SpaceArtifact.parent_id == original_id)
+        )
+        .scalar() or 1
+    )
+
+    # Create new version row
+    new_row = SpaceArtifact(
+        id=uuid.uuid4(),
+        space_id=space.id,
+        synthesis_id=source_row.synthesis_id,
+        created_by_id=current_user.id,
+        artifact_type=source_row.artifact_type,
+        title=source_row.title,
+        user_context=source_row.user_context,
+        parent_id=original_id,
+        version=max_version + 1,
+        refinement=refinement,
+        status="generating",
+    )
+    db.add(new_row)
+    db.commit()
+
+    purpose = _get_space_purpose(space)
+    background_tasks.add_task(
+        run_refine_artifact_task,
+        space_id=space.id,
+        new_artifact_id=new_row.id,
+        artifact_type=source_row.artifact_type,
+        previous_content=source_row.content,
+        refinement=refinement,
+        purpose=purpose,
+        space_title=space.title,
+        space_description=space.description,
+        db_url=str(settings.DATABASE_URL),
+    )
+
+    return {
+        "id": str(new_row.id),
+        "version": new_row.version,
+        "status": "generating",
+        "message": "Refining artifact...",
+    }
+
+
 @router.get("/{space_id}/artifact-types")
 def get_artifact_types(
     space_id: UUID,
@@ -2048,6 +2240,7 @@ def get_artifact_types(
             for k, v in SpaceService.ARTIFACT_TYPES.items()
         ]
     }
+
 
 
 @router.get("/{space_id}/graph", response_model=GraphData)

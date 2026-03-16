@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import type { SpaceArtifact } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
@@ -20,12 +20,27 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   presentation: 'Presentation',
 };
 
+function summarizeRefinement(text: string): string {
+  const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  if (words.length === 0) return '';
+  const summary = words.join(' ');
+  return summary.charAt(0).toUpperCase() + summary.slice(1).replace(/[.,;:!?]+$/, '');
+}
+
 export default function SpaceArtifactPage() {
   const { id: spaceId, artifactId } = useParams<{ id: string; artifactId: string }>();
+  const [searchParams] = useSearchParams();
+  const fromCheckpoint = searchParams.get('from') === 'checkpoint';
+  const checkpointRunId = searchParams.get('run');
   const [artifact, setArtifact] = useState<SpaceArtifact | null>(null);
   const [spaceTitle, setSpaceTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showRefine, setShowRefine] = useState(false);
+  const [refinementText, setRefinementText] = useState('');
+  const [refining, setRefining] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const [confirmDeleteVersionId, setConfirmDeleteVersionId] = useState<string | null>(null);
 
   usePageTitle(artifact?.title || 'Artifact');
 
@@ -81,17 +96,193 @@ export default function SpaceArtifactPage() {
             </svg>
             {spaceTitle || 'Back to space'}
           </Link>
+          {fromCheckpoint && checkpointRunId && (
+            <>
+              <span style={{ color: 'var(--color-primary-300)' }}>/</span>
+              <a href={`/spaces/${spaceId}/checkpoint?run=${checkpointRunId}`} style={{ color: 'var(--color-primary-500)', textDecoration: 'none', fontSize: typography.fontSize.sm }}>
+                {localStorage.getItem(`checkpoint-name-${checkpointRunId}`) || 'Checkpoint'}
+              </a>
+            </>
+          )}
           <span style={{ color: 'var(--color-primary-300)' }}>/</span>
           <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)' }}>
             {ARTIFACT_TYPE_LABELS[artifact.artifact_type] || artifact.artifact_type}
           </span>
         </div>
-        {artifact.created_at && (
-          <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
-            Generated {new Date(artifact.created_at).toLocaleDateString()}
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+          {(artifact.versions?.length ?? 0) > 1 && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowVersions(prev => !prev)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: spacing[1],
+                  padding: `${spacing[1]} ${spacing[3]}`, fontSize: typography.fontSize.xs,
+                  color: 'var(--color-primary-600)', backgroundColor: 'var(--color-primary-100)',
+                  border: '1px solid var(--color-primary-200)', borderRadius: borders.radius.full, cursor: 'pointer',
+                }}
+              >
+                v{artifact.version}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+              </button>
+              {showVersions && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  backgroundColor: 'var(--color-primary-50)', border: '1px solid var(--color-primary-200)',
+                  borderRadius: borders.radius.md, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  padding: spacing[1], minWidth: 240, zIndex: 20,
+                }}>
+                  {artifact.versions!.map(v => (
+                    <div
+                      key={v.id}
+                      style={{
+                        display: 'flex', alignItems: 'center',
+                        padding: `${spacing[2]} ${spacing[2]}`,
+                        backgroundColor: v.id === artifact.id ? 'var(--color-primary-100)' : 'transparent',
+                        borderRadius: borders.radius.sm,
+                        fontSize: typography.fontSize.xs, color: 'var(--color-primary-700)',
+                      }}
+                      onMouseEnter={e => { if (v.id !== artifact.id) e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
+                      onMouseLeave={e => { if (v.id !== artifact.id) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                      <button
+                        onClick={() => {
+                          setShowVersions(false); setShowRefine(false); setRefinementText('');
+                          api.getArtifact(spaceId!, v.id).then(full => setArtifact(full)).catch(() => {});
+                        }}
+                        style={{
+                          flex: 1, border: 'none', backgroundColor: 'transparent',
+                          cursor: 'pointer', textAlign: 'left', fontSize: 'inherit',
+                          color: 'inherit', padding: 0, fontFamily: 'inherit',
+                        }}
+                      >
+                        <span style={{ fontWeight: typography.fontWeight.medium }}>v{v.version}</span>
+                        {v.version === 1 ? (
+                          <span style={{ color: 'var(--color-primary-400)', marginLeft: spacing[2] }}>Original</span>
+                        ) : v.refinement ? (
+                          <span style={{ color: 'var(--color-primary-500)', marginLeft: spacing[2] }}>
+                            {summarizeRefinement(v.refinement)}
+                          </span>
+                        ) : null}
+                      </button>
+                      {confirmDeleteVersionId === v.id ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteVersionId(null);
+                            api.deleteArtifact(spaceId!, v.id).then(() => {
+                              if (v.id === artifact.id) {
+                                const other = artifact.versions!.find(ov => ov.id !== v.id);
+                                if (other) {
+                                  api.getArtifact(spaceId!, other.id).then(full => setArtifact(full)).catch(() => {});
+                                } else {
+                                  window.location.href = `/spaces/${spaceId}`;
+                                }
+                              } else {
+                                api.getArtifact(spaceId!, artifact.id).then(full => setArtifact(full)).catch(() => {});
+                              }
+                            }).catch(() => {});
+                          }}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--color-error-600, #dc2626)', padding: '0 4px',
+                            flexShrink: 0, fontSize: 10, fontWeight: typography.fontWeight.medium,
+                          }}
+                        >
+                          Delete?
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteVersionId(v.id); }}
+                          title="Delete version"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--color-primary-400)', padding: '0 2px',
+                            flexShrink: 0, lineHeight: 1,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error-600, #dc2626)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-400)'; }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!showRefine && !refining && (
+            <button
+              onClick={() => setShowRefine(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: spacing[1],
+                padding: `${spacing[1]} ${spacing[3]}`, fontSize: typography.fontSize.xs,
+                color: 'var(--color-primary-600)', backgroundColor: 'transparent',
+                border: '1px solid var(--color-primary-300)', borderRadius: borders.radius.sm, cursor: 'pointer',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Refine
+            </button>
+          )}
+          {refining && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>
+              <span style={{ width: 12, height: 12, border: '2px solid var(--color-primary-200)', borderTopColor: 'var(--color-primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+              Refining...
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          )}
+          {artifact.created_at && (
+            <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)' }}>
+              Generated {new Date(artifact.created_at).toLocaleDateString()}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Refine input bar */}
+      {showRefine && (
+        <div style={{ padding: `${spacing[3]} ${spacing[8]}`, borderBottom: '1px solid var(--color-primary-200)', backgroundColor: 'var(--color-primary-100)' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', gap: spacing[2], alignItems: 'flex-start' }}>
+            <textarea
+              value={refinementText}
+              onChange={e => setRefinementText(e.target.value)}
+              placeholder="E.g., 'Make it shorter', 'More formal tone', 'Focus on phase 1 only'"
+              rows={2}
+              autoFocus
+              style={{
+                flex: 1, padding: spacing[2], fontSize: typography.fontSize.sm,
+                border: '1px solid var(--color-primary-300)', borderRadius: borders.radius.sm,
+                backgroundColor: 'var(--color-primary-50)', color: 'var(--color-primary-700)',
+                outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey && refinementText.trim()) { e.preventDefault(); handleRefine(); }
+                if (e.key === 'Escape') { setShowRefine(false); setRefinementText(''); }
+              }}
+            />
+            <button onClick={() => { setShowRefine(false); setRefinementText(''); }}
+              style={{ padding: `${spacing[2]} ${spacing[3]}`, fontSize: typography.fontSize.xs, backgroundColor: 'transparent', color: 'var(--color-primary-500)', border: 'none', cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={handleRefine} disabled={!refinementText.trim()}
+              style={{
+                padding: `${spacing[2]} ${spacing[3]}`, fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium,
+                backgroundColor: refinementText.trim() ? 'var(--color-primary-700)' : 'var(--color-primary-400)',
+                color: 'var(--color-primary-50)', border: 'none', borderRadius: borders.radius.sm,
+                cursor: refinementText.trim() ? 'pointer' : 'not-allowed',
+              }}>
+              Refine
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div style={{
@@ -133,9 +324,38 @@ export default function SpaceArtifactPage() {
           {artifact.artifact_type === 'custom' && <SummaryView content={content} />}
           {artifact.artifact_type === 'presentation' && <PresentationPageView content={content} />}
         </div>
+
       </div>
     </div>
   );
+
+  async function handleRefine() {
+    if (!artifact || !spaceId || !refinementText.trim()) return;
+    try {
+      setShowRefine(false);
+      setRefining(true);
+      const result = await api.refineArtifact(spaceId, artifact.id, refinementText.trim());
+      // Poll for the refined version
+      const interval = setInterval(async () => {
+        try {
+          const refined = await api.getArtifact(spaceId!, result.id);
+          if (refined.status === 'ready') {
+            clearInterval(interval);
+            setArtifact(refined);
+            setRefining(false);
+            setRefinementText('');
+          } else if (refined.status === 'failed') {
+            clearInterval(interval);
+            setRefining(false);
+            setError('Refinement failed');
+          }
+        } catch { /* ignore */ }
+      }, 2000);
+    } catch {
+      setRefining(false);
+      setShowRefine(true);
+    }
+  }
 }
 
 // --- Artifact type renderers (same as modal but with more room) ---

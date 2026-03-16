@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, Text, DateTime, Integer, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
 
@@ -38,12 +38,16 @@ class SpaceArtifact(Base):
     title = Column(String(200), nullable=True)
     content = Column(JSONB, nullable=True, default=dict)
     user_context = Column(Text, nullable=True)  # Optional user-provided context for generation
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("space_artifacts.id", ondelete="CASCADE"), nullable=True)
+    version = Column(Integer, nullable=False, default=1)
+    refinement = Column(Text, nullable=True)  # Refinement instructions used to generate this version
     status = Column(String(20), nullable=False, default="generating")  # generating, ready, failed
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
         Index("idx_space_artifacts_space", "space_id"),
         Index("idx_space_artifacts_synthesis", "synthesis_id"),
+        Index("idx_space_artifacts_parent", "parent_id"),
     )
 
     def __repr__(self):

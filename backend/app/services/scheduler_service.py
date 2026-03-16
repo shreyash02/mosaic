@@ -637,6 +637,7 @@ async def create_recurring_instances():
                     new_instance = Conversation(
                         creator_id=template.creator_id,
                         organization_id=template.organization_id,
+                        workspace_id=template.workspace_id,
                         parent_conversation_id=parent_id,
                         series_id=instance_series_id,
                         is_recurring_instance=True,

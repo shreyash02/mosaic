@@ -19,6 +19,14 @@ const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: str
   { key: 'custom', label: 'Custom', description: 'Describe what you need and we\'ll generate it' },
 ];
 
+function summarizeRefinement(text: string): string {
+  // Take first 4 words, capitalize first letter
+  const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  if (words.length === 0) return '';
+  const summary = words.join(' ');
+  return summary.charAt(0).toUpperCase() + summary.slice(1).replace(/[.,;:!?]+$/, '');
+}
+
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -49,6 +57,11 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
   const [artifact, setArtifact] = useState<SpaceArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const generatingIdRef = useRef<string | null>(null);
+  const [showRefine, setShowRefine] = useState(false);
+  const [refinementText, setRefinementText] = useState('');
+  const [refining, setRefining] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const [confirmDeleteVersionId, setConfirmDeleteVersionId] = useState<string | null>(null);
 
   // Expose handler for parent to call when SSE delivers
   useImperativeHandle(ref, () => ({
@@ -74,6 +87,10 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
         generatingIdRef.current = null;
         setArtifact(null);
         setError(null);
+        setShowRefine(false);
+        setRefinementText('');
+        setRefining(false);
+        setShowVersions(false);
       }
     }
   }, [isOpen, viewArtifact]);
@@ -113,10 +130,13 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
           if (generatingIdRef.current === artifactId) {
             setArtifact(result);
             setView('view');
+            setRefining(false);
+            setRefinementText('');
           }
         } else if (result.status === 'failed') {
           clearInterval(interval);
           if (generatingIdRef.current === artifactId) {
+            setRefining(false);
             setError('Generation failed. Try again.');
             setView('context');
           }
@@ -125,6 +145,21 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
         // ignore poll errors
       }
     }, 2000);
+  }
+
+  async function handleRefine() {
+    if (!artifact || !refinementText.trim()) return;
+    try {
+      setShowRefine(false);
+      setRefining(true);
+      const result = await api.refineArtifact(spaceId, artifact.id, refinementText.trim());
+      generatingIdRef.current = result.id;
+      // Poll for the refined version
+      pollForArtifact(result.id);
+    } catch (err: any) {
+      setRefining(false);
+      setShowRefine(true);
+    }
   }
 
   function handleSelectType(type: ArtifactType) {
@@ -289,7 +324,135 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
 
       {view === 'view' && artifact?.content && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: spacing[3] }}>
+          {/* Top bar: version indicator + open in new tab */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[3] }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+              {(artifact.versions?.length ?? 0) > 1 && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowVersions(prev => !prev)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing[1],
+                      padding: `2px ${spacing[2]}`,
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-600)',
+                      backgroundColor: 'var(--color-primary-100)',
+                      border: '1px solid var(--color-primary-200)',
+                      borderRadius: borders.radius.full,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    v{artifact.version}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                  {showVersions && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: 4,
+                      backgroundColor: 'var(--color-primary-50)',
+                      border: '1px solid var(--color-primary-200)',
+                      borderRadius: borders.radius.md,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      padding: spacing[1],
+                      minWidth: 200,
+                      zIndex: 20,
+                    }}>
+                      {artifact.versions!.map(v => (
+                        <div
+                          key={v.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: `${spacing[2]} ${spacing[2]}`,
+                            backgroundColor: v.id === artifact.id ? 'var(--color-primary-100)' : 'transparent',
+                            borderRadius: borders.radius.sm,
+                            fontSize: typography.fontSize.xs,
+                            color: 'var(--color-primary-700)',
+                          }}
+                          onMouseEnter={e => { if (v.id !== artifact.id) e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
+                          onMouseLeave={e => { if (v.id !== artifact.id) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          <button
+                            onClick={() => {
+                              setShowVersions(false);
+                              api.getArtifact(spaceId, v.id).then(full => {
+                                setArtifact(full);
+                                setShowRefine(false);
+                                setRefinementText('');
+                              }).catch(() => {});
+                            }}
+                            style={{
+                              flex: 1, border: 'none', backgroundColor: 'transparent',
+                              cursor: 'pointer', textAlign: 'left', fontSize: 'inherit',
+                              color: 'inherit', padding: 0, fontFamily: 'inherit',
+                            }}
+                          >
+                            <span style={{ fontWeight: typography.fontWeight.medium }}>v{v.version}</span>
+                            {v.version === 1 ? (
+                              <span style={{ color: 'var(--color-primary-400)', marginLeft: spacing[2] }}>Original</span>
+                            ) : v.refinement ? (
+                              <span style={{ color: 'var(--color-primary-500)', marginLeft: spacing[2] }}>
+                                {summarizeRefinement(v.refinement)}
+                              </span>
+                            ) : null}
+                          </button>
+                          {confirmDeleteVersionId === v.id ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteVersionId(null);
+                                api.deleteArtifact(spaceId, v.id).then(() => {
+                                  if (v.id === artifact.id) {
+                                    const other = artifact.versions!.find(ov => ov.id !== v.id);
+                                    if (other) {
+                                      api.getArtifact(spaceId, other.id).then(full => setArtifact(full)).catch(() => {});
+                                    } else {
+                                      onClose();
+                                    }
+                                  } else {
+                                    api.getArtifact(spaceId, artifact.id).then(full => setArtifact(full)).catch(() => {});
+                                  }
+                                }).catch(() => {});
+                              }}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'var(--color-error-600, #dc2626)', padding: '0 4px',
+                                flexShrink: 0, fontSize: 10, fontWeight: typography.fontWeight.medium,
+                              }}
+                            >
+                              Delete?
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteVersionId(v.id); }}
+                              title="Delete version"
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'var(--color-primary-400)', padding: '0 2px',
+                                flexShrink: 0, lineHeight: 1,
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error-600, #dc2626)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-400)'; }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <a
               href={`/spaces/${spaceId}/artifacts/${artifact.id}`}
               target="_blank"
@@ -313,7 +476,124 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
               Open in new tab
             </a>
           </div>
+
           <ArtifactContent artifact={artifact} />
+
+          {/* Refine section */}
+          {!showRefine && !refining && (
+            <div style={{ marginTop: spacing[4], borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3] }}>
+              <button
+                onClick={() => setShowRefine(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  fontSize: typography.fontSize.xs,
+                  color: 'var(--color-primary-600)',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--color-primary-300)',
+                  borderRadius: borders.radius.sm,
+                  cursor: 'pointer',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Refine
+              </button>
+            </div>
+          )}
+
+          {showRefine && (
+            <div style={{ marginTop: spacing[4], borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3] }}>
+              <textarea
+                value={refinementText}
+                onChange={e => setRefinementText(e.target.value)}
+                placeholder="E.g., 'Make it shorter', 'More formal tone', 'Focus on phase 1 only'"
+                rows={2}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: spacing[2],
+                  fontSize: typography.fontSize.sm,
+                  border: '1px solid var(--color-primary-300)',
+                  borderRadius: borders.radius.sm,
+                  backgroundColor: 'var(--color-primary-50)',
+                  color: 'var(--color-primary-700)',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey && refinementText.trim()) {
+                    e.preventDefault();
+                    handleRefine();
+                  }
+                  if (e.key === 'Escape') {
+                    setShowRefine(false);
+                    setRefinementText('');
+                  }
+                }}
+              />
+              <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end', marginTop: spacing[2] }}>
+                <button
+                  onClick={() => { setShowRefine(false); setRefinementText(''); }}
+                  style={{
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    fontSize: typography.fontSize.xs,
+                    backgroundColor: 'transparent',
+                    color: 'var(--color-primary-600)',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRefine}
+                  disabled={!refinementText.trim()}
+                  style={{
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    fontSize: typography.fontSize.xs,
+                    fontWeight: typography.fontWeight.medium,
+                    backgroundColor: refinementText.trim() ? 'var(--color-primary-700)' : 'var(--color-primary-400)',
+                    color: 'var(--color-primary-50)',
+                    border: 'none',
+                    borderRadius: borders.radius.sm,
+                    cursor: refinementText.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Refine
+                </button>
+              </div>
+            </div>
+          )}
+
+          {refining && (
+            <div style={{
+              marginTop: spacing[4],
+              borderTop: '1px solid var(--color-primary-200)',
+              paddingTop: spacing[3],
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              fontSize: typography.fontSize.xs,
+              color: 'var(--color-primary-500)',
+            }}>
+              <span style={{
+                width: 12, height: 12,
+                border: '2px solid var(--color-primary-200)',
+                borderTopColor: 'var(--color-primary-600)',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+                display: 'inline-block',
+              }} />
+              Refining...
+            </div>
+          )}
         </>
       )}
     </Modal>
@@ -674,7 +954,7 @@ function PresentationView({ content }: { content: Record<string, any> }) {
                   ? 'var(--color-primary-400)' : 'var(--color-primary-400)',
                 marginLeft: 'auto',
               }}>
-                {slide.layout === 'two_column' ? '2-col' : slide.layout}
+                {slide.layout === 'two_column' ? '2-col' : slide.layout === 'content_image' ? 'image' : slide.layout === 'diagram' ? 'diagram' : slide.layout}
               </span>
             </div>
           </div>

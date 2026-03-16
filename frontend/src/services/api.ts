@@ -1528,9 +1528,15 @@ class ApiService {
     return response.data;
   }
 
+  async refineArtifact(spaceId: string, artifactId: string, refinement: string): Promise<{ id: string; version: number; status: string }> {
+    const response = await this.client.post<{ id: string; version: number; status: string }>(`/spaces/${spaceId}/artifacts/${artifactId}/refine`, { refinement });
+    return response.data;
+  }
+
   async deleteArtifact(spaceId: string, artifactId: string): Promise<void> {
     await this.client.delete(`/spaces/${spaceId}/artifacts/${artifactId}`);
   }
+
 
   async getArtifactTypes(spaceId: string): Promise<{ types: Array<{ key: string; label: string; description: string }> }> {
     const response = await this.client.get<{ types: Array<{ key: string; label: string; description: string }> }>(`/spaces/${spaceId}/artifact-types`);
