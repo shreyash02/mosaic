@@ -4569,8 +4569,8 @@ export default function SpaceDetailPage() {
         spaceId={id || ''}
         onGenerated={(artifact) => {
           setArtifacts(prev => {
-            if (prev.some(a => a.id === artifact.id)) return prev;
-            return [artifact, ...prev];
+            const filtered = prev.filter(a => a.id !== artifact.id);
+            return [artifact, ...filtered];
           });
         }}
         viewArtifact={viewingArtifact}
