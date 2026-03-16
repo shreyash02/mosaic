@@ -67,7 +67,7 @@ const THEMES: Record<string, ColorTheme> = {
 
 function parseHexColor(hex: string): RGB | null {
   const clean = hex.replace('#', '');
-  if (clean.length === 6) {
+  if (/^[0-9a-fA-F]{6}$/.test(clean)) {
     return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)];
   }
   return null;
@@ -141,9 +141,9 @@ export async function generatePosterPdf(content: Record<string, any>) {
   const fonts = await loadFonts(pdf);
   const C = resolveTheme(content);
   // Helper — jsPDF setFillColor/setTextColor/setDrawColor need explicit r,g,b args
-  const fill = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
-  const text = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
-  const draw = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
+  const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+  const fill = (c: RGB) => pdf.setFillColor(clamp(c[0]), clamp(c[1]), clamp(c[2]));
+  const text = (c: RGB) => pdf.setTextColor(clamp(c[0]), clamp(c[1]), clamp(c[2]));
 
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -228,7 +228,6 @@ export async function generatePosterPdf(content: Record<string, any>) {
   const perGap = gapSlots > 0 ? Math.min(slack / gapSlots, 15) : 0;
   const sectionTopPad = perGap;
   const cardGap = 5 + perGap;
-  const ctaTopPad = perGap + 8;
 
   // ── PASS 3: Render ──
   // Background
