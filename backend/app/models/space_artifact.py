@@ -41,6 +41,7 @@ class SpaceArtifact(Base):
     parent_id = Column(UUID(as_uuid=True), ForeignKey("space_artifacts.id", ondelete="CASCADE"), nullable=True)
     version = Column(Integer, nullable=False, default=1)
     refinement = Column(Text, nullable=True)  # Refinement instructions used to generate this version
+    refinement_summary = Column(String(60), nullable=True)  # LLM-generated short label
     status = Column(String(20), nullable=False, default="generating")  # generating, ready, failed
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

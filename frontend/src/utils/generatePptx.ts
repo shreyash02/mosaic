@@ -29,6 +29,30 @@ const COLORS = {
   bulletColor: '3B82F6',
 };
 
+/** Replace unicode characters that pptxgenjs can't render with ASCII equivalents */
+function sanitizeText(text: string): string {
+  return text
+    .replace(/[\u2018\u2019]/g, "'")                    // smart quotes
+    .replace(/[\u201C\u201D]/g, '"')                    // smart double quotes
+    .replace(/[\u2013]/g, '-')                           // en dash
+    .replace(/[\u2014]/g, ' - ')                         // em dash
+    .replace(/[\u2026]/g, '...');                        // ellipsis
+}
+
+function sanitizeSlide(slide: SlideData): SlideData {
+  return {
+    ...slide,
+    title: sanitizeText(slide.title || ''),
+    subtitle: slide.subtitle ? sanitizeText(slide.subtitle) : undefined,
+    bullets: slide.bullets?.map(sanitizeText),
+    left_heading: slide.left_heading ? sanitizeText(slide.left_heading) : undefined,
+    left_bullets: slide.left_bullets?.map(sanitizeText),
+    right_heading: slide.right_heading ? sanitizeText(slide.right_heading) : undefined,
+    right_bullets: slide.right_bullets?.map(sanitizeText),
+    notes: slide.notes ? sanitizeText(slide.notes) : undefined,
+  };
+}
+
 export async function generatePptx(data: PresentationData, filename?: string) {
   const pptx = new pptxgen();
 
@@ -36,7 +60,8 @@ export async function generatePptx(data: PresentationData, filename?: string) {
   pptx.author = 'Mosaic';
   pptx.title = data.title;
 
-  for (const slide of data.slides) {
+  for (const rawSlide of data.slides) {
+    const slide = sanitizeSlide(rawSlide);
     switch (slide.layout) {
       case 'title':
         addTitleSlide(pptx, slide);
@@ -112,7 +137,7 @@ function addContentSlide(pptx: pptxgen, slide: SlideData) {
       text: b,
       options: {
         fontSize: 16, fontFace: 'Helvetica Neue' as const, color: COLORS.text,
-        bullet: { type: 'bullet' as const, color: COLORS.accent },
+        bullet: { type: 'bullet' as const, characterCode: '2022', color: COLORS.accent },
         paraSpaceAfter: 10,
       },
     }));
@@ -150,7 +175,7 @@ function addTwoColumnSlide(pptx: pptxgen, slide: SlideData) {
       text: b,
       options: {
         fontSize: 14, fontFace: 'Helvetica Neue' as const, color: COLORS.text,
-        bullet: { type: 'bullet' as const, color: COLORS.accent },
+        bullet: { type: 'bullet' as const, characterCode: '2022', color: COLORS.accent },
         paraSpaceAfter: 8,
       },
     }));
@@ -169,7 +194,7 @@ function addTwoColumnSlide(pptx: pptxgen, slide: SlideData) {
       text: b,
       options: {
         fontSize: 14, fontFace: 'Helvetica Neue' as const, color: COLORS.text,
-        bullet: { type: 'bullet' as const, color: COLORS.accent },
+        bullet: { type: 'bullet' as const, characterCode: '2022', color: COLORS.accent },
         paraSpaceAfter: 8,
       },
     }));

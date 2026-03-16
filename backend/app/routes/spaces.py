@@ -2,7 +2,7 @@
 
 import logging
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
 
@@ -67,6 +67,13 @@ from app.schemas.space import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_iso(dt: datetime | None) -> str | None:
+    """Serialize datetime as ISO format."""
+    if dt is None:
+        return None
+    return dt.isoformat()
 
 router = APIRouter()
 
@@ -1846,6 +1853,13 @@ def run_generate_artifact_task(
             space_title, space_description, user_context,
         )
 
+        # Inject orientation for poster type
+        if result and artifact_type == "poster" and user_context:
+            if "portrait" in user_context.lower():
+                result["orientation"] = "portrait"
+            else:
+                result["orientation"] = "landscape"
+
         artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == artifact_id).first()
         if artifact_row:
             if result:
@@ -1986,7 +2000,7 @@ def list_artifacts(
             "status": display.status,
             "user_context": r.user_context,
             "synthesis_id": str(r.synthesis_id) if r.synthesis_id else None,
-            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "created_at": _utc_iso(r.created_at),
             "version_count": version_count,
             "latest_version_id": str(display.id) if latest else None,
         })
@@ -2032,7 +2046,8 @@ def get_artifact(
             "id": str(v.id),
             "version": v.version,
             "refinement": v.refinement,
-            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "refinement_summary": v.refinement_summary,
+            "created_at": _utc_iso(v.created_at),
         }
         for v in all_versions
     ]
@@ -2048,7 +2063,7 @@ def get_artifact(
         "refinement": row.refinement,
         "parent_id": str(row.parent_id) if row.parent_id else None,
         "synthesis_id": str(row.synthesis_id) if row.synthesis_id else None,
-        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "created_at": _utc_iso(row.created_at),
         "versions": versions,
     }
 
@@ -2075,6 +2090,23 @@ def delete_artifact(
 
     db.delete(row)
     db.commit()
+
+
+def _generate_refinement_summary(refinement: str) -> str | None:
+    """Generate a 3-5 word summary of refinement instructions using Haiku."""
+    try:
+        from anthropic import Anthropic
+        from app.core.config import settings as app_settings
+        client = Anthropic(api_key=app_settings.ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[{"role": "user", "content": f'Summarize this instruction in 3-5 words. Return ONLY the summary, nothing else.\n\n"{refinement}"'}],
+        )
+        return response.content[0].text.strip()[:60]
+    except Exception:
+        logger.warning("Failed to generate refinement summary", exc_info=True)
+        return None
 
 
 def run_refine_artifact_task(
@@ -2107,11 +2139,15 @@ def run_refine_artifact_task(
             refinement, purpose, space_title, space_description,
         )
 
+        # Generate a short summary of the refinement instructions
+        summary = _generate_refinement_summary(refinement)
+
         artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == new_artifact_id).first()
         if artifact_row:
             if result:
                 artifact_row.content = result
                 artifact_row.title = result.get("title", artifact_row.title)
+                artifact_row.refinement_summary = summary
                 artifact_row.status = "ready"
                 db.commit()
             else:

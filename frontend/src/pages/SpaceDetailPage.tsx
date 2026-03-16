@@ -857,9 +857,12 @@ export default function SpaceDetailPage() {
   const handleArtifactGenerated = useCallback((data: any) => {
     if (data.space_id !== id) return;
     if (data.status === 'ready' && data.artifact_id) {
-      // Fetch the full artifact
+      // Fetch the full artifact and replace the generating placeholder
       api.getArtifact(data.space_id, data.artifact_id).then((artifact) => {
-        setArtifacts(prev => [artifact, ...prev]);
+        setArtifacts(prev => {
+          const filtered = prev.filter(a => a.id !== artifact.id);
+          return [artifact, ...filtered];
+        });
         // Notify the modal if it's waiting
         if (artifactModalRef.current?._handleReady) {
           artifactModalRef.current._handleReady(artifact);

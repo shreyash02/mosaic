@@ -16,6 +16,7 @@ const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: str
   { key: 'talking_points', label: 'Talking Points', description: 'Key messages organized by audience or topic' },
   { key: 'retrospective', label: 'Retrospective', description: 'What worked, what didn\'t, what to change' },
   { key: 'presentation', label: 'Presentation', description: 'A slide deck you can download as .pptx' },
+  { key: 'poster', label: 'Poster', description: 'A single-page visual poster you can download as PDF' },
   { key: 'custom', label: 'Custom', description: 'Describe what you need and we\'ll generate it' },
 ];
 
@@ -62,6 +63,7 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
   const [view, setView] = useState<View>('pick');
   const [selectedType, setSelectedType] = useState<ArtifactType | null>(null);
   const [userContext, setUserContext] = useState('');
+  const [posterOrientation, setPosterOrientation] = useState<'portrait' | 'landscape'>('landscape');
   const [artifact, setArtifact] = useState<SpaceArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const generatingIdRef = useRef<string | null>(null);
@@ -108,7 +110,11 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
     try {
       setError(null);
       setView('generating');
-      const result = await api.generateArtifact(spaceId, selectedType, userContext.trim() || undefined);
+      let context = userContext.trim() || '';
+      if (selectedType === 'poster') {
+        context = `Orientation: ${posterOrientation}.${context ? ' ' + context : ''}`;
+      }
+      const result = await api.generateArtifact(spaceId, selectedType, context || undefined);
       generatingIdRef.current = result.id;
       // Add generating placeholder to parent's artifact list immediately
       onGenerated({ id: result.id, artifact_type: selectedType, status: 'generating' } as SpaceArtifact);
@@ -225,6 +231,45 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
           {!isCustom && (
             <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
               {ARTIFACT_TYPES.find(t => t.key === selectedType)?.description}
+            </div>
+          )}
+          {selectedType === 'poster' && (
+            <div>
+              <label style={{ display: 'block', fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)', marginBottom: spacing[1] }}>
+                Orientation
+              </label>
+              <div style={{ display: 'flex', gap: spacing[2] }}>
+                {(['landscape', 'portrait'] as const).map(o => (
+                  <button
+                    key={o}
+                    onClick={() => setPosterOrientation(o)}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing[2],
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      fontSize: typography.fontSize.sm,
+                      border: `1px solid ${posterOrientation === o ? 'var(--color-primary-600)' : 'var(--color-primary-200)'}`,
+                      borderRadius: borders.radius.sm,
+                      backgroundColor: posterOrientation === o ? 'var(--color-primary-100)' : 'transparent',
+                      color: posterOrientation === o ? 'var(--color-primary-700)' : 'var(--color-primary-500)',
+                      cursor: 'pointer',
+                      fontWeight: posterOrientation === o ? typography.fontWeight.medium : typography.fontWeight.normal,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      {o === 'landscape'
+                        ? <rect x="2" y="5" width="20" height="14" rx="1.5" />
+                        : <rect x="5" y="2" width="14" height="20" rx="1.5" />
+                      }
+                    </svg>
+                    {o.charAt(0).toUpperCase() + o.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div>
@@ -634,6 +679,7 @@ function ArtifactContent({ artifact }: { artifact: SpaceArtifact }) {
       {type === 'retrospective' && <RetrospectiveView content={content} />}
       {type === 'custom' && <SummaryView content={content} />}
       {type === 'presentation' && <PresentationView content={content} />}
+      {type === 'poster' && <PosterView content={content} />}
     </div>
   );
 }
@@ -976,6 +1022,96 @@ function PresentationView({ content }: { content: Record<string, any> }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function PosterView({ content }: { content: Record<string, any> }) {
+  const isLandscape = (content.orientation || 'landscape') === 'landscape';
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          import('../utils/generatePosterPdf').then(m => m.generatePosterPdf(content));
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing[2],
+          width: '100%',
+          padding: `${spacing[3]} ${spacing[4]}`,
+          fontSize: typography.fontSize.sm,
+          fontWeight: typography.fontWeight.medium,
+          backgroundColor: 'var(--color-primary-700)',
+          color: 'var(--color-primary-50)',
+          border: 'none',
+          borderRadius: borders.radius.sm,
+          cursor: 'pointer',
+          marginBottom: spacing[4],
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Download PDF
+      </button>
+
+      {/* Preview */}
+      <div style={{
+        border: '1px solid var(--color-primary-200)',
+        borderRadius: borders.radius.md,
+        padding: spacing[4],
+        aspectRatio: isLandscape ? '1.414' : '0.707',
+        maxHeight: 360,
+        overflow: 'auto',
+        backgroundColor: 'var(--color-primary-50)',
+      }}>
+        {content.title && (
+          <div style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-800)', marginBottom: spacing[1] }}>
+            {content.title}
+          </div>
+        )}
+        {content.subtitle && (
+          <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginBottom: spacing[3] }}>
+            {content.subtitle}
+          </div>
+        )}
+        {content.highlight && (
+          <div style={{
+            padding: `${spacing[2]} ${spacing[3]}`,
+            backgroundColor: 'var(--color-primary-100)',
+            borderLeft: '3px solid var(--color-primary-600)',
+            borderRadius: `0 ${borders.radius.sm} ${borders.radius.sm} 0`,
+            fontSize: typography.fontSize.xs,
+            fontWeight: typography.fontWeight.medium,
+            color: 'var(--color-primary-700)',
+            marginBottom: spacing[3],
+          }}>
+            {content.highlight}
+          </div>
+        )}
+        {content.sections?.map((s: any, i: number) => (
+          <div key={i} style={{ marginBottom: spacing[2] }}>
+            <div style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginBottom: spacing[1] }}>
+              {s.heading}
+            </div>
+            <ul style={{ margin: 0, paddingLeft: spacing[4], fontSize: 10, color: 'var(--color-primary-600)' }}>
+              {s.points?.map((p: string, j: number) => (
+                <li key={j} style={{ marginBottom: 2 }}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {content.footer && (
+          <div style={{ fontSize: 9, color: 'var(--color-primary-400)', marginTop: spacing[3], borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[2] }}>
+            {content.footer}
+          </div>
+        )}
       </div>
     </div>
   );

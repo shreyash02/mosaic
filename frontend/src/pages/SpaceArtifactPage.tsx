@@ -18,6 +18,7 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   retrospective: 'Retrospective',
   custom: 'Custom',
   presentation: 'Presentation',
+  poster: 'Poster',
 };
 
 function summarizeRefinement(text: string): string {
@@ -355,6 +356,7 @@ export default function SpaceArtifactPage() {
           {artifact.artifact_type === 'retrospective' && <RetrospectiveView content={content} />}
           {artifact.artifact_type === 'custom' && <SummaryView content={content} />}
           {artifact.artifact_type === 'presentation' && <PresentationPageView content={content} />}
+          {artifact.artifact_type === 'poster' && <PosterPageView content={content} />}
         </div>
 
       </div>
@@ -738,6 +740,95 @@ function PresentationPageView({ content }: { content: Record<string, any> }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function PosterPageView({ content }: { content: Record<string, any> }) {
+  const isLandscape = (content.orientation || 'landscape') === 'landscape';
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          import('../utils/generatePosterPdf').then(m => m.generatePosterPdf(content));
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing[2],
+          padding: `${spacing[3]} ${spacing[6]}`,
+          fontSize: typography.fontSize.sm,
+          fontWeight: typography.fontWeight.medium,
+          backgroundColor: 'var(--color-primary-700)',
+          color: 'var(--color-primary-50)',
+          border: 'none',
+          borderRadius: borders.radius.md,
+          cursor: 'pointer',
+          marginBottom: spacing[6],
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Download PDF
+      </button>
+
+      {/* Full poster preview */}
+      <div style={{
+        border: '1px solid var(--color-primary-200)',
+        borderRadius: borders.radius.md,
+        padding: spacing[6],
+        aspectRatio: isLandscape ? '1.414' : '0.707',
+        maxHeight: 500,
+        overflow: 'auto',
+        backgroundColor: 'var(--color-primary-50)',
+      }}>
+        {content.title && (
+          <h2 style={{ fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-800)', marginTop: 0, marginBottom: spacing[1] }}>
+            {content.title}
+          </h2>
+        )}
+        {content.subtitle && (
+          <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-500)', marginTop: 0, marginBottom: spacing[4] }}>
+            {content.subtitle}
+          </p>
+        )}
+        {content.highlight && (
+          <div style={{
+            padding: `${spacing[3]} ${spacing[4]}`,
+            backgroundColor: 'var(--color-primary-100)',
+            borderLeft: '3px solid var(--color-primary-600)',
+            borderRadius: `0 ${borders.radius.md} ${borders.radius.md} 0`,
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            color: 'var(--color-primary-700)',
+            marginBottom: spacing[5],
+          }}>
+            {content.highlight}
+          </div>
+        )}
+        {content.sections?.map((s: any, i: number) => (
+          <div key={i} style={{ marginBottom: spacing[4] }}>
+            <h3 style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-700)', marginTop: 0, marginBottom: spacing[2] }}>
+              {s.heading}
+            </h3>
+            <ul style={{ margin: 0, paddingLeft: spacing[5] }}>
+              {s.points?.map((p: string, j: number) => (
+                <li key={j} style={{ marginBottom: spacing[1], color: 'var(--color-primary-600)' }}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {content.footer && (
+          <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', marginTop: spacing[4], borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3] }}>
+            {content.footer}
+          </div>
+        )}
       </div>
     </div>
   );

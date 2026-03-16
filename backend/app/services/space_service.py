@@ -1560,6 +1560,10 @@ Return your analysis as JSON:
             "label": "Presentation",
             "description": "A slide deck you can download as .pptx",
         },
+        "poster": {
+            "label": "Poster",
+            "description": "A single-page visual poster you can download as PDF",
+        },
     }
 
     def generate_artifact(
@@ -1831,6 +1835,28 @@ Return JSON with:
 
 Structure the output with clear sections that address the user's request.
 Be specific and grounded in the actual themes and ideas. Avoid generic filler."""
+        elif artifact_type == "poster":
+            ctx = f'\nThe user added this context: "{user_context}"' if user_context else ""
+            instructions = f"""Generate a single-page poster based on this space.{ctx}
+
+Return JSON:
+{{
+  "title": "Poster title",
+  "subtitle": "A short tagline or subtitle",
+  "sections": [
+    {{
+      "heading": "Section heading",
+      "points": ["Key point 1", "Key point 2", "Key point 3"]
+    }}
+  ],
+  "highlight": "One standout insight or statistic to feature prominently",
+  "footer": "Optional footer text (e.g. date, source, call to action)"
+}}
+
+Create 3-5 sections. Each section should have 2-4 concise points (under 10 words each).
+The highlight should be the single most compelling finding — something that grabs attention.
+Be specific — reference actual themes and ideas from the space, not generic statements.
+Keep all text concise and punchy — this is a poster, not a document."""
         elif artifact_type == "presentation":
             ctx = f'\nThe user added this context: "{user_context}"' if user_context else ""
             instructions = f"""Generate a slide deck presentation based on this space.{ctx}
