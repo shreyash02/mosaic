@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import type { SpaceArtifact } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { renderInlineMarkdown } from '../utils/renderInlineMarkdown';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -142,7 +143,7 @@ function SummaryView({ content }: { content: Record<string, any> }) {
         <div key={i} style={{ marginBottom: spacing[6] }}>
           <h2 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-800)', marginBottom: spacing[3], marginTop: 0 }}>{s.heading}</h2>
           {s.content.split('\n\n').map((p: string, j: number) => (
-            <p key={j} style={{ margin: `0 0 ${spacing[3]} 0` }}>{p}</p>
+            <p key={j} style={{ margin: `0 0 ${spacing[3]} 0` }}>{renderInlineMarkdown(p)}</p>
           ))}
         </div>
       ))}
@@ -176,7 +177,7 @@ function ChecklistView({ content }: { content: Record<string, any> }) {
             }}>
               {item.priority}
             </span>
-            {item.rationale}
+            {renderInlineMarkdown(item.rationale)}
             {item.theme && <span style={{ marginLeft: spacing[2], fontStyle: 'italic' }}> ({item.theme})</span>}
           </div>
         </div>
@@ -188,7 +189,7 @@ function ChecklistView({ content }: { content: Record<string, any> }) {
 function PlanView({ content }: { content: Record<string, any> }) {
   return (
     <div>
-      {content.overview && <p style={{ marginBottom: spacing[6], marginTop: 0 }}>{content.overview}</p>}
+      {content.overview && <p style={{ marginBottom: spacing[6], marginTop: 0 }}>{renderInlineMarkdown(content.overview)}</p>}
       {content.phases?.map((phase: any, i: number) => (
         <div key={i} style={{ marginBottom: spacing[6] }}>
           <h2 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: 'var(--color-primary-800)', marginBottom: spacing[2], marginTop: 0 }}>
@@ -249,7 +250,7 @@ function DecisionBriefView({ content }: { content: Record<string, any> }) {
       {content.recommendation && (
         <div style={{ marginTop: spacing[4], padding: spacing[4], backgroundColor: 'var(--color-primary-100)', borderRadius: borders.radius.md, border: '1px solid var(--color-primary-200)' }}>
           <div style={{ fontWeight: typography.fontWeight.semibold, marginBottom: spacing[2], color: 'var(--color-primary-500)', fontSize: typography.fontSize.xs, textTransform: 'uppercase' as const }}>Recommendation</div>
-          <p style={{ margin: 0 }}>{content.recommendation}</p>
+          <p style={{ margin: 0 }}>{renderInlineMarkdown(content.recommendation)}</p>
         </div>
       )}
     </div>
@@ -259,7 +260,7 @@ function DecisionBriefView({ content }: { content: Record<string, any> }) {
 function ImplementationSpecView({ content }: { content: Record<string, any> }) {
   return (
     <div>
-      {content.overview && <p style={{ marginTop: 0, marginBottom: spacing[6] }}>{content.overview}</p>}
+      {content.overview && <p style={{ marginTop: 0, marginBottom: spacing[6] }}>{renderInlineMarkdown(content.overview)}</p>}
       {content.requirements?.length > 0 && (
         <div style={{ marginBottom: spacing[6] }}>
           <h2 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, marginTop: 0, marginBottom: spacing[3] }}>Requirements</h2>
@@ -280,7 +281,7 @@ function ImplementationSpecView({ content }: { content: Record<string, any> }) {
       {content.approach?.map((s: any, i: number) => (
         <div key={i} style={{ marginBottom: spacing[5] }}>
           <h2 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, marginTop: 0, marginBottom: spacing[2] }}>{s.heading}</h2>
-          <p style={{ margin: 0 }}>{s.content}</p>
+          <p style={{ margin: 0 }}>{renderInlineMarkdown(s.content)}</p>
         </div>
       ))}
       {content.risks?.length > 0 && (
@@ -301,7 +302,7 @@ function ImplementationSpecView({ content }: { content: Record<string, any> }) {
 function TalkingPointsView({ content }: { content: Record<string, any> }) {
   return (
     <div>
-      {content.overview && <p style={{ marginTop: 0, marginBottom: spacing[6], fontStyle: 'italic', color: 'var(--color-primary-600)' }}>{content.overview}</p>}
+      {content.overview && <p style={{ marginTop: 0, marginBottom: spacing[6], fontStyle: 'italic', color: 'var(--color-primary-600)' }}>{renderInlineMarkdown(content.overview)}</p>}
       {content.topics?.map((topic: any, i: number) => (
         <div key={i} style={{ marginBottom: spacing[6] }}>
           <h2 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, marginTop: 0, marginBottom: spacing[3] }}>{topic.heading}</h2>
@@ -322,7 +323,7 @@ function TalkingPointsView({ content }: { content: Record<string, any> }) {
 function RetrospectiveView({ content }: { content: Record<string, any> }) {
   return (
     <div>
-      {content.summary && <p style={{ marginTop: 0, marginBottom: spacing[6] }}>{content.summary}</p>}
+      {content.summary && <p style={{ marginTop: 0, marginBottom: spacing[6] }}>{renderInlineMarkdown(content.summary)}</p>}
       {content.went_well?.length > 0 && (
         <div style={{ marginBottom: spacing[6] }}>
           <h2 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, marginTop: 0, marginBottom: spacing[3], color: 'var(--color-success-600, #16a34a)' }}>What went well</h2>
