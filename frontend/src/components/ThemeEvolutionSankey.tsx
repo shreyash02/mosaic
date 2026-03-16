@@ -15,6 +15,7 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   retrospective: 'Retrospective',
   custom: 'Custom',
   presentation: 'Presentation',
+  poster: 'Poster',
 };
 
 interface Props {

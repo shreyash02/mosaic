@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Presentation,
   Sparkles,
+  Image,
 } from 'lucide-react';
 
 interface Props {
@@ -29,6 +30,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   retrospective: RotateCcw,
   presentation: Presentation,
   custom: Sparkles,
+  poster: Image,
 };
 
 export default function ArtifactIcon({ type, size = 40, color = 'var(--color-primary-500)' }: Props) {

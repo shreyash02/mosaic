@@ -1107,6 +1107,11 @@ function PosterView({ content }: { content: Record<string, any> }) {
             </ul>
           </div>
         ))}
+        {content.call_to_action && (
+          <div style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-600)', marginTop: spacing[2] }}>
+            {content.call_to_action}
+          </div>
+        )}
         {content.footer && (
           <div style={{ fontSize: 9, color: 'var(--color-primary-400)', marginTop: spacing[3], borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[2] }}>
             {content.footer}

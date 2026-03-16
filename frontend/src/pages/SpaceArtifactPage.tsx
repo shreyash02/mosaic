@@ -824,6 +824,11 @@ function PosterPageView({ content }: { content: Record<string, any> }) {
             </ul>
           </div>
         ))}
+        {content.call_to_action && (
+          <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-600)', marginTop: spacing[4] }}>
+            {content.call_to_action}
+          </div>
+        )}
         {content.footer && (
           <div style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-400)', marginTop: spacing[4], borderTop: '1px solid var(--color-primary-200)', paddingTop: spacing[3] }}>
             {content.footer}

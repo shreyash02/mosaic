@@ -16,6 +16,7 @@ const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   retrospective: 'Retrospective',
   custom: 'Custom',
   presentation: 'Presentation',
+  poster: 'Poster',
 };
 
 function formatDate(dateStr: string): string {

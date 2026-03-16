@@ -1836,27 +1836,59 @@ Return JSON with:
 Structure the output with clear sections that address the user's request.
 Be specific and grounded in the actual themes and ideas. Avoid generic filler."""
         elif artifact_type == "poster":
-            ctx = f'\nThe user added this context: "{user_context}"' if user_context else ""
-            instructions = f"""Generate a single-page poster based on this space.{ctx}
+            # Parse orientation from user_context
+            is_landscape = True
+            clean_context = user_context or ""
+            if clean_context.lower().startswith("orientation:"):
+                parts = clean_context.split(".", 1)
+                if "portrait" in parts[0].lower():
+                    is_landscape = False
+                clean_context = parts[1].strip() if len(parts) > 1 else ""
+            ctx = f'\nThe user added this context: "{clean_context}"' if clean_context else ""
+            orientation = "landscape (wide)" if is_landscape else "portrait (tall)"
+            section_count = "3-4" if is_landscape else "3-4"
+            points_per = "2" if is_landscape else "2-3"
+            layout_hint = (
+                "The poster is landscape/wide — content will be arranged in a 2-column grid. "
+                "Keep sections balanced and concise so they fit side by side."
+                if is_landscape else
+                "The poster is portrait/tall — content flows top to bottom in a single column. "
+                "You have more vertical space, so sections can be slightly more detailed."
+            )
+            instructions = f"""Generate a compelling single-page poster ({orientation}) based on this space.{ctx}
 
 Return JSON:
 {{
-  "title": "Poster title",
-  "subtitle": "A short tagline or subtitle",
+  "title": "Short, impactful poster title (max 6 words)",
+  "subtitle": "One-line tagline that captures the core message",
   "sections": [
     {{
-      "heading": "Section heading",
-      "points": ["Key point 1", "Key point 2", "Key point 3"]
+      "heading": "Punchy section heading (2-4 words)",
+      "points": ["Insight or takeaway (action-oriented, under 10 words)"]
     }}
   ],
-  "highlight": "One standout insight or statistic to feature prominently",
-  "footer": "Optional footer text (e.g. date, source, call to action)"
+  "highlight": "The single most compelling number, stat, or insight to feature large",
+  "call_to_action": "What should the reader do next? (one sentence)",
+  "footer": "Source or date attribution"
 }}
 
-Create 3-5 sections. Each section should have 2-4 concise points (under 10 words each).
-The highlight should be the single most compelling finding — something that grabs attention.
-Be specific — reference actual themes and ideas from the space, not generic statements.
-Keep all text concise and punchy — this is a poster, not a document."""
+{layout_hint}
+
+Create exactly {section_count} sections with {points_per} points each.
+
+Writing style — this is a POSTER meant to be read from a distance:
+- Title: bold, max 5-6 words
+- Subtitle: one short sentence, max 12 words
+- Highlight: max 15 words — a specific number, surprising finding, or bold claim. NOT a generic sentence.
+- Section headings: 2-3 words, active voice ("Ship Faster", not "Approaches to Improving Velocity")
+- Points: max 8 words each. Action-oriented. Start with verbs. Be specific.
+- Call to action: one sentence, max 15 words
+- CRITICAL: keep points SHORT. Under 8 words. This is the most important rule.
+
+Bad: "Transform raw ideas into architecture, plans, and implementation docs instantly"
+Good: "Auto-generate architecture from ideas"
+
+Ground everything in the actual themes. No filler."""
         elif artifact_type == "presentation":
             ctx = f'\nThe user added this context: "{user_context}"' if user_context else ""
             instructions = f"""Generate a slide deck presentation based on this space.{ctx}
