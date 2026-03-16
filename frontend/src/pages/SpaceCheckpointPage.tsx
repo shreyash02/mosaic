@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type { OrganizeRun, SpaceArtifact, ThemeEvent } from '../types';
-import { typography, spacing, borders, colors } from '../styles/tokens';
+import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
@@ -67,8 +67,8 @@ function CollapsibleSection({ label, count, themes, bgColor, borderColor, labelC
         <div style={{ padding: `0 ${spacing[4]} ${spacing[3]}` }}>
           {themes.map((e, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[1], fontSize: typography.fontSize.sm }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: e.theme_color || colors.primary[400], flexShrink: 0 }} />
-              <span style={{ color: colors.primary[700] }}>{e.theme_name}</span>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: e.theme_color || 'var(--color-primary-400)', flexShrink: 0 }} />
+              <span style={{ color: 'var(--color-primary-700)' }}>{e.theme_name}</span>
             </div>
           ))}
         </div>
@@ -90,6 +90,8 @@ export default function SpaceCheckpointPage() {
   const [checkpointName, setCheckpointName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   usePageTitle('Checkpoint');
 
@@ -158,7 +160,7 @@ export default function SpaceCheckpointPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - var(--header-height))', color: colors.primary[500] }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - var(--header-height))', color: 'var(--color-primary-500)' }}>
         Loading...
       </div>
     );
@@ -167,8 +169,8 @@ export default function SpaceCheckpointPage() {
   if (error || !run) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - var(--header-height))', gap: spacing[3] }}>
-        <div style={{ color: colors.primary[500] }}>{error || 'Checkpoint not found'}</div>
-        <a href={`/spaces/${spaceId}`} style={{ color: colors.primary[600], textDecoration: 'none', fontSize: typography.fontSize.sm }}>
+        <div style={{ color: 'var(--color-primary-500)' }}>{error || 'Checkpoint not found'}</div>
+        <a href={`/spaces/${spaceId}`} style={{ color: 'var(--color-primary-600)', textDecoration: 'none', fontSize: typography.fontSize.sm }}>
           Back to space
         </a>
       </div>
@@ -180,28 +182,28 @@ export default function SpaceCheckpointPage() {
   const persistedThemes = run.events.filter(e => e.event_type === 'persisted');
 
   return (
-    <div style={{ minHeight: 'calc(100vh - var(--header-height))', backgroundColor: colors.primary[50] }}>
+    <div style={{ minHeight: 'calc(100vh - var(--header-height))', backgroundColor: 'var(--color-primary-50)' }}>
       {/* Top bar */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: `${spacing[4]} ${spacing[8]}`,
-        borderBottom: `1px solid ${colors.primary[200]}`,
+        borderBottom: '1px solid var(--color-primary-200)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
-          <a href={`/spaces/${spaceId}`} style={{ color: colors.primary[500], textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: typography.fontSize.sm }}>
+          <a href={`/spaces/${spaceId}`} style={{ color: 'var(--color-primary-500)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: typography.fontSize.sm }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: spacing[1] }}>
               <polyline points="15 18 9 12 15 6" />
             </svg>
             {spaceTitle || 'Back to space'}
           </a>
-          <span style={{ color: colors.primary[300] }}>/</span>
-          <span style={{ fontSize: typography.fontSize.sm, color: colors.primary[700], fontWeight: typography.fontWeight.medium }}>
+          <span style={{ color: 'var(--color-primary-300)' }}>/</span>
+          <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-700)', fontWeight: typography.fontWeight.medium }}>
             {displayName}
           </span>
         </div>
-        <span style={{ fontSize: typography.fontSize.xs, color: colors.primary[500] }}>
+        <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>
           {formatDate(run.created_at)}
         </span>
       </div>
@@ -220,8 +222,9 @@ export default function SpaceCheckpointPage() {
                 style={{
                   fontSize: typography.fontSize.xl,
                   fontWeight: typography.fontWeight.semibold,
-                  color: colors.primary[800],
-                  border: `1px solid ${colors.primary[300]}`,
+                  color: 'var(--color-primary-800)',
+                  backgroundColor: 'var(--color-primary-50)',
+                  border: '1px solid var(--color-primary-300)',
                   borderRadius: borders.radius.sm,
                   padding: `${spacing[1]} ${spacing[2]}`,
                   outline: 'none',
@@ -234,8 +237,8 @@ export default function SpaceCheckpointPage() {
                 style={{
                   padding: `${spacing[1]} ${spacing[3]}`,
                   fontSize: typography.fontSize.sm,
-                  backgroundColor: colors.primary[700],
-                  color: colors.primary[50],
+                  backgroundColor: 'var(--color-primary-700)',
+                  color: 'var(--color-primary-50)',
                   border: 'none',
                   borderRadius: borders.radius.sm,
                   cursor: 'pointer',
@@ -249,8 +252,8 @@ export default function SpaceCheckpointPage() {
                   padding: `${spacing[1]} ${spacing[3]}`,
                   fontSize: typography.fontSize.sm,
                   backgroundColor: 'transparent',
-                  color: colors.primary[500],
-                  border: `1px solid ${colors.primary[300]}`,
+                  color: 'var(--color-primary-500)',
+                  border: '1px solid var(--color-primary-300)',
                   borderRadius: borders.radius.sm,
                   cursor: 'pointer',
                 }}
@@ -263,7 +266,7 @@ export default function SpaceCheckpointPage() {
               <h1 style={{
                 fontSize: typography.fontSize.xl,
                 fontWeight: typography.fontWeight.semibold,
-                color: colors.primary[800],
+                color: 'var(--color-primary-800)',
                 margin: 0,
               }}>
                 {displayName}
@@ -278,11 +281,11 @@ export default function SpaceCheckpointPage() {
                   border: 'none',
                   backgroundColor: 'transparent',
                   cursor: 'pointer',
-                  color: colors.primary[400],
+                  color: 'var(--color-primary-400)',
                   borderRadius: borders.radius.sm,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.color = colors.primary[600]; e.currentTarget.style.backgroundColor = colors.primary[100]; }}
-                onMouseLeave={e => { e.currentTarget.style.color = colors.primary[400]; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-600)'; e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-400)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -291,7 +294,7 @@ export default function SpaceCheckpointPage() {
               </button>
             </div>
           )}
-          <p style={{ fontSize: typography.fontSize.sm, color: colors.primary[500], marginTop: 0, marginBottom: spacing[6] }}>
+          <p style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginTop: 0, marginBottom: spacing[6] }}>
             {formatDate(run.created_at)}
           </p>
 
@@ -302,9 +305,9 @@ export default function SpaceCheckpointPage() {
                 label="Newly Found"
                 count={createdThemes.length}
                 themes={createdThemes}
-                bgColor="#faf6f1"
-                borderColor="#e8ddd0"
-                labelColor="#6b5d4d"
+                bgColor="var(--color-primary-100)"
+                borderColor="var(--color-primary-200)"
+                labelColor="var(--color-primary-600)"
               />
             )}
             {retiredThemes.length > 0 && (
@@ -312,9 +315,9 @@ export default function SpaceCheckpointPage() {
                 label="Redistributed"
                 count={retiredThemes.length}
                 themes={retiredThemes}
-                bgColor="#f8f1f0"
-                borderColor="#e4d2cf"
-                labelColor="#7a5550"
+                bgColor="var(--color-primary-100)"
+                borderColor="var(--color-primary-200)"
+                labelColor="var(--color-primary-600)"
               />
             )}
             {persistedThemes.length > 0 && (
@@ -322,9 +325,9 @@ export default function SpaceCheckpointPage() {
                 label="Retained"
                 count={persistedThemes.length}
                 themes={persistedThemes}
-                bgColor={colors.primary[100]}
-                borderColor={colors.primary[200]}
-                labelColor={colors.primary[600]}
+                bgColor="var(--color-primary-100)"
+                borderColor="var(--color-primary-200)"
+                labelColor="var(--color-primary-600)"
               />
             )}
           </div>
@@ -336,7 +339,7 @@ export default function SpaceCheckpointPage() {
             <h2 style={{
               fontSize: typography.fontSize.base,
               fontWeight: typography.fontWeight.semibold,
-              color: colors.primary[700],
+              color: 'var(--color-primary-700)',
               marginTop: 0,
               marginBottom: spacing[4],
             }}>
@@ -348,55 +351,116 @@ export default function SpaceCheckpointPage() {
               gap: spacing[3],
             }}>
               {runArtifacts.map(a => (
-                <a
+                <div
                   key={a.id}
-                  href={`/spaces/${spaceId}/artifacts/${a.id}?from=checkpoint&run=${runId}`}
                   style={{
+                    position: 'relative',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     gap: spacing[2],
                     padding: `${spacing[5]} ${spacing[3]}`,
-                    backgroundColor: colors.primary[50],
-                    border: `1px solid ${colors.primary[200]}`,
+                    backgroundColor: 'var(--color-primary-50)',
+                    border: '1px solid var(--color-primary-200)',
                     borderRadius: borders.radius.lg,
-                    textDecoration: 'none',
-                    cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.backgroundColor = colors.primary[100];
-                    e.currentTarget.style.borderColor = colors.primary[300];
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.backgroundColor = 'var(--color-primary-100)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary-300)';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.backgroundColor = colors.primary[50];
-                    e.currentTarget.style.borderColor = colors.primary[200];
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.backgroundColor = 'var(--color-primary-50)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary-200)';
+                    if (confirmDeleteId === a.id) setConfirmDeleteId(null);
                   }}
                 >
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={colors.primary[400]} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  <span style={{
-                    fontSize: typography.fontSize.xs,
-                    fontWeight: typography.fontWeight.medium,
-                    color: colors.primary[700],
-                    textAlign: 'center',
-                    lineHeight: 1.3,
-                    wordBreak: 'break-word',
-                  }}>
-                    {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}
-                  </span>
-                  {a.created_at && (
-                    <span style={{ fontSize: 10, color: colors.primary[400] }}>
-                      {new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  {/* Delete button */}
+                  <button
+                    data-delete-btn
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (confirmDeleteId === a.id) {
+                        setDeleting(a.id);
+                        api.deleteArtifact(spaceId!, a.id).then(() => {
+                          setArtifacts(prev => prev.filter(art => art.id !== a.id));
+                          setConfirmDeleteId(null);
+                        }).catch(() => {}).finally(() => setDeleting(null));
+                      } else {
+                        setConfirmDeleteId(a.id);
+                      }
+                    }}
+                    disabled={deleting === a.id}
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      padding: `2px ${spacing[1]}`,
+                      border: 'none',
+                      backgroundColor: confirmDeleteId === a.id ? 'var(--color-primary-100)' : 'transparent',
+                      borderRadius: borders.radius.sm,
+                      cursor: deleting === a.id ? 'wait' : 'pointer',
+                      color: confirmDeleteId === a.id ? 'var(--color-error-600, #dc2626)' : 'var(--color-primary-500)',
+                      fontSize: 10,
+                      fontFamily: 'inherit',
+                      transition: 'color 0.15s ease',
+                      zIndex: 2,
+                    }}
+                    onMouseEnter={e => { if (confirmDeleteId !== a.id) e.currentTarget.style.color = 'var(--color-primary-700)'; }}
+                    onMouseLeave={e => { if (confirmDeleteId !== a.id) e.currentTarget.style.color = 'var(--color-primary-500)'; }}
+                    title={confirmDeleteId === a.id ? 'Click again to confirm' : 'Delete artifact'}
+                  >
+                    {confirmDeleteId === a.id ? (
+                      deleting === a.id ? 'Deleting...' : 'Delete?'
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    )}
+                  </button>
+                  {/* Clickable area */}
+                  <a
+                    href={`/spaces/${spaceId}/artifacts/${a.id}?from=checkpoint&run=${runId}`}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: spacing[2],
+                      textDecoration: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    <span style={{
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.medium,
+                      color: 'var(--color-primary-700)',
+                      textAlign: 'center',
+                      lineHeight: 1.3,
+                      wordBreak: 'break-word',
+                    }}>
+                      {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}
                     </span>
-                  )}
-                </a>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                      {a.created_at && (
+                        <span style={{ fontSize: 10, color: 'var(--color-primary-500)' }}>
+                          {new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{', '}
+                          {new Date(a.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                      )}
+                      {(a.version_count ?? 0) > 1 && (
+                        <span style={{ fontSize: 10, color: 'var(--color-primary-500)' }}>
+                          {a.version_count} versions
+                        </span>
+                      )}
+                    </div>
+                  </a>
+                </div>
               ))}
             </div>
           </div>
@@ -404,7 +468,7 @@ export default function SpaceCheckpointPage() {
           <div style={{
             textAlign: 'center',
             padding: `${spacing[8]} 0`,
-            color: colors.primary[400],
+            color: 'var(--color-primary-500)',
             fontSize: typography.fontSize.sm,
           }}>
             No artifacts generated at this checkpoint.
