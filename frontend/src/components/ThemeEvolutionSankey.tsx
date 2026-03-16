@@ -4,13 +4,24 @@ import type { OrganizeRun, SpaceArtifact } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePanZoomContext } from '../hooks/usePanZoom';
 
+const ARTIFACT_TYPE_LABELS: Record<string, string> = {
+  summary: 'Summary',
+  checklist: 'Checklist',
+  plan: 'Plan',
+  decision_brief: 'Decision Brief',
+  implementation_spec: 'Impl. Spec',
+  talking_points: 'Talking Points',
+  retrospective: 'Retrospective',
+  custom: 'Custom',
+};
+
 interface Props {
   runs: OrganizeRun[];
   artifacts?: SpaceArtifact[];
   onArtifactClick?: (artifact: SpaceArtifact) => void;
 }
 
-const MARGIN = { top: 54, right: 140, bottom: 10, left: 10 };
+const MARGIN = { top: 54, right: 140, bottom: 60, left: 10 };
 const NODE_WIDTH = 14;
 const NODE_PADDING = 24;
 
@@ -210,6 +221,7 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
+  const [openArtifactDropdown, setOpenArtifactDropdown] = useState<number | null>(null);
   const { scale, translateX, contentWidthRef } = usePanZoomContext();
 
   useEffect(() => {
@@ -221,6 +233,18 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+
+  // Close artifact dropdown on outside click
+  useEffect(() => {
+    if (openArtifactDropdown === null) return;
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-artifact-dropdown]')) {
+        setOpenArtifactDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openArtifactDropdown]);
 
   const data = useMemo(() => {
     if (runs.length < 2) return null;
@@ -326,7 +350,7 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
               justifyContent: dates.length === 1 ? 'flex-start' : 'space-between',
               alignItems: 'flex-start',
               paddingTop: 4,
-              pointerEvents: 'none',
+              zIndex: 10,
             }}>
               {dates.map((date, i) => {
                 const runArtifacts = artifactsByRunIndex.get(i);
@@ -347,45 +371,88 @@ export default function ThemeEvolutionSankey({ runs, artifacts = [], onArtifactC
                         fontFamily: typography.fontFamily.sans,
                         whiteSpace: 'nowrap',
                         textAlign: 'center',
+                        pointerEvents: 'none',
                       }}
                     >
                       {formatShortDate(date)}
                     </span>
                     {runArtifacts && runArtifacts.length > 0 && (
-                      <div style={{
-                        display: 'flex',
-                        gap: 3,
-                        pointerEvents: 'auto',
-                      }}>
-                        {runArtifacts.slice(0, 3).map(a => (
-                          <button
-                            key={a.id}
-                            title={a.title || a.artifact_type}
-                            onClick={() => onArtifactClick?.(a)}
-                            style={{
-                              width: 14,
-                              height: 14,
-                              padding: 0,
-                              border: 'none',
-                              borderRadius: borders.radius.sm,
-                              backgroundColor: 'var(--color-primary-300)',
-                              color: 'var(--color-primary-600)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                            </svg>
-                          </button>
-                        ))}
-                        {runArtifacts.length > 3 && (
-                          <span style={{ fontSize: 9, color: 'var(--color-primary-400)', lineHeight: '14px' }}>
-                            +{runArtifacts.length - 3}
-                          </span>
+                      <div data-artifact-dropdown style={{ position: 'relative' }} onMouseLeave={() => setOpenArtifactDropdown(null)}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenArtifactDropdown(prev => prev === i ? null : i); }}
+                          onMouseEnter={() => setOpenArtifactDropdown(i)}
+                          onMouseLeave={() => {}}  /* closing handled by container onMouseLeave */
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            padding: '2px 6px',
+                            border: 'none',
+                            borderRadius: borders.radius.sm,
+                            backgroundColor: openArtifactDropdown === i ? 'var(--color-primary-300)' : 'var(--color-primary-200)',
+                            color: 'var(--color-primary-600)',
+                            cursor: 'pointer',
+                            fontSize: 10,
+                            fontFamily: typography.fontFamily.sans,
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                          </svg>
+                          {runArtifacts.length}
+                        </button>
+                        {openArtifactDropdown === i && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            paddingTop: 4,
+                            backgroundColor: 'var(--color-primary-50)',
+                            border: '1px solid var(--color-primary-200)',
+                            borderRadius: borders.radius.md,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            padding: spacing[1],
+                            minWidth: 180,
+                            maxWidth: 260,
+                            zIndex: 20,
+                          }}>
+                            {runArtifacts.map(a => (
+                              <button
+                                key={a.id}
+                                onClick={() => {
+                                  setOpenArtifactDropdown(null);
+                                  onArtifactClick?.(a);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: spacing[2],
+                                  width: '100%',
+                                  padding: `${spacing[2]} ${spacing[2]}`,
+                                  border: 'none',
+                                  backgroundColor: 'transparent',
+                                  cursor: 'pointer',
+                                  borderRadius: borders.radius.sm,
+                                  textAlign: 'left',
+                                  fontSize: 11,
+                                  color: 'var(--color-primary-700)',
+                                  fontFamily: typography.fontFamily.sans,
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {ARTIFACT_TYPE_LABELS[a.artifact_type] || a.artifact_type}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
