@@ -64,6 +64,8 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
   const [selectedType, setSelectedType] = useState<ArtifactType | null>(null);
   const [userContext, setUserContext] = useState('');
   const [posterOrientation, setPosterOrientation] = useState<'portrait' | 'landscape'>('landscape');
+  const [posterTheme, setPosterTheme] = useState<'light' | 'dark' | 'vibrant' | 'infer'>('infer');
+  const [posterAccent, setPosterAccent] = useState('');
   const [artifact, setArtifact] = useState<SpaceArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const generatingIdRef = useRef<string | null>(null);
@@ -112,7 +114,9 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
       setView('generating');
       let context = userContext.trim() || '';
       if (selectedType === 'poster') {
-        context = `Orientation: ${posterOrientation}.${context ? ' ' + context : ''}`;
+        const parts = [`Orientation: ${posterOrientation}`, `Theme: ${posterTheme}`];
+        if (posterAccent.trim()) parts.push(`Accent color: ${posterAccent.trim()}`);
+        context = parts.join('. ') + '.' + (context ? ' ' + context : '');
       }
       const result = await api.generateArtifact(spaceId, selectedType, context || undefined);
       generatingIdRef.current = result.id;
@@ -270,6 +274,51 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
                   </button>
                 ))}
               </div>
+              <label style={{ display: 'block', fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)', marginBottom: spacing[1], marginTop: spacing[3] }}>
+                Theme
+              </label>
+              <div style={{ display: 'flex', gap: spacing[1] }}>
+                {(['infer', 'light', 'dark', 'vibrant'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setPosterTheme(t)}
+                    style={{
+                      flex: 1,
+                      padding: `${spacing[1]} ${spacing[2]}`,
+                      fontSize: typography.fontSize.xs,
+                      border: `1px solid ${posterTheme === t ? 'var(--color-primary-600)' : 'var(--color-primary-200)'}`,
+                      borderRadius: borders.radius.sm,
+                      backgroundColor: posterTheme === t ? 'var(--color-primary-100)' : 'transparent',
+                      color: posterTheme === t ? 'var(--color-primary-700)' : 'var(--color-primary-500)',
+                      cursor: 'pointer',
+                      fontWeight: posterTheme === t ? typography.fontWeight.medium : typography.fontWeight.normal,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {t === 'infer' ? 'Auto' : t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <label style={{ display: 'block', fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-700)', marginBottom: spacing[1], marginTop: spacing[3] }}>
+                Accent color <span style={{ fontWeight: typography.fontWeight.normal, color: 'var(--color-primary-400)' }}>(optional)</span>
+              </label>
+              <input
+                value={posterAccent}
+                onChange={e => setPosterAccent(e.target.value)}
+                placeholder="e.g. #4F46E5, teal, warm orange"
+                style={{
+                  width: '100%',
+                  padding: spacing[2],
+                  fontSize: typography.fontSize.sm,
+                  border: '1px solid var(--color-primary-200)',
+                  borderRadius: borders.radius.sm,
+                  backgroundColor: 'var(--color-primary-50)',
+                  color: 'var(--color-primary-700)',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
             </div>
           )}
           <div>

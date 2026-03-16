@@ -1853,12 +1853,20 @@ def run_generate_artifact_task(
             space_title, space_description, user_context,
         )
 
-        # Inject orientation for poster type
+        # Inject poster preferences into content JSON
         if result and artifact_type == "poster" and user_context:
-            if "portrait" in user_context.lower():
-                result["orientation"] = "portrait"
-            else:
-                result["orientation"] = "landscape"
+            uc = user_context.lower()
+            result["orientation"] = "portrait" if "portrait" in uc else "landscape"
+            # Theme
+            for theme_val in ("dark", "vibrant", "light"):
+                if f"theme: {theme_val}" in uc:
+                    result["poster_theme"] = theme_val
+                    break
+            # Accent color
+            import re
+            accent_match = re.search(r"accent color:\s*([^.]+)", uc)
+            if accent_match:
+                result["poster_accent"] = accent_match.group(1).strip()
 
         artifact_row = db.query(SpaceArtifact).filter(SpaceArtifact.id == artifact_id).first()
         if artifact_row:

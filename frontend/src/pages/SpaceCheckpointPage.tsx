@@ -5,6 +5,7 @@ import type { OrganizeRun, SpaceArtifact, ThemeEvent } from '../types';
 import { typography, spacing, borders } from '../styles/tokens';
 import { usePageTitle } from '../hooks/usePageTitle';
 import ArtifactIcon from '../components/ArtifactIcon';
+import Modal from '../components/Modal';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -94,6 +95,9 @@ export default function SpaceCheckpointPage() {
   const [editValue, setEditValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedArtifacts, setSelectedArtifacts] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   usePageTitle('Checkpoint');
 
@@ -338,15 +342,55 @@ export default function SpaceCheckpointPage() {
         {/* Artifacts folder grid */}
         {runArtifacts.length > 0 ? (
           <div>
-            <h2 style={{
-              fontSize: typography.fontSize.base,
-              fontWeight: typography.fontWeight.semibold,
-              color: 'var(--color-primary-700)',
-              marginTop: 0,
-              marginBottom: spacing[4],
-            }}>
-              Artifacts ({runArtifacts.length})
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] }}>
+              <h2 style={{
+                fontSize: typography.fontSize.base,
+                fontWeight: typography.fontWeight.semibold,
+                color: 'var(--color-primary-700)',
+                margin: 0,
+              }}>
+                Artifacts ({runArtifacts.length})
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                {selectedArtifacts.size > 0 && (
+                  <>
+                    <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)' }}>
+                      {selectedArtifacts.size} selected
+                    </span>
+                    <button
+                      onClick={() => setConfirmBulkDelete(true)}
+                      disabled={bulkDeleting}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: spacing[1],
+                        padding: `${spacing[2]} ${spacing[3]}`,
+                        fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium,
+                        color: 'var(--color-error-600, #dc2626)',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        border: 'none',
+                        borderRadius: borders.radius.sm, cursor: 'pointer',
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => { setSelectedArtifacts(new Set()); setConfirmBulkDelete(false); }}
+                      style={{
+                        padding: `${spacing[1]} ${spacing[2]}`,
+                        fontSize: typography.fontSize.xs,
+                        color: 'var(--color-primary-500)',
+                        backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
@@ -370,14 +414,56 @@ export default function SpaceCheckpointPage() {
                     e.currentTarget.style.backgroundColor = 'var(--color-primary-100)';
                     const del = e.currentTarget.querySelector('[data-delete-btn]') as HTMLElement;
                     if (del) del.style.opacity = '1';
+                    const cb = e.currentTarget.querySelector('[data-select-cb]') as HTMLElement;
+                    if (cb) cb.style.opacity = '1';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.backgroundColor = 'transparent';
                     const del = e.currentTarget.querySelector('[data-delete-btn]') as HTMLElement;
                     if (del && confirmDeleteId !== a.id) del.style.opacity = '0';
                     if (confirmDeleteId === a.id) setConfirmDeleteId(null);
+                    const cb = e.currentTarget.querySelector('[data-select-cb]') as HTMLElement;
+                    if (cb && !selectedArtifacts.has(a.id) && selectedArtifacts.size === 0) cb.style.opacity = '0';
                   }}
                 >
+                  {/* Select checkbox */}
+                  <div
+                    data-select-cb
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedArtifacts(prev => {
+                        const next = new Set(prev);
+                        if (next.has(a.id)) next.delete(a.id);
+                        else next.add(a.id);
+                        return next;
+                      });
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      left: 6,
+                      width: 18,
+                      height: 18,
+                      borderRadius: borders.radius.sm,
+                      border: `2px solid ${selectedArtifacts.has(a.id) ? 'var(--color-primary-600)' : 'var(--color-primary-300)'}`,
+                      backgroundColor: selectedArtifacts.has(a.id) ? 'var(--color-primary-600)' : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: selectedArtifacts.size > 0 || selectedArtifacts.has(a.id) ? 1 : 0,
+                      transition: 'opacity 0.15s ease',
+                      zIndex: 2,
+                    }}
+                  >
+                    {selectedArtifacts.has(a.id) && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+
                   {/* Delete button */}
                   <button
                     data-delete-btn
@@ -493,6 +579,57 @@ export default function SpaceCheckpointPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={confirmBulkDelete}
+        onClose={() => setConfirmBulkDelete(false)}
+        title="Delete artifacts"
+        maxWidth="400px"
+      >
+        <div style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)', marginBottom: spacing[4] }}>
+          Are you sure you want to delete {selectedArtifacts.size} artifact{selectedArtifacts.size > 1 ? 's' : ''}? This cannot be undone.
+        </div>
+        <div style={{ display: 'flex', gap: spacing[2], justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setConfirmBulkDelete(false)}
+            style={{
+              padding: `${spacing[2]} ${spacing[3]}`,
+              fontSize: typography.fontSize.sm,
+              backgroundColor: 'transparent',
+              color: 'var(--color-primary-600)',
+              border: '1px solid var(--color-primary-300)',
+              borderRadius: borders.radius.sm,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              setBulkDeleting(true);
+              const ids = [...selectedArtifacts];
+              await Promise.all(ids.map(aid => api.deleteArtifact(spaceId!, aid).catch(() => {})));
+              setArtifacts(prev => prev.filter(a => !selectedArtifacts.has(a.id)));
+              setSelectedArtifacts(new Set());
+              setConfirmBulkDelete(false);
+              setBulkDeleting(false);
+            }}
+            disabled={bulkDeleting}
+            style={{
+              padding: `${spacing[2]} ${spacing[3]}`,
+              fontSize: typography.fontSize.sm,
+              fontWeight: typography.fontWeight.medium,
+              backgroundColor: 'rgba(220, 38, 38, 0.1)',
+              color: 'var(--color-error-600, #dc2626)',
+              border: 'none',
+              borderRadius: borders.radius.sm,
+              cursor: bulkDeleting ? 'wait' : 'pointer',
+            }}
+          >
+            {bulkDeleting ? 'Deleting...' : `Delete ${selectedArtifacts.size}`}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

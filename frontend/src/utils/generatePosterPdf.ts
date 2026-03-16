@@ -39,16 +39,80 @@ async function loadFonts(pdf: jsPDF): Promise<{ heading: string; body: string }>
   }
 }
 
-const C = {
-  dark: [25, 25, 45] as [number, number, number],
-  accent: [79, 70, 229] as [number, number, number],
-  accentLight: [238, 235, 255] as [number, number, number],
-  text: [45, 45, 65] as [number, number, number],
-  textLight: [100, 100, 120] as [number, number, number],
-  textMuted: [155, 155, 170] as [number, number, number],
-  bg: [252, 252, 255] as [number, number, number],
-  cardBg: [244, 244, 250] as [number, number, number],
+type RGB = [number, number, number];
+
+interface ColorTheme {
+  dark: RGB; accent: RGB; accentLight: RGB;
+  text: RGB; textLight: RGB; textMuted: RGB;
+  bg: RGB; cardBg: RGB;
+}
+
+const THEMES: Record<string, ColorTheme> = {
+  light: {
+    dark: [25, 25, 45], accent: [79, 70, 229], accentLight: [238, 235, 255],
+    text: [45, 45, 65], textLight: [100, 100, 120], textMuted: [155, 155, 170],
+    bg: [252, 252, 255], cardBg: [244, 244, 250],
+  },
+  dark: {
+    dark: [240, 240, 255], accent: [129, 120, 255], accentLight: [40, 38, 70],
+    text: [210, 210, 225], textLight: [160, 160, 180], textMuted: [110, 110, 130],
+    bg: [20, 20, 35], cardBg: [30, 30, 50],
+  },
+  vibrant: {
+    dark: [15, 15, 30], accent: [236, 72, 153], accentLight: [253, 232, 243],
+    text: [30, 30, 50], textLight: [90, 90, 110], textMuted: [140, 140, 160],
+    bg: [255, 255, 255], cardBg: [252, 245, 250],
+  },
 };
+
+function parseHexColor(hex: string): RGB | null {
+  const clean = hex.replace('#', '');
+  if (clean.length === 6) {
+    return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)];
+  }
+  return null;
+}
+
+function namedColorToRgb(name: string): RGB | null {
+  const map: Record<string, RGB> = {
+    red: [220, 38, 38], blue: [59, 130, 246], green: [22, 163, 74],
+    purple: [124, 58, 237], orange: [234, 88, 12], teal: [20, 184, 166],
+    pink: [236, 72, 153], indigo: [79, 70, 229], yellow: [202, 138, 4],
+    cyan: [6, 182, 212], amber: [217, 119, 6], emerald: [5, 150, 105],
+  };
+  const lower = name.toLowerCase().trim();
+  for (const [key, val] of Object.entries(map)) {
+    if (lower.includes(key)) return val;
+  }
+  return null;
+}
+
+function darkenColor(rgb: RGB, amount: number): RGB {
+  return rgb.map(c => Math.max(0, Math.min(255, Math.floor(c * (1 - amount))))) as RGB;
+}
+
+function lightenColor(rgb: RGB, amount: number): RGB {
+  return rgb.map(c => Math.max(0, Math.min(255, Math.floor(c + (255 - c) * amount)))) as RGB;
+}
+
+function resolveTheme(content: Record<string, any>): ColorTheme {
+  const themeName = content.poster_theme || 'light';
+  const base = THEMES[themeName] || THEMES.light;
+
+  // Apply custom accent if provided
+  const accentStr = content.poster_accent || '';
+  if (accentStr) {
+    const custom = parseHexColor(accentStr) || namedColorToRgb(accentStr);
+    if (custom) {
+      return {
+        ...base,
+        accent: custom,
+        accentLight: themeName === 'dark' ? darkenColor(custom, 0.7) : lightenColor(custom, 0.85),
+      };
+    }
+  }
+  return base;
+}
 
 // ── Font size tiers — the layout engine tries each until content fits ──
 interface SizeTier {
@@ -75,6 +139,11 @@ export async function generatePosterPdf(content: Record<string, any>) {
   const orientation = (content.orientation || 'landscape') as 'portrait' | 'landscape';
   const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
   const fonts = await loadFonts(pdf);
+  const C = resolveTheme(content);
+  // Helper — jsPDF setFillColor/setTextColor/setDrawColor need explicit r,g,b args
+  const fill = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
+  const text = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
+  const draw = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
 
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -163,9 +232,9 @@ export async function generatePosterPdf(content: Record<string, any>) {
 
   // ── PASS 3: Render ──
   // Background
-  pdf.setFillColor(...C.bg);
+  fill(C.bg);
   pdf.rect(0, 0, pageW, pageH, 'F');
-  pdf.setFillColor(...C.accent);
+  fill(C.accent);
   pdf.rect(0, 0, pageW, topBarH, 'F');
 
   let y = margin + topBarH + 4;
@@ -174,7 +243,7 @@ export async function generatePosterPdf(content: Record<string, any>) {
   if (content.title) {
     pdf.setFont(fonts.heading, 'bold');
     pdf.setFontSize(tier.title);
-    pdf.setTextColor(...C.dark);
+    text(C.dark);
     const lines = pdf.splitTextToSize(content.title, contentW);
     pdf.text(lines, margin, y);
     y += lines.length * tier.titleLH + 2;
@@ -184,7 +253,7 @@ export async function generatePosterPdf(content: Record<string, any>) {
   if (content.subtitle) {
     pdf.setFont(fonts.body, 'normal');
     pdf.setFontSize(tier.subtitle);
-    pdf.setTextColor(...C.textLight);
+    text(C.textLight);
     const lines = pdf.splitTextToSize(content.subtitle, contentW);
     pdf.text(lines, margin, y);
     y += lines.length * tier.subtitleLH + 5;
@@ -196,11 +265,11 @@ export async function generatePosterPdf(content: Record<string, any>) {
     pdf.setFontSize(tier.highlight);
     const hlLines = pdf.splitTextToSize(content.highlight, contentW - 20);
     const boxH = hlLines.length * tier.highlightLH + 12;
-    pdf.setFillColor(...C.accentLight);
+    fill(C.accentLight);
     pdf.roundedRect(margin, y, contentW, boxH, 2.5, 2.5, 'F');
-    pdf.setFillColor(...C.accent);
+    fill(C.accent);
     pdf.rect(margin, y, 3.5, boxH, 'F');
-    pdf.setTextColor(...C.dark);
+    text(C.dark);
     pdf.text(hlLines, margin + 12, y + tier.highlightLH + 2);
     y += boxH + 6;
   }
@@ -237,25 +306,25 @@ export async function generatePosterPdf(content: Record<string, any>) {
       const { headingLines, pointLinesList } = measureCard(section);
 
       // Card bg — use forcedH so both cards in a row are same height
-      pdf.setFillColor(...C.cardBg);
+      fill(C.cardBg);
       pdf.roundedRect(startX, cy, colW, forcedH, 2, 2, 'F');
-      pdf.setFillColor(...C.accent);
+      fill(C.accent);
       pdf.roundedRect(startX, cy, 3, forcedH, 1.5, 1.5, 'F');
 
       // Heading
       let innerY = cy + tier.sectionHeadLH + 2;
       pdf.setFont(fonts.body, 'bold');
       pdf.setFontSize(tier.sectionHead);
-      pdf.setTextColor(...C.dark);
+      text(C.dark);
       pdf.text(headingLines, startX + 10, innerY);
       innerY += headingLines.length * tier.sectionHeadLH + 3;
 
       // Points
       pdf.setFont(fonts.body, 'normal');
       pdf.setFontSize(tier.point);
-      pdf.setTextColor(...C.text);
+      text(C.text);
       for (const pLines of pointLinesList) {
-        pdf.setFillColor(...C.accent);
+        fill(C.accent);
         pdf.circle(startX + 12.5, innerY - 1, 1, 'F');
         pdf.text(pLines, startX + 17, innerY);
         innerY += pLines.length * tier.pointLH + 3;
@@ -284,14 +353,14 @@ export async function generatePosterPdf(content: Record<string, any>) {
     const ctaH = ctaLines.length * tier.ctaLH;
     const bottomEdge = pageH - watermarkH;
     const ctaY = y + (bottomEdge - y - ctaH) / 2;
-    pdf.setTextColor(...C.accent);
+    text(C.accent);
     pdf.text(ctaLines, margin, ctaY);
   }
 
   // Watermark
   pdf.setFont(fonts.body, 'normal');
   pdf.setFontSize(6.5);
-  pdf.setTextColor(...C.textMuted);
+  text(C.textMuted);
   pdf.text('Generated by Mosaic', pageW - margin, pageH - 6, { align: 'right' });
 
   const title = (content.title || 'poster').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);

@@ -1836,15 +1836,34 @@ Return JSON with:
 Structure the output with clear sections that address the user's request.
 Be specific and grounded in the actual themes and ideas. Avoid generic filler."""
         elif artifact_type == "poster":
-            # Parse orientation from user_context
+            # Parse poster preferences from user_context
             is_landscape = True
+            poster_theme = "infer"
+            poster_accent = ""
             clean_context = user_context or ""
-            if clean_context.lower().startswith("orientation:"):
-                parts = clean_context.split(".", 1)
-                if "portrait" in parts[0].lower():
-                    is_landscape = False
-                clean_context = parts[1].strip() if len(parts) > 1 else ""
+            # Extract structured preferences
+            remaining_parts = []
+            for segment in clean_context.split("."):
+                seg = segment.strip()
+                seg_lower = seg.lower()
+                if seg_lower.startswith("orientation:"):
+                    if "portrait" in seg_lower:
+                        is_landscape = False
+                elif seg_lower.startswith("theme:"):
+                    poster_theme = seg.split(":", 1)[1].strip().lower()
+                elif seg_lower.startswith("accent color:"):
+                    poster_accent = seg.split(":", 1)[1].strip()
+                elif seg:
+                    remaining_parts.append(seg)
+            clean_context = ". ".join(remaining_parts).strip()
             ctx = f'\nThe user added this context: "{clean_context}"' if clean_context else ""
+            theme_hint = ""
+            if poster_theme == "dark":
+                theme_hint = "\nThe poster will use a dark background with light text. Write content that works on dark backgrounds."
+            elif poster_theme == "vibrant":
+                theme_hint = "\nThe poster will use bold, vibrant colors. Write punchy, energetic copy to match."
+            elif poster_theme == "light":
+                theme_hint = "\nThe poster will use a clean, light design. Write clear, professional copy."
             orientation = "landscape (wide)" if is_landscape else "portrait (tall)"
             section_count = "3-4" if is_landscape else "3-4"
             points_per = "2" if is_landscape else "2-3"
@@ -1855,7 +1874,7 @@ Be specific and grounded in the actual themes and ideas. Avoid generic filler.""
                 "The poster is portrait/tall — content flows top to bottom in a single column. "
                 "You have more vertical space, so sections can be slightly more detailed."
             )
-            instructions = f"""Generate a compelling single-page poster ({orientation}) based on this space.{ctx}
+            instructions = f"""Generate a compelling single-page poster ({orientation}) based on this space.{ctx}{theme_hint}
 
 Return JSON:
 {{
