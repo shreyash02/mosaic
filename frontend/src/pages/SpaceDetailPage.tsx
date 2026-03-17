@@ -1105,6 +1105,15 @@ export default function SpaceDetailPage() {
     }
   }
 
+  const selectedThemeRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to selected theme in sidebar when selected from evolution view
+  useEffect(() => {
+    if (selectedThemeId && selectedThemeRef.current) {
+      selectedThemeRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedThemeId]);
+
   const handleEvolutionThemeClick = useCallback((themeName: string) => {
     // Find by exact name first, then case-insensitive
     const theme = themes.find(t => t.name === themeName)
@@ -3541,7 +3550,7 @@ export default function SpaceDetailPage() {
 
           {/* Pinned Selection Detail */}
           {selectedThemeId && selectedThemeId !== '__unthemed' && selectedTheme && (
-            <div style={{
+            <div ref={selectedThemeRef} style={{
               ...s.sidebarSection,
               backgroundColor: 'var(--color-primary-100)',
             }}>
