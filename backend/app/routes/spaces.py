@@ -387,6 +387,169 @@ def _build_space_context(space: Space) -> str:
     return "\n".join(parts)
 
 
+def _batch_build_space_list(spaces: list, db: Session, current_user: User) -> list[dict]:
+    """Build SpaceListItem dicts for multiple spaces using batched queries.
+
+    Replaces the N+1 pattern of calling _build_space_response() per space.
+    Uses ~6 queries total instead of ~8 per space.
+    """
+    from sqlalchemy import case
+    from collections import defaultdict
+
+    if not spaces:
+        return []
+
+    space_ids = [s.id for s in spaces]
+    owned_space_ids = [s.id for s in spaces if s.owner_id == current_user.id]
+
+    # Q1: Idea counts (active + suggested) — one query for all spaces
+    idea_rows = db.query(
+        Idea.space_id,
+        func.count(case((Idea.status == "active", 1))).label("active_count"),
+        func.count(case((Idea.status == "suggested", 1))).label("suggested_count"),
+    ).filter(
+        Idea.space_id.in_(space_ids),
+        Idea.status.in_(["active", "suggested"]),
+    ).group_by(Idea.space_id).all()
+
+    idea_counts = {r[0]: r[1] for r in idea_rows}
+    suggestion_counts = {r[0]: r[2] for r in idea_rows}
+
+    # Q2: Theme counts — one query
+    theme_rows = db.query(
+        Theme.space_id,
+        func.count(Theme.id).label("theme_count"),
+    ).filter(Theme.space_id.in_(space_ids)).group_by(Theme.space_id).all()
+
+    theme_counts = {r[0]: r[1] for r in theme_rows}
+
+    # Q3: Current syntheses — one query
+    synthesis_rows = db.query(SpaceSynthesis).filter(
+        SpaceSynthesis.space_id.in_(space_ids),
+        SpaceSynthesis.is_current == True,
+    ).all()
+
+    # Keep first per space_id (if multiple purposes)
+    syntheses: dict = {}
+    for row in synthesis_rows:
+        if row.space_id not in syntheses:
+            syntheses[row.space_id] = row
+
+    # Q4: Members + Users — one query
+    member_rows = db.query(SpaceMember, User).join(
+        User, SpaceMember.user_id == User.id
+    ).filter(SpaceMember.space_id.in_(space_ids)).all()
+
+    members_by_space: dict = defaultdict(list)
+    for member, user in member_rows:
+        members_by_space[member.space_id].append((member, user))
+
+    # Q5: Shared viewers (owner spaces only) — one query
+    shared_viewers_by_space: dict = defaultdict(list)
+    if owned_space_ids:
+        sv_rows = db.query(SpaceSharedViewer, User).outerjoin(
+            User, SpaceSharedViewer.shared_user_id == User.id
+        ).filter(
+            SpaceSharedViewer.space_id.in_(owned_space_ids)
+        ).order_by(SpaceSharedViewer.created_at.desc()).all()
+
+        for sv, user in sv_rows:
+            shared_viewers_by_space[sv.space_id].append((sv, user))
+
+    # Build response dicts — pure Python, no DB calls
+    result = []
+    for space in spaces:
+        sid = space.id
+        is_owner = current_user.id == space.owner_id
+
+        # Synthesis
+        synthesis_row = syntheses.get(sid)
+        purpose_synthesis = None
+        synthesis_purpose = _get_space_purpose(space)
+        if synthesis_row:
+            purpose_synthesis = {
+                "space_summary": synthesis_row.space_summary,
+                "theme_notes": synthesis_row.theme_notes or {},
+                "note_states": synthesis_row.note_states or {},
+                "dismiss_reasons": synthesis_row.dismiss_reasons or {},
+                "completion_outcomes": synthesis_row.completion_outcomes or {},
+                "completion_outcome_images": synthesis_row.completion_outcome_images or {},
+                "generated_at": synthesis_row.generated_at.isoformat() if synthesis_row.generated_at else None,
+                "expanded_summary": synthesis_row.expanded_summary,
+                "expanded_theme_notes": synthesis_row.expanded_theme_notes or {},
+            }
+            synthesis_purpose = synthesis_row.purpose
+
+        # Members
+        member_pairs = members_by_space.get(sid, [])
+        member_count = max(len(member_pairs), 1)
+        members_data = [
+            {
+                "id": m.id, "space_id": m.space_id, "user_id": m.user_id,
+                "role": m.role, "joined_at": m.joined_at,
+                "user_name": u.full_name, "user_email": u.email,
+            }
+            for m, u in member_pairs
+        ]
+
+        # Role determination
+        can_edit = True
+        can_suggest = True
+        if not is_owner:
+            user_member = next((m for m, _ in member_pairs if m.user_id == current_user.id), None)
+            if user_member and user_member.role == "viewer":
+                can_edit = False
+                can_suggest = False
+            elif user_member and user_member.role == "suggester":
+                can_edit = False
+
+        # Shared viewers (owner only)
+        shared_viewers_data = None
+        if is_owner:
+            shared_viewers_data = [
+                {
+                    "id": sv.id, "space_id": sv.space_id, "email": sv.email,
+                    "access_level": sv.access_level, "can_export": sv.can_export,
+                    "shared_user_name": u.full_name if u else None,
+                    "created_at": sv.created_at,
+                }
+                for sv, u in shared_viewers_by_space.get(sid, [])
+            ]
+
+        result.append({
+            "id": space.id,
+            "title": space.title,
+            "description": space.description,
+            "purpose": _get_space_purpose(space),
+            "purposes": _get_space_purposes(space),
+            "synthesis_purpose": synthesis_purpose,
+            "purpose_synthesis": purpose_synthesis,
+            "synthesis_activity_log": None,  # Skipped in list view — loaded on detail
+            "idea_count": idea_counts.get(sid, 0),
+            "theme_count": theme_counts.get(sid, 0),
+            "auto_organize": space.auto_organize,
+            "clustering_mode": space.clustering_mode,
+            "last_organized_at": space.last_organized_at,
+            "created_at": space.created_at,
+            "updated_at": space.updated_at,
+            "owner_id": space.owner_id,
+            "is_owner": is_owner,
+            "can_edit": can_edit,
+            "can_suggest": can_suggest,
+            "suggestion_count": suggestion_counts.get(sid, 0) if can_edit else 0,
+            "member_count": member_count,
+            "members": members_data,
+            "share_access": getattr(space, "share_access", None),
+            "is_shared_view": False,
+            "shared_viewers": shared_viewers_data,
+            "viewer_can_export": None,
+            "viewer_access_level": None,
+            "graph_min_edge_strength": (space.settings or {}).get("graph_min_edge_strength"),
+        })
+
+    return result
+
+
 def _build_space_response(space: Space, db: Session, current_user: Optional[User] = None, is_shared_view: bool = False) -> dict:
     """Build a SpaceResponse dict with counts and membership info."""
     idea_count = db.query(func.count(Idea.id)).filter(
@@ -984,7 +1147,7 @@ def list_spaces(
         .limit(limit)
         .all()
     )
-    return [_build_space_response(s, db, current_user) for s in spaces]
+    return _batch_build_space_list(spaces, db, current_user)
 
 
 @router.get("/{space_id}", response_model=SpaceResponse)
