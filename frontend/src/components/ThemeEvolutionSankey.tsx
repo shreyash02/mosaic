@@ -455,6 +455,18 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                             minWidth: 160,
                            }}>
                             <div style={{
+                              textAlign: 'center',
+                              fontSize: 10,
+                              fontWeight: typography.fontWeight.medium,
+                              color: 'var(--color-primary-600)',
+                              fontFamily: typography.fontFamily.sans,
+                              marginBottom: spacing[2],
+                              paddingBottom: spacing[1],
+                              borderBottom: '1px solid var(--color-primary-200)',
+                            }}>
+                              {(runIds[i] && localStorage.getItem(`checkpoint-name-${runIds[i]}`)) || `Checkpoint ${i + 1}`}
+                            </div>
+                            <div style={{
                               display: 'grid',
                               gridTemplateColumns: `repeat(${Math.min(runArtifacts.length, 4)}, 1fr)`,
                               gap: spacing[2],
