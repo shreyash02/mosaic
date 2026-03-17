@@ -3133,123 +3133,44 @@ export default function SpaceDetailPage() {
                         fontSize: typography.fontSize.xs,
                         color: 'var(--color-primary-400)',
                       }}>
-                        Generated {new Date(space.purpose_synthesis.generated_at).toLocaleDateString()}
+                        Synthesized {formatRelativeTime(space.purpose_synthesis.generated_at)}
                       </span>
                     )}
                   </div>
                 </>
               )}
-            </div>
-          )}
-
-          {/* Generate artifact button + artifact list */}
-          {themes.length > 0 && space.can_edit !== false && (
-            <div style={s.sidebarSection}>
-              <button
-                onClick={() => setShowArtifactModal(true)}
-                style={{
-                  width: '100%',
-                  padding: `${spacing[3]} ${spacing[3]}`,
-                  fontSize: typography.fontSize.sm,
-                  fontWeight: typography.fontWeight.medium,
-                  backgroundColor: 'var(--color-primary-700)',
-                  color: 'var(--color-primary-50)',
-                  border: 'none',
-                  borderRadius: borders.radius.sm,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing[2],
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="12" y1="18" x2="12" y2="12" />
-                  <line x1="9" y1="15" x2="15" y2="15" />
-                </svg>
-                Generate
-              </button>
-              {artifacts.length > 0 && (
-                <div style={{ marginTop: spacing[2] }}>
-                  {artifacts.filter(a => a.status !== 'failed').slice(0, 5).map(a => (
-                    <button
-                      key={a.id}
-                      onClick={() => {
-                        if (a.status === 'ready') {
-                          api.getArtifact(id!, a.latest_version_id || a.id).then(full => {
-                            setViewingArtifact(full);
-                            setShowArtifactModal(true);
-                          }).catch(() => {});
-                        }
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: spacing[2],
-                        width: '100%',
-                        padding: `${spacing[2]} ${spacing[2]}`,
-                        fontSize: typography.fontSize.xs,
-                        color: a.status === 'ready' ? 'var(--color-primary-600)' : 'var(--color-primary-400)',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        cursor: a.status === 'ready' ? 'pointer' : 'default',
-                        textAlign: 'left',
-                        borderRadius: borders.radius.sm,
-                      }}
-                      onMouseEnter={e => { if (a.status === 'ready') e.currentTarget.style.backgroundColor = 'var(--color-primary-100)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {a.title || a.artifact_type}
-                      </span>
-                      {a.status === 'generating' && (
-                        <span style={{
-                          width: 10, height: 10, flexShrink: 0,
-                          border: '1.5px solid var(--color-primary-200)',
-                          borderTopColor: 'var(--color-primary-500)',
-                          borderRadius: '50%',
-                          animation: 'spin 0.8s linear infinite',
-                          display: 'inline-block',
-                        }} />
-                      )}
-                      {a.status === 'ready' && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeletingArtifact(a); }}
-                          title="Delete"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'var(--color-primary-500)',
-                            padding: '0 2px',
-                            fontSize: typography.fontSize.xs,
-                            flexShrink: 0,
-                            lineHeight: 1,
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error-600, #dc2626)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                        </button>
-                      )}
-                    </button>
-                  ))}
-                  {artifacts.filter(a => a.status !== 'failed').length > 5 && (
+              {/* Generate + Artifacts link */}
+              {themes.length > 0 && space.can_edit !== false && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] }}>
+                  <button
+                    onClick={() => setShowArtifactModal(true)}
+                    title="Generate a summary, checklist, plan, poster, or other document from your themes"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing[1],
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.medium,
+                      backgroundColor: 'var(--color-primary-700)',
+                      color: 'var(--color-primary-50)',
+                      border: 'none',
+                      borderRadius: borders.radius.sm,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="12" y1="18" x2="12" y2="12" />
+                      <line x1="9" y1="15" x2="15" y2="15" />
+                    </svg>
+                    Generate artifact
+                  </button>
+                  {artifacts.filter(a => a.status !== 'failed').length > 0 && (
                     <Link
                       to={`/spaces/${id}/artifacts`}
                       style={{
-                        display: 'block',
-                        textAlign: 'center',
-                        padding: `${spacing[2]} 0`,
                         fontSize: typography.fontSize.xs,
                         color: 'var(--color-primary-500)',
                         textDecoration: 'none',
@@ -3257,7 +3178,7 @@ export default function SpaceDetailPage() {
                       onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
                     >
-                      View all ({artifacts.filter(a => a.status !== 'failed').length})
+                      {artifacts.filter(a => a.status !== 'failed').length} artifact{artifacts.filter(a => a.status !== 'failed').length !== 1 ? 's' : ''}
                     </Link>
                   )}
                 </div>
