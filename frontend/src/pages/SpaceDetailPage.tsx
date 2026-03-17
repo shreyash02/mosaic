@@ -101,7 +101,7 @@ const s = {
     margin: '0 auto',
   },
   ideaInput: {
-    flex: 1,
+    width: '100%',
     padding: `${spacing[3]} ${spacing[4]}`,
     fontSize: typography.fontSize.sm,
     border: '1px solid var(--color-primary-300)',
@@ -388,6 +388,8 @@ export default function SpaceDetailPage() {
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<{ sourceId: string; targetId: string } | null>(null);
   const [ideaText, setIdeaText] = useState('');
+  const [ideaInputExpanded, setIdeaInputExpanded] = useState(false);
+  const [ideaInputFocused, setIdeaInputFocused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [organizing, setOrganizing] = useState(false);
   const [resynthesizing, setResynthesizing] = useState(false);
@@ -2288,16 +2290,28 @@ export default function SpaceDetailPage() {
             ...s.inputRow,
             ...(isMobile ? { maxWidth: 'none' } : {}),
           }}>
+            <div style={{ flex: 1, position: 'relative' }}>
             <textarea
               ref={ideaInputRef}
-              style={{ ...s.ideaInput, ...(dropping ? { opacity: 0.6 } : {}) }}
+              style={{
+                ...s.ideaInput,
+                ...(dropping ? { opacity: 0.6 } : {}),
+                ...(ideaInputExpanded ? { minHeight: '120px', maxHeight: '240px' } : {}),
+                paddingRight: spacing[8],
+              }}
               value={ideaText}
               onChange={(e) => setIdeaText(e.target.value)}
               readOnly={dropping}
               placeholder={space.can_edit !== false ? 'Drop a thought or an idea...' : 'Suggest an idea...'}
-              rows={1}
+              rows={ideaInputExpanded ? 5 : 1}
+              onFocus={() => setIdeaInputFocused(true)}
+              onBlur={() => setIdeaInputFocused(false)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.shiftKey && !ideaInputExpanded) {
+                  e.preventDefault();
+                  handleDropIdea();
+                }
+                if (e.key === 'Enter' && e.metaKey && ideaInputExpanded) {
                   e.preventDefault();
                   handleDropIdea();
                 }
@@ -2318,6 +2332,44 @@ export default function SpaceDetailPage() {
                 }
               }}
             />
+            {(ideaInputFocused || ideaInputExpanded || ideaText.length > 0) && (
+              <button
+                onMouseDown={(e) => { e.preventDefault(); setIdeaInputExpanded(prev => !prev); }}
+                tabIndex={-1}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  bottom: ideaInputExpanded ? 10 : '50%',
+                  transform: ideaInputExpanded ? 'none' : 'translateY(50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-primary-400)',
+                  padding: 4,
+                  lineHeight: 1,
+                  borderRadius: borders.radius.sm,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {ideaInputExpanded ? (
+                    <>
+                      <polyline points="4 14 10 14 10 20" />
+                      <polyline points="20 10 14 10 14 4" />
+                      <line x1="14" y1="10" x2="21" y2="3" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
+                    </>
+                  ) : (
+                    <>
+                      <polyline points="15 3 21 3 21 9" />
+                      <polyline points="9 21 3 21 3 15" />
+                      <line x1="21" y1="3" x2="14" y2="10" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
+                    </>
+                  )}
+                </svg>
+              </button>
+            )}
+            </div>
             <input
               ref={imageInputRef}
               type="file"
