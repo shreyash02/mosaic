@@ -431,28 +431,55 @@ async def list_conversations(
     query = query.order_by(Conversation.created_at.desc())
     query = query.offset(skip).limit(limit)
 
+    from sqlalchemy.orm import joinedload
+
     results = query.all()
 
-    # Build response with response count and unique participants
+    if not results:
+        return []
+
+    conv_ids = [conv.id for conv, _ in results]
+
+    # Batch: unique participants per conversation — one query instead of N
+    # For anonymous: count distinct participant_code_used
+    anon_counts = dict(
+        db.query(
+            Response.conversation_id,
+            func.count(func.distinct(Response.participant_code_used)),
+        ).filter(
+            Response.conversation_id.in_(conv_ids),
+            Response.participant_code_used.isnot(None),
+            Response.status == "submitted",
+        ).group_by(Response.conversation_id).all()
+    )
+
+    # For non-anonymous: count distinct participant_id
+    named_counts = dict(
+        db.query(
+            Response.conversation_id,
+            func.count(func.distinct(Response.participant_id)),
+        ).filter(
+            Response.conversation_id.in_(conv_ids),
+            Response.participant_id.isnot(None),
+            Response.status == "submitted",
+        ).group_by(Response.conversation_id).all()
+    )
+
+    # Batch: check which conversations have journals — one query
+    from app.models.journal import Journal
+    journal_conv_ids = set(
+        r[0] for r in db.query(Journal.conversation_id).filter(
+            Journal.conversation_id.in_(conv_ids)
+        ).all()
+    )
+
+    # Build response — no more per-conversation queries
     conversations = []
     for conv, response_count in results:
-        # Calculate unique participants based on anonymity level (only count submitted responses)
         if conv.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-            unique_participants = db.query(
-                func.count(func.distinct(Response.participant_code_used))
-            ).filter(
-                Response.conversation_id == conv.id,
-                Response.participant_code_used.isnot(None),
-                Response.status == "submitted"
-            ).scalar() or 0
+            unique_participants = anon_counts.get(conv.id, 0)
         else:
-            unique_participants = db.query(
-                func.count(func.distinct(Response.participant_id))
-            ).filter(
-                Response.conversation_id == conv.id,
-                Response.participant_id.isnot(None),
-                Response.status == "submitted"
-            ).scalar() or 0
+            unique_participants = named_counts.get(conv.id, 0)
 
         conv_dict = {
             "id": conv.id,
@@ -479,7 +506,7 @@ async def list_conversations(
             "is_recurring_instance": conv.is_recurring_instance or False,
             "recurrence_pattern": conv.recurrence_pattern,
             # Individual mode
-            "is_individual": conv.journal is not None,
+            "is_individual": conv.id in journal_conv_ids,
         }
         conversations.append(ConversationListItem(**conv_dict))
 
