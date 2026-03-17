@@ -648,22 +648,37 @@ class SpaceService:
 
     def get_graph_data(self, db: Session, space_id: UUID) -> dict:
         """Return nodes (themes) + edges (connections) for the network graph."""
+        from collections import defaultdict
+
         themes = db.query(Theme).filter(Theme.space_id == space_id).all()
 
-        nodes = []
-        for theme in themes:
-            idea_count = (
-                db.query(func.count(IdeaTheme.id))
-                .filter(IdeaTheme.theme_id == theme.id)
-                .scalar()
-            )
-            nodes.append({
+        if not themes:
+            total_ideas = db.query(func.count(Idea.id)).filter(
+                Idea.space_id == space_id, Idea.status == "active"
+            ).scalar() or 0
+            return {"nodes": [], "edges": [], "unthemed_count": total_ideas}
+
+        theme_ids = [t.id for t in themes]
+
+        # Batch: idea counts per theme — one query instead of N
+        count_rows = (
+            db.query(IdeaTheme.theme_id, func.count(IdeaTheme.id))
+            .filter(IdeaTheme.theme_id.in_(theme_ids))
+            .group_by(IdeaTheme.theme_id)
+            .all()
+        )
+        idea_counts = {r[0]: r[1] for r in count_rows}
+
+        nodes = [
+            {
                 "id": str(theme.id),
                 "name": theme.name,
-                "size": idea_count or 0,
+                "size": idea_counts.get(theme.id, 0),
                 "color": theme.color or "#3B82F6",
                 "summary": theme.summary,
-            })
+            }
+            for theme in themes
+        ]
 
         connections = (
             db.query(ThemeConnection)
@@ -671,16 +686,17 @@ class SpaceService:
             .all()
         )
 
-        # Build idea sets per theme for shared_count computation
-        theme_ideas: dict[str, set] = {}
-        for theme in themes:
-            tid = str(theme.id)
-            idea_ids = (
-                db.query(IdeaTheme.idea_id)
-                .filter(IdeaTheme.theme_id == theme.id)
-                .all()
-            )
-            theme_ideas[tid] = {row[0] for row in idea_ids}
+        # Batch: all idea assignments — one query instead of N
+        all_idea_theme_rows = (
+            db.query(IdeaTheme.theme_id, IdeaTheme.idea_id)
+            .filter(IdeaTheme.theme_id.in_(theme_ids))
+            .all()
+        )
+        theme_ideas: dict[str, set] = defaultdict(set)
+        all_themed_ids: set = set()
+        for theme_id, idea_id in all_idea_theme_rows:
+            theme_ideas[str(theme_id)].add(idea_id)
+            all_themed_ids.add(idea_id)
 
         edges = []
         for c in connections:
@@ -694,25 +710,13 @@ class SpaceService:
                 "shared_count": shared,
             })
 
-        # Count unthemed ideas
-        all_themed_idea_ids = (
-            db.query(IdeaTheme.idea_id)
-            .join(Theme, IdeaTheme.theme_id == Theme.id)
-            .filter(Theme.space_id == space_id)
-            .distinct()
-            .subquery()
-        )
+        # Unthemed count — one query
         total_ideas = (
             db.query(func.count(Idea.id))
             .filter(Idea.space_id == space_id, Idea.status == "active")
-            .scalar()
+            .scalar() or 0
         )
-        themed_count = (
-            db.query(func.count())
-            .select_from(all_themed_idea_ids)
-            .scalar()
-        )
-        unthemed_count = (total_ideas or 0) - (themed_count or 0)
+        unthemed_count = total_ideas - len(all_themed_ids)
 
         return {
             "nodes": nodes,

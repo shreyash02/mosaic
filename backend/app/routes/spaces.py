@@ -1348,8 +1348,50 @@ def list_ideas(
         )
         query = query.filter(Idea.id.in_(db.query(assigned_ids)))
 
-    ideas = query.order_by(Idea.created_at.desc()).offset(skip).limit(limit).all()
-    return [_build_idea_response(i, db) for i in ideas]
+    from sqlalchemy.orm import joinedload
+    ideas = (
+        query
+        .options(joinedload(Idea.author))
+        .order_by(Idea.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    if not ideas:
+        return []
+
+    # Batch load theme assignments for all ideas in one query
+    idea_ids = [i.id for i in ideas]
+    all_assignments = (
+        db.query(IdeaTheme, Theme)
+        .join(Theme, IdeaTheme.theme_id == Theme.id)
+        .filter(IdeaTheme.idea_id.in_(idea_ids))
+        .all()
+    )
+    from collections import defaultdict
+    themes_by_idea: dict = defaultdict(list)
+    for assignment, theme in all_assignments:
+        themes_by_idea[assignment.idea_id].append({
+            "theme_id": theme.id,
+            "theme_name": theme.name,
+            "confidence": assignment.confidence,
+            "assigned_by": assignment.assigned_by,
+        })
+
+    return [
+        {
+            "id": idea.id,
+            "text": idea.text,
+            "status": idea.status,
+            "image_url": idea.image_url,
+            "author_name": idea.author.full_name if idea.author else None,
+            "themes": themes_by_idea.get(idea.id, []),
+            "created_at": idea.created_at,
+            "updated_at": idea.updated_at,
+        }
+        for idea in ideas
+    ]
 
 
 @router.patch("/{space_id}/ideas/{idea_id}", response_model=IdeaResponse)
@@ -2151,6 +2193,8 @@ def list_artifacts(
     _get_space_or_404(space_id, current_user, db)
 
     from app.models.space_artifact import SpaceArtifact
+    from collections import defaultdict
+
     # Only show originals (parent_id is null)
     rows = (
         db.query(SpaceArtifact)
@@ -2159,21 +2203,32 @@ def list_artifacts(
         .all()
     )
 
+    if not rows:
+        return []
+
+    row_ids = [r.id for r in rows]
+
+    # Batch: all child versions in one query
+    all_children = (
+        db.query(SpaceArtifact)
+        .filter(SpaceArtifact.parent_id.in_(row_ids))
+        .order_by(SpaceArtifact.version.desc())
+        .all()
+    )
+
+    # Build lookup dicts
+    latest_by_parent: dict = {}
+    count_by_parent: dict = defaultdict(int)
+    for child in all_children:
+        count_by_parent[child.parent_id] += 1
+        if child.parent_id not in latest_by_parent and child.status == "ready":
+            latest_by_parent[child.parent_id] = child
+
     result = []
     for r in rows:
-        # Find latest version
-        latest = (
-            db.query(SpaceArtifact)
-            .filter(SpaceArtifact.parent_id == r.id, SpaceArtifact.status == "ready")
-            .order_by(SpaceArtifact.version.desc())
-            .first()
-        )
+        latest = latest_by_parent.get(r.id)
         display = latest or r
-        version_count = (
-            db.query(func.count(SpaceArtifact.id))
-            .filter(SpaceArtifact.parent_id == r.id)
-            .scalar() or 0
-        ) + 1  # +1 for the original
+        version_count = count_by_parent.get(r.id, 0) + 1  # +1 for original
 
         result.append({
             "id": str(r.id),
