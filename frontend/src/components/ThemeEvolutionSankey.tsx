@@ -455,7 +455,10 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                             minWidth: 160,
                            }}>
                             <div style={{
-                              textAlign: 'center',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 8,
                               fontSize: 10,
                               fontWeight: typography.fontWeight.medium,
                               color: 'var(--color-primary-600)',
@@ -464,7 +467,25 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                               paddingBottom: spacing[1],
                               borderBottom: '1px solid var(--color-primary-200)',
                             }}>
-                              {(runIds[i] && localStorage.getItem(`checkpoint-name-${runIds[i]}`)) || `Checkpoint ${i + 1}`}
+                              <span>{(runIds[i] && localStorage.getItem(`checkpoint-name-${runIds[i]}`)) || `Checkpoint ${i + 1}`}</span>
+                              {spaceId && runIds[i] && (
+                                <a
+                                  href={`/spaces/${spaceId}/checkpoint?run=${runIds[i]}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onMouseDown={(e) => { e.stopPropagation(); }}
+                                  style={{ color: 'var(--color-primary-400)', display: 'inline-flex', lineHeight: 0 }}
+                                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-400)'; }}
+                                  title="Open checkpoint"
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                    <polyline points="15 3 21 3 21 9" />
+                                    <line x1="10" y1="14" x2="21" y2="3" />
+                                  </svg>
+                                </a>
+                              )}
                             </div>
                             <div style={{
                               display: 'grid',
@@ -513,36 +534,6 @@ export default function ThemeEvolutionSankey({ runs, spaceId, artifacts = [], on
                                 </button>
                               ))}
                             </div>
-                            {spaceId && runIds[i] && (
-                              <a
-                                href={`/spaces/${spaceId}/checkpoint?run=${runIds[i]}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: 4,
-                                  marginTop: spacing[2],
-                                  paddingTop: spacing[2],
-                                  borderTop: '1px solid var(--color-primary-200)',
-                                  fontSize: 10,
-                                  color: 'var(--color-primary-500)',
-                                  textDecoration: 'none',
-                                  fontFamily: typography.fontFamily.sans,
-                                  whiteSpace: 'nowrap',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-700)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-primary-500)'; }}
-                              >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                  <polyline points="15 3 21 3 21 9" />
-                                  <line x1="10" y1="14" x2="21" y2="3" />
-                                </svg>
-                                Open checkpoint
-                              </a>
-                            )}
                            </div>
                           </div>
                         )}
