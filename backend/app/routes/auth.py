@@ -332,35 +332,39 @@ async def get_user_features(
     from app.services.platform_settings_service import is_spaces_enabled
     spaces_platform_enabled = is_spaces_enabled(db)
 
-    all_flags = feature_flag_service.list_all_flags(db)
-    features = {}
+    # Batch resolve all flags in 2 queries (instead of ~4 per flag)
+    resolved_flags = feature_flag_service.get_all_flags_batch(
+        db, tier=tier, org_id=parsed_org_id, user_id=current_user.id
+    )
 
-    for flag in all_flags:
-        effective = feature_flag_service.get_flag(
-            db, flag.slug,
-            tier=tier,
-            org_id=parsed_org_id,
-            user_id=current_user.id
+    # Batch load all usage records in 1 query
+    from app.models.feature_flag import FeatureUsage
+    period = usage_service.get_current_period()
+    usage_query = db.query(FeatureUsage).filter(FeatureUsage.period == period)
+    if parsed_org_id:
+        usage_query = usage_query.filter(FeatureUsage.organization_id == parsed_org_id)
+    else:
+        usage_query = usage_query.filter(
+            FeatureUsage.user_id == current_user.id,
+            FeatureUsage.organization_id.is_(None),
         )
+    all_usage = {u.feature_slug: u.usage_count for u in usage_query.all()}
 
+    features = {}
+    for slug, effective in resolved_flags.items():
         enabled = effective.enabled
 
         # Platform-level kill switch for spaces
-        if flag.slug == "spaces" and not spaces_platform_enabled:
+        if slug == "spaces" and not spaces_platform_enabled:
             enabled = False
 
-        # Get usage for config keys that look like limits
+        # Map usage for limit config keys
         usage = {}
         for key in effective.config:
             if key.endswith('_per_month') or key.endswith('_limit'):
-                # Track usage at org level if org context, else personal
-                usage[key] = usage_service.get_usage(
-                    db, flag.slug,
-                    user_id=current_user.id if not parsed_org_id else None,
-                    org_id=parsed_org_id
-                )
+                usage[key] = all_usage.get(slug, 0)
 
-        features[flag.slug] = {
+        features[slug] = {
             "enabled": enabled,
             "config": effective.config,
             "usage": usage,

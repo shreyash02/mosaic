@@ -337,6 +337,145 @@ class FeatureFlagService:
 
         return {'tiers': tiers, 'flags': result_flags}
 
+    def get_all_flags_batch(
+        self,
+        db: Session,
+        tier: Optional[str] = None,
+        org_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None,
+    ) -> Dict[str, EffectiveFeatureFlag]:
+        """
+        Resolve all feature flags in batch using 2 queries instead of 4 per flag.
+
+        Returns dict of slug -> EffectiveFeatureFlag.
+        """
+        # Q1: Load all flags in one query
+        all_flags = db.query(FeatureFlag).order_by(FeatureFlag.display_order, FeatureFlag.name).all()
+        if not all_flags:
+            return {}
+
+        flag_ids = [f.id for f in all_flags]
+
+        # Q2: Load ALL relevant overrides in one query
+        # This replaces the per-flag override lookups (tier, org, user)
+        override_query = db.query(FeatureFlagOverride).filter(
+            FeatureFlagOverride.flag_id.in_(flag_ids)
+        )
+
+        # Build filter for relevant overrides only
+        from sqlalchemy import or_, and_
+        conditions = []
+        if tier:
+            # Tier overrides: tier=X, org=None, user=None
+            conditions.append(and_(
+                FeatureFlagOverride.tier == tier,
+                FeatureFlagOverride.organization_id.is_(None),
+                FeatureFlagOverride.user_id.is_(None),
+            ))
+        if org_id:
+            # Org overrides: org=X, user=None, tier=None
+            conditions.append(and_(
+                FeatureFlagOverride.organization_id == org_id,
+                FeatureFlagOverride.user_id.is_(None),
+                FeatureFlagOverride.tier.is_(None),
+            ))
+            if user_id:
+                # User-in-org overrides: org=X, user=Y, tier=None
+                conditions.append(and_(
+                    FeatureFlagOverride.organization_id == org_id,
+                    FeatureFlagOverride.user_id == user_id,
+                    FeatureFlagOverride.tier.is_(None),
+                ))
+        elif user_id:
+            # Personal user overrides: user=Y, org=None, tier=None
+            conditions.append(and_(
+                FeatureFlagOverride.user_id == user_id,
+                FeatureFlagOverride.organization_id.is_(None),
+                FeatureFlagOverride.tier.is_(None),
+            ))
+
+        if conditions:
+            override_query = override_query.filter(or_(*conditions))
+        else:
+            override_query = override_query.filter(False)  # No overrides needed
+
+        all_overrides = override_query.all()
+
+        # Index overrides by flag_id for fast lookup
+        from collections import defaultdict
+        overrides_by_flag: Dict[UUID, list] = defaultdict(list)
+        for ov in all_overrides:
+            overrides_by_flag[ov.flag_id].append(ov)
+
+        # Resolve each flag using in-memory override data
+        results: Dict[str, EffectiveFeatureFlag] = {}
+        for flag in all_flags:
+            effective_enabled = flag.enabled
+            effective_config = copy.deepcopy(flag.config or {})
+            resolution_chain = ["global"]
+            flag_overrides = overrides_by_flag.get(flag.id, [])
+
+            # Apply tier override
+            if tier:
+                tier_ov = next((o for o in flag_overrides
+                    if o.tier == tier and o.organization_id is None and o.user_id is None), None)
+                if tier_ov:
+                    if tier_ov.enabled is not None:
+                        effective_enabled = tier_ov.enabled
+                    if tier_ov.config_override:
+                        effective_config = self._deep_merge(effective_config, tier_ov.config_override)
+                    resolution_chain.append(f"tier:{tier}")
+
+            if org_id:
+                # Org override
+                org_ov = next((o for o in flag_overrides
+                    if o.organization_id == org_id and o.user_id is None and o.tier is None), None)
+                if org_ov:
+                    if org_ov.enabled is not None:
+                        effective_enabled = org_ov.enabled
+                    if org_ov.config_override:
+                        effective_config = self._deep_merge(effective_config, org_ov.config_override)
+                    resolution_chain.append(f"org:{org_id}")
+
+                # User-in-org override
+                if user_id:
+                    user_org_ov = next((o for o in flag_overrides
+                        if o.organization_id == org_id and o.user_id == user_id and o.tier is None), None)
+                    if user_org_ov:
+                        if user_org_ov.enabled is not None:
+                            effective_enabled = user_org_ov.enabled
+                        if user_org_ov.config_override:
+                            effective_config = self._deep_merge(effective_config, user_org_ov.config_override)
+                        resolution_chain.append(f"user:{user_id}@org:{org_id}")
+
+            elif user_id:
+                # Personal user override
+                user_ov = next((o for o in flag_overrides
+                    if o.user_id == user_id and o.organization_id is None and o.tier is None), None)
+                if user_ov:
+                    if user_ov.enabled is not None:
+                        effective_enabled = user_ov.enabled
+                    if user_ov.config_override:
+                        effective_config = self._deep_merge(effective_config, user_ov.config_override)
+                    resolution_chain.append(f"user:{user_id}")
+
+            result = EffectiveFeatureFlag(
+                name=flag.name,
+                slug=flag.slug,
+                enabled=effective_enabled,
+                config=effective_config,
+                resolution_chain=resolution_chain,
+            )
+
+            # Cache individual results
+            cache_key = self._get_cache_key(flag.slug, tier, org_id, user_id)
+            self._cache[cache_key] = result
+            self._cache_timestamps[cache_key] = datetime.utcnow()
+
+            results[flag.slug] = result
+
+        return results
+
     def list_all_flags(self, db: Session) -> List[FeatureFlag]:
         """
         List all feature flags (admin).
