@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { renderInlineMarkdown } from '../utils/renderInlineMarkdown';
 import { generatePptx } from '../utils/generatePptx';
 import { generatePresentationPdf } from '../utils/generatePresentationPdf';
+import ArtifactExportDropdown from '../components/ArtifactExportDropdown';
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   summary: 'Summary',
@@ -242,6 +243,13 @@ export default function SpaceArtifactPage() {
                 </div>
               )}
             </div>
+          )}
+          {artifact.artifact_type !== 'presentation' && artifact.artifact_type !== 'poster' && (
+            <ArtifactExportDropdown
+              title={artifact.title || ARTIFACT_TYPE_LABELS[artifact.artifact_type] || 'Artifact'}
+              artifactType={artifact.artifact_type}
+              content={content}
+            />
           )}
           {!showRefine && !refining && (
             <button

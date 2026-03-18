@@ -6,6 +6,7 @@ import { typography, spacing, borders, colors } from '../styles/tokens';
 import { renderInlineMarkdown } from '../utils/renderInlineMarkdown';
 import { generatePptx } from '../utils/generatePptx';
 import { generatePresentationPdf } from '../utils/generatePresentationPdf';
+import ArtifactExportDropdown from './ArtifactExportDropdown';
 
 const ARTIFACT_TYPES: Array<{ key: ArtifactType; label: string; description: string }> = [
   { key: 'summary', label: 'Summary', description: 'A narrative write-up synthesizing all themes' },
@@ -566,28 +567,38 @@ const SpaceArtifactModal = forwardRef<SpaceArtifactModalHandle, Props>(function 
                 </div>
               )}
             </div>
-            <a
-              href={`/spaces/${spaceId}/artifacts/${artifact.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: spacing[1],
-                fontSize: typography.fontSize.xs,
-                color: 'var(--color-primary-500)',
-                textDecoration: 'none',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-primary-700)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-primary-500)')}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-              Open in new tab
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+              {artifact.artifact_type !== 'presentation' && artifact.artifact_type !== 'poster' && (
+                <ArtifactExportDropdown
+                  title={artifact.title || ARTIFACT_TYPES.find(t => t.key === artifact.artifact_type)?.label || 'Artifact'}
+                  artifactType={artifact.artifact_type}
+                  content={artifact.content!}
+                  size="sm"
+                />
+              )}
+              <a
+                href={`/spaces/${spaceId}/artifacts/${artifact.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spacing[1],
+                  fontSize: typography.fontSize.xs,
+                  color: 'var(--color-primary-500)',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-primary-700)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-primary-500)')}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                Open in new tab
+              </a>
+            </div>
           </div>
 
           <ArtifactContent artifact={artifact} />
