@@ -171,7 +171,7 @@ class TestCreateConversation:
 
         assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
 
-    def test_access_code_is_unique(self, client, test_user, db_session):
+    def test_access_code_is_unique(self, client, test_user, test_workspace, db_session):
         """Should generate unique access codes."""
         headers = get_auth_headers(test_user.id)
 
@@ -246,6 +246,7 @@ class TestListConversations:
             id=uuid4(),
             title="Deleted",
             creator_id=test_user.id,
+            workspace_id=test_workspace.id,
             access_code="DLTDABCDEFGH",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -296,7 +297,7 @@ class TestListConversations:
         for conv in data:
             assert conv.get("organization_id") == str(test_organization.id)
 
-    def test_list_pagination_limit(self, client, test_user, db_session):
+    def test_list_pagination_limit(self, client, test_user, test_workspace, db_session):
         """Should support limit parameter."""
         from app.models.conversation import Conversation
         from uuid import uuid4
@@ -307,6 +308,7 @@ class TestListConversations:
                 id=uuid4(),
                 title=f"Conv {i}",
                 creator_id=test_user.id,
+                workspace_id=test_workspace.id,
                 access_code=f"CD{i:010d}",
                 anonymity_level="platform_tracked",
                 results_access="creator_only",
@@ -324,7 +326,7 @@ class TestListConversations:
         data = response.json()
         assert len(data) == 10
 
-    def test_list_pagination_skip(self, client, test_user, db_session):
+    def test_list_pagination_skip(self, client, test_user, test_workspace, db_session):
         """Should support skip parameter."""
         from app.models.conversation import Conversation
         from uuid import uuid4
@@ -335,6 +337,7 @@ class TestListConversations:
                 id=uuid4(),
                 title=f"Conv {i}",
                 creator_id=test_user.id,
+                workspace_id=test_workspace.id,
                 access_code=f"CD{i:010d}",
                 anonymity_level="platform_tracked",
                 results_access="creator_only",
@@ -358,16 +361,25 @@ class TestListConversations:
         page2_ids = {c["id"] for c in page2}
         assert len(page1_ids & page2_ids) == 0
 
-    def test_list_excludes_other_users(self, client, test_user, second_test_user, db_session):
+    def test_list_excludes_other_users(self, client, test_user, second_test_user, test_workspace, db_session):
         """Should not return other users' conversations."""
         from app.models.conversation import Conversation
+        from app.models.workspace import Workspace, WorkspaceMember
         from uuid import uuid4
 
-        # Create conversation for second user
+        # Create a separate workspace for second user
+        other_ws = Workspace(id=uuid4(), type="personal", name="Other Personal", owner_id=second_test_user.id, is_default=True)
+        db_session.add(other_ws)
+        db_session.flush()
+        db_session.add(WorkspaceMember(workspace_id=other_ws.id, user_id=second_test_user.id, role="admin"))
+        db_session.flush()
+
+        # Create conversation for second user in their own workspace
         other_conv = Conversation(
             id=uuid4(),
             title="Other User Conv",
             creator_id=second_test_user.id,
+            workspace_id=other_ws.id,
             access_code="OTHRCONVABCD",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -427,7 +439,7 @@ class TestGetConversation:
             assert "question_type" in q
             assert "question_text" in q
 
-    def test_get_other_users_conversation_fails(self, client, test_user, second_test_user, db_session):
+    def test_get_other_users_conversation_fails(self, client, test_user, second_test_user, test_workspace, db_session):
         """Should return 404 for other users' conversations."""
         from app.models.conversation import Conversation
         from uuid import uuid4
@@ -437,6 +449,7 @@ class TestGetConversation:
             id=uuid4(),
             title="Other",
             creator_id=second_test_user.id,
+            workspace_id=test_workspace.id,
             access_code="OTHRCONVABCD",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -451,7 +464,7 @@ class TestGetConversation:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_deleted_conversation_fails(self, client, test_user, db_session):
+    def test_get_deleted_conversation_fails(self, client, test_user, test_workspace, db_session):
         """Should return 404 for deleted conversations."""
         from app.models.conversation import Conversation
         from app.schemas.conversation import ConversationState
@@ -462,6 +475,7 @@ class TestGetConversation:
             id=uuid4(),
             title="Deleted",
             creator_id=test_user.id,
+            workspace_id=test_workspace.id,
             access_code="DLTDCONVABCD",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -500,7 +514,7 @@ class TestGetConversation:
 class TestGetConversationByCode:
     """Tests for GET /api/conversations/by-code/{access_code}"""
 
-    def test_get_by_access_code(self, client, test_user, db_session):
+    def test_get_by_access_code(self, client, test_user, test_workspace, db_session):
         """Should return conversation by access code with auth."""
         from app.models.conversation import Conversation
         from app.schemas.conversation import ConversationState
@@ -512,6 +526,7 @@ class TestGetConversationByCode:
             id=uuid4(),
             title="By-Code Test",
             creator_id=test_user.id,
+            workspace_id=test_workspace.id,
             access_code="BYCODETEST01",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -533,7 +548,7 @@ class TestGetConversationByCode:
         assert data["id"] == str(conv.id)
         assert data["access_code"] == conv.access_code
 
-    def test_get_by_code_includes_questions(self, client, test_user, db_session):
+    def test_get_by_code_includes_questions(self, client, test_user, test_workspace, db_session):
         """Should include questions in response."""
         from app.models.conversation import Conversation
         from app.models.question import Question
@@ -546,6 +561,7 @@ class TestGetConversationByCode:
             id=uuid4(),
             title="By-Code Questions Test",
             creator_id=test_user.id,
+            workspace_id=test_workspace.id,
             access_code="BYCODEQUST01",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -612,7 +628,7 @@ class TestUpdateConversation:
         data = response.json()
         assert data["description"] == "New description"
 
-    def test_update_other_users_conversation_fails(self, client, test_user, second_test_user, db_session):
+    def test_update_other_users_conversation_fails(self, client, test_user, second_test_user, test_workspace, db_session):
         """Should fail to update other user's conversation."""
         from app.models.conversation import Conversation
         from uuid import uuid4
@@ -621,6 +637,7 @@ class TestUpdateConversation:
             id=uuid4(),
             title="Other",
             creator_id=second_test_user.id,
+            workspace_id=test_workspace.id,
             access_code="OTHRCONVABCD",
             anonymity_level="platform_tracked",
             results_access="creator_only",
@@ -654,7 +671,7 @@ class TestDeleteConversation:
         from app.schemas.conversation import ConversationState
         assert draft_conversation.state == ConversationState.DELETED
 
-    def test_delete_other_users_conversation_fails(self, client, test_user, second_test_user, db_session):
+    def test_delete_other_users_conversation_fails(self, client, test_user, second_test_user, test_workspace, db_session):
         """Should fail to delete other user's conversation."""
         from app.models.conversation import Conversation
         from uuid import uuid4
@@ -663,6 +680,7 @@ class TestDeleteConversation:
             id=uuid4(),
             title="Other",
             creator_id=second_test_user.id,
+            workspace_id=test_workspace.id,
             access_code="OTHRCONVABCD",
             anonymity_level="platform_tracked",
             results_access="creator_only",

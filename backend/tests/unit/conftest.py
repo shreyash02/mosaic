@@ -284,6 +284,26 @@ def test_organization(db_session, test_user) -> Organization:
         role="admin",
     )
     db_session.add(member)
+    db_session.flush()
+
+    # Create a default workspace for the org
+    org_workspace = Workspace(
+        id=uuid4(),
+        type="organization",
+        name=org.name,
+        organization_id=org.id,
+        owner_id=test_user.id,
+        is_default=True,
+    )
+    db_session.add(org_workspace)
+    db_session.flush()
+
+    org_ws_member = WorkspaceMember(
+        workspace_id=org_workspace.id,
+        user_id=test_user.id,
+        role="admin",
+    )
+    db_session.add(org_ws_member)
     db_session.commit()
 
     return org
