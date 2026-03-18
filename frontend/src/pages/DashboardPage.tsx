@@ -321,20 +321,20 @@ export default function DashboardPage() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const allConversations = await api.getConversations();
-        // Filter by current workspace
+
+        // Phase 1: Load conversations, journals, and spaces all in parallel
+        const [allConversations, journalData, spaceData] = await Promise.all([
+          api.getConversations().catch(() => [] as ConversationListItem[]),
+          journalsEnabled ? api.getJournals({ workspaceId: currentWorkspaceId || undefined }).catch(() => [] as JournalListItem[]) : Promise.resolve([] as JournalListItem[]),
+          spacesEnabled ? api.getSpaces({ workspaceId: currentWorkspaceId || undefined }).catch(() => [] as SpaceListItem[]) : Promise.resolve([] as SpaceListItem[]),
+        ]);
+
+        // Filter conversations by current workspace
         const data = allConversations.filter(c =>
           !c.is_template && !c.is_individual && c.workspace_id === currentWorkspaceId
         );
 
         setConversations(data);
-
-        // Fetch journals and spaces in parallel (scoped to current workspace)
-        const [journalData, spaceData] = await Promise.all([
-          journalsEnabled ? api.getJournals({ workspaceId: currentWorkspaceId || undefined }).catch(() => [] as JournalListItem[]) : Promise.resolve([] as JournalListItem[]),
-          spacesEnabled ? api.getSpaces({ workspaceId: currentWorkspaceId || undefined }).catch(() => [] as SpaceListItem[]) : Promise.resolve([] as SpaceListItem[]),
-        ]);
-
         setJournals(journalData);
         // In personal workspace, only show owned spaces
         setSpaces(isPersonalWorkspace ? spaceData.filter(sp => sp.is_owner) : spaceData);

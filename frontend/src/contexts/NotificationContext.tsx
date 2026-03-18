@@ -268,7 +268,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
 
-    loadNotifications();
+    // Defer notifications loading to reduce connection contention on page load
+    // Critical requests (me, features, conversations, spaces) go first
+    const timer = setTimeout(() => loadNotifications(), 500);
+    return () => clearTimeout(timer);
 
     // In development (HTTP/1.1), delay SSE connection to allow initial page requests
     // to complete first. This prevents SSE from blocking other requests on the same connection.
