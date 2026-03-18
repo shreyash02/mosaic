@@ -12,6 +12,12 @@ from tests.helpers.api_helpers import (
 )
 
 
+def _ws_id(test_workspace):
+    """Helper to get workspace_id from test_workspace fixture."""
+    return test_workspace.id
+
+
+@pytest.mark.usefixtures("test_workspace")
 class TestCreateConversation:
     """Tests for POST /api/conversations"""
 
@@ -205,6 +211,7 @@ class TestCreateConversation:
         assert '1' not in code
 
 
+@pytest.mark.usefixtures("test_workspace")
 class TestListConversations:
     """Tests for GET /api/conversations"""
 
@@ -228,7 +235,7 @@ class TestListConversations:
         data = response.json()
         assert len(data) == 0
 
-    def test_list_excludes_deleted(self, client, test_user, db_session):
+    def test_list_excludes_deleted(self, client, test_user, test_workspace, db_session):
         """Should not return deleted conversations."""
         from app.models.conversation import Conversation
         from app.schemas.conversation import ConversationState
@@ -388,6 +395,7 @@ class TestListConversations:
         ]
 
 
+@pytest.mark.usefixtures("test_workspace")
 class TestGetConversation:
     """Tests for GET /api/conversations/{id}"""
 
@@ -488,6 +496,7 @@ class TestGetConversation:
         ]
 
 
+@pytest.mark.usefixtures("test_workspace")
 class TestGetConversationByCode:
     """Tests for GET /api/conversations/by-code/{access_code}"""
 
@@ -577,6 +586,7 @@ class TestGetConversationByCode:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+@pytest.mark.usefixtures("test_workspace")
 class TestUpdateConversation:
     """Tests for PATCH /api/conversations/{id}"""
 
@@ -627,6 +637,7 @@ class TestUpdateConversation:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+@pytest.mark.usefixtures("test_workspace")
 class TestDeleteConversation:
     """Tests for DELETE /api/conversations/{id}"""
 

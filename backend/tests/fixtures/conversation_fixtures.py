@@ -147,13 +147,14 @@ def test_organization(db_session: Session, test_user: User) -> Organization:
 # ============================================================================
 
 @pytest.fixture
-def draft_conversation(db_session: Session, test_user: User) -> Conversation:
+def draft_conversation(db_session: Session, test_user: User, test_workspace) -> Conversation:
     """Create a draft conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Test Conversation",
         description="Test Description",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
         state=ConversationState.DRAFT,
         access_code="TESTCODE123",
@@ -166,13 +167,14 @@ def draft_conversation(db_session: Session, test_user: User) -> Conversation:
 
 
 @pytest.fixture
-def active_conversation(db_session: Session, test_user: User) -> Conversation:
+def active_conversation(db_session: Session, test_user: User, test_workspace) -> Conversation:
     """Create an active conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Active Conversation",
         description="Active Description",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.FULLY_ANONYMOUS,
         state=ConversationState.ACTIVE,
         access_code="ACTIVE12345",
@@ -186,13 +188,14 @@ def active_conversation(db_session: Session, test_user: User) -> Conversation:
 
 
 @pytest.fixture
-def closed_conversation(db_session: Session, test_user: User) -> Conversation:
+def closed_conversation(db_session: Session, test_user: User, test_workspace) -> Conversation:
     """Create a closed conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Closed Conversation",
         description="Closed Description",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.REVEALABLE,
         state=ConversationState.CLOSED,
         access_code="CLOSED67890",
@@ -246,13 +249,14 @@ def conversation_with_questions(db_session: Session, draft_conversation: Convers
 
 
 @pytest.fixture
-def invite_only_conversation(db_session: Session, test_user: User) -> Conversation:
+def invite_only_conversation(db_session: Session, test_user: User, test_workspace) -> Conversation:
     """Create an invite-only conversation."""
     conversation = Conversation(
         id=uuid4(),
         title="Invite Only",
         description="Need invitation",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
         state=ConversationState.DRAFT,
         access_code="INVITE12345",
@@ -266,7 +270,7 @@ def invite_only_conversation(db_session: Session, test_user: User) -> Conversati
 
 
 @pytest.fixture
-def scheduled_conversation(db_session: Session, test_user: User) -> Conversation:
+def scheduled_conversation(db_session: Session, test_user: User, test_workspace) -> Conversation:
     """Create a conversation scheduled for future activation."""
     future_time = datetime.utcnow() + timedelta(hours=24)
     conversation = Conversation(
@@ -274,6 +278,7 @@ def scheduled_conversation(db_session: Session, test_user: User) -> Conversation
         title="Scheduled Conversation",
         description="Will activate tomorrow",
         creator_id=test_user.id,
+        workspace_id=test_workspace.id,
         anonymity_level=AnonymityLevel.PLATFORM_TRACKED,
         state=ConversationState.DRAFT,
         access_code="SCHED123456",
