@@ -1598,7 +1598,6 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
 
 FRONTEND_URL=http://localhost:5173
 

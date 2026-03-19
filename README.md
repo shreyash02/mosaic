@@ -191,7 +191,6 @@ mosaic/
    # OAuth (Optional)
    GOOGLE_CLIENT_ID=your-google-client-id
    GOOGLE_CLIENT_SECRET=your-google-client-secret
-   GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
 
    # CORS
    FRONTEND_URL=http://localhost:3000
@@ -445,7 +444,6 @@ npm run build
 | ANTHROPIC_API_KEY | Anthropic API key for Claude | ✅ Yes |
 | GOOGLE_CLIENT_ID | Google OAuth client ID | ❌ No |
 | GOOGLE_CLIENT_SECRET | Google OAuth client secret | ❌ No |
-| GOOGLE_REDIRECT_URI | OAuth callback URL | ❌ No |
 | FRONTEND_URL | Frontend origin for CORS | ✅ Yes |
 | ADMIN_USERNAME | Admin portal username | ✅ Yes |
 | ADMIN_PASSWORD | Admin portal password | ✅ Yes |
@@ -514,8 +512,7 @@ npm run build
 
 **OAuth not working:**
 - Verify Google OAuth credentials in Google Cloud Console
-- Check GOOGLE_REDIRECT_URI matches exactly (including protocol and port)
-- Ensure authorized redirect URIs include your callback URL
+- Ensure authorized redirect URIs in Google Cloud Console include `{BASE_URL}/api/auth/google/callback`
 - Verify FRONTEND_URL for redirect after OAuth
 
 **Participant codes not working:**
