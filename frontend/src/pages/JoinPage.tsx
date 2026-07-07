@@ -936,6 +936,16 @@ export default function JoinPage() {
     try {
       const convData = await api.getConversationByCode(accessCode!, sessionToken || undefined);
       setConversation(convData);
+      // Decide the trust screen in the same synchronous block as setConversation:
+      // the awaits below let React paint, and deciding afterwards flashes the
+      // response form before the trust screen appears.
+      // (Skipped for OPEN — quick feedback, QR codes.)
+      if (convData.anonymity_level === AnonymityLevel.OPEN) {
+        setShowTrustScreen(false);
+        setTrustScreenAcknowledged(true);
+      } else {
+        setShowTrustScreen(true);
+      }
 
       // Codeless anonymous: best-effort duplicate check against this browser's
       // localStorage marker (set after a successful submission)
@@ -1029,13 +1039,6 @@ export default function JoinPage() {
         );
       }
 
-      // Skip trust screen for OPEN anonymity level (quick feedback, QR codes)
-      if (convData.anonymity_level === AnonymityLevel.OPEN) {
-        setShowTrustScreen(false);
-        setTrustScreenAcknowledged(true);
-      } else {
-        setShowTrustScreen(true);
-      }
     } catch (err: any) {
       const status = err.response?.status;
       const detail = err.response?.data?.detail;
