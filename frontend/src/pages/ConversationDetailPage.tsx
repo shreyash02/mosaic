@@ -2468,6 +2468,7 @@ export default function ConversationDetailPage() {
                   value={moveTargetId}
                   onChange={(val) => setMoveTargetId(String(val))}
                   placeholder="Choose a workspace"
+                  minWidth="100%"
                   options={workspaces
                     .filter(w => w.id !== conversation.workspace_id)
                     .map(w => ({ value: w.id, label: w.name }))}
