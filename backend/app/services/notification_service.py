@@ -88,7 +88,7 @@ class NotificationService:
             return True  # In-app was sent
 
         # Build the message
-        join_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        join_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
 
         blocks, fallback_text = slack_service.build_invitation_message(
             conversation_title=conversation.title,
@@ -178,7 +178,7 @@ class NotificationService:
             return True
 
         # Build the message
-        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        respond_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
 
         blocks, fallback_text = slack_service.build_closing_warning_message(
             conversation_title=conversation.title,
@@ -438,7 +438,7 @@ class NotificationService:
             return False
 
         # Build the message
-        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        respond_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
 
         blocks, fallback_text = slack_service.build_reminder_message(
             conversation_title=conversation.title,
@@ -509,7 +509,7 @@ class NotificationService:
             return False
 
         # Build the message
-        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        respond_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
         from datetime import datetime
         announcement_date = datetime.utcnow()
 
@@ -605,7 +605,7 @@ class NotificationService:
             return False
 
         # Build the message
-        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        respond_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
 
         blocks, fallback_text = slack_service.build_conversation_activated_message(
             conversation_title=conversation.title,

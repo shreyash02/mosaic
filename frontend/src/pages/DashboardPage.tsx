@@ -256,7 +256,7 @@ export default function DashboardPage() {
   const copyLink = async (e: React.MouseEvent, conv: ConversationListItem) => {
     e.preventDefault();
     e.stopPropagation();
-    const link = `${window.location.origin}/join/${conv.access_code}`;
+    const link = `${window.location.origin}/respond/${conv.access_code}`;
     try {
       await navigator.clipboard.writeText(link);
       setCopiedLinkId(conv.id);

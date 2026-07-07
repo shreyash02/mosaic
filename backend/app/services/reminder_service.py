@@ -132,7 +132,7 @@ class ReminderService:
             db.commit()
             return 0
 
-        respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+        respond_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
         sent_count = 0
 
         for invitation in non_responders:

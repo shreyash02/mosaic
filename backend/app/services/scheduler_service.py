@@ -435,7 +435,7 @@ async def _send_closing_warnings_for_conversation(
         ).all()
     )
 
-    respond_url = f"{settings.FRONTEND_URL}/join/{conversation.access_code}"
+    respond_url = f"{settings.FRONTEND_URL}/respond/{conversation.access_code}"
 
     # Send warnings to users who haven't responded
     for invitation in invitations:

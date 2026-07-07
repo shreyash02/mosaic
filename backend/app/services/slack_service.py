@@ -358,7 +358,7 @@ class SlackService:
                 "elements": [
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "Join Conversation"},
+                        "text": {"type": "plain_text", "text": "Respond to Conversation"},
                         "url": join_url,
                         "style": "primary",
                     }

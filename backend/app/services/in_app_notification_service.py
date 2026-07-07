@@ -134,7 +134,7 @@ class InAppNotificationService:
         announcement_message: str,
     ) -> Optional[Notification]:
         """Notify participant of an announcement."""
-        action_url = f"/join/{conversation.access_code}"
+        action_url = f"/respond/{conversation.access_code}"
 
         # Truncate message for title if too long
         truncated_message = (announcement_message[:100] + "...") if len(announcement_message) > 100 else announcement_message
@@ -162,7 +162,7 @@ class InAppNotificationService:
         hours_remaining: int,
     ) -> Optional[Notification]:
         """Notify participant that conversation is closing soon."""
-        action_url = f"/join/{conversation.access_code}"
+        action_url = f"/respond/{conversation.access_code}"
 
         time_str = f"{hours_remaining} hour{'s' if hours_remaining != 1 else ''}"
 
@@ -189,7 +189,7 @@ class InAppNotificationService:
         inviter_name: Optional[str] = None,
     ) -> Optional[Notification]:
         """Notify user when they're invited to a conversation."""
-        action_url = f"/join/{conversation.access_code}"
+        action_url = f"/respond/{conversation.access_code}"
 
         if inviter_name:
             message = f"{inviter_name} invited you to \"{conversation.title}\""

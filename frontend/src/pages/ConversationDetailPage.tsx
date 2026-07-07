@@ -1124,7 +1124,7 @@ export default function ConversationDetailPage() {
   };
 
   const copyInviteLink = async () => {
-    const link = `${window.location.origin}/join/${conversation?.access_code}`;
+    const link = `${window.location.origin}/respond/${conversation?.access_code}`;
     try {
       await navigator.clipboard.writeText(link);
       setLinkCopied(true);
@@ -1150,7 +1150,7 @@ export default function ConversationDetailPage() {
   };
 
   const copyHeaderLink = async () => {
-    const link = `${window.location.origin}/join/${conversation?.access_code}`;
+    const link = `${window.location.origin}/respond/${conversation?.access_code}`;
     try {
       await navigator.clipboard.writeText(link);
       setHeaderLinkCopied(true);
@@ -1175,7 +1175,7 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const getInviteLink = () => `${window.location.origin}/join/${conversation?.access_code}`;
+  const getInviteLink = () => `${window.location.origin}/respond/${conversation?.access_code}`;
 
   const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];

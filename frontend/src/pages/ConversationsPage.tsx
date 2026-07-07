@@ -844,7 +844,7 @@ export default function ConversationsPage() {
     // Link to join page for active conversations (to edit response)
     // Link to analysis page for analyzed conversations (to view results)
     const linkTo = conversation.state === ConversationState.ACTIVE
-      ? `/join/${conversation.access_code}`
+      ? `/respond/${conversation.access_code}`
       : conversation.state === ConversationState.ANALYZED
         ? `/conversations/${conversation.id}/analysis`
         : null;
@@ -885,7 +885,7 @@ export default function ConversationsPage() {
   const renderInvitationCard = (invitation: ConversationInvitationWithConversation) => {
     const { conversation } = invitation;
     const linkTo = conversation.state === ConversationState.ACTIVE
-      ? `/join/${conversation.access_code}`
+      ? `/respond/${conversation.access_code}`
       : null;
 
     const card = (

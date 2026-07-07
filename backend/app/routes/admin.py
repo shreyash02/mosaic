@@ -1707,7 +1707,7 @@ async def preview_email_template(
 
     # Generate sample URLs
     access_code = "SAMPLE123"
-    sample_url = f"{settings.FRONTEND_URL}/join/{access_code}"
+    sample_url = f"{settings.FRONTEND_URL}/respond/{access_code}"
     results_url = f"{settings.FRONTEND_URL}/analysis/sample-id"
 
     # Parse closes_at or use default (1 hour from now)
@@ -1826,7 +1826,7 @@ async def send_test_email(
 
     # Generate sample URLs
     access_code = "TEST123"
-    sample_url = f"{settings.FRONTEND_URL}/join/{access_code}"
+    sample_url = f"{settings.FRONTEND_URL}/respond/{access_code}"
     results_url = f"{settings.FRONTEND_URL}/analysis/test-id"
 
     # Parse closes_at or use default
@@ -2135,7 +2135,7 @@ def _generate_invitation_html(conversation_title, conversation_description, invi
                 </div>
                 <p style="color: #6b7280; font-size: 16px;">Click the button below to join the conversation:</p>
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="{invite_link}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Join Conversation</a>
+                    <a href="{invite_link}" style="background-color: #1a1a2e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Respond to Conversation</a>
                 </div>
                 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
                     <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;"><strong>Or copy and paste this link into your browser:</strong></p>
@@ -2407,7 +2407,7 @@ def _generate_recurring_instance_html(conversation_title, instance_number, join_
     else:
         intro_text = f"A new round of feedback collection has started (Round #{instance_number})."
         action_text = "You're invited to participate:"
-        button_text = "Join Conversation"
+        button_text = "Respond to Conversation"
 
     return f"""
     <!DOCTYPE html>

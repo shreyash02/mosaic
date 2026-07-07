@@ -77,10 +77,10 @@ class EmailService:
             # Construct invitation link
             if invitation_token:
                 # Use token-based link for direct access
-                invite_link = f"{settings.FRONTEND_URL}/join/{access_code}?token={invitation_token}"
+                invite_link = f"{settings.FRONTEND_URL}/respond/{access_code}?token={invitation_token}"
             else:
                 # Fallback to access code only
-                invite_link = f"{settings.FRONTEND_URL}/join/{access_code}"
+                invite_link = f"{settings.FRONTEND_URL}/respond/{access_code}"
             
             # Email subject
             subject = f"You're invited to join a conversation on Mosaic: {conversation_title}"
@@ -124,7 +124,7 @@ class EmailService:
                                style="background-color: #1a1a2e; color: white; padding: 14px 32px;
                                       text-decoration: none; border-radius: 6px; display: inline-block;
                                       font-weight: 600; font-size: 16px;">
-                                Join Conversation
+                                Respond to Conversation
                             </a>
                         </div>
                         <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
@@ -1174,7 +1174,7 @@ If you did not expect this, you can safely ignore this email.
             else:
                 intro_text = f"A new round of feedback collection has started (Round #{instance_number})."
                 action_text = "You're invited to participate:"
-                button_text = "Join Conversation"
+                button_text = "Respond to Conversation"
 
             body_html = f"""
             <!DOCTYPE html>

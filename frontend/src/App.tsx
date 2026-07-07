@@ -147,6 +147,10 @@ function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/callback" element={<LoginPage />} />
+            {/* Canonical respond URL; /conversation and legacy /join are aliases */}
+            <Route path="/respond/:accessCode" element={<JoinPage />} />
+            <Route path="/respond" element={<JoinPage />} />
+            <Route path="/conversation/:accessCode" element={<JoinPage />} />
             <Route path="/join/:accessCode" element={<JoinPage />} />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/shared/analysis/:token" element={<SharedAnalysisPage />} />

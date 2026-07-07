@@ -687,7 +687,7 @@ export default function JoinPage() {
   const [draftSaveError, setDraftSaveError] = useState<string | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
-  usePageTitle(conversation?.title || 'Join');
+  usePageTitle(conversation?.title || 'Respond');
 
   const handleDraftLoaded = useCallback((draftResponses: ResponseItem[], revealConsentValue: boolean) => {
     setResponses(prev => {
@@ -806,7 +806,7 @@ export default function JoinPage() {
         if (validationResult.requires_login) {
           const token = localStorage.getItem('access_token');
           if (!token) {
-            navigate(`/login?redirect=/join/${accessCode}`);
+            navigate(`/login?redirect=/respond/${accessCode}`);
             return;
           }
         }
@@ -1041,7 +1041,7 @@ export default function JoinPage() {
       const detail = err.response?.data?.detail;
 
       if (status === 401) {
-        navigate(`/login?redirect=/join/${accessCode}`);
+        navigate(`/login?redirect=/respond/${accessCode}`);
       } else if (status === 403) {
         setError(detail || 'You do not have access to this conversation');
       } else if (status === 404) {
@@ -1450,7 +1450,7 @@ export default function JoinPage() {
       conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
       conversation?.require_participant_codes === false;
     const viewResultsLink = conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
-      ? `/join/${accessCode}?participant_code=${participantCode}`
+      ? `/respond/${accessCode}?participant_code=${participantCode}`
       : `/analysis/${conversation?.id}`;
     // Codeless responders have no identity to edit with, and can only reach
     // results through a public link

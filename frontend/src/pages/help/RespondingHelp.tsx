@@ -9,16 +9,16 @@ export default function RespondingHelp() {
           <Link to="/help" className="btn-back">← Back to Help</Link>
           <h1>Responding to Conversations</h1>
           <p className="description">
-            Learn how participants can join and respond to conversations
+            Learn how participants can open and respond to conversations
           </p>
         </div>
       </div>
 
       <div className="card" style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto', lineHeight: '1.8' }}>
         <section style={{ marginBottom: '2.5rem' }}>
-          <h2>Joining a Conversation</h2>
+          <h2>Opening a Conversation</h2>
           <p>
-            There are several ways to join and respond to a conversation in Mosaic:
+            There are several ways to open and respond to a conversation in Mosaic:
           </p>
         </section>
 
@@ -29,7 +29,7 @@ export default function RespondingHelp() {
             <h3>Steps</h3>
             <ol style={{ marginLeft: '2rem' }}>
               <li>Check your email for the invitation</li>
-              <li>Click the <strong>"Join Conversation"</strong> button in the email</li>
+              <li>Click the <strong>"Respond to Conversation"</strong> button in the email</li>
               <li>You'll be taken directly to the conversation</li>
               <li>Answer the questions and submit your response</li>
             </ol>
@@ -70,7 +70,7 @@ export default function RespondingHelp() {
             <h3>Steps</h3>
             <ol style={{ marginLeft: '2rem' }}>
               <li>Go to the Mosaic website</li>
-              <li>Click <strong>"Join Conversation"</strong> or navigate to /join</li>
+              <li>Click <strong>"Respond"</strong> or navigate to /respond</li>
               <li>Enter the access code you received</li>
               <li>Click <strong>"Continue"</strong></li>
               <li>Answer the questions and submit</li>

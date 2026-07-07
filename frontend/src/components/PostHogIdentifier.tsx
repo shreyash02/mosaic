@@ -18,8 +18,10 @@ export default function PostHogIdentifier() {
 
   // Identify on login, reset on logout
   useEffect(() => {
-    // Never identify on /join/* routes (anonymous respondents)
-    if (location.pathname.startsWith('/join')) return;
+    // Never identify on respond routes (anonymous respondents).
+    // Note: /conversation/:code (singular) is a respond alias; /conversations
+    // (plural) is the creator area and must still identify.
+    if (/^\/(respond|join|conversation)(\/|$)/.test(location.pathname)) return;
 
     if (user && identifiedUserIdRef.current !== user.id) {
       analytics.identify(user.id);

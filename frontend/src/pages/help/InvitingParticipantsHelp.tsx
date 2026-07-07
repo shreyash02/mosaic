@@ -74,7 +74,7 @@ export default function InvitingParticipantsHelp() {
               borderRadius: '6px',
               marginTop: '0.5rem'
             }}>
-              https://mosaic-autumn-snow-9557.fly.dev/join/ABC123
+              https://mosaic-autumn-snow-9557.fly.dev/respond/ABC123
             </code>
 
             <h3>Best For</h3>
@@ -105,7 +105,7 @@ export default function InvitingParticipantsHelp() {
             <h3>How Participants Use It</h3>
             <ol style={{ marginLeft: '2rem' }}>
               <li>Visit your Mosaic site</li>
-              <li>Click "Join Conversation" or go to /join</li>
+              <li>Click "Respond" or go to /respond</li>
               <li>Enter the access code</li>
               <li>Start responding</li>
             </ol>
