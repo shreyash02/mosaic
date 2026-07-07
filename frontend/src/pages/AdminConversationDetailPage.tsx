@@ -6,6 +6,7 @@ import { AnonymityLevel, ResultsAccess } from '../types';
 import { formatDuration } from '../utils/formatting';
 import { SkeletonAdminDetail } from '../components/Skeleton';
 import AdminHeader from '../components/AdminHeader';
+import { formatParticipant, formatResponseValue } from '../utils/adminResponseFormat';
 import { colors, spacing, typography } from '../styles/tokens';
 import './AdminPortalPage.css';
 
@@ -198,6 +199,28 @@ export default function AdminConversationDetailPage() {
     setIsEditing(false);
     setError('');
   };
+
+  // Group responses by participant so each respondent is one row, with all of
+  // their question/answer pairs listed inside. Participants are keyed by
+  // participant_id (named) or participant_code_used (anonymous); responses
+  // without either are grouped individually by their own id.
+  const groupedResponses = (() => {
+    const groups = new Map<string, AdminResponseInfo[]>();
+    for (const r of responses) {
+      const key = r.participant_id || r.participant_code_used || r.id;
+      const list = groups.get(key);
+      if (list) list.push(r);
+      else groups.set(key, [r]);
+    }
+    return Array.from(groups.values()).map((items) => {
+      const sorted = [...items].sort(
+        (a, b) => (a.question_order ?? 0) - (b.question_order ?? 0)
+      );
+      const latest = sorted.reduce((max, r) =>
+        r.submitted_at > max ? r.submitted_at : max, sorted[0].submitted_at);
+      return { items: sorted, latestSubmittedAt: latest };
+    });
+  })();
 
   if (loading) {
     return (
@@ -422,46 +445,50 @@ export default function AdminConversationDetailPage() {
         </div>
 
         <div className="admin-section">
-          <h2>Responses ({responses.length})</h2>
+          <h2>Responses ({groupedResponses.length} {groupedResponses.length === 1 ? 'participant' : 'participants'}, {responses.length} total)</h2>
           <div className="table-container">
             <table className="admin-table">
               <thead>
                 <tr>
                   <th>Participant</th>
-                  <th>Response Text</th>
+                  <th>Responses</th>
                   <th>Anonymity Level</th>
                   <th>Submitted At</th>
                 </tr>
               </thead>
               <tbody>
-                {responses.map((response) => (
-                  <tr key={response.id}>
-                    <td>
-                      {response.participant_id ? (
-                        <Link to={`/adminportal/user/${response.participant_id}`} className="link-button">
-                          {response.participant_id}
-                        </Link>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td className="response-text">
-                      {response.response_text ? (
-                        response.response_text.length > 200 ? (
-                          <span title={response.response_text}>
-                            {response.response_text.substring(0, 200)}...
-                          </span>
+                {groupedResponses.map((group) => {
+                  const first = group.items[0];
+                  return (
+                    <tr key={first.participant_id || first.participant_code_used || first.id}>
+                      <td>
+                        {first.participant_id ? (
+                          <Link to={`/adminportal/user/${first.participant_id}`} className="link-button">
+                            {formatParticipant(first)}
+                          </Link>
                         ) : (
-                          response.response_text
-                        )
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td>{response.anonymity_level}</td>
-                    <td>{new Date(response.submitted_at).toLocaleString()}</td>
-                  </tr>
-                ))}
+                          formatParticipant(first)
+                        )}
+                      </td>
+                      <td className="response-text">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+                          {group.items.map((r) => (
+                            <div key={r.id}>
+                              <div style={{ fontWeight: typography.fontWeight.medium, color: colors.primary[700], marginBottom: spacing[1] }}>
+                                {r.question_text || 'Question'}
+                              </div>
+                              <div style={{ color: colors.primary[900] }}>
+                                {formatResponseValue(r, 400)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td>{first.anonymity_level}</td>
+                      <td>{new Date(group.latestSubmittedAt).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {responses.length === 0 && <p className="no-data">No responses found</p>}

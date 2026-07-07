@@ -10,6 +10,8 @@ import type {
 } from '../types';
 import { usePageTitle } from '../hooks/usePageTitle';
 import AdminHeader from '../components/AdminHeader';
+import CopyIdButton from '../components/CopyIdButton';
+import { formatQuestionText, formatParticipant, formatResponseValue } from '../utils/adminResponseFormat';
 import './AdminPortalPage.css';
 
 type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'scheduler';
@@ -308,13 +310,13 @@ export default function AdminPortalPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
                     <th>Title</th>
                     <th>Description</th>
-                    <th>Creator ID</th>
+                    <th>Creator</th>
                     <th>State</th>
                     <th>Access Code</th>
                     <th>Created At</th>
+                    <th>ID</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -322,19 +324,21 @@ export default function AdminPortalPage() {
                     <tr key={conv.id}>
                       <td>
                         <Link to={`/adminportal/conversation/${conv.id}`} className="link-button">
-                          {conv.id}
+                          {conv.title}
                         </Link>
                       </td>
-                      <td>{conv.title}</td>
                       <td>{conv.description || '-'}</td>
                       <td>
                         <Link to={`/adminportal/user/${conv.creator_id}`} className="link-button">
-                          {conv.creator_id}
+                          {conv.creator_name || conv.creator_email || conv.creator_id}
                         </Link>
                       </td>
                       <td>{conv.state}</td>
                       <td>{conv.access_code}</td>
                       <td>{new Date(conv.created_at).toLocaleString()}</td>
+                      <td>
+                        <CopyIdButton value={conv.id} title="Copy conversation ID" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -374,49 +378,33 @@ export default function AdminPortalPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Conversation ID</th>
-                    <th>Question ID</th>
-                    <th>Participant ID</th>
+                    <th>Conversation</th>
+                    <th>Question</th>
+                    <th>Participant</th>
                     <th>Response Text</th>
                     <th>Anonymity Level</th>
                     <th>Submitted At</th>
+                    <th>ID</th>
                   </tr>
                 </thead>
                 <tbody>
                   {responses.map((response) => (
                     <tr key={response.id}>
-                      <td>{response.id}</td>
                       <td>
                         <Link to={`/adminportal/conversation/${response.conversation_id}`} className="link-button">
-                          {response.conversation_id}
+                          {response.conversation_id.slice(0, 8)}…
                         </Link>
                       </td>
-                      <td>{response.question_id}</td>
-                      <td>
-                        {response.participant_id ? (
-                          <Link to={`/adminportal/user/${response.participant_id}`} className="link-button">
-                            {response.participant_id}
-                          </Link>
-                        ) : (
-                          '-'
-                        )}
+                      <td title={response.question_text || undefined}>
+                        {formatQuestionText(response.question_text)}
                       </td>
-                      <td className="response-text">
-                        {response.response_text ? (
-                          response.response_text.length > 100 ? (
-                            <span title={response.response_text}>
-                              {response.response_text.substring(0, 100)}...
-                            </span>
-                          ) : (
-                            response.response_text
-                          )
-                        ) : (
-                          '-'
-                        )}
-                      </td>
+                      <td>{formatParticipant(response)}</td>
+                      <td className="response-text">{formatResponseValue(response, 100)}</td>
                       <td>{response.anonymity_level}</td>
                       <td>{new Date(response.submitted_at).toLocaleString()}</td>
+                      <td>
+                        <CopyIdButton value={response.id} title="Copy response ID" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

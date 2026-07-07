@@ -750,6 +750,8 @@ export interface AdminConversationInfo {
   title: string;
   description: string | null;
   creator_id: string;
+  creator_name?: string | null;
+  creator_email?: string | null;
   state: string;
   access_code: string;
   created_at: string;
@@ -768,8 +770,13 @@ export interface AdminResponseInfo {
   id: string;
   conversation_id: string;
   question_id: string;
+  question_text?: string | null;
+  question_order?: number | null;
   participant_id: string | null;
+  participant_name?: string | null;
+  participant_code_used?: string | null;
   response_text: string | null;
+  response_data?: Record<string, any> | null;
   anonymity_level: string;
   submitted_at: string;
 }

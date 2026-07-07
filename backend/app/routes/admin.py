@@ -261,7 +261,23 @@ async def list_conversations(
         query = query.filter(Conversation.creator_id == creator_id)
 
     conversations = query.order_by(Conversation.created_at.desc()).all()
-    return conversations
+
+    # Batch-load creators so the list can show a name instead of a bare UUID
+    creator_ids = {c.creator_id for c in conversations if c.creator_id}
+    creators = {
+        u.id: u
+        for u in db.query(User).filter(User.id.in_(creator_ids)).all()
+    } if creator_ids else {}
+
+    result = []
+    for conv in conversations:
+        info = AdminConversationInfo.model_validate(conv)
+        creator = creators.get(conv.creator_id)
+        if creator:
+            info.creator_name = creator.full_name
+            info.creator_email = creator.email
+        result.append(info)
+    return result
 
 
 @router.get("/users/{user_id}", response_model=AdminUserInfo)
@@ -550,7 +566,35 @@ async def list_responses(
         query = query.filter(Response.conversation_id == conversation_id)
 
     responses = query.order_by(Response.submitted_at.desc()).all()
-    return responses
+
+    # Batch-load participants and questions so the UI can show names and
+    # question text instead of bare UUIDs
+    from app.models.question import Question
+
+    participant_ids = {r.participant_id for r in responses if r.participant_id}
+    participants = {
+        u.id: u
+        for u in db.query(User).filter(User.id.in_(participant_ids)).all()
+    } if participant_ids else {}
+
+    question_ids = {r.question_id for r in responses if r.question_id}
+    questions = {
+        q.id: q
+        for q in db.query(Question).filter(Question.id.in_(question_ids)).all()
+    } if question_ids else {}
+
+    result = []
+    for r in responses:
+        info = AdminResponseInfo.model_validate(r)
+        participant = participants.get(r.participant_id)
+        if participant:
+            info.participant_name = participant.full_name or participant.email
+        question = questions.get(r.question_id)
+        if question:
+            info.question_text = question.question_text
+            info.question_order = question.question_order
+        result.append(info)
+    return result
 
 
 @router.get("/analyses")

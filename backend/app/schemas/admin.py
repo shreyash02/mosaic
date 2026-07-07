@@ -39,6 +39,8 @@ class AdminConversationInfo(BaseModel):
     title: str
     description: Optional[str] = None
     creator_id: UUID
+    creator_name: Optional[str] = None
+    creator_email: Optional[str] = None
     state: str
     access_code: str
     created_at: datetime
@@ -61,8 +63,13 @@ class AdminResponseInfo(BaseModel):
     id: UUID
     conversation_id: UUID
     question_id: UUID
+    question_text: Optional[str] = None
+    question_order: Optional[int] = None
     participant_id: Optional[UUID] = None
+    participant_name: Optional[str] = None
+    participant_code_used: Optional[str] = None
     response_text: Optional[str] = None
+    response_data: Optional[Dict[str, Any]] = None
     anonymity_level: str
     submitted_at: datetime
 
