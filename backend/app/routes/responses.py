@@ -911,8 +911,10 @@ async def submit_response(
     ):
         generated_pseudo_code = f"open-{uuid.uuid4().hex}"
 
-    # Create responses with status='submitted'
+    # Create responses with status='submitted'. All rows of this submission
+    # share one participation_id so they can be grouped explicitly later.
     now = datetime.utcnow()
+    participation_id = uuid.uuid4()
     for response_item in response_data.responses:
         response = Response(
             conversation_id=conversation.id,
@@ -924,6 +926,7 @@ async def submit_response(
             # the participant happens to be logged in
             participant_id=current_user.id if current_user and conversation.anonymity_level != AnonymityLevel.FULLY_ANONYMOUS.value else None,
             participant_code_used=used_participant_code.participant_code if used_participant_code else generated_pseudo_code,
+            participation_id=participation_id,
             reveal_consent=response_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
             status="submitted",
             submitted_at=now
@@ -1112,6 +1115,10 @@ async def update_response(
 
     # Create a map of existing responses by question_id
     existing_by_question = {r.question_id: r for r in existing_responses}
+    # Keep newly-added-question rows in the same participation group
+    existing_participation_id = next(
+        (r.participation_id for r in existing_responses if r.participation_id), None
+    )
 
     # Update responses
     now = datetime.utcnow()
@@ -1133,6 +1140,7 @@ async def update_response(
                 anonymity_level=conversation.anonymity_level,
                 participant_id=current_user.id if current_user else None,
                 participant_code_used=used_participant_code,
+                participation_id=existing_participation_id,
                 reveal_consent=response_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
                 status="submitted",
                 submitted_at=now,

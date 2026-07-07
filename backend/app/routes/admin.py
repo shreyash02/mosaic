@@ -542,6 +542,7 @@ async def update_conversation(
 async def list_responses(
     user_id: Optional[UUID] = None,
     conversation_id: Optional[UUID] = None,
+    participation_id: Optional[UUID] = None,
     admin: Admin = Depends(get_admin),
     db: Session = Depends(get_db)
 ):
@@ -564,6 +565,9 @@ async def list_responses(
 
     if conversation_id:
         query = query.filter(Response.conversation_id == conversation_id)
+
+    if participation_id:
+        query = query.filter(Response.participation_id == participation_id)
 
     responses = query.order_by(Response.submitted_at.desc()).all()
 

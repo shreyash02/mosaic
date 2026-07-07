@@ -20,7 +20,7 @@ export default function AdminConversationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reanalyzing, setReanalyzing] = useState(false);
-  
+
   // Edit form state
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -200,25 +200,24 @@ export default function AdminConversationDetailPage() {
     setError('');
   };
 
-  // Group responses by participant so each respondent is one row, with all of
-  // their question/answer pairs listed inside. Participants are keyed by
-  // participant_id (named) or participant_code_used (anonymous); responses
-  // without either are grouped individually by their own id.
+  // Group responses into one row per submission, with all question/answer
+  // pairs inside. Grouped by participation_id (explicit submission id); legacy
+  // rows without one fall back to participant_id/code, then their own id.
   const groupedResponses = (() => {
     const groups = new Map<string, AdminResponseInfo[]>();
     for (const r of responses) {
-      const key = r.participant_id || r.participant_code_used || r.id;
+      const key = r.participation_id || r.participant_id || r.participant_code_used || r.id;
       const list = groups.get(key);
       if (list) list.push(r);
       else groups.set(key, [r]);
     }
-    return Array.from(groups.values()).map((items) => {
+    return Array.from(groups.entries()).map(([key, items]) => {
       const sorted = [...items].sort(
         (a, b) => (a.question_order ?? 0) - (b.question_order ?? 0)
       );
       const latest = sorted.reduce((max, r) =>
         r.submitted_at > max ? r.submitted_at : max, sorted[0].submitted_at);
-      return { items: sorted, latestSubmittedAt: latest };
+      return { key, items: sorted, latestSubmittedAt: latest, participationId: sorted[0].participation_id };
     });
   })();
 
@@ -446,6 +445,9 @@ export default function AdminConversationDetailPage() {
 
         <div className="admin-section">
           <h2>Responses ({groupedResponses.length} {groupedResponses.length === 1 ? 'participant' : 'participants'}, {responses.length} total)</h2>
+          <p style={{ color: colors.primary[500], fontSize: typography.fontSize.sm, marginTop: `-${spacing[2]}`, marginBottom: spacing[3] }}>
+            Click a row to view that participant's full questions and responses.
+          </p>
           <div className="table-container">
             <table className="admin-table">
               <thead>
@@ -459,11 +461,21 @@ export default function AdminConversationDetailPage() {
               <tbody>
                 {groupedResponses.map((group) => {
                   const first = group.items[0];
+                  const clickable = !!group.participationId;
                   return (
-                    <tr key={first.participant_id || first.participant_code_used || first.id}>
+                    <tr
+                      key={group.key}
+                      onClick={clickable ? () => navigate(`/adminportal/conversation/${id}/participation/${group.participationId}`) : undefined}
+                      style={{ cursor: clickable ? 'pointer' : 'default' }}
+                      title={clickable ? 'Click to view full questions and responses' : undefined}
+                    >
                       <td>
                         {first.participant_id ? (
-                          <Link to={`/adminportal/user/${first.participant_id}`} className="link-button">
+                          <Link
+                            to={`/adminportal/user/${first.participant_id}`}
+                            className="link-button"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {formatParticipant(first)}
                           </Link>
                         ) : (

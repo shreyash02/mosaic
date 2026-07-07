@@ -62,6 +62,7 @@ class AdminResponseInfo(BaseModel):
 
     id: UUID
     conversation_id: UUID
+    participation_id: Optional[UUID] = None
     question_id: UUID
     question_text: Optional[str] = None
     question_order: Optional[int] = None

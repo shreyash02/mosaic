@@ -34,6 +34,11 @@ class Response(Base):
     # Each participant gets a unique code, used once
     participant_code_used = Column(String(100), nullable=True)
 
+    # Shared across all response rows belonging to one participant's single
+    # submission (one row per question). Explicitly identifies a "participation"
+    # rather than inferring it from participant_id/participant_code_used.
+    participation_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+
     # Consent for revealing (only for 'revealable' anonymity_level)
     reveal_consent = Column(Boolean, default=False, nullable=False)
 

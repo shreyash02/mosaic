@@ -150,6 +150,37 @@ class TestSubmitResponse:
         assert data["success"] is True
 
     @patch("app.routes.responses.notification_service")
+    def test_submit_shares_one_participation_id(self, mock_notif, client, active_conversation_with_questions, second_test_user, db_session):
+        """All response rows of one submission share a single participation_id."""
+        mock_notif.notify_response_submitted = AsyncMock()
+        conv = active_conversation_with_questions
+        questions = conv.questions
+        headers = get_auth_headers(second_test_user.id)
+
+        payload = {
+            "responses": [
+                {"question_id": str(questions[0].id), "response_text": "Went great"},
+                {"question_id": str(questions[1].id), "response_data": {"rating": 4}},
+            ],
+        }
+
+        resp = client.post(
+            f"/api/conversations/{conv.access_code}/responses",
+            json=payload,
+            headers=headers,
+        )
+        assert resp.status_code == status.HTTP_201_CREATED
+
+        rows = db_session.query(Response).filter(
+            Response.conversation_id == conv.id,
+            Response.status == "submitted",
+        ).all()
+        assert len(rows) == 2
+        pids = {r.participation_id for r in rows}
+        assert len(pids) == 1
+        assert None not in pids
+
+    @patch("app.routes.responses.notification_service")
     def test_submit_duplicate_blocked(self, mock_notif, client, test_user, active_conversation_with_questions, second_test_user, db_session):
         """Should reject duplicate submissions."""
         mock_notif.notify_response_submitted = AsyncMock()

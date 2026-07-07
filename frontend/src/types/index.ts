@@ -769,6 +769,7 @@ export interface AdminConversationInfo {
 export interface AdminResponseInfo {
   id: string;
   conversation_id: string;
+  participation_id?: string | null;
   question_id: string;
   question_text?: string | null;
   question_order?: number | null;
