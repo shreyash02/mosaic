@@ -1466,10 +1466,14 @@ export default function JoinPage() {
       ? `/respond/${accessCode}?participant_code=${participantCode}`
       : `/analysis/${conversation?.id}`;
     // Codeless responders have no identity to edit with, and can only reach
-    // results through a public link
+    // results through a public link. Use effective access so legacy
+    // codeless+participants conversations (which behave as public_link)
+    // still get their results link.
+    const effectiveAccess = conversation ? getEffectiveResultsAccess(conversation) : undefined;
     const canOfferEditing = conversation?.allow_response_editing && !isCodelessAnonymous;
-    const canOfferResults = conversation?.results_access !== ResultsAccess.CREATOR_ONLY &&
-      (!isCodelessAnonymous || conversation?.results_access === ResultsAccess.PUBLIC_LINK);
+    const canOfferResults = effectiveAccess !== undefined &&
+      effectiveAccess !== ResultsAccess.CREATOR_ONLY &&
+      (!isCodelessAnonymous || effectiveAccess === ResultsAccess.PUBLIC_LINK);
 
     return (
       <>
