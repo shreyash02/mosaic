@@ -78,7 +78,7 @@ async def list_my_workspaces(
     return workspaces
 
 
-@router.post("/", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
 async def create_workspace(
     data: WorkspaceCreate,
     current_user: User = Depends(get_current_user),
