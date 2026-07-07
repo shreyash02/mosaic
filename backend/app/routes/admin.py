@@ -894,15 +894,21 @@ async def generate_test_responses(
             conversation_description=conversation.description
         )
 
-        # Insert responses into database
+        # Insert responses into database. All rows from one synthetic
+        # respondent (same participant_code_used) share a participation_id so
+        # they group and open as one submission, like real responses.
+        participation_ids: dict[str, uuid.UUID] = {}
         for response_dict in responses_data:
+            code = response_dict["participant_code_used"]
+            participation_id = participation_ids.setdefault(code, uuid.uuid4()) if code else uuid.uuid4()
             response = Response(
                 id=uuid.uuid4(),
                 conversation_id=uuid.UUID(response_dict["conversation_id"]),
                 question_id=uuid.UUID(response_dict["question_id"]),
                 response_text=response_dict.get("response_text"),
                 response_data=response_dict.get("response_data"),
-                participant_code_used=response_dict["participant_code_used"],
+                participant_code_used=code,
+                participation_id=participation_id,
                 anonymity_level=response_dict["anonymity_level"],
                 reveal_consent=response_dict["reveal_consent"],
                 status=response_dict["status"],
