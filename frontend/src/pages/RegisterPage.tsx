@@ -238,14 +238,19 @@ export default function RegisterPage() {
         full_name: fullName,
         ...(inviteCode.trim() ? { invite_code: inviteCode.trim() } : {}),
       });
-      navigate('/dashboard');
+      const redirectTo = searchParams.get('redirect');
+      navigate(redirectTo ? decodeURIComponent(redirectTo) : '/dashboard');
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Registration failed. Please try again.';
       if (detail === 'Email already registered') {
+        const redirectTo = searchParams.get('redirect');
         setError(
           <>
             Email already registered.{' '}
-            <Link to="/login" style={{ color: 'var(--color-primary-900)', fontWeight: 500 }}>
+            <Link
+              to={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login'}
+              style={{ color: 'var(--color-primary-900)', fontWeight: 500 }}
+            >
               Log in instead
             </Link>
           </>
@@ -263,7 +268,8 @@ export default function RegisterPage() {
       setError('Please enter your invite code before continuing with Google');
       return;
     }
-    window.location.href = api.getGoogleLoginUrl(undefined, inviteCode.trim() || undefined);
+    const redirectTo = searchParams.get('redirect');
+    window.location.href = api.getGoogleLoginUrl(redirectTo ? decodeURIComponent(redirectTo) : undefined, inviteCode.trim() || undefined);
   };
 
   // Invite code is valid when it's 8 hex characters
@@ -426,7 +432,11 @@ export default function RegisterPage() {
 
           <p style={styles.link}>
             Already have an account?{' '}
-            <Link to="/login" style={styles.linkAnchor} className="register-link-new">
+            <Link
+              to={searchParams.get('redirect') ? `/login?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/login'}
+              style={styles.linkAnchor}
+              className="register-link-new"
+            >
               Login here
             </Link>
           </p>

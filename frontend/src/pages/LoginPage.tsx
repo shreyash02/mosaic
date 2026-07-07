@@ -302,7 +302,11 @@ export default function LoginPage() {
 
           <p style={styles.link}>
             Don't have an account?{' '}
-            <Link to="/register" style={styles.linkAnchor} className="login-link-new">
+            <Link
+              to={searchParams.get('redirect') ? `/register?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/register'}
+              style={styles.linkAnchor}
+              className="login-link-new"
+            >
               Register here
             </Link>
           </p>
