@@ -1599,6 +1599,26 @@ export default function JoinPage() {
           <div style={styles.container}>
             <div style={styles.trustScreen}>
               <div style={styles.trustCard}>
+                <p style={{
+                  margin: 0,
+                  marginBottom: spacing[2],
+                  fontSize: typography.fontSize.xs,
+                  fontWeight: typography.fontWeight.medium,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase' as const,
+                  color: 'var(--color-primary-500)',
+                }}>
+                  You're responding to
+                </p>
+                <h1 style={{
+                  margin: 0,
+                  marginBottom: spacing[6],
+                  fontSize: typography.fontSize.xl,
+                  fontWeight: typography.fontWeight.semibold,
+                  color: 'var(--color-primary-900)',
+                }}>
+                  {conversation.participant_title || conversation.title}
+                </h1>
                 <div style={styles.trustIcon}>
                   <LockIcon size={48} />
                 </div>
