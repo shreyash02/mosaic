@@ -625,6 +625,45 @@ class TestUpdateConversation:
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+    def test_move_conversation_to_another_workspace(self, client, test_user, active_conversation, db_session):
+        """Creator can move a conversation (even active) to another workspace they can edit."""
+        from app.models.workspace import Workspace, WorkspaceMember
+        from uuid import uuid4 as _uuid4
+        target = Workspace(id=_uuid4(), type="custom", name="Target WS", owner_id=test_user.id)
+        db_session.add(target)
+        db_session.flush()
+        db_session.add(WorkspaceMember(workspace_id=target.id, user_id=test_user.id, role="admin"))
+        db_session.commit()
+
+        headers = get_auth_headers(test_user.id)
+        response = client.patch(
+            f"/api/conversations/{active_conversation.id}",
+            json={"workspace_id": str(target.id)},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["workspace_id"] == str(target.id)
+
+    def test_move_to_workspace_without_access_rejected(self, client, test_user, second_test_user, draft_conversation, db_session):
+        """Moving to a workspace where the creator has no editor role is rejected."""
+        from app.models.workspace import Workspace, WorkspaceMember
+        from uuid import uuid4 as _uuid4
+        foreign = Workspace(id=_uuid4(), type="personal", name="Someone else's", owner_id=second_test_user.id)
+        db_session.add(foreign)
+        db_session.flush()
+        db_session.add(WorkspaceMember(workspace_id=foreign.id, user_id=second_test_user.id, role="admin"))
+        db_session.commit()
+
+        headers = get_auth_headers(test_user.id)
+        response = client.patch(
+            f"/api/conversations/{draft_conversation.id}",
+            json={"workspace_id": str(foreign.id)},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_update_title(self, client, test_user, draft_conversation):
         """Should update conversation title."""
         headers = get_auth_headers(test_user.id)

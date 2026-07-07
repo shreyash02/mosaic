@@ -870,7 +870,7 @@ async def update_conversation(
     # require_participant_codes may be switched OFF mid-flight (coded -> codeless, with a limit),
     # but never back on — reintroducing codes on a live link-accessible conversation would strand
     # participants and mix incompatible access models.
-    always_editable_fields = {'context_notes', 'max_responses', 'require_participant_codes'}
+    always_editable_fields = {'context_notes', 'max_responses', 'require_participant_codes', 'workspace_id'}
     only_always_editable_update = (
         set(update_dict.keys()).issubset(always_editable_fields) and
         questions_to_update is None and
@@ -922,6 +922,20 @@ async def update_conversation(
         elif field == 'context_notes':
             setattr(conversation, field, value)
             conversation.context_notes_updated_at = datetime.utcnow() if value else None
+        elif field == 'workspace_id':
+            if not value:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A conversation must belong to a workspace"
+                )
+            if value != conversation.workspace_id:
+                # Moving requires editor rights in the target workspace; the
+                # conversation's organization follows the workspace it lives in
+                require_workspace_role(db, value, current_user, "editor")
+                from app.models.workspace import Workspace
+                target_workspace = db.query(Workspace).filter(Workspace.id == value).first()
+                conversation.workspace_id = value
+                conversation.organization_id = target_workspace.organization_id if target_workspace else None
         elif field in ['next_instance_date', 'recurrence_end_date'] and value:
             # Convert from conversation timezone to UTC
             value_utc = parse_datetime_with_timezone(

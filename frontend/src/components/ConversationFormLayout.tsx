@@ -40,7 +40,7 @@ export default function ConversationFormLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { formState, toggleMode, updateFormState, getStepPath } = useConversationForm();
-  const { currentOrgId } = useOrganization();
+  const { currentOrgId, currentWorkspaceId } = useOrganization();
   const slackEnabled = useFeature('slack_integration');
   const showNotificationsStep = slackEnabled && !!currentOrgId;
   const [savingDraft, setSavingDraft] = useState(false);
@@ -111,6 +111,7 @@ export default function ConversationFormLayout() {
           series_id: formState.selectedSeriesId
         }),
         ...(currentOrgId && { organization_id: currentOrgId }),
+        ...(currentWorkspaceId && { workspace_id: currentWorkspaceId }),
         ...(formState.createTemplate && formState.enableRecurring && {
           recurrence_pattern: formState.recurrencePattern,
           ...(formState.nextInstanceDate && { next_instance_date: formState.nextInstanceDate + ':00' }),

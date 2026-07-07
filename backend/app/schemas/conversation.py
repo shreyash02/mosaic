@@ -204,6 +204,7 @@ class ConversationUpdate(BaseModel):
     response_threshold: Optional[int] = Field(None, description="Minimum responses required before analysis can run. Set to null to disable. Must be 2-100 if set.")
     require_participant_codes: Optional[bool] = None
     max_responses: Optional[int] = Field(None, ge=1, le=MAX_RESPONSES_CEILING, description="Maximum number of responses accepted. Set to null for unlimited (not allowed for codeless anonymous conversations).")
+    workspace_id: Optional[UUID] = Field(None, description="Move the conversation to another workspace. Requires editor role in the target workspace.")
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=11520)  # Max 8 days (192 hours), matches the timing UI

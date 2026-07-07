@@ -657,7 +657,7 @@ export default function ConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentOrgId } = useOrganization();
+  const { currentOrgId, workspaces } = useOrganization();
   const { completeStep } = useOnboarding();
   const aiAnalysisEnabled = useFeature('ai_analysis');
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -687,6 +687,9 @@ export default function ConversationDetailPage() {
   const [showSwitchToLinkModal, setShowSwitchToLinkModal] = useState(false);
   const [switchLimitInput, setSwitchLimitInput] = useState(100);
   const [switchingAccessMode, setSwitchingAccessMode] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveTargetId, setMoveTargetId] = useState('');
+  const [movingWorkspace, setMovingWorkspace] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -1228,6 +1231,23 @@ export default function ConversationDetailPage() {
       setError(getErrorMessage(err, 'update the response limit'));
     } finally {
       setSavingLimit(false);
+    }
+  };
+
+  const handleMoveToWorkspace = async () => {
+    if (!id || !conversation || !moveTargetId || moveTargetId === conversation.workspace_id) return;
+    setMovingWorkspace(true);
+    setError('');
+    try {
+      const updated = await api.updateConversation(id, { workspace_id: moveTargetId });
+      setConversation(updated);
+      setShowMoveModal(false);
+      setMoveTargetId('');
+    } catch (err) {
+      setError(getErrorMessage(err, 'move the conversation'));
+      setShowMoveModal(false);
+    } finally {
+      setMovingWorkspace(false);
     }
   };
 
@@ -1795,6 +1815,25 @@ export default function ConversationDetailPage() {
               >
                 Preview
               </button>
+              {workspaces.length > 1 && (
+                <button
+                  onClick={() => { setMoveTargetId(''); setShowMoveModal(true); setShowMoreMenu(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: `${spacing[3]} ${spacing[4]}`,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: typography.fontSize.sm,
+                    color: 'var(--color-primary-900)',
+                  }}
+                  className="more-menu-item"
+                >
+                  Move to workspace…
+                </button>
+              )}
               {conversation.is_archived ? (
                 <button
                   onClick={() => { handleUnarchive(); setShowMoreMenu(false); }}
@@ -2414,6 +2453,43 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Close Modal */}
+      {showMoveModal && conversation && (
+        <FocusTrap isActive={showMoveModal} onEscape={() => setShowMoveModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowMoveModal(false)} role="dialog" aria-modal="true" aria-labelledby="move-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="move-modal-title">Move to Workspace</h2>
+              <p style={s.modalText}>
+                Move this conversation and all its responses to another workspace.
+                Members of the target workspace will be able to see it there.
+              </p>
+              <div style={{ marginBottom: spacing[4] }}>
+                <CustomSelect
+                  id="move-workspace-select"
+                  value={moveTargetId}
+                  onChange={(val) => setMoveTargetId(String(val))}
+                  placeholder="Choose a workspace"
+                  options={workspaces
+                    .filter(w => w.id !== conversation.workspace_id)
+                    .map(w => ({ value: w.id, label: w.name }))}
+                />
+              </div>
+              <div style={s.modalActions}>
+                <button onClick={() => setShowMoveModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMoveToWorkspace}
+                  style={merge(s.buttonPrimary, (movingWorkspace || !moveTargetId) && s.buttonDisabled)}
+                  disabled={movingWorkspace || !moveTargetId}
+                >
+                  {movingWorkspace ? 'Moving...' : 'Move'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </FocusTrap>
+      )}
+
       {showSwitchToLinkModal && conversation && (
         <FocusTrap isActive={showSwitchToLinkModal} onEscape={() => setShowSwitchToLinkModal(false)}>
           <div style={s.modalOverlay} onClick={() => setShowSwitchToLinkModal(false)} role="dialog" aria-modal="true" aria-labelledby="switch-link-modal-title">
