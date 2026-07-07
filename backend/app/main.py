@@ -285,9 +285,16 @@ static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
 if os.path.exists(static_dir):
     assets_dir = os.path.join(static_dir, "assets")
 
-    # Create a StaticFiles instance for assets
+    # Create a StaticFiles instance for assets. Bundles are content-hashed,
+    # so they can be cached forever; index.html (below) must revalidate.
+    class ImmutableStaticFiles(StaticFiles):
+        def file_response(self, *args, **kwargs):
+            response = super().file_response(*args, **kwargs)
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
+
     if os.path.exists(assets_dir):
-        assets_static = StaticFiles(directory=assets_dir)
+        assets_static = ImmutableStaticFiles(directory=assets_dir)
         app.mount("/assets", assets_static, name="assets")
 
     # Serve favicon
@@ -307,13 +314,19 @@ if os.path.exists(static_dir):
             return FileResponse(verification_path, media_type="text/html")
         raise HTTPException(status_code=404)
 
+    # index.html must always be revalidated by browsers: it references
+    # content-hashed asset bundles, so a cached copy keeps serving stale JS
+    # after every deploy. The hashed assets themselves are safe to cache.
+    INDEX_CACHE_HEADERS = {"Cache-Control": "no-cache"}
+    ASSET_CACHE_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
+
     # Serve index.html for root
     @app.get("/")
     async def serve_index():
         """Serve the React app index page."""
         index_path = os.path.join(static_dir, "index.html")
         if os.path.exists(index_path):
-            return FileResponse(index_path)
+            return FileResponse(index_path, headers=INDEX_CACHE_HEADERS)
         raise HTTPException(status_code=404)
 
     # Catch-all for SPA routes - but we need to handle assets differently
@@ -335,7 +348,7 @@ if os.path.exists(static_dir):
             if not os.path.commonpath([assets_dir, asset_path]) == assets_dir:
                 raise HTTPException(status_code=404)
             if os.path.exists(asset_path) and os.path.isfile(asset_path):
-                return FileResponse(asset_path)
+                return FileResponse(asset_path, headers=ASSET_CACHE_HEADERS)
             raise HTTPException(status_code=404)
 
         # For all other routes, serve index.html (SPA routing)
@@ -350,6 +363,6 @@ if os.path.exists(static_dir):
                 html = f.read()
             html = html.replace("<!-- OG_META_PLACEHOLDER -->", og_tags["meta_tags"])
             html = html.replace("<title>Mosaic</title>", f"<title>{og_tags['title']}</title>")
-            return Response(content=html, media_type="text/html")
+            return Response(content=html, media_type="text/html", headers=INDEX_CACHE_HEADERS)
 
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers=INDEX_CACHE_HEADERS)
