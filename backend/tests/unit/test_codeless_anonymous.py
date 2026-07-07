@@ -336,6 +336,30 @@ class TestMidFlightSwitchToCodeless:
         assert "re-enabled" in response.json()["detail"].lower()
 
 
+class TestEffectiveResultsAccess:
+    """Codeless + participants results access behaves as public_link at enforcement time."""
+
+    def test_legacy_participants_treated_as_public_link(self, codeless_conversation, db_session):
+        from app.core.access_control import effective_results_access
+        # Simulate a row that predates the create/update coercion
+        codeless_conversation.results_access = "participants"
+        db_session.commit()
+
+        assert effective_results_access(codeless_conversation) == "public_link"
+
+    def test_creator_only_never_widened(self, codeless_conversation):
+        from app.core.access_control import effective_results_access
+        assert codeless_conversation.results_access == "creator_only"
+        assert effective_results_access(codeless_conversation) == "creator_only"
+
+    def test_coded_participants_unchanged(self, active_conversation, db_session):
+        from app.core.access_control import effective_results_access
+        active_conversation.results_access = "participants"
+        db_session.commit()
+
+        assert effective_results_access(active_conversation) == "participants"
+
+
 class TestCodelessConversationAccess:
     """GET /api/conversations/by-code/{access_code} for codeless conversations."""
 

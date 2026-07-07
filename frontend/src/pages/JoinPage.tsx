@@ -689,6 +689,16 @@ export default function JoinPage() {
 
   usePageTitle(conversation?.title || 'Respond');
 
+  // Mirrors the backend's effective_results_access: codeless anonymous
+  // respondents can't prove participation, so participants-only access
+  // behaves as public_link — the copy shown must describe actual visibility.
+  const getEffectiveResultsAccess = (conv: Conversation): ResultsAccess =>
+    conv.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
+    conv.require_participant_codes === false &&
+    conv.results_access === ResultsAccess.PARTICIPANTS
+      ? ResultsAccess.PUBLIC_LINK
+      : conv.results_access;
+
   const handleDraftLoaded = useCallback((draftResponses: ResponseItem[], revealConsentValue: boolean) => {
     setResponses(prev => {
       const draftMap = new Map(draftResponses.map(r => [r.question_id, r]));
@@ -1643,9 +1653,9 @@ export default function JoinPage() {
                   <div style={styles.trustDetailItem}>
                     <strong style={styles.trustDetailLabel}>Who Can See Results:</strong>
                     <p style={styles.trustDetailText}>
-                      {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results and analysis.'}
-                      {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results and analysis.'}
-                      {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
+                      {getEffectiveResultsAccess(conversation) === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results and analysis.'}
+                      {getEffectiveResultsAccess(conversation) === ResultsAccess.PARTICIPANTS && 'All participants can view results and analysis.'}
+                      {getEffectiveResultsAccess(conversation) === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
                     </p>
                   </div>
 
@@ -1728,9 +1738,9 @@ export default function JoinPage() {
               <div style={styles.privacyItem}>
                 <strong style={styles.privacyLabel}>Who Can See Results:</strong>
                 <p style={styles.privacyText}>
-                  {conversation.results_access === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results.'}
-                  {conversation.results_access === ResultsAccess.PARTICIPANTS && 'All participants can view results.'}
-                  {conversation.results_access === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
+                  {getEffectiveResultsAccess(conversation) === ResultsAccess.CREATOR_ONLY && 'Only the conversation creator can view results.'}
+                  {getEffectiveResultsAccess(conversation) === ResultsAccess.PARTICIPANTS && 'All participants can view results.'}
+                  {getEffectiveResultsAccess(conversation) === ResultsAccess.PUBLIC_LINK && 'Anyone with the results link can view.'}
                 </p>
               </div>
             </div>

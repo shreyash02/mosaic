@@ -521,13 +521,16 @@ def _check_analysis_access(
 
     is_creator = conversation.creator_id == current_user.id
 
+    from app.core.access_control import effective_results_access
+    results_access = effective_results_access(conversation)
+
     if not is_creator:
-        if conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
+        if results_access == ResultsAccess.CREATOR_ONLY.value:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found"
             )
-        elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
+        elif results_access == ResultsAccess.PARTICIPANTS.value:
             has_responded = db.query(Response).filter(
                 Response.conversation_id == conversation_id,
                 Response.participant_id == current_user.id
@@ -677,9 +680,11 @@ async def get_shared_analysis(
         )
 
     # Access control
-    if conversation.results_access == ResultsAccess.PUBLIC_LINK.value:
+    from app.core.access_control import effective_results_access
+    results_access = effective_results_access(conversation)
+    if results_access == ResultsAccess.PUBLIC_LINK.value:
         pass  # Anyone can view
-    elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
+    elif results_access == ResultsAccess.PARTICIPANTS.value:
         if current_user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -696,7 +701,7 @@ async def get_shared_analysis(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only participants can view this analysis"
                 )
-    elif conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
+    elif results_access == ResultsAccess.CREATOR_ONLY.value:
         if current_user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

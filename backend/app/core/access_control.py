@@ -19,7 +19,25 @@ from app.core.dependencies import get_optional_current_user, get_participant_ses
 from app.models.conversation import Conversation
 from app.models.conversation_invitation import ConversationInvitation
 from app.models.user import User
-from app.schemas.conversation import AnonymityLevel, ConversationState
+from app.schemas.conversation import AnonymityLevel, ConversationState, ResultsAccess
+
+
+def effective_results_access(conversation: "Conversation") -> str:
+    """The results_access to enforce, accounting for codeless anonymous mode.
+
+    Codeless anonymous respondents have no code or login to prove they
+    participated, so participants-only access is unreachable for them and
+    behaves as public_link. New conversations coerce this combination away at
+    create/update time; this covers rows that predate that rule.
+    creator_only is an explicit privacy choice and is never widened.
+    """
+    if (
+        conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+        and not conversation.require_participant_codes
+        and conversation.results_access == ResultsAccess.PARTICIPANTS.value
+    ):
+        return ResultsAccess.PUBLIC_LINK.value
+    return conversation.results_access
 
 
 @dataclass

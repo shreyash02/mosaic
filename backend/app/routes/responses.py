@@ -1203,14 +1203,17 @@ async def get_responses(
         )
 
     if not is_creator:
-        # Not the creator - check results_access setting
-        if conversation.results_access == ResultsAccess.CREATOR_ONLY.value:
+        # Not the creator - check results_access setting (codeless anonymous
+        # treats participants access as public_link, see effective_results_access)
+        from app.core.access_control import effective_results_access
+        results_access = effective_results_access(conversation)
+        if results_access == ResultsAccess.CREATOR_ONLY.value:
             # Only creator can view
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found"
             )
-        elif conversation.results_access == ResultsAccess.PARTICIPANTS.value:
+        elif results_access == ResultsAccess.PARTICIPANTS.value:
             # Check if user has submitted a response (only count submitted, not drafts)
             has_responded = db.query(Response).filter(
                 Response.conversation_id == conversation_id,
