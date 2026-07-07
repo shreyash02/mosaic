@@ -177,6 +177,15 @@ class ConversationBase(BaseModel):
             and self.max_responses is None
         ):
             raise ValueError("A response limit is required when participant codes are disabled for a fully anonymous conversation")
+        # Codeless respondents can never prove they participated, so
+        # participants-only results access is unreachable for them — coerce to
+        # public_link (creator_only remains valid).
+        if (
+            self.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS
+            and not self.require_participant_codes
+            and self.results_access == ResultsAccess.PARTICIPANTS
+        ):
+            self.results_access = ResultsAccess.PUBLIC_LINK
         return self
 
 

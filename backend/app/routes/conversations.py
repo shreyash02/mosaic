@@ -40,6 +40,7 @@ from app.schemas.conversation import (
     GenerateParticipantCodes,
     ConversationState,
     AnonymityLevel,
+    ResultsAccess,
     BulkOperationType,
     BulkOperationRequest,
     BulkOperationResultItem,
@@ -956,6 +957,17 @@ async def update_conversation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A response limit is required when participant codes are disabled for a fully anonymous conversation"
         )
+
+    # Codeless respondents can't prove participation, so participants-only
+    # results access is unreachable — coerce to public_link. Covers the
+    # mid-flight coded -> codeless switch, where results_access itself is
+    # locked for editing.
+    if (
+        conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+        and not conversation.require_participant_codes
+        and conversation.results_access == ResultsAccess.PARTICIPANTS.value
+    ):
+        conversation.results_access = ResultsAccess.PUBLIC_LINK.value
 
     # Update questions if provided
     if questions_to_update is not None:

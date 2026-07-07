@@ -92,6 +92,37 @@ class TestCodelessCreation:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.usefixtures("test_workspace")
+    def test_codeless_participants_results_access_coerced_to_public_link(self, client, test_user):
+        """Codeless respondents can't prove participation, so participants access becomes public_link."""
+        headers = get_auth_headers(test_user.id)
+        payload = create_test_conversation_payload(
+            anonymity_level="fully_anonymous",
+            results_access="participants",
+        )
+        payload["require_participant_codes"] = False
+        payload["max_responses"] = 100
+
+        response = client.post("/api/conversations", json=payload, headers=headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["results_access"] == "public_link"
+
+    @pytest.mark.usefixtures("test_workspace")
+    def test_codeless_creator_only_results_access_kept(self, client, test_user):
+        headers = get_auth_headers(test_user.id)
+        payload = create_test_conversation_payload(
+            anonymity_level="fully_anonymous",
+            results_access="creator_only",
+        )
+        payload["require_participant_codes"] = False
+        payload["max_responses"] = 100
+
+        response = client.post("/api/conversations", json=payload, headers=headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["results_access"] == "creator_only"
+
+    @pytest.mark.usefixtures("test_workspace")
     def test_coded_anonymous_does_not_require_limit(self, client, test_user):
         headers = get_auth_headers(test_user.id)
         payload = create_test_conversation_payload(anonymity_level="fully_anonymous")
@@ -264,6 +295,21 @@ class TestMidFlightSwitchToCodeless:
         # The conversation now validates as codeless
         validate = client.post(f"/api/conversations/{active_conversation.access_code}/validate")
         assert validate.json()["requires_participant_code"] is False
+
+    def test_switch_coerces_participants_results_access(self, client, test_user, active_conversation, db_session):
+        """Mid-flight switch on a participants-visibility conversation moves it to public_link."""
+        active_conversation.results_access = "participants"
+        db_session.commit()
+
+        headers = get_auth_headers(test_user.id)
+        response = client.patch(
+            f"/api/conversations/{active_conversation.id}",
+            json={"require_participant_codes": False, "max_responses": 200},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["results_access"] == "public_link"
 
     def test_switch_without_limit_rejected(self, client, test_user, active_conversation):
         headers = get_auth_headers(test_user.id)

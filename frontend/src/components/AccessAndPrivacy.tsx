@@ -44,6 +44,9 @@ export default function AccessAndPrivacy({
   const anonymousEnabled = useFeature('anonymous_responses');
   const isOpen = anonymityLevel === AnonymityLevel.OPEN;
   const isFullyAnonymous = anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS;
+  // Codeless respondents can't prove they participated, so "All respondents"
+  // results access is unreachable for them
+  const isCodeless = isFullyAnonymous && !requireParticipantCodes;
 
   const sectionStyle: React.CSSProperties = {
     marginBottom: '1.5rem',
@@ -194,6 +197,10 @@ export default function AccessAndPrivacy({
                 onChange={() => {
                   onRequireParticipantCodesChange(false);
                   onMaxResponsesChange(maxResponses ?? DEFAULT_MAX_RESPONSES);
+                  // "All respondents" results access is unreachable without codes
+                  if (resultsAccess === ResultsAccess.PARTICIPANTS) {
+                    onResultsAccessChange(ResultsAccess.PUBLIC_LINK);
+                  }
                 }}
                 style={radioStyle}
               />
@@ -322,18 +329,23 @@ export default function AccessAndPrivacy({
           </div>
         </label>
 
-        <label style={optionStyle}>
+        <label style={{ ...optionStyle, ...(isCodeless ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}>
           <input
             type="radio"
             name="resultsAccess"
             value={ResultsAccess.PARTICIPANTS}
             checked={resultsAccess === ResultsAccess.PARTICIPANTS}
             onChange={(e) => onResultsAccessChange(e.target.value as ResultsAccess)}
+            disabled={isCodeless}
             style={radioStyle}
           />
           <div>
             <div style={labelStyle}>All respondents</div>
-            <div style={descStyle}>Anyone who responds can view all results and analysis.</div>
+            <div style={descStyle}>
+              {isCodeless
+                ? 'Not available without secret codes — respondents have no way to prove they participated when they return. Use "Anyone with link" instead.'
+                : 'Anyone who responds can view all results and analysis.'}
+            </div>
           </div>
         </label>
 

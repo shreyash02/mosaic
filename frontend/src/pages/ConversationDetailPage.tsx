@@ -2507,6 +2507,12 @@ export default function ConversationDetailPage() {
                 Duplicate responses are discouraged but not prevented, so collection stops at a
                 response limit you control. This cannot be switched back while the conversation is active.
               </p>
+              {conversation.results_access === 'participants' && (
+                <p style={{ ...s.modalText, color: 'var(--color-primary-600)', fontSize: typography.fontSize.xs }}>
+                  Results visibility will change from "All respondents" to "Anyone with link",
+                  since respondents without codes have no way to prove they participated.
+                </p>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[4] }}>
                 <input
                   type="number"
