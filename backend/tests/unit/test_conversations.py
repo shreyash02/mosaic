@@ -606,6 +606,25 @@ class TestGetConversationByCode:
 class TestUpdateConversation:
     """Tests for PATCH /api/conversations/{id}"""
 
+    def test_update_duration_up_to_eight_days(self, client, test_user, draft_conversation):
+        """Should accept durations up to 192 hours (regression: cap was 48h while UI offered more)."""
+        headers = get_auth_headers(test_user.id)
+
+        response = client.patch(
+            f"/api/conversations/{draft_conversation.id}",
+            json={"duration_minutes": 192 * 60},
+            headers=headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["duration_minutes"] == 11520
+
+        response = client.patch(
+            f"/api/conversations/{draft_conversation.id}",
+            json={"duration_minutes": 193 * 60},
+            headers=headers,
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
     def test_update_title(self, client, test_user, draft_conversation):
         """Should update conversation title."""
         headers = get_auth_headers(test_user.id)

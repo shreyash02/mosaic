@@ -393,8 +393,8 @@ export default function TimingStep() {
                   id="durationHours"
                   value={formState.durationHours}
                   min={showMinutesInput ? 0 : 1}
-                  max={168}
-                  onChange={(v) => updateFormState({ durationHours: Math.max(showMinutesInput ? 0 : 1, Math.min(168, v)) })}
+                  max={192}
+                  onChange={(v) => updateFormState({ durationHours: Math.max(showMinutesInput ? 0 : 1, Math.min(192, v)) })}
                   label="Hours"
                 />
                 {showMinutesInput ? (
@@ -409,7 +409,7 @@ export default function TimingStep() {
                         const extraHours = Math.floor(raw / 60);
                         const remainingMinutes = raw % 60;
                         updateFormState({
-                          durationHours: Math.min(168, formState.durationHours + extraHours),
+                          durationHours: Math.min(192, formState.durationHours + extraHours),
                           durationMinutes: remainingMinutes,
                         });
                       } else {
@@ -417,7 +417,7 @@ export default function TimingStep() {
                       }
                     }}
                     onOverflow={(dir) => {
-                      if (dir === 'up' && formState.durationHours < 168) {
+                      if (dir === 'up' && formState.durationHours < 192) {
                         updateFormState({ durationHours: formState.durationHours + 1, durationMinutes: 0 });
                       } else if (dir === 'down' && formState.durationHours > 0) {
                         updateFormState({ durationHours: formState.durationHours - 1, durationMinutes: 59 });
@@ -443,7 +443,7 @@ export default function TimingStep() {
                 )}
               </div>
               <p className="form-help-text" style={{ marginTop: spacing[2] }}>
-                Maximum: 168 hours (1 week)
+                Maximum: 192 hours (8 days)
               </p>
               {isZeroDuration && (
                 <p style={{ marginTop: spacing[2], fontSize: typography.fontSize.sm, color: 'var(--color-error)' }}>

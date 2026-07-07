@@ -5,6 +5,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { useFeature } from '../contexts/FeaturesContext';
 import SetupModeToggle from './SetupModeToggle';
 import { api } from '../services/api';
+import { getErrorMessage } from '../utils/errorMessages';
 import { typography, spacing, borders, shadows, transitions } from '../styles/tokens';
 
 interface Step {
@@ -150,7 +151,7 @@ export default function ConversationFormLayout() {
       setDraftSaved(true);
       setTimeout(() => setDraftSaved(false), 3000);
     } catch (err: any) {
-      setDraftError(err.response?.data?.detail || 'Failed to save draft');
+      setDraftError(getErrorMessage(err, 'save draft'));
     } finally {
       setSavingDraft(false);
     }

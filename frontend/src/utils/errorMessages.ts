@@ -73,7 +73,7 @@ export function getErrorMessage(
       if (typeof data.detail === 'string' && !isRawHttpPhrase(data.detail)) {
         return data.detail;
       }
-      if (Array.isArray(data.detail) && data.detail.length > 0) {
+      if (Array.isArray(data.detail) && data.detail.length > 0 && typeof data.detail[0]?.msg === 'string') {
         return data.detail[0].msg;
       }
     }

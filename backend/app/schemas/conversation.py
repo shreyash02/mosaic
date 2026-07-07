@@ -116,7 +116,7 @@ class ConversationBase(BaseModel):
     max_responses: Optional[int] = Field(None, ge=1, le=MAX_RESPONSES_CEILING, description="Maximum number of responses accepted. Null = unlimited. Required when participant codes are disabled.")
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
-    duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
+    duration_minutes: Optional[int] = Field(None, ge=1, le=11520)  # Max 8 days (192 hours), matches the timing UI
     scheduled_activate_at: Optional[datetime] = Field(None, description="Scheduled activation time - conversation will be activated automatically at this time")
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: bool = True
@@ -206,7 +206,7 @@ class ConversationUpdate(BaseModel):
     max_responses: Optional[int] = Field(None, ge=1, le=MAX_RESPONSES_CEILING, description="Maximum number of responses accepted. Set to null for unlimited (not allowed for codeless anonymous conversations).")
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
-    duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
+    duration_minutes: Optional[int] = Field(None, ge=1, le=11520)  # Max 8 days (192 hours), matches the timing UI
     scheduled_activate_at: Optional[datetime] = Field(None, description="Scheduled activation time - conversation will be activated automatically at this time")
     auto_close_at: Optional[datetime] = None
     manual_close_enabled: Optional[bool] = None

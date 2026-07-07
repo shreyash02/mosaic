@@ -74,6 +74,11 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(error, 'submit')).toBe('Failed to submit, please try again')
   })
 
+  it('returns fallback for detail array entries without a string msg', () => {
+    const error = makeAxiosError(422, { detail: [{ loc: ['body', 'duration_minutes'] }] })
+    expect(getErrorMessage(error, 'save draft')).toBe('Failed to save draft, please try again')
+  })
+
   it('uses default fallback action when none provided', () => {
     const error = makeNetworkError()
     expect(getErrorMessage(error)).toBe('Failed to complete the action, please try again')
