@@ -85,6 +85,16 @@ class Conversation(Base):
     invite_only = Column(Boolean, default=False, nullable=False)
     # if true, only invited users can access the conversation
 
+    require_participant_codes = Column(Boolean, default=True, nullable=False)
+    # Only meaningful for fully_anonymous conversations. If False, anyone with
+    # the join link can respond without a participant code ("open link" mode).
+    # Codeless conversations must have max_responses set.
+
+    max_responses = Column(Integer, nullable=True)
+    # Maximum number of submissions accepted (1-10000). Null = unlimited.
+    # Required when fully_anonymous with require_participant_codes=False,
+    # since there is no per-person anchor to bound abuse.
+
     allow_response_editing = Column(Boolean, default=False, nullable=False)
     # if true, participants can edit their submitted responses while conversation is active
 

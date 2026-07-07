@@ -64,8 +64,12 @@ export function useDraftResponses(options: UseDraftResponsesOptions): UseDraftRe
   } = options;
 
   // For OPEN anonymity level, skip server-side draft operations since they require authentication
-  // and we don't want to trigger a login redirect for unauthenticated users
-  const skipServerDrafts = anonymityLevel === AnonymityLevel.OPEN && !localStorage.getItem('access_token');
+  // and we don't want to trigger a login redirect for unauthenticated users.
+  // Codeless fully-anonymous conversations (no participant code) have no server-side
+  // identity to key drafts on, so they are localStorage-only.
+  const skipServerDrafts =
+    (anonymityLevel === AnonymityLevel.OPEN && !localStorage.getItem('access_token')) ||
+    (anonymityLevel === AnonymityLevel.FULLY_ANONYMOUS && !participantCode);
 
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

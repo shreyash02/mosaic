@@ -43,6 +43,7 @@ class CodeValidation(BaseModel):
     session_token: Optional[str] = None  # Temporary session token for fully_anonymous after participant code validation
     has_submitted: Optional[bool] = None  # True if participant code has already been used to submit
     conversation_state: Optional[str] = None  # Current state of the conversation
+    limit_reached: bool = False  # True if the conversation hit its max_responses cap
 
 
 # Bulk code generation response

@@ -20,12 +20,16 @@ export default function PrivacyStep() {
         resultsAccess={formState.resultsAccess}
         showVerbatimResponses={formState.showVerbatimResponses}
         responseThreshold={formState.responseThreshold}
+        requireParticipantCodes={formState.requireParticipantCodes}
+        maxResponses={formState.maxResponses}
         onAnonymityChange={(val) => {
           const isAnonymous = val !== 'open';
           updateFormState({
             anonymityLevel: val,
             // Auto-set threshold when switching anonymity levels
             responseThreshold: isAnonymous ? (formState.responseThreshold ?? 3) : null,
+            // Codeless mode only applies to fully anonymous
+            ...(val !== 'fully_anonymous' && { requireParticipantCodes: true, maxResponses: null }),
           });
         }}
         onInviteOnlyChange={(val) => updateFormState({ inviteOnly: val })}
@@ -33,6 +37,8 @@ export default function PrivacyStep() {
         onResultsAccessChange={(val) => updateFormState({ resultsAccess: val })}
         onShowVerbatimChange={(val) => updateFormState({ showVerbatimResponses: val })}
         onResponseThresholdChange={(val) => updateFormState({ responseThreshold: val })}
+        onRequireParticipantCodesChange={(val) => updateFormState({ requireParticipantCodes: val })}
+        onMaxResponsesChange={(val) => updateFormState({ maxResponses: val })}
       />
 
       {/* Navigation */}

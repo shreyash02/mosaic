@@ -91,7 +91,9 @@ describe('useDraftResponses', () => {
   })
 
   it('saveDraftToServer calls api.saveDraft', async () => {
-    const { result } = renderHook(() => useDraftResponses(defaultOptions))
+    const { result } = renderHook(() =>
+      useDraftResponses({ ...defaultOptions, participantCode: 'PART1' })
+    )
 
     await act(async () => {
       await result.current.saveDraftToServer(testResponses, true)
@@ -101,7 +103,7 @@ describe('useDraftResponses', () => {
       'ABC123',
       {
         responses: testResponses,
-        participant_code: undefined,
+        participant_code: 'PART1',
         reveal_consent: true,
       },
       undefined
@@ -124,7 +126,7 @@ describe('useDraftResponses', () => {
     mockApi.saveDraft.mockRejectedValue(new Error('Server down'))
 
     const { result } = renderHook(() =>
-      useDraftResponses({ ...defaultOptions, onSaveError })
+      useDraftResponses({ ...defaultOptions, participantCode: 'PART1', onSaveError })
     )
 
     await act(async () => {
@@ -170,7 +172,7 @@ describe('useDraftResponses', () => {
       lastSavedAt: '2025-01-19T12:00:00Z',
       version: 1,
     }
-    localStorage.setItem('draft_ABC123_user', JSON.stringify(localDraft))
+    localStorage.setItem('draft_ABC123_PART1', JSON.stringify(localDraft))
 
     // Server draft is newer
     mockApi.loadDraft.mockResolvedValue({
@@ -181,7 +183,7 @@ describe('useDraftResponses', () => {
     })
 
     const { result } = renderHook(() =>
-      useDraftResponses({ ...defaultOptions, onDraftLoaded })
+      useDraftResponses({ ...defaultOptions, participantCode: 'PART1', onDraftLoaded })
     )
 
     await act(async () => {
@@ -224,16 +226,18 @@ describe('useDraftResponses', () => {
   })
 
   it('clearDraft removes from localStorage and server', async () => {
-    localStorage.setItem('draft_ABC123_user', 'data')
+    localStorage.setItem('draft_ABC123_PART1', 'data')
 
-    const { result } = renderHook(() => useDraftResponses(defaultOptions))
+    const { result } = renderHook(() =>
+      useDraftResponses({ ...defaultOptions, participantCode: 'PART1' })
+    )
 
     await act(async () => {
       await result.current.clearDraft()
     })
 
-    expect(localStorage.getItem('draft_ABC123_user')).toBeNull()
-    expect(mockApi.deleteDraft).toHaveBeenCalledWith('ABC123', undefined, undefined)
+    expect(localStorage.getItem('draft_ABC123_PART1')).toBeNull()
+    expect(mockApi.deleteDraft).toHaveBeenCalledWith('ABC123', 'PART1', undefined)
     expect(result.current.lastSavedAt).toBeNull()
   })
 
@@ -269,6 +273,21 @@ describe('useDraftResponses', () => {
     })
 
     expect(result.current.hasUnsavedChanges).toBe(true)
+  })
+
+  it('skips server drafts for fully anonymous without a participant code (codeless)', async () => {
+    const { result } = renderHook(() => useDraftResponses(defaultOptions))
+
+    await act(async () => {
+      await result.current.saveDraftToServer(testResponses)
+    })
+
+    expect(mockApi.saveDraft).not.toHaveBeenCalled()
+    // localStorage drafts still work
+    act(() => {
+      result.current.saveDraftToLocalStorage(testResponses)
+    })
+    expect(localStorage.getItem('draft_ABC123_user')).not.toBeNull()
   })
 
   it('skips server drafts for OPEN anonymity without access token', async () => {

@@ -1,6 +1,9 @@
 import { AnonymityLevel, ResultsAccess } from '../types';
 import { useFeature } from '../contexts/FeaturesContext';
 
+export const MAX_RESPONSES_CEILING = 10000;
+export const DEFAULT_MAX_RESPONSES = 100;
+
 interface AccessAndPrivacyProps {
   anonymityLevel: AnonymityLevel;
   inviteOnly: boolean;
@@ -8,12 +11,16 @@ interface AccessAndPrivacyProps {
   resultsAccess: ResultsAccess;
   showVerbatimResponses: boolean;
   responseThreshold: number | null;
+  requireParticipantCodes: boolean;
+  maxResponses: number | null;
   onAnonymityChange: (value: AnonymityLevel) => void;
   onInviteOnlyChange: (value: boolean) => void;
   onInviteEmailsChange: (value: string) => void;
   onResultsAccessChange: (value: ResultsAccess) => void;
   onShowVerbatimChange: (value: boolean) => void;
   onResponseThresholdChange: (value: number | null) => void;
+  onRequireParticipantCodesChange: (value: boolean) => void;
+  onMaxResponsesChange: (value: number | null) => void;
 }
 
 export default function AccessAndPrivacy({
@@ -23,12 +30,16 @@ export default function AccessAndPrivacy({
   resultsAccess,
   showVerbatimResponses,
   responseThreshold,
+  requireParticipantCodes,
+  maxResponses,
   onAnonymityChange,
   onInviteOnlyChange,
   onInviteEmailsChange,
   onResultsAccessChange,
   onShowVerbatimChange,
   onResponseThresholdChange,
+  onRequireParticipantCodesChange,
+  onMaxResponsesChange,
 }: AccessAndPrivacyProps) {
   const anonymousEnabled = useFeature('anonymous_responses');
   const isOpen = anonymityLevel === AnonymityLevel.OPEN;
@@ -153,11 +164,81 @@ export default function AccessAndPrivacy({
             <div style={descStyle}>Share the link publicly or with specific people.</div>
           </div>
         ) : isFullyAnonymous ? (
-          // FULLY_ANONYMOUS: Anyone with a secret code
-          <div style={{ marginBottom: '0.625rem' }}>
-            <div style={labelStyle}>Anyone with a secret code</div>
-            <div style={descStyle}>Generate codes and distribute them to your participants.</div>
-          </div>
+          // FULLY_ANONYMOUS: secret codes (one response guaranteed per code)
+          // or open link (bounded by a required response limit)
+          <>
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="anonAccessMode"
+                value="codes"
+                checked={requireParticipantCodes}
+                onChange={() => {
+                  onRequireParticipantCodesChange(true);
+                  onMaxResponsesChange(null);
+                }}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Anyone with a secret code</div>
+                <div style={descStyle}>Generate codes and distribute them to your participants. Each code allows one response.</div>
+              </div>
+            </label>
+
+            <label style={optionStyle}>
+              <input
+                type="radio"
+                name="anonAccessMode"
+                value="link"
+                checked={!requireParticipantCodes}
+                onChange={() => {
+                  onRequireParticipantCodesChange(false);
+                  onMaxResponsesChange(maxResponses ?? DEFAULT_MAX_RESPONSES);
+                }}
+                style={radioStyle}
+              />
+              <div>
+                <div style={labelStyle}>Anyone with the link</div>
+                <div style={descStyle}>No codes needed. Duplicate responses are discouraged but not prevented, so a response limit is required.</div>
+              </div>
+            </label>
+
+            {!requireParticipantCodes && (
+              <div style={{ marginLeft: '1.25rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_RESPONSES_CEILING}
+                    value={maxResponses ?? DEFAULT_MAX_RESPONSES}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 1 && val <= MAX_RESPONSES_CEILING) {
+                        onMaxResponsesChange(val);
+                      }
+                    }}
+                    style={{
+                      width: '90px',
+                      padding: '0.375rem 0.5rem',
+                      border: '1px solid var(--color-primary-300)',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontFamily: 'inherit',
+                      background: 'var(--color-primary-50)',
+                      color: 'var(--color-primary-900)',
+                      textAlign: 'center',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-primary-600)' }}>
+                    responses maximum
+                  </span>
+                </div>
+                <div style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: 'var(--color-primary-500)' }}>
+                  Collection stops when the limit is reached. You can raise or lower it anytime, up to {MAX_RESPONSES_CEILING.toLocaleString()}.
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           // PLATFORM_TRACKED / REVEALABLE: Radio options for open vs invite-only
           <>

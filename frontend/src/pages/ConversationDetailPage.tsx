@@ -7,6 +7,7 @@ import type { Conversation, ResponseStats, Analysis, InvitationListResponse, Ser
 import { ConversationState, AnonymityLevel } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { formatAnonymityLevel, formatResultsAccess, formatDate, formatDateForDateTimeLocal } from '../utils/formatting';
+import { getErrorMessage } from '../utils/errorMessages';
 import ConversationPreview from '../components/ConversationPreview';
 import QRCodePoster from '../components/QRCodePoster';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -680,6 +681,9 @@ export default function ConversationDetailPage() {
   const [loadingCodes, setLoadingCodes] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedAllCodes, setCopiedAllCodes] = useState(false);
+  const [maxResponsesInput, setMaxResponsesInput] = useState<number | null>(null);
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [limitSaved, setLimitSaved] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -1202,6 +1206,25 @@ export default function ConversationDetailPage() {
       setError(err.response?.data?.detail || 'Failed to load participant codes');
     } finally {
       setLoadingCodes(false);
+    }
+  };
+
+  const handleUpdateMaxResponses = async () => {
+    if (!id || !conversation) return;
+    const newLimit = maxResponsesInput ?? conversation.max_responses;
+    if (!newLimit || newLimit < 1 || newLimit > 10000 || newLimit === conversation.max_responses) return;
+    setSavingLimit(true);
+    setError('');
+    try {
+      const updated = await api.updateConversation(id, { max_responses: newLimit });
+      setConversation(updated);
+      setMaxResponsesInput(null);
+      setLimitSaved(true);
+      setTimeout(() => setLimitSaved(false), 2000);
+    } catch (err) {
+      setError(getErrorMessage(err, 'update the response limit'));
+    } finally {
+      setSavingLimit(false);
     }
   };
 
@@ -2152,7 +2175,9 @@ export default function ConversationDetailPage() {
             <div style={s.shareSection}>
               <p style={s.shareDescription}>
                 {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
-                  ? 'Share this link with participants. They will need a participant code to access.'
+                  ? (conversation.require_participant_codes === false
+                      ? 'Share this link with participants. Anyone with the link can respond anonymously, no code needed.'
+                      : 'Share this link with participants. They will need a participant code to access.')
                   : 'Share this link with logged-in users to collect responses.'}
               </p>
               <div style={s.shareButtons}>
@@ -2177,8 +2202,46 @@ export default function ConversationDetailPage() {
               </div>
             </div>
 
+            {/* Response limit for codeless anonymous */}
+            {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && conversation.require_participant_codes === false && (
+              <div style={{ marginTop: spacing[4], paddingTop: spacing[4], borderTop: '1px solid var(--color-primary-200)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: spacing[2] }}>
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: 'var(--color-primary-800)' }}>
+                    Response limit
+                  </span>
+                  <span style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-600)' }}>
+                    {stats?.unique_participants ?? 0} of {conversation.max_responses ?? '—'} used
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: spacing[2] }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={maxResponsesInput ?? conversation.max_responses ?? 100}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val)) setMaxResponsesInput(val);
+                    }}
+                    style={s.codeInput}
+                    disabled={savingLimit}
+                  />
+                  <button
+                    onClick={handleUpdateMaxResponses}
+                    style={merge(s.buttonPrimary, (savingLimit || maxResponsesInput === null || maxResponsesInput === conversation.max_responses || maxResponsesInput < 1 || maxResponsesInput > 10000) && s.buttonDisabled)}
+                    disabled={savingLimit || maxResponsesInput === null || maxResponsesInput === conversation.max_responses || maxResponsesInput < 1 || maxResponsesInput > 10000}
+                  >
+                    {savingLimit ? '...' : limitSaved ? '✓ Saved' : 'Update'}
+                  </button>
+                </div>
+                <p style={{ fontSize: typography.fontSize.xs, color: 'var(--color-primary-500)', marginTop: spacing[2], marginBottom: 0 }}>
+                  Collection stops when the limit is reached. Raise it anytime to accept more responses (up to 10,000).
+                </p>
+              </div>
+            )}
+
             {/* Participant Codes for Anonymous */}
-            {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && (
+            {conversation.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && conversation.require_participant_codes !== false && (
               <div style={s.codesSection}>
                 <div style={s.codesForm}>
                   <input

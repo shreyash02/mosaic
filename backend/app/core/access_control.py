@@ -218,6 +218,17 @@ class ConversationAccessChecker:
 
         # Handle fully_anonymous
         if conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
+            # Codeless conversations are link-accessible by design: the access
+            # code is the capability, same as OPEN (submissions are bounded by
+            # max_responses instead of participant codes).
+            if not conversation.require_participant_codes:
+                return ConversationAccess(
+                    conversation=conversation,
+                    user=None,  # never associate identity with fully anonymous access
+                    invitation=None,
+                    participant_session=None,
+                )
+
             # Some endpoints (draft operations) validate participant_code from request body
             # instead of requiring a session token
             if self.skip_fully_anonymous_session:

@@ -46,6 +46,8 @@ export interface ConversationFormState {
   inviteOnly: boolean;
   allowResponseEditing: boolean;
   responseThreshold: number | null;
+  requireParticipantCodes: boolean;
+  maxResponses: number | null;
 
   // Step 3: Questions
   questions: (QuestionCreate & { id: string })[];
@@ -132,6 +134,8 @@ const getDefaultFormState = (): ConversationFormState => ({
   inviteOnly: false,
   allowResponseEditing: false,
   responseThreshold: null,  // null for open; auto-set to 3 for anonymous levels
+  requireParticipantCodes: true,
+  maxResponses: null,  // required (default 100) when fully anonymous without codes
 
   // Questions
   questions: [
@@ -300,6 +304,8 @@ export function ConversationFormProvider({
       inviteOnly: conversation.invite_only,
       allowResponseEditing: conversation.allow_response_editing,
       responseThreshold: conversation.response_threshold ?? null,
+      requireParticipantCodes: conversation.require_participant_codes ?? true,
+      maxResponses: conversation.max_responses ?? null,
       questions,
       expandedQuestions: new Set([0]), // Expand first question by default
       suggestionsDismissed: false,

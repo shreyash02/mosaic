@@ -937,6 +937,19 @@ export default function JoinPage() {
       const convData = await api.getConversationByCode(accessCode!, sessionToken || undefined);
       setConversation(convData);
 
+      // Codeless anonymous: best-effort duplicate check against this browser's
+      // localStorage marker (set after a successful submission)
+      if (
+        convData.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
+        convData.require_participant_codes === false &&
+        localStorage.getItem(`mosaic_responded_${convData.id}`)
+      ) {
+        setHasAlreadySubmitted(true);
+        setAlreadySubmittedMessage('It looks like you have already responded to this conversation from this browser.');
+        setLoading(false);
+        return;
+      }
+
       // Fetch announcements for this conversation
       try {
         const announcementData = await api.getPublicAnnouncements(convData.id, accessCode!);
@@ -1140,7 +1153,11 @@ export default function JoinPage() {
         reveal_consent: revealConsent,
       };
 
-      if (conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS) {
+      const isCodelessAnonymous =
+        conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
+        conversation?.require_participant_codes === false;
+
+      if (conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && !isCodelessAnonymous) {
         submitData.participant_code = participantCode;
       }
 
@@ -1151,6 +1168,15 @@ export default function JoinPage() {
       } else {
         await api.submitResponse(accessCode!, submitData);
         await clearDraft();
+        if (isCodelessAnonymous && conversation) {
+          // Best-effort duplicate deterrent: no server-side identity exists in
+          // codeless mode, so remember the submission in this browser only
+          try {
+            localStorage.setItem(`mosaic_responded_${conversation.id}`, new Date().toISOString());
+          } catch {
+            // localStorage unavailable (private mode quota etc.) — non-fatal
+          }
+        }
         setSuccess(true);
         analytics.responseSubmitted({
           questionCount: conversation?.questions?.length ?? 0,
@@ -1420,9 +1446,17 @@ export default function JoinPage() {
 
   // Success state
   if (success) {
+    const isCodelessAnonymous =
+      conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS &&
+      conversation?.require_participant_codes === false;
     const viewResultsLink = conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
       ? `/join/${accessCode}?participant_code=${participantCode}`
       : `/analysis/${conversation?.id}`;
+    // Codeless responders have no identity to edit with, and can only reach
+    // results through a public link
+    const canOfferEditing = conversation?.allow_response_editing && !isCodelessAnonymous;
+    const canOfferResults = conversation?.results_access !== ResultsAccess.CREATOR_ONLY &&
+      (!isCodelessAnonymous || conversation?.results_access === ResultsAccess.PUBLIC_LINK);
 
     return (
       <>
@@ -1434,7 +1468,7 @@ export default function JoinPage() {
                 <h2 style={styles.successTitle}>Thank You!</h2>
                 <p style={styles.successText}>Your response has been submitted successfully.</p>
 
-                {conversation?.allow_response_editing && conversation?.state === 'active' && (
+                {canOfferEditing && conversation?.state === 'active' && (
                   <div style={{ ...styles.resultsBox, marginBottom: spacing[6] }}>
                     <p style={{ ...styles.resultsText, marginBottom: spacing[4] }}>
                       Changed your mind? You can edit your response while the conversation is still open.
@@ -1454,11 +1488,11 @@ export default function JoinPage() {
                   </div>
                 )}
 
-                {conversation?.results_access !== ResultsAccess.CREATOR_ONLY && (
+                {canOfferResults && (
                   <div style={styles.resultsBox}>
                     <h3 style={styles.resultsTitle}>View Results</h3>
                     <p style={styles.resultsText}>
-                      {conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS
+                      {conversation?.anonymity_level === AnonymityLevel.FULLY_ANONYMOUS && participantCode
                         ? 'Save this link to view the analysis results once they are ready:'
                         : 'You can view the results once the conversation is analyzed:'}
                     </p>

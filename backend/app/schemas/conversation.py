@@ -3,8 +3,12 @@
 from datetime import datetime
 from typing import Optional, List, Any
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
+
+# System-wide ceiling on per-conversation response limits. A single global
+# constant for now; swap for tier-based resolution when limits become a plan knob.
+MAX_RESPONSES_CEILING = 10000
 
 
 # Enums
@@ -108,6 +112,8 @@ class ConversationBase(BaseModel):
     invite_only: bool = False
     allow_response_editing: bool = False
     response_threshold: Optional[int] = Field(None, ge=2, le=100, description="Minimum responses required before analysis can run. Protects participant anonymity.")
+    require_participant_codes: bool = Field(default=True, description="Fully anonymous only: if False, anyone with the join link can respond without a participant code. Requires max_responses.")
+    max_responses: Optional[int] = Field(None, ge=1, le=MAX_RESPONSES_CEILING, description="Maximum number of responses accepted. Null = unlimited. Required when participant codes are disabled.")
     auto_analyze: bool = False
     max_response_length: int = Field(default=10000, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)
@@ -162,6 +168,17 @@ class ConversationBase(BaseModel):
         except ValueError as e:
             raise ValueError(f"Invalid timezone: {v}") from e
 
+    @model_validator(mode='after')
+    def validate_codeless_requires_limit(self):
+        """Codeless anonymous conversations have no per-person anchor, so a response cap is mandatory."""
+        if (
+            self.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS
+            and not self.require_participant_codes
+            and self.max_responses is None
+        ):
+            raise ValueError("A response limit is required when participant codes are disabled for a fully anonymous conversation")
+        return self
+
 
 class ConversationCreate(ConversationBase):
     """Schema for creating a conversation."""
@@ -185,6 +202,8 @@ class ConversationUpdate(BaseModel):
     invite_only: Optional[bool] = None
     allow_response_editing: Optional[bool] = None
     response_threshold: Optional[int] = Field(None, description="Minimum responses required before analysis can run. Set to null to disable. Must be 2-100 if set.")
+    require_participant_codes: Optional[bool] = None
+    max_responses: Optional[int] = Field(None, ge=1, le=MAX_RESPONSES_CEILING, description="Maximum number of responses accepted. Set to null for unlimited (not allowed for codeless anonymous conversations).")
     auto_analyze: Optional[bool] = None
     max_response_length: Optional[int] = Field(None, ge=100, le=50000)
     duration_minutes: Optional[int] = Field(None, ge=1, le=2880)  # Max 48 hours (2880 minutes)

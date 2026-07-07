@@ -237,6 +237,8 @@ export default function ReviewStep() {
         invite_only: formState.inviteOnly,
         allow_response_editing: formState.allowResponseEditing,
         response_threshold: formState.responseThreshold,
+        require_participant_codes: formState.requireParticipantCodes,
+        max_responses: formState.maxResponses,
         timezone: userTimezone,
         questions: questionsForApi,
         // Duration only applies to limited-time conversations

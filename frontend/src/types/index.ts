@@ -195,6 +195,8 @@ export interface Conversation {
   invite_only: boolean;
   allow_response_editing: boolean;
   response_threshold?: number | null;
+  require_participant_codes?: boolean;
+  max_responses?: number | null;
   access_code: string;
   state: ConversationState;
   auto_analyze: boolean;
@@ -262,6 +264,8 @@ export interface ConversationCreate {
   invite_only?: boolean;
   allow_response_editing?: boolean;
   response_threshold?: number | null;
+  require_participant_codes?: boolean;
+  max_responses?: number | null;
   questions: QuestionCreate[];
   auto_analyze?: boolean;
   max_response_length?: number;
@@ -671,6 +675,7 @@ export interface CodeValidation {
   session_token?: string;
   has_submitted?: boolean;
   conversation_state?: string;
+  limit_reached?: boolean;
 }
 
 // Invitation types

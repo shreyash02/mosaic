@@ -1,6 +1,7 @@
 """Response submission routes."""
 
 import logging
+import uuid
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -41,6 +42,27 @@ from app.services.notification_service import notification_service
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
+
+
+def count_submissions(db: Session, conversation_id: UUID) -> int:
+    """Count submitted responses (one per participant) for a conversation.
+
+    A submission is identified by a distinct participant_code_used (coded and
+    codeless anonymous — codeless submissions get a generated pseudo-code) or,
+    for rows without a code, a distinct participant_id (tracked modes).
+    """
+    code_count = db.query(func.count(func.distinct(Response.participant_code_used))).filter(
+        Response.conversation_id == conversation_id,
+        Response.participant_code_used.isnot(None),
+        Response.status == "submitted",
+    ).scalar() or 0
+    user_count = db.query(func.count(func.distinct(Response.participant_id))).filter(
+        Response.conversation_id == conversation_id,
+        Response.participant_id.isnot(None),
+        Response.participant_code_used.is_(None),
+        Response.status == "submitted",
+    ).scalar() or 0
+    return code_count + user_count
 
 
 @router.post("/conversations/{access_code}/validate")
@@ -100,15 +122,24 @@ async def validate_code(
             )
 
     # Conversation exists and is active
+    # Reject before the participant fills anything out if the response limit is reached
+    if conversation.max_responses is not None and count_submissions(db, conversation.id) >= conversation.max_responses:
+        return CodeValidation(
+            valid=False,
+            message="This conversation has reached its response limit and is no longer accepting responses.",
+            limit_reached=True
+        )
+
     # Determine requirements based on anonymity level and invite_only:
     # - OPEN (not invite_only): No login, no codes required
     # - OPEN (invite_only): Requires login to verify invitation
-    # - FULLY_ANONYMOUS: Requires secret codes (for duplicate prevention)
+    # - FULLY_ANONYMOUS with codes: Requires secret codes (for duplicate prevention)
+    # - FULLY_ANONYMOUS codeless: No login, no codes — bounded by max_responses
     # - PLATFORM_TRACKED/REVEALABLE: Requires login
     is_open = conversation.anonymity_level == AnonymityLevel.OPEN.value
     is_fully_anonymous = conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
 
-    requires_participant_code = is_fully_anonymous  # Secret codes required for fully anonymous
+    requires_participant_code = is_fully_anonymous and conversation.require_participant_codes
     # Login required for: tracked modes, OR invite-only (except fully_anonymous which uses codes)
     requires_login = (not is_open and not is_fully_anonymous) or (conversation.invite_only and not is_fully_anonymous)
 
@@ -631,35 +662,39 @@ async def submit_response(
                 )
 
     elif conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value:
-        # FULLY_ANONYMOUS: Requires secret codes for duplicate prevention
-        if not used_participant_code:
-            # Check if participant_code is provided in request body
-            if not response_data.participant_code:
+        if conversation.require_participant_codes:
+            # FULLY_ANONYMOUS with codes: Requires secret codes for duplicate prevention
+            if not used_participant_code:
+                # Check if participant_code is provided in request body
+                if not response_data.participant_code:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="This conversation requires a participant code"
+                    )
+
+                # Look up participant code from request body
+                participant_code = db.query(ParticipantCode).filter(
+                    ParticipantCode.participant_code == response_data.participant_code,
+                    ParticipantCode.conversation_id == conversation.id
+                ).first()
+
+                if not participant_code:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid participant code"
+                    )
+
+                used_participant_code = participant_code
+
+            # Check if code is already used
+            if used_participant_code.is_used:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="This conversation requires a participant code"
+                    detail="This participant code has already been used"
                 )
-
-            # Look up participant code from request body
-            participant_code = db.query(ParticipantCode).filter(
-                ParticipantCode.participant_code == response_data.participant_code,
-                ParticipantCode.conversation_id == conversation.id
-            ).first()
-
-            if not participant_code:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid participant code"
-                )
-
-            used_participant_code = participant_code
-
-        # Check if code is already used
-        if used_participant_code.is_used:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This participant code has already been used"
-            )
+        # Codeless mode: no participant code — anyone with the link can respond,
+        # bounded by max_responses (enforced below). Duplicate prevention is
+        # best-effort on the client only.
 
     elif conversation.anonymity_level in [AnonymityLevel.PLATFORM_TRACKED.value, AnonymityLevel.REVEALABLE.value]:
         # Must be authenticated
@@ -699,6 +734,19 @@ async def submit_response(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You have already submitted a response to this conversation"
+            )
+
+    # Enforce the response limit. Lock the conversation row first so two
+    # concurrent submissions can't both pass the count check on a nearly-full
+    # conversation (the lock is held until this request's commit).
+    if conversation.max_responses is not None:
+        db.query(Conversation.id).filter(
+            Conversation.id == conversation.id
+        ).with_for_update().first()
+        if count_submissions(db, conversation.id) >= conversation.max_responses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This conversation has reached its response limit and is no longer accepting responses."
             )
 
     # Validate all question IDs belong to this conversation
@@ -854,6 +902,15 @@ async def submit_response(
             Response.status == "draft"
         ).delete()
 
+    # Codeless anonymous submissions get a generated pseudo-code so that all
+    # participant counting (distinct participant_code_used) sees them.
+    generated_pseudo_code = None
+    if (
+        conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+        and not conversation.require_participant_codes
+    ):
+        generated_pseudo_code = f"open-{uuid.uuid4().hex}"
+
     # Create responses with status='submitted'
     now = datetime.utcnow()
     for response_item in response_data.responses:
@@ -863,8 +920,10 @@ async def submit_response(
             response_text=response_item.response_text,
             response_data=response_item.response_data,
             anonymity_level=conversation.anonymity_level,
-            participant_id=current_user.id if current_user else None,
-            participant_code_used=used_participant_code.participant_code if used_participant_code else None,
+            # Never record identity for fully anonymous conversations, even if
+            # the participant happens to be logged in
+            participant_id=current_user.id if current_user and conversation.anonymity_level != AnonymityLevel.FULLY_ANONYMOUS.value else None,
+            participant_code_used=used_participant_code.participant_code if used_participant_code else generated_pseudo_code,
             reveal_consent=response_data.reveal_consent if conversation.anonymity_level == AnonymityLevel.REVEALABLE.value else False,
             status="submitted",
             submitted_at=now

@@ -304,6 +304,8 @@ async def create_conversation(
         state=ConversationState.DRAFT.value,
         show_verbatim_responses=conversation_data.show_verbatim_responses,
         allow_response_editing=conversation_data.allow_response_editing,
+        require_participant_codes=conversation_data.require_participant_codes,
+        max_responses=conversation_data.max_responses,
         # Template fields
         is_template=conversation_data.is_template or False,
         template_series_id=conversation_data.template_series_id,
@@ -863,8 +865,9 @@ async def update_conversation(
         questions_to_update is None
     )
 
-    # Check if only context_notes is being updated (allowed at any stage except analyzing)
-    always_editable_fields = {'context_notes'}
+    # Check if only always-editable fields are being updated (allowed at any stage except analyzing).
+    # max_responses is adjustable mid-flight so creators can raise/lower the cap on live conversations.
+    always_editable_fields = {'context_notes', 'max_responses'}
     only_always_editable_update = (
         set(update_dict.keys()).issubset(always_editable_fields) and
         questions_to_update is None and
@@ -913,6 +916,17 @@ async def update_conversation(
             setattr(conversation, field, value_utc)
         else:
             setattr(conversation, field, value)
+
+    # Codeless anonymous conversations must always keep a response cap
+    if (
+        conversation.anonymity_level == AnonymityLevel.FULLY_ANONYMOUS.value
+        and not conversation.require_participant_codes
+        and conversation.max_responses is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A response limit is required when participant codes are disabled for a fully anonymous conversation"
+        )
 
     # Update questions if provided
     if questions_to_update is not None:
