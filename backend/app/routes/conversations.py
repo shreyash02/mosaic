@@ -867,12 +867,27 @@ async def update_conversation(
 
     # Check if only always-editable fields are being updated (allowed at any stage except analyzing).
     # max_responses is adjustable mid-flight so creators can raise/lower the cap on live conversations.
-    always_editable_fields = {'context_notes', 'max_responses'}
+    # require_participant_codes may be switched OFF mid-flight (coded -> codeless, with a limit),
+    # but never back on — reintroducing codes on a live link-accessible conversation would strand
+    # participants and mix incompatible access models.
+    always_editable_fields = {'context_notes', 'max_responses', 'require_participant_codes'}
     only_always_editable_update = (
         set(update_dict.keys()).issubset(always_editable_fields) and
         questions_to_update is None and
-        conversation.state != ConversationState.ANALYZING.value
+        conversation.state != ConversationState.ANALYZING.value and
+        update_dict.get('require_participant_codes') is not True
     )
+
+    if (
+        update_dict.get('require_participant_codes') is True
+        and not conversation.require_participant_codes
+        and conversation.state != ConversationState.DRAFT.value
+        and not is_template
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Participant codes cannot be re-enabled after activation"
+        )
 
     # Only allow updates in draft state for regular conversations
     # Templates can be updated at any time

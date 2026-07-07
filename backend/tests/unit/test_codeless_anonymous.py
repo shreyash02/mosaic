@@ -244,6 +244,52 @@ class TestResponseLimitUpdate:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
+class TestMidFlightSwitchToCodeless:
+    """PATCH switching an active coded conversation to codeless mode."""
+
+    def test_switch_active_coded_to_codeless_with_limit(self, client, test_user, active_conversation):
+        headers = get_auth_headers(test_user.id)
+
+        response = client.patch(
+            f"/api/conversations/{active_conversation.id}",
+            json={"require_participant_codes": False, "max_responses": 200},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["require_participant_codes"] is False
+        assert data["max_responses"] == 200
+
+        # The conversation now validates as codeless
+        validate = client.post(f"/api/conversations/{active_conversation.access_code}/validate")
+        assert validate.json()["requires_participant_code"] is False
+
+    def test_switch_without_limit_rejected(self, client, test_user, active_conversation):
+        headers = get_auth_headers(test_user.id)
+
+        response = client.patch(
+            f"/api/conversations/{active_conversation.id}",
+            json={"require_participant_codes": False},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "response limit" in response.json()["detail"].lower()
+
+    def test_cannot_reenable_codes_after_activation(self, client, test_user, codeless_conversation):
+        headers = get_auth_headers(test_user.id)
+
+        response = client.patch(
+            f"/api/conversations/{codeless_conversation.id}",
+            json={"require_participant_codes": True},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "re-enabled" in response.json()["detail"].lower()
+
+
 class TestCodelessConversationAccess:
     """GET /api/conversations/by-code/{access_code} for codeless conversations."""
 

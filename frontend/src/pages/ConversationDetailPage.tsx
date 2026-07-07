@@ -684,6 +684,9 @@ export default function ConversationDetailPage() {
   const [maxResponsesInput, setMaxResponsesInput] = useState<number | null>(null);
   const [savingLimit, setSavingLimit] = useState(false);
   const [limitSaved, setLimitSaved] = useState(false);
+  const [showSwitchToLinkModal, setShowSwitchToLinkModal] = useState(false);
+  const [switchLimitInput, setSwitchLimitInput] = useState(100);
+  const [switchingAccessMode, setSwitchingAccessMode] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -1225,6 +1228,26 @@ export default function ConversationDetailPage() {
       setError(getErrorMessage(err, 'update the response limit'));
     } finally {
       setSavingLimit(false);
+    }
+  };
+
+  const handleSwitchToLinkOnly = async () => {
+    if (!id || !conversation) return;
+    if (switchLimitInput < 1 || switchLimitInput > 10000) return;
+    setSwitchingAccessMode(true);
+    setError('');
+    try {
+      const updated = await api.updateConversation(id, {
+        require_participant_codes: false,
+        max_responses: switchLimitInput,
+      });
+      setConversation(updated);
+      setShowSwitchToLinkModal(false);
+    } catch (err) {
+      setError(getErrorMessage(err, 'switch to link-only responses'));
+      setShowSwitchToLinkModal(false);
+    } finally {
+      setSwitchingAccessMode(false);
     }
   };
 
@@ -2299,6 +2322,27 @@ export default function ConversationDetailPage() {
                   </div>
                 )}
 
+                {conversation.state === ConversationState.ACTIVE && (
+                  <button
+                    onClick={() => {
+                      setSwitchLimitInput(Math.max(100, stats?.unique_participants ?? 0));
+                      setShowSwitchToLinkModal(true);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      marginTop: spacing[3],
+                      fontSize: typography.fontSize.xs,
+                      color: 'var(--color-primary-600)',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Stop requiring codes — switch to link-only responses…
+                  </button>
+                )}
+
                 {(showAllCodes && allCodes.length > 0) && (
                   <div style={{ marginTop: spacing[4] }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
@@ -2370,6 +2414,56 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Close Modal */}
+      {showSwitchToLinkModal && conversation && (
+        <FocusTrap isActive={showSwitchToLinkModal} onEscape={() => setShowSwitchToLinkModal(false)}>
+          <div style={s.modalOverlay} onClick={() => setShowSwitchToLinkModal(false)} role="dialog" aria-modal="true" aria-labelledby="switch-link-modal-title">
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h2 style={s.modalTitle} id="switch-link-modal-title">Switch to Link-Only Responses</h2>
+              <p style={s.modalText}>
+                Anyone with the join link will be able to respond without a participant code.
+                Duplicate responses are discouraged but not prevented, so collection stops at a
+                response limit you control. This cannot be switched back while the conversation is active.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[4] }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={10000}
+                  value={switchLimitInput}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val)) setSwitchLimitInput(val);
+                  }}
+                  style={s.codeInput}
+                  disabled={switchingAccessMode}
+                />
+                <span style={{ fontSize: typography.fontSize.sm, color: 'var(--color-primary-600)' }}>
+                  responses maximum (up to 10,000)
+                </span>
+              </div>
+              {(stats?.unique_participants ?? 0) > 0 && switchLimitInput <= (stats?.unique_participants ?? 0) && (
+                <p style={{ ...s.modalText, color: 'var(--color-primary-600)', fontSize: typography.fontSize.xs }}>
+                  This conversation already has {stats?.unique_participants} responses — a limit at or
+                  below that will stop collection immediately.
+                </p>
+              )}
+              <div style={s.modalActions}>
+                <button onClick={() => setShowSwitchToLinkModal(false)} style={s.buttonSecondary}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSwitchToLinkOnly}
+                  style={merge(s.buttonPrimary, (switchingAccessMode || switchLimitInput < 1 || switchLimitInput > 10000) && s.buttonDisabled)}
+                  disabled={switchingAccessMode || switchLimitInput < 1 || switchLimitInput > 10000}
+                >
+                  {switchingAccessMode ? 'Switching...' : 'Switch to Link-Only'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </FocusTrap>
+      )}
+
       {showCloseModal && (() => {
         const hasResponses = (stats?.unique_participants || 0) > 0;
         const autoAnalyzeOn = conversation?.auto_analyze && hasResponses && aiAnalysisEnabled;
