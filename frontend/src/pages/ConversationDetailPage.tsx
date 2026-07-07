@@ -177,8 +177,12 @@ const s = {
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
+    // buttons don't inherit the app font/line-height like <a> does — pin both
+    // so <button> and <Link> siblings render at the same height
+    fontFamily: 'inherit',
+    lineHeight: 1.5,
     textDecoration: 'none',
-    border: 'none',
+    border: '1px solid transparent',
     cursor: 'pointer',
   },
   buttonSecondary: {
@@ -191,6 +195,8 @@ const s = {
     borderRadius: borders.radius.md,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
+    fontFamily: 'inherit',
+    lineHeight: 1.5,
     textDecoration: 'none',
     border: `1px solid ${'var(--color-primary-400)'}`,
     cursor: 'pointer',
