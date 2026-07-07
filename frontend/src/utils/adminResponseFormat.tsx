@@ -1,5 +1,38 @@
 import type { AdminResponseInfo } from '../types';
 
+export interface ResponseGroup {
+  /** Stable key for the group (participation_id when present). */
+  key: string;
+  /** participation_id if the rows carry one; enables the full-page link. */
+  participationId: string | null;
+  items: AdminResponseInfo[];
+  latestSubmittedAt: string;
+}
+
+/**
+ * Group response rows into one entry per submission. Prefers participation_id
+ * (explicit submission id); falls back to participant_id / participant_code_used
+ * for legacy rows written before participation_id existed, then to the row's own
+ * id. Items within a group are ordered by question_order.
+ */
+export function groupResponsesByParticipation(responses: AdminResponseInfo[]): ResponseGroup[] {
+  const groups = new Map<string, AdminResponseInfo[]>();
+  for (const r of responses) {
+    const key = r.participation_id || r.participant_id || r.participant_code_used || r.id;
+    const list = groups.get(key);
+    if (list) list.push(r);
+    else groups.set(key, [r]);
+  }
+  return Array.from(groups.entries()).map(([key, items]) => {
+    const sorted = [...items].sort((a, b) => (a.question_order ?? 0) - (b.question_order ?? 0));
+    const latestSubmittedAt = sorted.reduce(
+      (max, r) => (r.submitted_at > max ? r.submitted_at : max),
+      sorted[0].submitted_at
+    );
+    return { key, participationId: sorted[0].participation_id ?? null, items: sorted, latestSubmittedAt };
+  });
+}
+
 /** Truncate question text for table display, falling back to a dash. */
 export function formatQuestionText(text: string | null | undefined, max = 60): string {
   if (!text) return '-';

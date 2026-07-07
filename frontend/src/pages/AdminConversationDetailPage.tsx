@@ -6,7 +6,7 @@ import { AnonymityLevel, ResultsAccess } from '../types';
 import { formatDuration } from '../utils/formatting';
 import { SkeletonAdminDetail } from '../components/Skeleton';
 import AdminHeader from '../components/AdminHeader';
-import { formatParticipant, formatResponseValue } from '../utils/adminResponseFormat';
+import { formatParticipant, formatResponseValue, groupResponsesByParticipation } from '../utils/adminResponseFormat';
 import { colors, spacing, typography } from '../styles/tokens';
 import './AdminPortalPage.css';
 
@@ -200,26 +200,8 @@ export default function AdminConversationDetailPage() {
     setError('');
   };
 
-  // Group responses into one row per submission, with all question/answer
-  // pairs inside. Grouped by participation_id (explicit submission id); legacy
-  // rows without one fall back to participant_id/code, then their own id.
-  const groupedResponses = (() => {
-    const groups = new Map<string, AdminResponseInfo[]>();
-    for (const r of responses) {
-      const key = r.participation_id || r.participant_id || r.participant_code_used || r.id;
-      const list = groups.get(key);
-      if (list) list.push(r);
-      else groups.set(key, [r]);
-    }
-    return Array.from(groups.entries()).map(([key, items]) => {
-      const sorted = [...items].sort(
-        (a, b) => (a.question_order ?? 0) - (b.question_order ?? 0)
-      );
-      const latest = sorted.reduce((max, r) =>
-        r.submitted_at > max ? r.submitted_at : max, sorted[0].submitted_at);
-      return { key, items: sorted, latestSubmittedAt: latest, participationId: sorted[0].participation_id };
-    });
-  })();
+  // One row per submission, with all question/answer pairs inside.
+  const groupedResponses = groupResponsesByParticipation(responses);
 
   if (loading) {
     return (

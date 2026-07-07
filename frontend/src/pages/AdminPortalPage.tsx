@@ -11,7 +11,7 @@ import type {
 import { usePageTitle } from '../hooks/usePageTitle';
 import AdminHeader from '../components/AdminHeader';
 import CopyIdButton from '../components/CopyIdButton';
-import { formatQuestionText, formatParticipant, formatResponseValue } from '../utils/adminResponseFormat';
+import { formatQuestionText, formatParticipant, formatResponseValue, groupResponsesByParticipation } from '../utils/adminResponseFormat';
 import './AdminPortalPage.css';
 
 type TabType = 'users' | 'conversations' | 'responses' | 'analyses' | 'organizations' | 'scheduler';
@@ -374,39 +374,62 @@ export default function AdminPortalPage() {
                 Apply Filters
               </button>
             </div>
+            <p style={{ color: 'var(--color-primary-500)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+              One row per participant submission. Click a row to view the full questions and responses.
+            </p>
             <div className="table-container">
               <table className="admin-table">
                 <thead>
                   <tr>
                     <th>Conversation</th>
-                    <th>Question</th>
                     <th>Participant</th>
-                    <th>Response Text</th>
+                    <th>Responses</th>
                     <th>Anonymity Level</th>
                     <th>Submitted At</th>
                     <th>ID</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {responses.map((response) => (
-                    <tr key={response.id}>
-                      <td>
-                        <Link to={`/adminportal/conversation/${response.conversation_id}`} className="link-button">
-                          {response.conversation_id.slice(0, 8)}…
-                        </Link>
-                      </td>
-                      <td title={response.question_text || undefined}>
-                        {formatQuestionText(response.question_text)}
-                      </td>
-                      <td>{formatParticipant(response)}</td>
-                      <td className="response-text">{formatResponseValue(response, 100)}</td>
-                      <td>{response.anonymity_level}</td>
-                      <td>{new Date(response.submitted_at).toLocaleString()}</td>
-                      <td>
-                        <CopyIdButton value={response.id} title="Copy response ID" />
-                      </td>
-                    </tr>
-                  ))}
+                  {groupResponsesByParticipation(responses).map((group) => {
+                    const first = group.items[0];
+                    const clickable = !!group.participationId;
+                    return (
+                      <tr
+                        key={group.key}
+                        onClick={clickable ? () => navigate(`/adminportal/conversation/${first.conversation_id}/participation/${group.participationId}`) : undefined}
+                        style={{ cursor: clickable ? 'pointer' : 'default' }}
+                        title={clickable ? 'Click to view full questions and responses' : undefined}
+                      >
+                        <td>
+                          <Link
+                            to={`/adminportal/conversation/${first.conversation_id}`}
+                            className="link-button"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {first.conversation_id.slice(0, 8)}…
+                          </Link>
+                        </td>
+                        <td>{formatParticipant(first)}</td>
+                        <td className="response-text">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {group.items.map((r) => (
+                              <div key={r.id}>
+                                <span style={{ color: 'var(--color-primary-600)' }}>{formatQuestionText(r.question_text, 40)}: </span>
+                                <span>{formatResponseValue(r, 80)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td>{first.anonymity_level}</td>
+                        <td>{new Date(group.latestSubmittedAt).toLocaleString()}</td>
+                        <td>
+                          {group.participationId
+                            ? <CopyIdButton value={group.participationId} title="Copy participation ID" />
+                            : <CopyIdButton value={first.id} title="Copy response ID" />}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {responses.length === 0 && <p className="no-data">No responses found</p>}
