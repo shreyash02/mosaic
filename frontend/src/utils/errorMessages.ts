@@ -5,13 +5,39 @@ interface ApiErrorResponse {
   message?: string;
 }
 
+// Framework-generated responses (Starlette/FastAPI defaults, HTTP reason
+// phrases) that were never written for end users. If `detail` is one of
+// these, no route author crafted a message — show the generic fallback.
+const RAW_HTTP_PHRASES = new Set([
+  'bad request',
+  'unauthorized',
+  'not authenticated',
+  'could not validate credentials',
+  'forbidden',
+  'not found',
+  'method not allowed',
+  'not acceptable',
+  'request timeout',
+  'conflict',
+  'gone',
+  'payload too large',
+  'unsupported media type',
+  'unprocessable entity',
+  'too many requests',
+]);
+
+function isRawHttpPhrase(text: string): boolean {
+  return RAW_HTTP_PHRASES.has(text.trim().toLowerCase());
+}
+
 /**
  * Formats API errors into user-friendly messages.
  *
  * Rules:
  * - Network errors and 5xx: Generic "Failed to {action}, please try again"
- * - 4xx with API message: Show the API's error message
- * - 4xx without message: Generic "Failed to {action}, please try again"
+ * - 4xx with an intentional API message: Show the API's error message
+ * - 4xx with a framework default ("Method Not Allowed", "Not Found", ...)
+ *   or no message: Generic "Failed to {action}, please try again"
  */
 export function getErrorMessage(
   error: unknown,
@@ -44,7 +70,7 @@ export function getErrorMessage(
 
     // FastAPI returns { detail: "message" } or { detail: [{ msg: "..." }] }
     if (data?.detail) {
-      if (typeof data.detail === 'string') {
+      if (typeof data.detail === 'string' && !isRawHttpPhrase(data.detail)) {
         return data.detail;
       }
       if (Array.isArray(data.detail) && data.detail.length > 0) {
@@ -53,7 +79,7 @@ export function getErrorMessage(
     }
 
     // Some APIs return { message: "..." }
-    if (data?.message && typeof data.message === 'string') {
+    if (data?.message && typeof data.message === 'string' && !isRawHttpPhrase(data.message)) {
       return data.message;
     }
   }

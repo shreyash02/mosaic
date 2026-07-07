@@ -79,6 +79,25 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(error)).toBe('Failed to complete the action, please try again')
   })
 
+  it('returns fallback for framework-generated detail phrases', () => {
+    expect(getErrorMessage(makeAxiosError(405, { detail: 'Method Not Allowed' }), 'create workspace'))
+      .toBe('Failed to create workspace, please try again')
+    expect(getErrorMessage(makeAxiosError(404, { detail: 'Not Found' }), 'load data'))
+      .toBe('Failed to load data, please try again')
+    expect(getErrorMessage(makeAxiosError(401, { detail: 'Not authenticated' }), 'save'))
+      .toBe('Failed to save, please try again')
+  })
+
+  it('returns fallback for framework-generated message phrases', () => {
+    const error = makeAxiosError(405, { message: 'Method Not Allowed' })
+    expect(getErrorMessage(error, 'save')).toBe('Failed to save, please try again')
+  })
+
+  it('still shows intentional 404 messages', () => {
+    const error = makeAxiosError(404, { detail: 'Workspace not found' })
+    expect(getErrorMessage(error, 'load workspace')).toBe('Workspace not found')
+  })
+
   it('prefers detail over message', () => {
     const error = makeAxiosError(400, {
       detail: 'Specific error',
